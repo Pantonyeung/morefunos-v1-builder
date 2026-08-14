@@ -11,6 +11,8 @@ const required = [
   'V1_SOURCE_READ_TOKEN',
   'V1_LOCKFILE_WRITE_TOKEN',
   'persist-credentials: false',
+  'rm -rf apps/smt-web/node_modules',
+  'rm -f apps/smt-web/package-lock.json',
   'npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund',
   'npm --prefix apps/smt-web ci --no-audit --no-fund',
   'apps/smt-web/package-lock.json',
@@ -23,6 +25,12 @@ for (const needle of required) {
   if (!workflow.includes(needle)) {
     throw new Error(`LOCKFILE_REPAIR_POLICY_REQUIRED:${needle}`);
   }
+}
+
+const removeLockIndex = workflow.indexOf('rm -f apps/smt-web/package-lock.json');
+const canonicalizeIndex = workflow.indexOf('npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund');
+if (removeLockIndex < 0 || canonicalizeIndex < 0 || removeLockIndex > canonicalizeIndex) {
+  throw new Error('LOCKFILE_REPAIR_FRESH_REGENERATION_REQUIRED');
 }
 
 const forbiddenTriggers = [
