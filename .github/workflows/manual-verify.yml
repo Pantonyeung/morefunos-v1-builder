@@ -17,6 +17,7 @@ on:
           - g5
           - current
           - smt-lock
+          - smt-lock-audit
           - smt-web
           - android
 
@@ -49,7 +50,7 @@ jobs:
             exit 1
           fi
           case "$VERIFICATION_PROFILE" in
-            g4|g5|current|smt-lock|smt-web|android) ;;
+            g4|g5|current|smt-lock|smt-lock-audit|smt-web|android) ;;
             *) echo "Unsupported verification_profile: $VERIFICATION_PROFILE" >&2; exit 1 ;;
           esac
           echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
@@ -151,6 +152,20 @@ jobs:
               run_stage "smt-lock-generation" npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund || exit 1
               LOCK_SHA256="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
               echo "smt-lock-sha256=$LOCK_SHA256"
+              ;;
+            smt-lock-audit)
+              if [[ ! -f apps/smt-web/package-lock.json ]]; then
+                echo "smt-lock-audit-presence: FAIL"
+                echo "failed_stage=smt-lock-audit-presence" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              LOCK_SHA256_BEFORE="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
+              run_stage "smt-lock-audit-canonicalize" npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund || exit 1
+              run_stage "smt-lock-audit-zero-diff" git diff --exit-code -- apps/smt-web/package-lock.json || exit 1
+              LOCK_SHA256_AFTER="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
+              test "$LOCK_SHA256_BEFORE" = "$LOCK_SHA256_AFTER" || { echo "smt-lock-audit-hash-stability: FAIL"; echo "failed_stage=smt-lock-audit-hash-stability" >> "$GITHUB_OUTPUT"; exit 1; }
+              echo "smt-lock-audit-sha256=$LOCK_SHA256_AFTER"
+              run_stage "smt-lock-audit-ci" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
               ;;
             smt-web)
               if [[ ! -f apps/smt-web/package-lock.json ]]; then
