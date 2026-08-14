@@ -10,6 +10,10 @@ const required = [
   "if: github.actor == 'Pantonyeung'",
   'V1_SOURCE_READ_TOKEN',
   'Verify exact private source identity',
+  'id: request',
+  "tr -d '[:space:]'",
+  'steps.request.outputs.source_sha',
+  'EXPECTED_SOURCE_SHA',
 ];
 
 for (const needle of required) {
@@ -36,6 +40,10 @@ if (/contents:\s*write/.test(workflow)) {
 
 if (/persist-credentials:\s*true/.test(workflow)) {
   throw new Error('BUILDER_PERSIST_CREDENTIALS_FORBIDDEN');
+}
+
+if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(workflow)) {
+  throw new Error('BUILDER_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
 }
 
 console.log('Builder policy: PASS');
