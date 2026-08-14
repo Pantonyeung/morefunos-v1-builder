@@ -2,6 +2,8 @@ import fs from 'node:fs';
 
 const workflowPath = '.github/workflows/manual-verify.yml';
 const workflow = fs.readFileSync(workflowPath, 'utf8');
+const releaseWorkflowPath = '.github/workflows/manual-android-release.yml';
+const releaseWorkflow = fs.readFileSync(releaseWorkflowPath, 'utf8');
 
 const required = [
   'workflow_dispatch:',
@@ -134,6 +136,79 @@ if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) {
 }
 if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(workflow)) {
   throw new Error('BUILDER_ANDROID_SOURCE_LOG_FORBIDDEN');
+}
+if (/V1_ARTIFACT_DELIVERY_TOKEN|V1_ANDROID_KEYSTORE_|gh release create/.test(workflow)) {
+  throw new Error('BUILDER_NORMAL_VERIFY_MUST_REMAIN_READ_ONLY');
+}
+
+const releaseRequired = [
+  'name: Owner Manual V1 Android Release',
+  'workflow_dispatch:',
+  'SOURCE_REPO: Pantonyeung/morefunos-v1',
+  "if: github.actor == 'Pantonyeung'",
+  'permissions:\n  contents: read',
+  'V1_SOURCE_READ_TOKEN',
+  'V1_ARTIFACT_DELIVERY_TOKEN',
+  'V1_ANDROID_KEYSTORE_B64',
+  'V1_ANDROID_KEYSTORE_PASSWORD',
+  'V1_ANDROID_KEY_ALIAS',
+  'V1_ANDROID_KEY_PASSWORD',
+  'EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a',
+  'ref: ${{ steps.request.outputs.source_sha }}',
+  'persist-credentials: false',
+  'npm run test:g6',
+  'npm run typecheck:g6',
+  'npm --prefix apps/smt-web ci --no-audit --no-fund',
+  'npm --prefix apps/smt-web run build',
+  'gradle -p apps/smt-android :app:lintDebug --no-daemon',
+  'gradle -p apps/smt-android :app:assembleDebug --no-daemon',
+  'build-tools/36.0.0/apksigner',
+  'apksigner',
+  'Stable APK signing identity verified: PASS',
+  'test "$VERSION_CODE" -ge 12',
+  'test "$PACKAGE_ID" = "com.morefunos.smt"',
+  'build-metadata.json',
+  'SHA256SUMS',
+  'gh release create',
+  '--repo "$SOURCE_REPO"',
+  '--target "$NORMALIZED_SOURCE_SHA"',
+  '--prerelease',
+  'Private V1 Release delivery: PASS',
+];
+
+for (const needle of releaseRequired) {
+  if (!releaseWorkflow.includes(needle)) {
+    throw new Error(`BUILDER_ANDROID_RELEASE_POLICY_REQUIRED:${needle}`);
+  }
+}
+
+for (const pattern of forbiddenTriggers) {
+  if (pattern.test(releaseWorkflow)) throw new Error(`BUILDER_ANDROID_RELEASE_AUTOMATIC_TRIGGER_FORBIDDEN:${pattern}`);
+}
+
+if (/contents:\s*write/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_DEFAULT_CONTENTS_WRITE_FORBIDDEN');
+}
+if (/persist-credentials:\s*true/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_PERSIST_CREDENTIALS_FORBIDDEN');
+}
+if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
+}
+if (/actions\/upload-artifact|uploads\.github\.com|--repo\s+\$\{\{\s*github\.repository\s*\}\}/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
+}
+if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_SOURCE_LOG_FORBIDDEN');
+}
+if (/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_SOURCE_READ_TOKEN\s*\}\}/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_READ_TOKEN_REUSE_FORBIDDEN');
+}
+if (!/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_ARTIFACT_DELIVERY_TOKEN\s*\}\}/.test(releaseWorkflow)) {
+  throw new Error('BUILDER_ANDROID_RELEASE_SEPARATE_DELIVERY_TOKEN_REQUIRED');
+}
+if (!releaseWorkflow.includes('rm -f "$RUNNER_TEMP/morefunos-v1-app-signing.p12"')) {
+  throw new Error('BUILDER_ANDROID_RELEASE_SIGNING_KEY_CLEANUP_REQUIRED');
 }
 
 console.log('Builder policy: PASS');
