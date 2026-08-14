@@ -14,6 +14,16 @@ const required = [
   "tr -d '[:space:]'",
   'steps.request.outputs.source_sha',
   'EXPECTED_SOURCE_SHA',
+  'g4|g5|current|smt-lock|smt-web|android',
+  'npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund',
+  'SMT_LOCKFILE_BEGIN',
+  'SMT_LOCKFILE_END',
+  'npm --prefix apps/smt-web ci --no-audit --no-fund',
+  'npm run test:g5',
+  'npm run test:current',
+  'npm run typecheck:g5',
+  'npm --prefix apps/smt-web test',
+  'npm --prefix apps/smt-web run build',
 ];
 
 for (const needle of required) {
@@ -44,6 +54,10 @@ if (/persist-credentials:\s*true/.test(workflow)) {
 
 if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(workflow)) {
   throw new Error('BUILDER_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
+}
+
+if (/npm\s+(?:install|i)\s+(?!.*--package-lock-only)/.test(workflow.split('smt-lock)')[1]?.split(';;')[0] ?? '')) {
+  throw new Error('BUILDER_SMT_LOCK_INSTALL_SCOPE_FORBIDDEN');
 }
 
 console.log('Builder policy: PASS');
