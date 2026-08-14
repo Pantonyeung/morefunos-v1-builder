@@ -211,6 +211,7 @@ jobs:
         working-directory: source
         shell: bash
         env:
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           BUILDER_SHA: ${{ github.sha }}
           BUILDER_RUN_ID: ${{ github.run_id }}
           BUILDER_REPO: ${{ github.repository }}
@@ -228,17 +229,17 @@ jobs:
           PACKAGE_ID="$(awk -F'"' '/applicationId = / {print $2; exit}' "$BUILD_FILE")"
           APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           APK_BYTES="$(stat -c%s "$APK")"
-          APK_FILENAME="MoreFunOS-SMT-${VERSION_NAME}-${REQUESTED_SOURCE_SHA:0:12}.apk"
+          APK_FILENAME="MoreFunOS-SMT-${VERSION_NAME}-${NORMALIZED_SOURCE_SHA:0:12}.apk"
 
           cp "$APK" "$APK_FILENAME"
           printf '%s  %s\n' "$APK_SHA256" "$APK_FILENAME" > SHA256SUMS
 
-          export VERSION_NAME VERSION_CODE MIN_SDK TARGET_SDK PACKAGE_ID APK_SHA256 APK_BYTES APK_FILENAME APP_SIGNING_CERT_SHA256
+          export VERSION_NAME VERSION_CODE MIN_SDK TARGET_SDK PACKAGE_ID APK_SHA256 APK_BYTES APK_FILENAME APP_SIGNING_CERT_SHA256 NORMALIZED_SOURCE_SHA
           node <<'NODE'
           const fs = require('node:fs');
           const metadata = {
             sourceRepository: process.env.SOURCE_REPO,
-            sourceSha: process.env.REQUESTED_SOURCE_SHA.toLowerCase(),
+            sourceSha: process.env.NORMALIZED_SOURCE_SHA,
             packageId: process.env.PACKAGE_ID,
             versionName: process.env.VERSION_NAME,
             versionCode: Number(process.env.VERSION_CODE),
@@ -273,6 +274,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
           VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
           APK_FILENAME: ${{ steps.metadata.outputs.apk_filename }}
@@ -285,15 +287,15 @@ jobs:
             exit 1
           fi
 
-          TAG="builder-v1-${VERSION_NAME}-${REQUESTED_SOURCE_SHA:0:12}-run-${GITHUB_RUN_ID}"
+          TAG="builder-v1-${VERSION_NAME}-${NORMALIZED_SOURCE_SHA:0:12}-run-${GITHUB_RUN_ID}"
           gh release create "$TAG" \
             "$APK_FILENAME" \
             build-metadata.json \
             SHA256SUMS \
             --repo "$SOURCE_REPO" \
-            --target "$REQUESTED_SOURCE_SHA" \
-            --title "SMT ${VERSION_NAME} (${VERSION_CODE}) | ${REQUESTED_SOURCE_SHA:0:12}" \
-            --notes "Owner-manual immutable V1 Android build from ${REQUESTED_SOURCE_SHA}. Stable app-signing certificate SHA-256: ${APP_SIGNING_CERT_SHA256}. APK SHA-256: ${APK_SHA256}. Builder ${GITHUB_REPOSITORY}@${GITHUB_SHA}, run ${GITHUB_RUN_ID}. Build + private delivery evidence only; not Install/Device/Hardware/Operational PASS." \
+            --target "$NORMALIZED_SOURCE_SHA" \
+            --title "SMT ${VERSION_NAME} (${VERSION_CODE}) | ${NORMALIZED_SOURCE_SHA:0:12}" \
+            --notes "Owner-manual immutable V1 Android build from ${NORMALIZED_SOURCE_SHA}. Stable app-signing certificate SHA-256: ${APP_SIGNING_CERT_SHA256}. APK SHA-256: ${APK_SHA256}. Builder ${GITHUB_REPOSITORY}@${GITHUB_SHA}, run ${GITHUB_RUN_ID}. Build + private delivery evidence only; not Install/Device/Hardware/Operational PASS." \
             --prerelease
 
           echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
