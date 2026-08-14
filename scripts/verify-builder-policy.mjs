@@ -50,6 +50,10 @@ const required = [
   'build-tools/36.0.0/aapt2',
   'android-lint-debug',
   ':app:lintDebug',
+  'android-lint-issue-summary=',
+  'lint_issue_summary=',
+  'LINT_ISSUE_SUMMARY:',
+  'lintIssueSummary:',
   'android-assemble-debug',
   ':app:assembleDebug',
   'apps/smt-android/app/build/outputs/apk/debug/app-debug.apk',
@@ -112,6 +116,15 @@ if (!androidCase.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon
 }
 if (!workflow.includes('android-actions/setup-android@v4')) {
   throw new Error('BUILDER_ANDROID_SDK_SETUP_ACTION_REQUIRED');
+}
+if (!androidCase.includes('android-lint-issue-summary=')) {
+  throw new Error('BUILDER_ANDROID_LINT_SANITIZED_SUMMARY_REQUIRED');
+}
+if (!androidCase.includes('lint_issue_summary=')) {
+  throw new Error('BUILDER_ANDROID_LINT_OUTPUT_REQUIRED');
+}
+if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*lint-results[^\n]*\.xml/i.test(workflow)) {
+  throw new Error('BUILDER_ANDROID_LINT_RAW_REPORT_LOG_FORBIDDEN');
 }
 if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) {
   throw new Error('BUILDER_PUBLIC_APK_UPLOAD_FORBIDDEN');
