@@ -149,9 +149,8 @@ jobs:
                 exit 1
               fi
               run_stage "smt-lock-generation" npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund || exit 1
-              echo "SMT_LOCKFILE_BEGIN"
-              cat apps/smt-web/package-lock.json
-              echo "SMT_LOCKFILE_END"
+              LOCK_SHA256="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
+              echo "smt-lock-sha256=$LOCK_SHA256"
               ;;
             smt-web)
               if [[ ! -f apps/smt-web/package-lock.json ]]; then
@@ -171,6 +170,15 @@ jobs:
           esac
 
           echo "Private verification core: PASS"
+
+      - name: Upload generated SMT lockfile artifact
+        if: inputs.verification_profile == 'smt-lock' && steps.verify_core.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smt-web-package-lock-${{ steps.request.outputs.source_sha }}
+          path: source/apps/smt-web/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Generate sanitized verification metadata
         if: always()
