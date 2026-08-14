@@ -48,8 +48,8 @@ const required = [
   'android-sdk-components',
   'platforms/android-36/android.jar',
   'build-tools/36.0.0/aapt2',
-  'android-lint-debug',
-  ':app:lintDebug',
+  'run_android_lint()',
+  'gradle -p apps/smt-android :app:lintDebug --no-daemon',
   'android-lint-issue-summary=',
   'lint_issue_summary=',
   'LINT_ISSUE_SUMMARY:',
@@ -111,16 +111,19 @@ const androidCase = androidEnd >= 0 ? workflow.slice(androidBodyStart, androidEn
 if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-daemon')) {
   throw new Error('BUILDER_ANDROID_ASSEMBLE_CONTRACT_REQUIRED');
 }
-if (!androidCase.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) {
-  throw new Error('BUILDER_ANDROID_LINT_CONTRACT_REQUIRED');
+if (!workflow.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) {
+  throw new Error('BUILDER_ANDROID_LINT_COMMAND_REQUIRED');
+}
+if (!androidCase.includes('run_android_lint || exit 1')) {
+  throw new Error('BUILDER_ANDROID_LINT_HELPER_CALL_REQUIRED');
 }
 if (!workflow.includes('android-actions/setup-android@v4')) {
   throw new Error('BUILDER_ANDROID_SDK_SETUP_ACTION_REQUIRED');
 }
-if (!androidCase.includes('android-lint-issue-summary=')) {
+if (!workflow.includes('android-lint-issue-summary=')) {
   throw new Error('BUILDER_ANDROID_LINT_SANITIZED_SUMMARY_REQUIRED');
 }
-if (!androidCase.includes('lint_issue_summary=')) {
+if (!workflow.includes('lint_issue_summary=')) {
   throw new Error('BUILDER_ANDROID_LINT_OUTPUT_REQUIRED');
 }
 if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*lint-results[^\n]*\.xml/i.test(workflow)) {
