@@ -94,7 +94,14 @@ if (/SMT_LOCKFILE_BEGIN|SMT_LOCKFILE_END|cat\s+apps\/smt-web\/package-lock\.json
   throw new Error('BUILDER_SMT_LOCK_RAW_LOG_FORBIDDEN');
 }
 
-const androidCase = workflow.split('android)')[1]?.split(';;')[0] ?? '';
+const androidMarker = '\n            android)\n';
+const androidStart = workflow.lastIndexOf(androidMarker);
+if (androidStart < 0) {
+  throw new Error('BUILDER_ANDROID_CASE_REQUIRED');
+}
+const androidBodyStart = androidStart + androidMarker.length;
+const androidEnd = workflow.indexOf('\n              ;;', androidBodyStart);
+const androidCase = androidEnd >= 0 ? workflow.slice(androidBodyStart, androidEnd) : '';
 if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-daemon')) {
   throw new Error('BUILDER_ANDROID_ASSEMBLE_CONTRACT_REQUIRED');
 }
