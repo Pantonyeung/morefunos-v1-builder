@@ -10,11 +10,13 @@ on:
       verification_profile:
         description: 'Allowlisted V1 verification profile'
         required: true
-        default: g4
+        default: g5
         type: choice
         options:
           - g4
+          - g5
           - current
+          - smt-lock
           - smt-web
           - android
 
@@ -47,7 +49,7 @@ jobs:
             exit 1
           fi
           case "$VERIFICATION_PROFILE" in
-            g4|current|smt-web|android) ;;
+            g4|g5|current|smt-lock|smt-web|android) ;;
             *) echo "Unsupported verification_profile: $VERIFICATION_PROFILE" >&2; exit 1 ;;
           esac
           echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
@@ -85,8 +87,8 @@ jobs:
           test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
           echo "Verified immutable private source SHA: $ACTUAL_SOURCE_SHA"
 
-      - name: Install pinned G4/current TypeScript toolchain
-        if: inputs.verification_profile == 'g4' || inputs.verification_profile == 'current'
+      - name: Install pinned TypeScript toolchain
+        if: inputs.verification_profile == 'g4' || inputs.verification_profile == 'g5' || inputs.verification_profile == 'current'
         shell: bash
         run: |
           set -euo pipefail
@@ -123,9 +125,33 @@ jobs:
               run_stage "current-regression" npm run test:current || exit 1
               run_stage "g4-typecheck" npm run typecheck:g4 || exit 1
               ;;
+            g5)
+              if [[ ! -f apps/smt-web/package-lock.json ]]; then
+                echo "g5-smt-lockfile: FAIL (private V1 must commit apps/smt-web/package-lock.json first)"
+                echo "failed_stage=g5-smt-lockfile" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              run_stage "g5-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "g5-targeted" npm run test:g5 || exit 1
+              run_stage "current-regression" npm run test:current || exit 1
+              run_stage "g5-typecheck" npm run typecheck:g5 || exit 1
+              run_stage "smt-web-test" npm --prefix apps/smt-web test || exit 1
+              run_stage "smt-web-build" npm --prefix apps/smt-web run build || exit 1
+              ;;
             current)
               run_stage "current-regression" npm run test:current || exit 1
               run_stage "current-typecheck" npm run typecheck:current || exit 1
+              ;;
+            smt-lock)
+              if [[ -f apps/smt-web/package-lock.json ]]; then
+                echo "smt-lock-generation: FAIL (lockfile already committed; use g5 instead)"
+                echo "failed_stage=smt-lock-already-exists" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              run_stage "smt-lock-generation" npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund || exit 1
+              echo "SMT_LOCKFILE_BEGIN"
+              cat apps/smt-web/package-lock.json
+              echo "SMT_LOCKFILE_END"
               ;;
             smt-web)
               if [[ ! -f apps/smt-web/package-lock.json ]]; then
@@ -133,10 +159,9 @@ jobs:
                 echo "failed_stage=smt-web-lockfile" >> "$GITHUB_OUTPUT"
                 exit 1
               fi
-              cd apps/smt-web
-              run_stage "smt-web-locked-install" npm ci --no-audit --no-fund || exit 1
-              run_stage "smt-web-test" npm test || exit 1
-              run_stage "smt-web-build" npm run build || exit 1
+              run_stage "smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "smt-web-test" npm --prefix apps/smt-web test || exit 1
+              run_stage "smt-web-build" npm --prefix apps/smt-web run build || exit 1
               ;;
             android)
               echo "android-profile-contract: FAIL (G6 V1 Native/APK build contract not landed yet)"
