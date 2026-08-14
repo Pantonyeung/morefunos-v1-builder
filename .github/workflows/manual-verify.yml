@@ -156,7 +156,6 @@ jobs:
           export NPM_VERSION="$(npm --version)"
           export TYPESCRIPT_VERSION="$(tsc --version 2>/dev/null || true)"
           node <<'NODE'
-          const fs = require('fs');
           const metadata = {
             sourceRepository: process.env.SOURCE_REPO,
             sourceSha: process.env.REQUESTED_SOURCE_SHA.toLowerCase(),
@@ -171,36 +170,12 @@ jobs:
             builderRunId: process.env.BUILDER_RUN_ID,
             verifiedAtUtc: new Date().toISOString()
           };
-          fs.writeFileSync('verification-metadata.json', JSON.stringify(metadata, null, 2) + '\n');
           console.log(JSON.stringify(metadata));
           NODE
 
-      - name: Deliver failed diagnostics privately when configured
-        if: steps.verify_core.outcome == 'failure'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.V1_DIAGNOSTICS_WRITE_TOKEN }}
-          FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "Private diagnostics delivery not configured; raw private log remains undisclosed."
-            exit 0
-          fi
-          TAG="builder-diagnostic-${REQUESTED_SOURCE_SHA:0:12}-run-${GITHUB_RUN_ID}"
-          gh release create "$TAG" \
-            "$GITHUB_WORKSPACE/private-verification.log" \
-            "$GITHUB_WORKSPACE/verification-metadata.json" \
-            --repo "$SOURCE_REPO" \
-            --target "$REQUESTED_SOURCE_SHA" \
-            --title "FAILED verification ${VERIFICATION_PROFILE} | ${REQUESTED_SOURCE_SHA:0:12}" \
-            --notes "Private diagnostic relay from ${GITHUB_REPOSITORY}@${GITHUB_SHA}, run ${GITHUB_RUN_ID}. Failure stage: ${FAILED_STAGE:-unknown}. This is verification evidence only; it is not Device/Hardware/Operational/Production PASS." \
-            --prerelease
-          echo "Private diagnostics delivered to source repository."
-
-      - name: Fail workflow after evidence handling
+      - name: Fail workflow after sanitized evidence
         if: steps.verify_core.outcome == 'failure'
         shell: bash
         run: |
-          echo "Verification failed. Public details are intentionally limited to the failed stage."
+          echo "Verification failed. Public details are intentionally limited to the failed stage; no private source log was published or written back."
           exit 1
