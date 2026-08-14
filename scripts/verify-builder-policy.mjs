@@ -35,6 +35,8 @@ const required = [
   'actions/setup-java@v5',
   "distribution: 'temurin'",
   "java-version: '17'",
+  'android-actions/setup-android@v4',
+  "packages: 'platform-tools platforms;android-36 build-tools;36.0.0'",
   'gradle/actions/setup-gradle@v6',
   "gradle-version: '9.5.0'",
   'android-g6-static',
@@ -44,8 +46,8 @@ const required = [
   'android-smt-web-locked-install',
   'android-smt-web-build',
   'android-sdk-components',
-  'platforms;android-36',
-  'build-tools;36.0.0',
+  'platforms/android-36/android.jar',
+  'build-tools/36.0.0/aapt2',
   'android-lint-debug',
   ':app:lintDebug',
   'android-assemble-debug',
@@ -107,6 +109,9 @@ if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-da
 }
 if (!androidCase.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) {
   throw new Error('BUILDER_ANDROID_LINT_CONTRACT_REQUIRED');
+}
+if (!workflow.includes('android-actions/setup-android@v4')) {
+  throw new Error('BUILDER_ANDROID_SDK_SETUP_ACTION_REQUIRED');
 }
 if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) {
   throw new Error('BUILDER_PUBLIC_APK_UPLOAD_FORBIDDEN');
