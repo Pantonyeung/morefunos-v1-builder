@@ -81,12 +81,20 @@ jobs:
           test -f apps/smt-web/package-lock.json
 
           LOG="$GITHUB_WORKSPACE/lockfile-repair.log"
+
+          # The committed lockfile is already classified as corrupted/truncated.
+          # A repair must regenerate from package.json instead of incrementally
+          # preserving stale package metadata/integrities from that bad lockfile.
+          rm -rf apps/smt-web/node_modules
+          rm -f apps/smt-web/package-lock.json
+
           if ! npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
-            echo "lockfile-repair-canonicalize: FAIL"
+            echo "lockfile-repair-fresh-canonicalize: FAIL"
             exit 1
           fi
-          echo "lockfile-repair-canonicalize: PASS"
+          echo "lockfile-repair-fresh-canonicalize: PASS"
 
+          test -f apps/smt-web/package-lock.json
           node -e "JSON.parse(require('node:fs').readFileSync('apps/smt-web/package-lock.json','utf8'))"
           CHANGED_PATHS="$(git diff --name-only)"
           test "$CHANGED_PATHS" = "apps/smt-web/package-lock.json"
