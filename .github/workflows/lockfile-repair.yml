@@ -1,0 +1,170 @@
+name: Owner Manual V1 Lockfile Repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character current MoreFunOS V1 source SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-manual-v1-lockfile-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+
+    steps:
+      - name: Validate immutable repair request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          NORMALIZED_SOURCE_SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]')"
+          if [[ ! "$NORMALIZED_SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "source_sha must normalize to an exact 40-character Git commit SHA" >&2
+            exit 1
+          fi
+          echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+          echo "Validated immutable repair source SHA."
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Verify lockfile repair policy
+        run: node scripts/verify-lockfile-repair-policy.mjs
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          test -z "$(git -C source status --porcelain)"
+          echo "Exact private source identity: PASS"
+
+      - name: Canonicalize and validate SMT lockfile
+        id: repair_core
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          test -f apps/smt-web/package.json
+          test -f apps/smt-web/package-lock.json
+
+          LOG="$GITHUB_WORKSPACE/lockfile-repair.log"
+          if ! npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
+            echo "lockfile-repair-canonicalize: FAIL"
+            exit 1
+          fi
+          echo "lockfile-repair-canonicalize: PASS"
+
+          node -e "JSON.parse(require('node:fs').readFileSync('apps/smt-web/package-lock.json','utf8'))"
+          CHANGED_PATHS="$(git diff --name-only)"
+          test "$CHANGED_PATHS" = "apps/smt-web/package-lock.json"
+          echo "lockfile-repair-single-file-diff: PASS"
+
+          if ! npm --prefix apps/smt-web ci --no-audit --no-fund >>"$LOG" 2>&1; then
+            echo "lockfile-repair-ci: FAIL"
+            exit 1
+          fi
+          echo "lockfile-repair-ci: PASS"
+
+          LOCK_SHA256="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
+          echo "lock_sha256=$LOCK_SHA256" >> "$GITHUB_OUTPUT"
+          echo "Canonical lockfile SHA256: $LOCK_SHA256"
+
+      - name: Commit only canonical lockfile and push repair branch
+        id: writeback
+        env:
+          V1_LOCKFILE_WRITE_TOKEN: ${{ secrets.V1_LOCKFILE_WRITE_TOKEN }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$V1_LOCKFILE_WRITE_TOKEN"
+          cd source
+
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          REPAIR_BRANCH="builder/g5-lockfile-${SHORT_SHA}"
+          git switch -c "$REPAIR_BRANCH"
+          git config user.name "MoreFunOS V1 Builder"
+          git config user.email "107616897+Pantonyeung@users.noreply.github.com"
+          git add -- apps/smt-web/package-lock.json
+          STAGED_PATHS="$(git diff --cached --name-only)"
+          test "$STAGED_PATHS" = "apps/smt-web/package-lock.json"
+          git commit -m "build(g5): canonicalize SMT dependency lockfile"
+          REPAIR_COMMIT="$(git rev-parse HEAD)"
+
+          ASKPASS="$RUNNER_TEMP/v1-lockfile-write-askpass.sh"
+          cat > "$ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "x-access-token" ;;
+            *Password*) printf '%s\n' "$V1_LOCKFILE_WRITE_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS"
+          export GIT_TERMINAL_PROMPT=0
+          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${REPAIR_BRANCH}"
+          rm -f "$ASKPASS"
+
+          echo "repair_branch=$REPAIR_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "repair_commit=$REPAIR_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Repair branch writeback: PASS"
+          echo "Repair branch: $REPAIR_BRANCH"
+          echo "Repair commit: $REPAIR_COMMIT"
+
+      - name: Generate sanitized repair metadata
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          LOCK_SHA256: ${{ steps.repair_core.outputs.lock_sha256 }}
+          REPAIR_BRANCH: ${{ steps.writeback.outputs.repair_branch }}
+          REPAIR_COMMIT: ${{ steps.writeback.outputs.repair_commit }}
+        run: |
+          node <<'NODE'
+          const metadata = {
+            sourceRepository: 'Pantonyeung/morefunos-v1',
+            sourceSha: process.env.SOURCE_SHA || null,
+            lockSha256: process.env.LOCK_SHA256 || null,
+            repairBranch: process.env.REPAIR_BRANCH || null,
+            repairCommit: process.env.REPAIR_COMMIT || null,
+            builderRepository: process.env.GITHUB_REPOSITORY,
+            builderSha: process.env.GITHUB_SHA,
+            builderRunId: process.env.GITHUB_RUN_ID,
+            verifiedAtUtc: new Date().toISOString()
+          };
+          console.log(JSON.stringify(metadata));
+          NODE
