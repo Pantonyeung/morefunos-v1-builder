@@ -32,6 +32,28 @@ const required = [
   'npm run typecheck:g5',
   'npm --prefix apps/smt-web test',
   'npm --prefix apps/smt-web run build',
+  'actions/setup-java@v5',
+  "distribution: 'temurin'",
+  "java-version: '17'",
+  'gradle/actions/setup-gradle@v6',
+  "gradle-version: '9.5.0'",
+  'android-g6-static',
+  'npm run test:g6',
+  'android-g6-typecheck',
+  'npm run typecheck:g6',
+  'android-smt-web-locked-install',
+  'android-smt-web-build',
+  'android-sdk-components',
+  'platforms;android-36',
+  'build-tools;36.0.0',
+  'android-lint-debug',
+  ':app:lintDebug',
+  'android-assemble-debug',
+  ':app:assembleDebug',
+  'apps/smt-android/app/build/outputs/apk/debug/app-debug.apk',
+  'artifact_sha256=',
+  'artifact_bytes=',
+  'artifact_version=',
 ];
 
 for (const needle of required) {
@@ -70,6 +92,20 @@ if (/npm\s+(?:install|i)\s+(?!.*--package-lock-only)/.test(workflow.split('smt-l
 
 if (/SMT_LOCKFILE_BEGIN|SMT_LOCKFILE_END|cat\s+apps\/smt-web\/package-lock\.json/.test(workflow)) {
   throw new Error('BUILDER_SMT_LOCK_RAW_LOG_FORBIDDEN');
+}
+
+const androidCase = workflow.split('android)')[1]?.split(';;')[0] ?? '';
+if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-daemon')) {
+  throw new Error('BUILDER_ANDROID_ASSEMBLE_CONTRACT_REQUIRED');
+}
+if (!androidCase.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) {
+  throw new Error('BUILDER_ANDROID_LINT_CONTRACT_REQUIRED');
+}
+if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) {
+  throw new Error('BUILDER_PUBLIC_APK_UPLOAD_FORBIDDEN');
+}
+if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(workflow)) {
+  throw new Error('BUILDER_ANDROID_SOURCE_LOG_FORBIDDEN');
 }
 
 console.log('Builder policy: PASS');
