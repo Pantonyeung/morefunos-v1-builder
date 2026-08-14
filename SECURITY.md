@@ -11,43 +11,65 @@ This repository is public. Treat every workflow log and committed file here as p
 
 ## Allowed public evidence
 - exact source commit SHA;
-- verification profile name;
+- verification/release workflow identity;
 - sanitized stage PASS/FAIL;
 - Node/npm/TypeScript/Java/Gradle version identities;
 - Builder commit SHA and run ID;
 - safe test-count summaries;
-- artifact SHA-256 and non-secret build metadata after a later approved artifact profile exists.
+- APK SHA-256, byte size, version/package identity and signing certificate SHA-256;
+- private V1 Release tag name after successful delivery.
 
-## Current G4 secret boundary
-Only one cross-repository credential is required now:
+## Credential separation
 
-`V1_SOURCE_READ_TOKEN`
+### `V1_SOURCE_READ_TOKEN`
 - fine-grained PAT;
 - repository access: only `Pantonyeung/morefunos-v1`;
 - Contents: read-only;
-- no write/admin/actions/workflows permission.
+- no write/admin/actions/workflows permission;
+- used only for exact immutable private source checkout.
 
-The current G4/current workflow has **no private write-back path**. On failure it reveals only the failed stage. Raw private logs are neither published nor written back.
+### `V1_ARTIFACT_DELIVERY_TOKEN`
+- separate fine-grained PAT;
+- repository access: only `Pantonyeung/morefunos-v1`;
+- Contents: read and write, the minimum GitHub permission used for private Release creation/assets;
+- used only by `Owner Manual V1 Android Release` after build + signing PASS;
+- never used for source checkout and never persisted as Git credentials;
+- must not be reused as diagnostics/source-mutation credential.
 
-## Future credentials
-If a later Gate proves a need for private diagnostics or artifact delivery, use a separately scoped credential. Never upgrade/reuse `V1_SOURCE_READ_TOKEN`.
+### Stable Android signing secrets
+These are separate from both PATs:
+- `V1_ANDROID_KEYSTORE_B64`
+- `V1_ANDROID_KEYSTORE_PASSWORD`
+- `V1_ANDROID_KEY_ALIAS`
+- `V1_ANDROID_KEY_PASSWORD`
 
-`V1_DIAGNOSTICS_WRITE_TOKEN`
-- optional future only;
-- prefer private Issues transport with Issues write and no source Contents write.
+Rules:
+- secret values are never committed, echoed or included in metadata;
+- keystore is materialized only under `$RUNNER_TEMP`;
+- temporary keystore is removed in an `always()` cleanup step;
+- signing output must verify exactly one signer;
+- signer certificate SHA-256 must equal the locked MoreFunOS SMT certificate identity before Release delivery proceeds.
 
-`V1_ARTIFACT_DELIVERY_TOKEN`
-- reserved for later approved G6 artifact/release delivery;
-- repository access restricted to `Pantonyeung/morefunos-v1`;
-- minimum permission required by the approved transport;
-- must remain separate from source-read credentials.
+### Optional diagnostics credential
+`V1_DIAGNOSTICS_WRITE_TOKEN` remains a separate optional future concern. Do not reuse source-read, signing or artifact-delivery credentials for diagnostics.
+
+## APK delivery boundary
+- Public Builder Actions artifacts for APKs are forbidden.
+- Public Builder Releases for APKs are forbidden.
+- Successful Android delivery must go directly to a private `Pantonyeung/morefunos-v1` prerelease.
+- Release assets are limited to the signed APK, `build-metadata.json` and `SHA256SUMS`.
+- Release target is the normalized exact V1 source SHA.
+- Delivery is Build/Artifact evidence only; never relabel as Install/Device/Hardware/Operational/Production PASS.
 
 ## Workflow policy
 - manual `workflow_dispatch` only;
 - Owner actor guard;
 - exact immutable source SHA;
-- no automatic push/PR/schedule/repository-dispatch execution;
+- no automatic push/PR/schedule/workflow-run/repository-dispatch execution;
+- default Builder `GITHUB_TOKEN` remains `contents: read`;
 - no source mutation;
 - private command output redirected away from public logs;
 - failures reported publicly by stage only;
-- private V1 source must never be committed/copied into this public repository.
+- private V1 source must never be committed/copied into this public repository;
+- normal `manual-verify.yml` must never reference signing secrets, `V1_ARTIFACT_DELIVERY_TOKEN` or `gh release create`;
+- release workflow must never reuse `V1_SOURCE_READ_TOKEN` as `GH_TOKEN`.
