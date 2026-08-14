@@ -1,0 +1,206 @@
+name: Owner Manual V1 Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character commit SHA from Pantonyeung/morefunos-v1'
+        required: true
+        type: string
+      verification_profile:
+        description: 'Allowlisted V1 verification profile'
+        required: true
+        default: g4
+        type: choice
+        options:
+          - g4
+          - current
+          - smt-web
+          - android
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-manual-v1-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      VERIFICATION_PROFILE: ${{ inputs.verification_profile }}
+
+    steps:
+      - name: Validate immutable verification request
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$REQUESTED_SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "source_sha must be an exact 40-character Git commit SHA" >&2
+            exit 1
+          fi
+          case "$VERIFICATION_PROFILE" in
+            g4|current|smt-web|android) ;;
+            *) echo "Unsupported verification_profile: $VERIFICATION_PROFILE" >&2; exit 1 ;;
+          esac
+
+      - name: Checkout builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Verify builder remains manual-only
+        run: node scripts/verify-builder-policy.mjs
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ inputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "${REQUESTED_SOURCE_SHA,,}"
+          echo "Verified immutable private source SHA: $ACTUAL_SOURCE_SHA"
+
+      - name: Install pinned G4/current TypeScript toolchain
+        if: inputs.verification_profile == 'g4' || inputs.verification_profile == 'current'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = "Version 5.8.3"
+          echo "Pinned TypeScript 5.8.3: PASS"
+
+      - name: Execute private verification without public source logs
+        id: verify_core
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          LOG="$GITHUB_WORKSPACE/private-verification.log"
+          : > "$LOG"
+
+          run_stage() {
+            local stage="$1"
+            shift
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          cd source
+          case "$VERIFICATION_PROFILE" in
+            g4)
+              run_stage "g4-targeted" npm run test:g4 || exit 1
+              run_stage "current-regression" npm run test:current || exit 1
+              run_stage "g4-typecheck" npm run typecheck:g4 || exit 1
+              ;;
+            current)
+              run_stage "current-regression" npm run test:current || exit 1
+              run_stage "current-typecheck" npm run typecheck:current || exit 1
+              ;;
+            smt-web)
+              if [[ ! -f apps/smt-web/package-lock.json ]]; then
+                echo "smt-web-lockfile: FAIL (private V1 must commit package-lock.json before Builder installs dependencies)"
+                echo "failed_stage=smt-web-lockfile" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              cd apps/smt-web
+              run_stage "smt-web-locked-install" npm ci --no-audit --no-fund || exit 1
+              run_stage "smt-web-test" npm test || exit 1
+              run_stage "smt-web-build" npm run build || exit 1
+              ;;
+            android)
+              echo "android-profile-contract: FAIL (G6 V1 Native/APK build contract not landed yet)"
+              echo "failed_stage=android-profile-contract" >> "$GITHUB_OUTPUT"
+              exit 1
+              ;;
+          esac
+
+          echo "Private verification core: PASS"
+
+      - name: Generate sanitized verification metadata
+        if: always()
+        shell: bash
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify_core.outcome }}
+          FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
+          BUILDER_SHA: ${{ github.sha }}
+          BUILDER_RUN_ID: ${{ github.run_id }}
+          BUILDER_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          export NODE_VERSION="$(node --version)"
+          export NPM_VERSION="$(npm --version)"
+          export TYPESCRIPT_VERSION="$(tsc --version 2>/dev/null || true)"
+          node <<'NODE'
+          const fs = require('fs');
+          const metadata = {
+            sourceRepository: process.env.SOURCE_REPO,
+            sourceSha: process.env.REQUESTED_SOURCE_SHA.toLowerCase(),
+            verificationProfile: process.env.VERIFICATION_PROFILE,
+            status: process.env.VERIFY_OUTCOME === 'success' ? 'PASS' : 'FAILED',
+            failedStage: process.env.FAILED_STAGE || null,
+            nodeVersion: process.env.NODE_VERSION,
+            npmVersion: process.env.NPM_VERSION,
+            typescriptVersion: process.env.TYPESCRIPT_VERSION || null,
+            builderRepository: process.env.BUILDER_REPO,
+            builderSha: process.env.BUILDER_SHA,
+            builderRunId: process.env.BUILDER_RUN_ID,
+            verifiedAtUtc: new Date().toISOString()
+          };
+          fs.writeFileSync('verification-metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+          console.log(JSON.stringify(metadata));
+          NODE
+
+      - name: Deliver failed diagnostics privately when configured
+        if: steps.verify_core.outcome == 'failure'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_DIAGNOSTICS_WRITE_TOKEN }}
+          FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "Private diagnostics delivery not configured; raw private log remains undisclosed."
+            exit 0
+          fi
+          TAG="builder-diagnostic-${REQUESTED_SOURCE_SHA:0:12}-run-${GITHUB_RUN_ID}"
+          gh release create "$TAG" \
+            "$GITHUB_WORKSPACE/private-verification.log" \
+            "$GITHUB_WORKSPACE/verification-metadata.json" \
+            --repo "$SOURCE_REPO" \
+            --target "$REQUESTED_SOURCE_SHA" \
+            --title "FAILED verification ${VERIFICATION_PROFILE} | ${REQUESTED_SOURCE_SHA:0:12}" \
+            --notes "Private diagnostic relay from ${GITHUB_REPOSITORY}@${GITHUB_SHA}, run ${GITHUB_RUN_ID}. Failure stage: ${FAILED_STAGE:-unknown}. This is verification evidence only; it is not Device/Hardware/Operational/Production PASS." \
+            --prerelease
+          echo "Private diagnostics delivered to source repository."
+
+      - name: Fail workflow after evidence handling
+        if: steps.verify_core.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Verification failed. Public details are intentionally limited to the failed stage."
+          exit 1
