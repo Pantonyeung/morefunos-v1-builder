@@ -32,7 +32,7 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       SOURCE_REPO: Pantonyeung/morefunos-v1
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
@@ -66,6 +66,19 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Setup JDK 17 for Android
+        if: inputs.verification_profile == 'android'
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle 9.5.0 for Android
+        if: inputs.verification_profile == 'android'
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
       - name: Verify builder remains manual-only
         run: node scripts/verify-builder-policy.mjs
 
@@ -89,7 +102,7 @@ jobs:
           echo "Verified immutable private source SHA: $ACTUAL_SOURCE_SHA"
 
       - name: Install pinned TypeScript toolchain
-        if: inputs.verification_profile == 'g4' || inputs.verification_profile == 'g5' || inputs.verification_profile == 'current'
+        if: inputs.verification_profile == 'g4' || inputs.verification_profile == 'g5' || inputs.verification_profile == 'current' || inputs.verification_profile == 'android'
         shell: bash
         run: |
           set -euo pipefail
@@ -117,6 +130,10 @@ jobs:
             echo "$stage: FAIL (details withheld from public log)"
             echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
             return 1
+          }
+
+          install_android_sdk() {
+            sdkmanager "platforms;android-36" "build-tools;36.0.0"
           }
 
           cd source
@@ -178,9 +195,35 @@ jobs:
               run_stage "smt-web-build" npm --prefix apps/smt-web run build || exit 1
               ;;
             android)
-              echo "android-profile-contract: FAIL (G6 V1 Native/APK build contract not landed yet)"
-              echo "failed_stage=android-profile-contract" >> "$GITHUB_OUTPUT"
-              exit 1
+              if [[ ! -f apps/smt-web/package-lock.json ]]; then
+                echo "android-smt-lockfile: FAIL (private V1 must commit apps/smt-web/package-lock.json first)"
+                echo "failed_stage=android-smt-lockfile" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              run_stage "android-g6-static" npm run test:g6 || exit 1
+              run_stage "android-g6-typecheck" npm run typecheck:g6 || exit 1
+              run_stage "android-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "android-smt-web-build" npm --prefix apps/smt-web run build || exit 1
+              run_stage "android-sdk-components" install_android_sdk || exit 1
+              run_stage "android-lint-debug" gradle -p apps/smt-android :app:lintDebug --no-daemon || exit 1
+              run_stage "android-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
+
+              APK_PATH="apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
+              if [[ ! -f "$APK_PATH" ]]; then
+                echo "android-apk-artifact: FAIL (assembleDebug produced no expected APK)"
+                echo "failed_stage=android-apk-artifact" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+
+              APK_SHA256="$(sha256sum "$APK_PATH" | awk '{print $1}')"
+              APK_BYTES="$(stat -c%s "$APK_PATH")"
+              APK_VERSION="$(awk -F'"' '/versionName = / {print $2; exit}' apps/smt-android/app/build.gradle.kts)"
+              echo "artifact_sha256=$APK_SHA256" >> "$GITHUB_OUTPUT"
+              echo "artifact_bytes=$APK_BYTES" >> "$GITHUB_OUTPUT"
+              echo "artifact_version=$APK_VERSION" >> "$GITHUB_OUTPUT"
+              echo "android-apk-sha256=$APK_SHA256"
+              echo "android-apk-bytes=$APK_BYTES"
+              echo "android-apk-version=$APK_VERSION"
               ;;
           esac
 
@@ -205,11 +248,16 @@ jobs:
           BUILDER_RUN_ID: ${{ github.run_id }}
           BUILDER_REPO: ${{ github.repository }}
           NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          APK_SHA256: ${{ steps.verify_core.outputs.artifact_sha256 }}
+          APK_BYTES: ${{ steps.verify_core.outputs.artifact_bytes }}
+          APK_VERSION: ${{ steps.verify_core.outputs.artifact_version }}
         run: |
           set -euo pipefail
           export NODE_VERSION="$(node --version)"
           export NPM_VERSION="$(npm --version)"
           export TYPESCRIPT_VERSION="$(tsc --version 2>/dev/null || true)"
+          export JAVA_VERSION="$(java -version 2>&1 | head -n 1 || true)"
+          export GRADLE_VERSION="$(gradle --version 2>/dev/null | awk '/^Gradle / {print $2; exit}' || true)"
           node <<'NODE'
           const metadata = {
             sourceRepository: process.env.SOURCE_REPO,
@@ -220,6 +268,11 @@ jobs:
             nodeVersion: process.env.NODE_VERSION,
             npmVersion: process.env.NPM_VERSION,
             typescriptVersion: process.env.TYPESCRIPT_VERSION || null,
+            javaVersion: process.env.JAVA_VERSION || null,
+            gradleVersion: process.env.GRADLE_VERSION || null,
+            apkSha256: process.env.APK_SHA256 || null,
+            apkBytes: process.env.APK_BYTES || null,
+            apkVersion: process.env.APK_VERSION || null,
             builderRepository: process.env.BUILDER_REPO,
             builderSha: process.env.BUILDER_SHA,
             builderRunId: process.env.BUILDER_RUN_ID,
