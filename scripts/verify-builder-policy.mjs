@@ -16,8 +16,11 @@ const required = [
   'EXPECTED_SOURCE_SHA',
   'g4|g5|current|smt-lock|smt-web|android',
   'npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund',
-  'SMT_LOCKFILE_BEGIN',
-  'SMT_LOCKFILE_END',
+  'sha256sum apps/smt-web/package-lock.json',
+  'actions/upload-artifact@v4',
+  'smt-web-package-lock-${{ steps.request.outputs.source_sha }}',
+  'path: source/apps/smt-web/package-lock.json',
+  'retention-days: 1',
   'npm --prefix apps/smt-web ci --no-audit --no-fund',
   'npm run test:g5',
   'npm run test:current',
@@ -58,6 +61,10 @@ if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(workflow)) {
 
 if (/npm\s+(?:install|i)\s+(?!.*--package-lock-only)/.test(workflow.split('smt-lock)')[1]?.split(';;')[0] ?? '')) {
   throw new Error('BUILDER_SMT_LOCK_INSTALL_SCOPE_FORBIDDEN');
+}
+
+if (/SMT_LOCKFILE_BEGIN|SMT_LOCKFILE_END|cat\s+apps\/smt-web\/package-lock\.json/.test(workflow)) {
+  throw new Error('BUILDER_SMT_LOCK_RAW_LOG_FORBIDDEN');
 }
 
 console.log('Builder policy: PASS');
