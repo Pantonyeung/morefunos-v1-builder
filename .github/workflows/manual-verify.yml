@@ -146,6 +146,49 @@ jobs:
             test -x "$sdk_root/build-tools/36.0.0/aapt2" || return 1
           }
 
+          summarize_android_lint() {
+            local report
+            report="$(find apps/smt-android/app/build/reports -maxdepth 3 -type f -name 'lint-results*.xml' -print -quit 2>/dev/null || true)"
+            if [[ -z "$report" ]]; then
+              printf 'UNAVAILABLE'
+              return 0
+            fi
+            node - "$report" <<'NODE'
+          const fs = require('node:fs');
+          const reportPath = process.argv[2];
+          const xml = fs.readFileSync(reportPath, 'utf8');
+          const counts = new Map();
+          for (const match of xml.matchAll(/<issue\b[^>]*\bid="([A-Za-z0-9_.-]+)"/g)) {
+            const id = match[1];
+            counts.set(id, (counts.get(id) ?? 0) + 1);
+          }
+          const summary = [...counts.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([id, count]) => `${id}:${count}`)
+            .join(',');
+          process.stdout.write(summary || 'UNAVAILABLE');
+          NODE
+          }
+
+          run_android_lint() {
+            local stage="android-lint-debug"
+            local summary
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if gradle -p apps/smt-android :app:lintDebug --no-daemon >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            summary="$(summarize_android_lint)"
+            if [[ ! "$summary" =~ ^(UNAVAILABLE|[A-Za-z0-9_.-]+:[0-9]+(,[A-Za-z0-9_.-]+:[0-9]+)*)$ ]]; then
+              summary="UNAVAILABLE"
+            fi
+            echo "android-lint-issue-summary=$summary"
+            echo "lint_issue_summary=$summary" >> "$GITHUB_OUTPUT"
+            echo "$stage: FAIL (raw details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
           cd source
           case "$VERIFICATION_PROFILE" in
             g4)
@@ -215,7 +258,7 @@ jobs:
               run_stage "android-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
               run_stage "android-smt-web-build" npm --prefix apps/smt-web run build || exit 1
               run_stage "android-sdk-components" verify_android_sdk || exit 1
-              run_stage "android-lint-debug" gradle -p apps/smt-android :app:lintDebug --no-daemon || exit 1
+              run_android_lint || exit 1
               run_stage "android-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
 
               APK_PATH="apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
@@ -254,6 +297,7 @@ jobs:
         env:
           VERIFY_OUTCOME: ${{ steps.verify_core.outcome }}
           FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
+          LINT_ISSUE_SUMMARY: ${{ steps.verify_core.outputs.lint_issue_summary }}
           BUILDER_SHA: ${{ github.sha }}
           BUILDER_RUN_ID: ${{ github.run_id }}
           BUILDER_REPO: ${{ github.repository }}
@@ -275,6 +319,7 @@ jobs:
             verificationProfile: process.env.VERIFICATION_PROFILE,
             status: process.env.VERIFY_OUTCOME === 'success' ? 'PASS' : 'FAILED',
             failedStage: process.env.FAILED_STAGE || null,
+            lintIssueSummary: process.env.LINT_ISSUE_SUMMARY || null,
             nodeVersion: process.env.NODE_VERSION,
             npmVersion: process.env.NPM_VERSION,
             typescriptVersion: process.env.TYPESCRIPT_VERSION || null,
