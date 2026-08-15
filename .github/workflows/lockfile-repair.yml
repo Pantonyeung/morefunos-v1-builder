@@ -1,10 +1,10 @@
-name: Owner Manual V1 Lockfile Repair
+name: Owner Manual V1 B2 Lockfile Repair
 
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: 'Exact 40-character current MoreFunOS V1 source SHA'
+        description: 'Exact 40-character current MoreFunOS V1 B2 source SHA'
         required: true
         type: string
 
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: owner-manual-v1-lockfile-repair
+  group: owner-manual-v1-b2-lockfile-repair
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
             exit 1
           fi
           echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
-          echo "Validated immutable repair source SHA."
+          echo "Validated immutable B2 repair source SHA."
 
       - name: Checkout Builder definition
         uses: actions/checkout@v7
@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Verify lockfile repair policy
+      - name: Verify B2 lockfile repair policy
         run: node scripts/verify-lockfile-repair-policy.mjs
 
       - name: Checkout exact private MoreFunOS V1 source SHA
@@ -81,10 +81,6 @@ jobs:
           test -f apps/smt-web/package-lock.json
 
           LOG="$GITHUB_WORKSPACE/lockfile-repair.log"
-
-          # The committed lockfile is already classified as corrupted/truncated.
-          # A repair must regenerate from package.json instead of incrementally
-          # preserving stale package metadata/integrities from that bad lockfile.
           rm -rf apps/smt-web/node_modules
           rm -f apps/smt-web/package-lock.json
 
@@ -110,34 +106,34 @@ jobs:
           echo "lock_sha256=$LOCK_SHA256" >> "$GITHUB_OUTPUT"
           echo "Canonical lockfile SHA256: $LOCK_SHA256"
 
-      - name: Commit only canonical lockfile and push repair branch
+      - name: Commit only canonical lockfile and push B2 repair branch
         id: writeback
         env:
-          V1_LOCKFILE_WRITE_TOKEN: ${{ secrets.V1_LOCKFILE_WRITE_TOKEN }}
+          V1_B2_LOCKFILE_WRITE_TOKEN: ${{ secrets.V1_B2_LOCKFILE_WRITE_TOKEN }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$V1_LOCKFILE_WRITE_TOKEN"
+          test -n "$V1_B2_LOCKFILE_WRITE_TOKEN"
           cd source
 
           SHORT_SHA="${SOURCE_SHA:0:12}"
-          REPAIR_BRANCH="builder/g5-lockfile-${SHORT_SHA}"
+          REPAIR_BRANCH="builder/b2-lockfile-${SHORT_SHA}"
           git switch -c "$REPAIR_BRANCH"
           git config user.name "MoreFunOS V1 Builder"
           git config user.email "107616897+Pantonyeung@users.noreply.github.com"
           git add -- apps/smt-web/package-lock.json
           STAGED_PATHS="$(git diff --cached --name-only)"
           test "$STAGED_PATHS" = "apps/smt-web/package-lock.json"
-          git commit -m "build(g5): canonicalize SMT dependency lockfile"
+          git commit -m "build(b2): canonicalize SMT dependency lockfile"
           REPAIR_COMMIT="$(git rev-parse HEAD)"
 
-          ASKPASS="$RUNNER_TEMP/v1-lockfile-write-askpass.sh"
+          ASKPASS="$RUNNER_TEMP/v1-b2-lockfile-write-askpass.sh"
           cat > "$ASKPASS" <<'EOF'
           #!/bin/sh
           case "$1" in
             *Username*) echo "x-access-token" ;;
-            *Password*) printf '%s\n' "$V1_LOCKFILE_WRITE_TOKEN" ;;
+            *Password*) printf '%s\n' "$V1_B2_LOCKFILE_WRITE_TOKEN" ;;
             *) exit 1 ;;
           esac
           EOF
@@ -149,7 +145,7 @@ jobs:
 
           echo "repair_branch=$REPAIR_BRANCH" >> "$GITHUB_OUTPUT"
           echo "repair_commit=$REPAIR_COMMIT" >> "$GITHUB_OUTPUT"
-          echo "Repair branch writeback: PASS"
+          echo "B2 repair branch writeback: PASS"
           echo "Repair branch: $REPAIR_BRANCH"
           echo "Repair commit: $REPAIR_COMMIT"
 
@@ -169,6 +165,7 @@ jobs:
             lockSha256: process.env.LOCK_SHA256 || null,
             repairBranch: process.env.REPAIR_BRANCH || null,
             repairCommit: process.env.REPAIR_COMMIT || null,
+            purpose: 'B2 canonical SMT Web lockfile writeback',
             builderRepository: process.env.GITHUB_REPOSITORY,
             builderSha: process.env.GITHUB_SHA,
             builderRunId: process.env.GITHUB_RUN_ID,
