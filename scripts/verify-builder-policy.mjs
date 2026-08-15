@@ -65,9 +65,7 @@ const required = [
 ];
 
 for (const needle of required) {
-  if (!workflow.includes(needle)) {
-    throw new Error(`BUILDER_POLICY_REQUIRED:${needle}`);
-  }
+  if (!workflow.includes(needle)) throw new Error(`BUILDER_POLICY_REQUIRED:${needle}`);
 }
 
 const forbiddenTriggers = [
@@ -77,69 +75,31 @@ const forbiddenTriggers = [
   /^\s{2}workflow_run\s*:/m,
   /^\s{2}repository_dispatch\s*:/m,
 ];
-
 for (const pattern of forbiddenTriggers) {
   if (pattern.test(workflow)) throw new Error(`BUILDER_AUTOMATIC_TRIGGER_FORBIDDEN:${pattern}`);
 }
-
-if (/contents:\s*write/.test(workflow)) {
-  throw new Error('BUILDER_DEFAULT_CONTENTS_WRITE_FORBIDDEN');
-}
-
-if (/persist-credentials:\s*true/.test(workflow)) {
-  throw new Error('BUILDER_PERSIST_CREDENTIALS_FORBIDDEN');
-}
-
-if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(workflow)) {
-  throw new Error('BUILDER_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
-}
-
-if (/npm\s+(?:install|i)\s+(?!.*--package-lock-only)/.test(workflow.split('smt-lock)')[1]?.split(';;')[0] ?? '')) {
-  throw new Error('BUILDER_SMT_LOCK_INSTALL_SCOPE_FORBIDDEN');
-}
-
-if (/SMT_LOCKFILE_BEGIN|SMT_LOCKFILE_END|cat\s+apps\/smt-web\/package-lock\.json/.test(workflow)) {
-  throw new Error('BUILDER_SMT_LOCK_RAW_LOG_FORBIDDEN');
-}
+if (/contents:\s*write/.test(workflow)) throw new Error('BUILDER_DEFAULT_CONTENTS_WRITE_FORBIDDEN');
+if (/persist-credentials:\s*true/.test(workflow)) throw new Error('BUILDER_PERSIST_CREDENTIALS_FORBIDDEN');
+if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(workflow)) throw new Error('BUILDER_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
+if (/npm\s+(?:install|i)\s+(?!.*--package-lock-only)/.test(workflow.split('smt-lock)')[1]?.split(';;')[0] ?? '')) throw new Error('BUILDER_SMT_LOCK_INSTALL_SCOPE_FORBIDDEN');
+if (/SMT_LOCKFILE_BEGIN|SMT_LOCKFILE_END|cat\s+apps\/smt-web\/package-lock\.json/.test(workflow)) throw new Error('BUILDER_SMT_LOCK_RAW_LOG_FORBIDDEN');
 
 const androidMarker = '\n            android)\n';
 const androidStart = workflow.lastIndexOf(androidMarker);
-if (androidStart < 0) {
-  throw new Error('BUILDER_ANDROID_CASE_REQUIRED');
-}
+if (androidStart < 0) throw new Error('BUILDER_ANDROID_CASE_REQUIRED');
 const androidBodyStart = androidStart + androidMarker.length;
 const androidEnd = workflow.indexOf('\n              ;;', androidBodyStart);
 const androidCase = androidEnd >= 0 ? workflow.slice(androidBodyStart, androidEnd) : '';
-if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-daemon')) {
-  throw new Error('BUILDER_ANDROID_ASSEMBLE_CONTRACT_REQUIRED');
-}
-if (!workflow.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) {
-  throw new Error('BUILDER_ANDROID_LINT_COMMAND_REQUIRED');
-}
-if (!androidCase.includes('run_android_lint || exit 1')) {
-  throw new Error('BUILDER_ANDROID_LINT_HELPER_CALL_REQUIRED');
-}
-if (!workflow.includes('android-actions/setup-android@v4')) {
-  throw new Error('BUILDER_ANDROID_SDK_SETUP_ACTION_REQUIRED');
-}
-if (!workflow.includes('android-lint-issue-summary=')) {
-  throw new Error('BUILDER_ANDROID_LINT_SANITIZED_SUMMARY_REQUIRED');
-}
-if (!workflow.includes('lint_issue_summary=')) {
-  throw new Error('BUILDER_ANDROID_LINT_OUTPUT_REQUIRED');
-}
-if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*lint-results[^\n]*\.xml/i.test(workflow)) {
-  throw new Error('BUILDER_ANDROID_LINT_RAW_REPORT_LOG_FORBIDDEN');
-}
-if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) {
-  throw new Error('BUILDER_PUBLIC_APK_UPLOAD_FORBIDDEN');
-}
-if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(workflow)) {
-  throw new Error('BUILDER_ANDROID_SOURCE_LOG_FORBIDDEN');
-}
-if (/V1_ARTIFACT_DELIVERY_TOKEN|V1_ANDROID_KEYSTORE_|gh release create/.test(workflow)) {
-  throw new Error('BUILDER_NORMAL_VERIFY_MUST_REMAIN_READ_ONLY');
-}
+if (!androidCase.includes('gradle -p apps/smt-android :app:assembleDebug --no-daemon')) throw new Error('BUILDER_ANDROID_ASSEMBLE_CONTRACT_REQUIRED');
+if (!workflow.includes('gradle -p apps/smt-android :app:lintDebug --no-daemon')) throw new Error('BUILDER_ANDROID_LINT_COMMAND_REQUIRED');
+if (!androidCase.includes('run_android_lint || exit 1')) throw new Error('BUILDER_ANDROID_LINT_HELPER_CALL_REQUIRED');
+if (!workflow.includes('android-actions/setup-android@v4')) throw new Error('BUILDER_ANDROID_SDK_SETUP_ACTION_REQUIRED');
+if (!workflow.includes('android-lint-issue-summary=')) throw new Error('BUILDER_ANDROID_LINT_SANITIZED_SUMMARY_REQUIRED');
+if (!workflow.includes('lint_issue_summary=')) throw new Error('BUILDER_ANDROID_LINT_OUTPUT_REQUIRED');
+if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*lint-results[^\n]*\.xml/i.test(workflow)) throw new Error('BUILDER_ANDROID_LINT_RAW_REPORT_LOG_FORBIDDEN');
+if (/upload-artifact[\s\S]{0,500}app-debug\.apk/.test(workflow)) throw new Error('BUILDER_PUBLIC_APK_UPLOAD_FORBIDDEN');
+if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(workflow)) throw new Error('BUILDER_ANDROID_SOURCE_LOG_FORBIDDEN');
+if (/V1_ARTIFACT_DELIVERY_TOKEN|V1_ANDROID_KEYSTORE_|V1_B2_LOCKFILE_WRITE_TOKEN|gh release create/.test(workflow)) throw new Error('BUILDER_NORMAL_VERIFY_MUST_REMAIN_READ_ONLY');
 
 const releaseRequired = [
   'name: Owner Manual V1 Android Release',
@@ -175,40 +135,20 @@ const releaseRequired = [
   '--prerelease',
   'Private V1 Release delivery: PASS',
 ];
-
 for (const needle of releaseRequired) {
-  if (!releaseWorkflow.includes(needle)) {
-    throw new Error(`BUILDER_ANDROID_RELEASE_POLICY_REQUIRED:${needle}`);
-  }
+  if (!releaseWorkflow.includes(needle)) throw new Error(`BUILDER_ANDROID_RELEASE_POLICY_REQUIRED:${needle}`);
 }
-
 for (const pattern of forbiddenTriggers) {
   if (pattern.test(releaseWorkflow)) throw new Error(`BUILDER_ANDROID_RELEASE_AUTOMATIC_TRIGGER_FORBIDDEN:${pattern}`);
 }
-
-if (/contents:\s*write/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_DEFAULT_CONTENTS_WRITE_FORBIDDEN');
-}
-if (/persist-credentials:\s*true/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_PERSIST_CREDENTIALS_FORBIDDEN');
-}
-if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
-}
-if (/actions\/upload-artifact|uploads\.github\.com|--repo\s+\$\{\{\s*github\.repository\s*\}\}/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
-}
-if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_SOURCE_LOG_FORBIDDEN');
-}
-if (/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_SOURCE_READ_TOKEN\s*\}\}/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_READ_TOKEN_REUSE_FORBIDDEN');
-}
-if (!/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_ARTIFACT_DELIVERY_TOKEN\s*\}\}/.test(releaseWorkflow)) {
-  throw new Error('BUILDER_ANDROID_RELEASE_SEPARATE_DELIVERY_TOKEN_REQUIRED');
-}
-if (!releaseWorkflow.includes('rm -f "$RUNNER_TEMP/morefunos-v1-app-signing.p12"')) {
-  throw new Error('BUILDER_ANDROID_RELEASE_SIGNING_KEY_CLEANUP_REQUIRED');
-}
+if (/contents:\s*write/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_DEFAULT_CONTENTS_WRITE_FORBIDDEN');
+if (/persist-credentials:\s*true/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_PERSIST_CREDENTIALS_FORBIDDEN');
+if (/ref:\s*\$\{\{\s*inputs\.source_sha\s*\}\}/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_RAW_SOURCE_SHA_CHECKOUT_FORBIDDEN');
+if (/actions\/upload-artifact|uploads\.github\.com|--repo\s+\$\{\{\s*github\.repository\s*\}\}/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
+if (/cat\s+.*(?:MainActivity|build\.gradle|AndroidManifest|\.java)/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_SOURCE_LOG_FORBIDDEN');
+if (/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_SOURCE_READ_TOKEN\s*\}\}/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_READ_TOKEN_REUSE_FORBIDDEN');
+if (!/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_ARTIFACT_DELIVERY_TOKEN\s*\}\}/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_SEPARATE_DELIVERY_TOKEN_REQUIRED');
+if (/V1_B2_LOCKFILE_WRITE_TOKEN/.test(releaseWorkflow)) throw new Error('BUILDER_ANDROID_RELEASE_B2_LOCKFILE_TOKEN_FORBIDDEN');
+if (!releaseWorkflow.includes('rm -f "$RUNNER_TEMP/morefunos-v1-app-signing.p12"')) throw new Error('BUILDER_ANDROID_RELEASE_SIGNING_KEY_CLEANUP_REQUIRED');
 
 console.log('Builder policy: PASS');
