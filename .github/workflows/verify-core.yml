@@ -1,0 +1,288 @@
+name: V1 Reusable Verification Core
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      verification_profile:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      VERIFICATION_PROFILE: ${{ inputs.verification_profile }}
+
+    steps:
+      - name: Validate immutable verification request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          NORMALIZED_SOURCE_SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]')"
+          if [[ ! "$NORMALIZED_SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "source_sha must normalize to an exact 40-character Git commit SHA" >&2
+            exit 1
+          fi
+          case "$VERIFICATION_PROFILE" in
+            a|b|c|integration) ;;
+            *) echo "Unsupported verification_profile: $VERIFICATION_PROFILE" >&2; exit 1 ;;
+          esac
+          echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+          echo "Validated immutable source SHA input."
+
+      - name: Checkout builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup JDK 17 for A Line
+        if: inputs.verification_profile == 'a'
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK 36 for A Line
+        if: inputs.verification_profile == 'a'
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0 for A Line
+        if: inputs.verification_profile == 'a'
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Verify Builder policies
+        run: |
+          node scripts/verify-builder-policy.mjs
+          node scripts/verify-abc-workflow-policy.mjs
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          echo "Verified immutable private source SHA: $ACTUAL_SOURCE_SHA"
+
+      - name: Install pinned TypeScript toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = "Version 5.8.3"
+          echo "Pinned TypeScript 5.8.3: PASS"
+
+      - name: Execute private verification without public source logs
+        id: verify_core
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          LOG="$GITHUB_WORKSPACE/private-verification.log"
+          : > "$LOG"
+
+          run_stage() {
+            local stage="$1"
+            shift
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          require_smt_lockfile() {
+            if [[ ! -f apps/smt-web/package-lock.json ]]; then
+              echo "smt-lockfile: FAIL (private V1 must commit apps/smt-web/package-lock.json first)"
+              echo "failed_stage=smt-lockfile" >> "$GITHUB_OUTPUT"
+              return 1
+            fi
+          }
+
+          verify_android_sdk() {
+            local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+            test -n "$sdk_root" || return 1
+            command -v sdkmanager >/dev/null 2>&1 || return 1
+            test -f "$sdk_root/platforms/android-36/android.jar" || return 1
+            test -x "$sdk_root/build-tools/36.0.0/aapt2" || return 1
+          }
+
+          summarize_android_lint() {
+            local report
+            report="$(find apps/smt-android/app/build/reports -maxdepth 3 -type f -name 'lint-results*.xml' -print -quit 2>/dev/null || true)"
+            if [[ -z "$report" ]]; then
+              printf 'UNAVAILABLE'
+              return 0
+            fi
+            node - "$report" <<'NODE'
+          const fs = require('node:fs');
+          const reportPath = process.argv[2];
+          const xml = fs.readFileSync(reportPath, 'utf8');
+          const counts = new Map();
+          for (const match of xml.matchAll(/<issue\b[^>]*\bid="([A-Za-z0-9_.-]+)"/g)) {
+            const id = match[1];
+            counts.set(id, (counts.get(id) ?? 0) + 1);
+          }
+          const summary = [...counts.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([id, count]) => `${id}:${count}`)
+            .join(',');
+          process.stdout.write(summary || 'UNAVAILABLE');
+          NODE
+          }
+
+          run_android_lint() {
+            local stage="a-android-lint-debug"
+            local summary
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if gradle -p apps/smt-android :app:lintDebug --no-daemon >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            summary="$(summarize_android_lint)"
+            if [[ ! "$summary" =~ ^(UNAVAILABLE|[A-Za-z0-9_.-]+:[0-9]+(,[A-Za-z0-9_.-]+:[0-9]+)*)$ ]]; then
+              summary="UNAVAILABLE"
+            fi
+            echo "android-lint-issue-summary=$summary"
+            echo "lint_issue_summary=$summary" >> "$GITHUB_OUTPUT"
+            echo "$stage: FAIL (raw details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          cd source
+          case "$VERIFICATION_PROFILE" in
+            a)
+              require_smt_lockfile || exit 1
+              run_stage "a-g6-static" npm run test:g6 || exit 1
+              run_stage "a-g6-typecheck" npm run typecheck:g6 || exit 1
+              run_stage "a-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "a-smt-web-build" npm --prefix apps/smt-web run build || exit 1
+              run_stage "a-android-sdk-components" verify_android_sdk || exit 1
+              run_android_lint || exit 1
+              run_stage "a-android-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
+              APK_PATH="apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
+              if [[ ! -f "$APK_PATH" ]]; then
+                echo "a-android-apk-artifact: FAIL"
+                echo "failed_stage=a-android-apk-artifact" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              echo "artifact_sha256=$(sha256sum "$APK_PATH" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+              echo "artifact_bytes=$(stat -c%s "$APK_PATH")" >> "$GITHUB_OUTPUT"
+              echo "artifact_version=$(awk -F'"' '/versionName = / {print $2; exit}' apps/smt-android/app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+              ;;
+            b)
+              require_smt_lockfile || exit 1
+              run_stage "b-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "b-g5-targeted" npm run test:g5 || exit 1
+              run_stage "b-current-regression" npm run test:current || exit 1
+              run_stage "b-g5-typecheck" npm run typecheck:g5 || exit 1
+              run_stage "b-smt-web-test" npm --prefix apps/smt-web test || exit 1
+              run_stage "b-smt-web-build" npm --prefix apps/smt-web run build || exit 1
+              ;;
+            c)
+              run_stage "c-current-regression" npm run test:current || exit 1
+              run_stage "c-current-typecheck" npm run typecheck:current || exit 1
+              ;;
+            integration)
+              require_smt_lockfile || exit 1
+              run_stage "integration-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+              run_stage "integration-current-regression" npm run test:current || exit 1
+              run_stage "integration-current-typecheck" npm run typecheck:current || exit 1
+              run_stage "integration-b-g5-targeted" npm run test:g5 || exit 1
+              run_stage "integration-b-g5-typecheck" npm run typecheck:g5 || exit 1
+              run_stage "integration-smt-web-test" npm --prefix apps/smt-web test || exit 1
+              run_stage "integration-smt-web-build" npm --prefix apps/smt-web run build || exit 1
+              run_stage "integration-a-g6-static" npm run test:g6 || exit 1
+              run_stage "integration-a-g6-typecheck" npm run typecheck:g6 || exit 1
+              ;;
+          esac
+
+          echo "Private verification core: PASS"
+
+      - name: Generate sanitized verification metadata
+        if: always()
+        shell: bash
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify_core.outcome }}
+          FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
+          LINT_ISSUE_SUMMARY: ${{ steps.verify_core.outputs.lint_issue_summary }}
+          BUILDER_SHA: ${{ github.sha }}
+          BUILDER_RUN_ID: ${{ github.run_id }}
+          BUILDER_REPO: ${{ github.repository }}
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          APK_SHA256: ${{ steps.verify_core.outputs.artifact_sha256 }}
+          APK_BYTES: ${{ steps.verify_core.outputs.artifact_bytes }}
+          APK_VERSION: ${{ steps.verify_core.outputs.artifact_version }}
+        run: |
+          set -euo pipefail
+          export NODE_VERSION="$(node --version)"
+          export NPM_VERSION="$(npm --version)"
+          export TYPESCRIPT_VERSION="$(tsc --version 2>/dev/null || true)"
+          export JAVA_VERSION="$(java -version 2>&1 | head -n 1 || true)"
+          export GRADLE_VERSION="$(gradle --version 2>/dev/null | awk '/^Gradle / {print $2; exit}' || true)"
+          node <<'NODE'
+          const metadata = {
+            sourceRepository: process.env.SOURCE_REPO,
+            sourceSha: process.env.NORMALIZED_SOURCE_SHA || null,
+            verificationProfile: process.env.VERIFICATION_PROFILE,
+            status: process.env.VERIFY_OUTCOME === 'success' ? 'PASS' : 'FAILED',
+            failedStage: process.env.FAILED_STAGE || null,
+            lintIssueSummary: process.env.LINT_ISSUE_SUMMARY || null,
+            nodeVersion: process.env.NODE_VERSION,
+            npmVersion: process.env.NPM_VERSION,
+            typescriptVersion: process.env.TYPESCRIPT_VERSION || null,
+            javaVersion: process.env.JAVA_VERSION || null,
+            gradleVersion: process.env.GRADLE_VERSION || null,
+            apkSha256: process.env.APK_SHA256 || null,
+            apkBytes: process.env.APK_BYTES || null,
+            apkVersion: process.env.APK_VERSION || null,
+            builderRepository: process.env.BUILDER_REPO,
+            builderSha: process.env.BUILDER_SHA,
+            builderRunId: process.env.BUILDER_RUN_ID,
+            verifiedAtUtc: new Date().toISOString()
+          };
+          console.log(JSON.stringify(metadata));
+          NODE
+
+      - name: Fail workflow after sanitized evidence
+        if: steps.verify_core.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Verification failed. Public details are intentionally limited to the failed stage; no private source log was published or written back."
+          exit 1
