@@ -62,18 +62,28 @@ jobs:
         run: |
           set -u
           cd source/apps/smt-web
-          LOG="$RUNNER_TEMP/b-component-diagnostics.log"
-          : > "$LOG"
           failed=0
           run_file() {
             local stage="$1"
             local file="$2"
-            if npx vitest run "$file" >> "$LOG" 2>&1; then
+            local file_log="$RUNNER_TEMP/${stage}.log"
+            : > "$file_log"
+            if npx vitest run "$file" >> "$file_log" 2>&1; then
               echo "$stage: PASS"
-            else
-              echo "$stage: FAIL (raw private output withheld)"
-              failed=1
+              return 0
             fi
+            local code='OTHER'
+            if grep -qi 'Found multiple elements' "$file_log"; then code='MULTIPLE_ELEMENTS'
+            elif grep -qi 'Unable to find an element' "$file_log"; then code='ELEMENT_NOT_FOUND'
+            elif grep -qi 'TestingLibraryElementError' "$file_log"; then code='TESTING_LIBRARY_ELEMENT'
+            elif grep -qi 'AssertionError' "$file_log"; then code='ASSERTION_MISMATCH'
+            elif grep -qi 'ReferenceError' "$file_log"; then code='REFERENCE_ERROR'
+            elif grep -qi 'TypeError' "$file_log"; then code='TYPE_ERROR'
+            elif grep -qi 'Unhandled Rejection' "$file_log"; then code='UNHANDLED_REJECTION'
+            elif grep -qi 'Test timed out' "$file_log"; then code='TIMEOUT'
+            fi
+            echo "$stage: FAIL code=$code (raw private output withheld)"
+            failed=1
           }
           run_file 'component-app' 'src/app.vitest.test.tsx'
           run_file 'component-shared-ui' 'src/shared-ui.vitest.test.tsx'
