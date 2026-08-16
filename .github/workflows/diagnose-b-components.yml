@@ -96,4 +96,5 @@ jobs:
           run_file 'component-soldout' 'src/soldout-page.vitest.test.tsx'
           run_file 'component-business-day' 'src/business-day-page.vitest.test.tsx'
           run_file 'component-reporting' 'src/reporting-page.vitest.test.tsx'
+          run_file 'component-printing' 'src/printing-panel.vitest.test.tsx'
           exit "$failed"
