@@ -97,7 +97,9 @@ jobs:
           java-version: '17'
 
       - name: Verify builder remains policy-constrained
-        run: node scripts/verify-builder-policy.mjs
+        run: |
+          node scripts/verify-builder-policy.mjs
+          node scripts/verify-runtime-ota-policy.mjs
 
       - name: Checkout exact private MoreFunOS V1 source SHA
         uses: actions/checkout@v7
