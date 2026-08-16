@@ -43,6 +43,17 @@ requireText('CORE', core, 'npm --prefix apps/smt-web run build');
 requireText('CORE', core, 'npm run test:g6');
 requireText('CORE', core, 'npm run typecheck:g6');
 
+// B G5 failures must expose only a sanitized failing sub-stage, never private test output.
+requireText('CORE', core, 'diagnose_b_g5()');
+requireText('CORE', core, 'diagnostic_stage=$stage');
+requireText('CORE', core, 'b-g5-order-service-mode');
+requireText('CORE', core, 'b-g5-smt-orders-port');
+requireText('CORE', core, 'b-g5-ui-smt-03-static');
+requireText('CORE', core, 'if ! run_stage "b-g5-targeted" npm run test:g5; then');
+requireText('CORE', core, 'diagnose_b_g5 || true');
+requireText('CORE', core, 'DIAGNOSTIC_STAGE:');
+requireText('CORE', core, 'diagnosticStage:');
+
 const lineRules = [
   ['A', a, 'morefunos-v1-a-verify', "verification_profile: 'a'"],
   ['B', b, 'morefunos-v1-b-verify', "verification_profile: 'b'"],

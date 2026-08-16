@@ -126,6 +126,38 @@ jobs:
             return 1
           }
 
+          run_diagnostic_stage() {
+            local stage="$1"
+            shift
+            printf '\n== diagnostic:%s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (details withheld from public log)"
+            echo "diagnostic_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          diagnose_b_g5() {
+            run_diagnostic_stage "b-g5-order-service-mode" node --experimental-strip-types --test packages/order/order-service-mode.test.ts || return 1
+            run_diagnostic_stage "b-g5-runtime-projection" node --experimental-strip-types --test packages/runtime/business-runtime-projection.test.ts || return 1
+            run_diagnostic_stage "b-g5-ui-module-contract" node --experimental-strip-types --test packages/ui/module-contract.test.ts || return 1
+            run_diagnostic_stage "b-g5-ui-state" node --experimental-strip-types --test apps/smt-web/src/ui-state.test.ts || return 1
+            run_diagnostic_stage "b-g5-smt-runtime-adapter" node --experimental-strip-types --test apps/smt-web/src/smt-runtime-adapter.test.ts || return 1
+            run_diagnostic_stage "b-g5-smt-orders-port" node --experimental-strip-types --test apps/smt-web/src/smt-orders-port.test.ts || return 1
+            run_diagnostic_stage "b-g5-ui-authority-boundary" node --test packages/ui/ui-authority-boundary.test.mjs || return 1
+            run_diagnostic_stage "b-g5-sdk-passthrough" node --test packages/ui/sdk-passthrough.test.mjs || return 1
+            run_diagnostic_stage "b-g5-g1g-static" node --test apps/smt-web/src/g1g-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-g5-static" node --test apps/smt-web/src/g5-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-b3-static" node --test apps/smt-web/src/b3-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-ui-smt-01-static" node --test apps/smt-web/src/ui-smt-01-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-ui-smt-02-static" node --test apps/smt-web/src/ui-smt-02-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-ui-smt-03-static" node --test apps/smt-web/src/ui-smt-03-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-ui-smt-06a-static" node --test apps/smt-web/src/ui-smt-06a-static.test.mjs || return 1
+            run_diagnostic_stage "b-g5-ui-smt-07-static" node --test apps/smt-web/src/ui-smt-07-static.test.mjs || return 1
+          }
+
           require_smt_lockfile() {
             if [[ ! -f apps/smt-web/package-lock.json ]]; then
               echo "smt-lockfile: FAIL (private V1 must commit apps/smt-web/package-lock.json first)"
@@ -209,7 +241,10 @@ jobs:
             b)
               require_smt_lockfile || exit 1
               run_stage "b-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
-              run_stage "b-g5-targeted" npm run test:g5 || exit 1
+              if ! run_stage "b-g5-targeted" npm run test:g5; then
+                diagnose_b_g5 || true
+                exit 1
+              fi
               run_stage "b-current-regression" npm run test:current || exit 1
               run_stage "b-g5-typecheck" npm run typecheck:g5 || exit 1
               run_stage "b-smt-web-test" npm --prefix apps/smt-web test || exit 1
@@ -241,6 +276,7 @@ jobs:
         env:
           VERIFY_OUTCOME: ${{ steps.verify_core.outcome }}
           FAILED_STAGE: ${{ steps.verify_core.outputs.failed_stage }}
+          DIAGNOSTIC_STAGE: ${{ steps.verify_core.outputs.diagnostic_stage }}
           LINT_ISSUE_SUMMARY: ${{ steps.verify_core.outputs.lint_issue_summary }}
           BUILDER_SHA: ${{ github.sha }}
           BUILDER_RUN_ID: ${{ github.run_id }}
@@ -263,6 +299,7 @@ jobs:
             verificationProfile: process.env.VERIFICATION_PROFILE,
             status: process.env.VERIFY_OUTCOME === 'success' ? 'PASS' : 'FAILED',
             failedStage: process.env.FAILED_STAGE || null,
+            diagnosticStage: process.env.DIAGNOSTIC_STAGE || null,
             lintIssueSummary: process.env.LINT_ISSUE_SUMMARY || null,
             nodeVersion: process.env.NODE_VERSION,
             npmVersion: process.env.NPM_VERSION,
