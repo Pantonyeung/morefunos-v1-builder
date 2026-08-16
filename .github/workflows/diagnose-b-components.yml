@@ -92,4 +92,6 @@ jobs:
           run_file 'component-shared-ui' 'src/shared-ui.vitest.test.tsx'
           run_file 'component-orders' 'src/orders-page.vitest.test.tsx'
           run_file 'component-dine-in' 'src/dine-in-page.vitest.test.tsx'
+          run_file 'component-soldout' 'src/soldout-page.vitest.test.tsx'
+          run_file 'component-business-day' 'src/business-day-page.vitest.test.tsx'
           exit "$failed"
