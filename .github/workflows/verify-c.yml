@@ -1,0 +1,30 @@
+name: Owner V1 Verify C Line
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character MoreFunOS V1 C candidate SHA'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefunos-v1-c-verify
+  cancel-in-progress: false
+
+jobs:
+  verify-c:
+    if: github.actor == 'Pantonyeung'
+    uses: ./.github/workflows/verify-core.yml
+    with:
+      source_sha: ${{ inputs.source_sha }}
+      verification_profile: 'c'
+    secrets: inherit
