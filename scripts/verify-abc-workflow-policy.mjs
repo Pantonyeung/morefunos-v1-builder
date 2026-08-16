@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const files = {
   core: '.github/workflows/verify-core.yml',
+  smm: '.github/workflows/verify-smm-core.yml',
   a: '.github/workflows/verify-a.yml',
   b: '.github/workflows/verify-b.yml',
   c: '.github/workflows/verify-c.yml',
@@ -15,6 +16,7 @@ for (const [name, path] of Object.entries(files)) {
 
 const read = (name) => fs.readFileSync(files[name], 'utf8');
 const core = read('core');
+const smm = read('smm');
 const a = read('a');
 const b = read('b');
 const c = read('c');
@@ -42,6 +44,20 @@ requireText('CORE', core, 'npm --prefix apps/smt-web test');
 requireText('CORE', core, 'npm --prefix apps/smt-web run build');
 requireText('CORE', core, 'npm run test:g6');
 requireText('CORE', core, 'npm run typecheck:g6');
+
+requireText('SMM', smm, 'workflow_call:');
+requireText('SMM', smm, 'source_sha:');
+requireText('SMM', smm, 'V1_SOURCE_READ_TOKEN');
+requireText('SMM', smm, 'Verify exact private source identity');
+requireText('SMM', smm, "tr -d '[:space:]'");
+requireText('SMM', smm, 'smm-web-locked-install');
+requireText('SMM', smm, 'smm-active-work-contract');
+requireText('SMM', smm, 'smm-authority-static');
+requireText('SMM', smm, 'npm --prefix apps/smm-web test');
+requireText('SMM', smm, 'smm-web-typecheck');
+requireText('SMM', smm, 'npm --prefix apps/smm-web run build');
+requireText('SMM', smm, 'Generate sanitized SMM verification metadata');
+requireText('SMM', smm, 'Fail SMM workflow after sanitized evidence');
 
 // B G5 failures must expose only a sanitized failing sub-stage, never private test output.
 requireText('CORE', core, 'diagnose_b_g5()');
@@ -72,6 +88,11 @@ for (const [label, text, concurrency, profile] of lineRules) {
   requireText(label, text, 'secrets: inherit');
 }
 
+requireText('B', b, 'verify-b-smm:');
+requireText('B', b, 'uses: ./.github/workflows/verify-smm-core.yml');
+requireText('ABC', integration, 'verify-abc-smm:');
+requireText('ABC', integration, 'uses: ./.github/workflows/verify-smm-core.yml');
+
 const uniqueConcurrency = new Set(lineRules.map(([, , group]) => group));
 if (uniqueConcurrency.size !== lineRules.length) throw new Error('ABC_VERIFY_CONCURRENCY_MUST_BE_UNIQUE');
 
@@ -89,7 +110,7 @@ requireText('CONTROL', control, 'uses: ./.github/workflows/verify-c.yml');
 requireText('CONTROL', control, 'uses: ./.github/workflows/verify-abc-integration.yml');
 
 const forbiddenAutomaticTriggers = [/^\s{2}push\s*:/m, /^\s{2}pull_request\s*:/m, /^\s{2}schedule\s*:/m, /^\s{2}workflow_run\s*:/m, /^\s{2}repository_dispatch\s*:/m];
-for (const [name, text] of Object.entries({ a, b, c, integration, control })) {
+for (const [name, text] of Object.entries({a, b, c, integration, control, smm})) {
   for (const pattern of forbiddenAutomaticTriggers) {
     if (pattern.test(text)) throw new Error(`ABC_VERIFY_AUTOMATIC_TRIGGER_FORBIDDEN:${name}:${pattern}`);
   }
@@ -101,6 +122,9 @@ if (/contents:\s*write/.test(core)) throw new Error('ABC_VERIFY_CORE_CONTENTS_WR
 if (/persist-credentials:\s*true/.test(core)) throw new Error('ABC_VERIFY_CORE_PERSIST_CREDENTIALS_FORBIDDEN');
 if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*(?:MainActivity|AndroidManifest|\.java|private-verification\.log)/i.test(core)) {
   throw new Error('ABC_VERIFY_PRIVATE_SOURCE_OR_LOG_OUTPUT_FORBIDDEN');
+}
+if (/\b(?:cat|head|tail|sed\s+-n)\b[^\n]*(?:App\.tsx|ActiveWorkPage|smm-active-work|private-smm-verification\.log)/i.test(smm)) {
+  throw new Error('SMM_VERIFY_PRIVATE_SOURCE_OR_LOG_OUTPUT_FORBIDDEN');
 }
 
 console.log('ABC independent verification workflow policy: PASS');
