@@ -73,6 +73,7 @@ jobs:
               return 0
             fi
             local code='OTHER'
+            local location='UNAVAILABLE'
             if grep -qi 'Found multiple elements' "$file_log"; then code='MULTIPLE_ELEMENTS'
             elif grep -qi 'Unable to find an element' "$file_log"; then code='ELEMENT_NOT_FOUND'
             elif grep -qi 'TestingLibraryElementError' "$file_log"; then code='TESTING_LIBRARY_ELEMENT'
@@ -82,7 +83,9 @@ jobs:
             elif grep -qi 'Unhandled Rejection' "$file_log"; then code='UNHANDLED_REJECTION'
             elif grep -qi 'Test timed out' "$file_log"; then code='TIMEOUT'
             fi
-            echo "$stage: FAIL code=$code (raw private output withheld)"
+            location="$(grep -oE 'src/[A-Za-z0-9_.-]+\.vitest\.test\.tsx:[0-9]+:[0-9]+' "$file_log" | head -n 1 || true)"
+            if [[ ! "$location" =~ ^src/[A-Za-z0-9_.-]+\.vitest\.test\.tsx:[0-9]+:[0-9]+$ ]]; then location='UNAVAILABLE'; fi
+            echo "$stage: FAIL code=$code location=$location (raw private output withheld)"
             failed=1
           }
           run_file 'component-app' 'src/app.vitest.test.tsx'
