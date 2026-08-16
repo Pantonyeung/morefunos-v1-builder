@@ -12,25 +12,40 @@ on:
         description: 'Exact 40-character MoreFunOS V1 SMM candidate SHA'
         required: true
         type: string
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   verify-b-smm:
-    if: github.actor == 'Pantonyeung'
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      (github.event_name != 'issue_comment' ||
+        (github.event.issue.number == 2 && startsWith(github.event.comment.body, '/verify-b-smm ')))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       SOURCE_REPO: Pantonyeung/morefunos-v1
-      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      REQUESTED_SOURCE: ${{ github.event_name == 'issue_comment' && github.event.comment.body || inputs.source_sha }}
     steps:
       - name: Validate immutable SMM verification request
         id: request
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]')"
+          RAW="$(printf '%s' "$REQUESTED_SOURCE" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          if [[ "$GITHUB_EVENT_NAME" == 'issue_comment' ]]; then
+            case "$RAW" in
+              '/verify-b-smm '*) SOURCE_SHA="${RAW#'/verify-b-smm '}" ;;
+              *) echo 'Unsupported SMM verification comment.' >&2; exit 1 ;;
+            esac
+          else
+            SOURCE_SHA="$RAW"
+          fi
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
           if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
             echo 'source_sha must normalize to one exact 40-character Git SHA' >&2
             exit 1
@@ -60,7 +75,7 @@ jobs:
           set -euo pipefail
           ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
           test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
-          echo "Exact SMM source identity: PASS"
+          echo 'Exact SMM source identity: PASS'
 
       - name: Install pinned TypeScript toolchain
         shell: bash
