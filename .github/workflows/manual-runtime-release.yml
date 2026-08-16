@@ -1,0 +1,225 @@
+name: Owner Manual V1 Runtime Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character commit SHA from Pantonyeung/morefunos-v1'
+        required: true
+        type: string
+      release_channel:
+        description: 'Runtime channel'
+        required: true
+        default: candidate
+        type: choice
+        options:
+          - stable
+          - candidate
+          - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: owner-manual-v1-runtime-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_CHANNEL: ${{ inputs.release_channel }}
+      EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+      MIN_CARRIER_VERSION_CODE: '13'
+      BRIDGE_VERSION: '1'
+
+    steps:
+      - name: Validate immutable runtime release request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          NORMALIZED_SOURCE_SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]')"
+          if [[ ! "$NORMALIZED_SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "source_sha must normalize to an exact 40-character Git commit SHA" >&2
+            exit 1
+          fi
+          case "$RELEASE_CHANNEL" in
+            stable|candidate|dev) ;;
+            *) echo "release_channel invalid" >&2; exit 1 ;;
+          esac
+          echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup JDK 17 for standard JAR signing
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Verify builder remains policy-constrained
+        run: node scripts/verify-builder-policy.mjs
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          echo "Verified immutable private source SHA."
+
+      - name: Install pinned TypeScript toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = "Version 5.8.3"
+
+      - name: Verify and build runtime privately
+        id: build_core
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          LOG="$GITHUB_WORKSPACE/private-runtime-release.log"
+          : > "$LOG"
+          run_stage() {
+            local stage="$1"; shift
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+          cd source
+          run_stage "runtime-g6-static" npm run test:g6 || exit 1
+          run_stage "runtime-g6-typecheck" npm run typecheck:g6 || exit 1
+          run_stage "runtime-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+          run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test || exit 1
+          run_stage "runtime-g6-web-tests" npm run test:g6:web || exit 1
+          run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build || exit 1
+          test -f apps/smt-web/dist/index.html || { echo "failed_stage=runtime-entrypoint" >> "$GITHUB_OUTPUT"; exit 1; }
+          echo "Private runtime verification/build core: PASS"
+
+      - name: Sign runtime bundle with stable app-signing identity
+        if: steps.build_core.outcome == 'success'
+        id: signing
+        shell: bash
+        env:
+          V1_ANDROID_KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          V1_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          V1_ANDROID_KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          V1_ANDROID_KEY_PASSWORD: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          for required_name in V1_ANDROID_KEYSTORE_B64 V1_ANDROID_KEYSTORE_PASSWORD V1_ANDROID_KEY_ALIAS V1_ANDROID_KEY_PASSWORD; do
+            test -n "${!required_name:-}" || { echo "Stable signing configuration incomplete: $required_name" >&2; exit 1; }
+          done
+
+          KEYSTORE="$RUNNER_TEMP/morefunos-v1-app-signing.p12"
+          CERT_DER="$RUNNER_TEMP/morefunos-v1-app-signing.der"
+          printf '%s' "$V1_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -exportcert \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$V1_ANDROID_KEY_ALIAS" \
+            -file "$CERT_DER" >/dev/null 2>&1
+          CERT_SHA256="$(sha256sum "$CERT_DER" | awk '{print $1}')"
+          test "$CERT_SHA256" = "$EXPECTED_APP_SIGNING_CERT_SHA256"
+
+          SHORT_SHA="${NORMALIZED_SOURCE_SHA:0:12}"
+          RELEASE_ID="runtime-${RELEASE_CHANNEL}-${SHORT_SHA}"
+          RUNTIME_VERSION="${SHORT_SHA}"
+          RUNTIME_BUNDLE="$GITHUB_WORKSPACE/MoreFunOS-SMT-runtime-${RELEASE_ID}.mfos"
+          MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
+          cat > "$MANIFEST" <<EOF
+          Manifest-Version: 1.0
+          MoreFun-Release-Id: ${RELEASE_ID}
+          MoreFun-Runtime-Version: ${RUNTIME_VERSION}
+          MoreFun-Channel: ${RELEASE_CHANNEL}
+          MoreFun-Min-Carrier-Version-Code: ${MIN_CARRIER_VERSION_CODE}
+          MoreFun-Bridge-Version: ${BRIDGE_VERSION}
+          EOF
+          sed -i 's/^          //' "$MANIFEST"
+
+          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C source/apps/smt-web/dist .
+          jarsigner \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$V1_ANDROID_KEY_PASSWORD" \
+            "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
+          jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null
+
+          BUNDLE_SHA256="$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')"
+          echo "runtime_bundle=$RUNTIME_BUNDLE" >> "$GITHUB_OUTPUT"
+          echo "runtime_filename=$(basename "$RUNTIME_BUNDLE")" >> "$GITHUB_OUTPUT"
+          echo "runtime_sha256=$BUNDLE_SHA256" >> "$GITHUB_OUTPUT"
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "Stable runtime signing identity verified: PASS"
+
+          rm -f "$KEYSTORE" "$CERT_DER" "$MANIFEST"
+
+      - name: Publish signed runtime to public Builder Release
+        if: steps.build_core.outcome == 'success' && steps.signing.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+        run: |
+          set -euo pipefail
+          TAG="smt-${RELEASE_ID}"
+          NOTES="$RUNNER_TEMP/runtime-release-notes.txt"
+          printf 'MoreFunOS SMT runtime\nsource_sha=%s\nchannel=%s\nsha256=%s\nmin_carrier_version_code=%s\nbridge_version=%s\n' \
+            "$NORMALIZED_SOURCE_SHA" "$RELEASE_CHANNEL" "$RUNTIME_SHA256" "$MIN_CARRIER_VERSION_CODE" "$BRIDGE_VERSION" > "$NOTES"
+          EXTRA=()
+          if [[ "$RELEASE_CHANNEL" != "stable" ]]; then EXTRA+=(--prerelease); fi
+          gh release create "$TAG" "$RUNTIME_BUNDLE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "MoreFunOS SMT ${RELEASE_ID}" \
+            --notes-file "$NOTES" \
+            "${EXTRA[@]}"
+          rm -f "$NOTES"
+          echo "Signed runtime GitHub Release delivery: PASS"
+
+      - name: Fail after sanitized evidence
+        if: steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure'
+        shell: bash
+        env:
+          BUILD_FAILED_STAGE: ${{ steps.build_core.outputs.failed_stage }}
+        run: |
+          set -euo pipefail
+          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-signing}. Private details withheld." >&2
+          exit 1
