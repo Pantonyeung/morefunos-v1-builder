@@ -205,7 +205,11 @@ jobs:
             -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
             -keypass "$V1_ANDROID_KEY_PASSWORD" \
             "$BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
-          jarsigner -verify -strict "$BUNDLE" >/dev/null
+          jarsigner -verify -strict \
+            -keystore "$KEYSTORE" \
+            -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            "$BUNDLE" >/dev/null
 
           BUNDLE_SHA256="$(sha256sum "$BUNDLE" | awk '{print $1}')"
           BUNDLE_BYTES="$(stat -c%s "$BUNDLE")"
