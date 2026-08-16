@@ -116,7 +116,7 @@ jobs:
 
           run_stage 'b-smm-locked-install' npm --prefix apps/smm-web ci --no-audit --no-fund || exit 1
           run_stage 'b-smm-active-work-contract' node --experimental-strip-types --test apps/smm-web/src/smm-active-work-port.test.ts || exit 1
-          run_stage 'b-smm-static-boundary' node --test apps/smm-web/src/b-smm-01a-static.test.mjs || exit 1
+          run_stage 'b-smm-static-boundary' node --test apps/smm-web/src/b-smm-01a-static.test.mjs apps/smm-web/src/b-smm-01b-static.test.mjs || exit 1
           run_stage 'b-smm-ui-test' npm --prefix apps/smm-web run test:ui || exit 1
           run_stage 'b-smm-typecheck' tsc --noEmit -p apps/smm-web/tsconfig.json || exit 1
           run_stage 'b-smm-build' npm --prefix apps/smm-web run build || exit 1
