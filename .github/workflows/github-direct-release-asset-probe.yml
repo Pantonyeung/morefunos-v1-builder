@@ -1,0 +1,49 @@
+name: GitHub Direct Release Asset Probe
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  probe:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      github.event.comment.body == '/probe-github-direct-release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      RELEASE_TAG: builder-v1-runtime-candidate-d094591d03c1-run-32030194094
+      FILE_NAME: MoreFunOS-SMT-runtime-candidate-d094591d03c1.mfos
+      EXPECTED_BYTES: '649319'
+      EXPECTED_SHA256: f455b286f6ab85437af584edc6c2be66f36e1351c578f12c89e56801c2a9f4b1
+
+    steps:
+      - name: Probe exact private Release download URL without mutation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo 'TOKEN=MISSING' >&2; exit 20; }
+          URL="https://github.com/Pantonyeung/morefunos-v1/releases/download/${RELEASE_TAG}/${FILE_NAME}"
+          OUT="$RUNNER_TEMP/${FILE_NAME}"
+          HDR="$RUNNER_TEMP/direct-release.headers"
+          status="$(curl -sS -L -D "$HDR" -o "$OUT" -w '%{http_code}' -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/octet-stream' "$URL")"
+          bytes="$(wc -c < "$OUT" | tr -d '[:space:]')"
+          sha="$(sha256sum "$OUT" | awk '{print $1}')"
+          content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {sub(/^[^:]+:[[:space:]]*/,""); gsub("\r",""); v=$0} END{print v}' "$HDR")"
+          echo "DIRECT_RELEASE_HTTP=$status"
+          echo "DIRECT_RELEASE_BYTES=$bytes"
+          echo "DIRECT_RELEASE_SHA256=$sha"
+          echo "DIRECT_RELEASE_CONTENT_TYPE=${content_type:-UNSPECIFIED}"
+          if [[ "$status" == '200' && "$bytes" == "$EXPECTED_BYTES" && "$sha" == "$EXPECTED_SHA256" ]]; then
+            echo 'DIRECT_RELEASE_EXACT_PACKAGE=PASS'
+          else
+            echo 'DIRECT_RELEASE_EXACT_PACKAGE=FAIL' >&2
+            exit 21
+          fi
