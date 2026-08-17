@@ -226,6 +226,7 @@ jobs:
               run_stage "a-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
               run_stage "a-smt-web-build" npm --prefix apps/smt-web run build || exit 1
               run_stage "a-android-sdk-components" verify_android_sdk || exit 1
+              run_stage "a-android-compile-debug" gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon || exit 1
               run_android_lint || exit 1
               run_stage "a-android-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
               APK_PATH="apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
