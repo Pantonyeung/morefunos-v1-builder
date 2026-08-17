@@ -50,8 +50,10 @@ if [[ "$ref_status" == "200" ]]; then
     echo "::error title=RUNTIME_EXISTING_RELEASE_TAG_REF_IDENTITY_INVALID::Tag-ref lookup returned an unexpected identity. No R2 mutation was attempted."
     exit 28
   fi
+  echo "::notice title=RUNTIME_EXISTING_RELEASE_TAG_REF_PASS::Exact Runtime tag ref exists and is readable with the configured private Release token."
   echo "Existing private Runtime tag ref: PASS"
 else
+  echo "::warning title=RUNTIME_EXISTING_RELEASE_TAG_REF_NOT_FOUND::Exact Runtime tag ref returned HTTP 404. Release API will be checked independently; no R2 mutation has occurred."
   echo "Existing private Runtime tag ref: NOT FOUND; checking Release API independently"
 fi
 
