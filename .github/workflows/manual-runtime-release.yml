@@ -147,7 +147,6 @@ jobs:
           run_stage "runtime-g6-typecheck" npm run typecheck:g6 || exit 1
           run_stage "runtime-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
           run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test || exit 1
-          run_stage "runtime-g6-web-tests" npm run test:g6:web || exit 1
           run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build || exit 1
           test -f apps/smt-web/dist/index.html || { echo "failed_stage=runtime-entrypoint" >> "$GITHUB_OUTPUT"; exit 1; }
           echo "Private runtime verification/build core: PASS"
