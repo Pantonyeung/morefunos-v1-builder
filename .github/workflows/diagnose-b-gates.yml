@@ -14,7 +14,7 @@ jobs:
       github.event.issue.number == 2 &&
       startsWith(github.event.comment.body, '/diagnose-b-gates ')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       REQUEST: ${{ github.event.comment.body }}
     steps:
@@ -66,6 +66,7 @@ jobs:
           set -u
           cd source
           failed=0
+          g5_failed=0
           run_stage() {
             local stage="$1"; shift
             local stage_log="$RUNNER_TEMP/${stage}.log"
@@ -77,12 +78,53 @@ jobs:
             echo "$stage: FAIL (raw private output withheld)"
             echo "::error title=$stage::$stage failed; raw private output withheld"
             failed=1
+            [[ "$stage" == 'b-g5-targeted' ]] && g5_failed=1
             return 0
           }
+          diagnose_g5_file() {
+            local stage="$1"; shift
+            local stage_log="$RUNNER_TEMP/${stage}.log"
+            : > "$stage_log"
+            if "$@" >> "$stage_log" 2>&1; then
+              return 0
+            fi
+            echo "$stage: FAIL (raw private output withheld)"
+            echo "::error title=$stage::$stage failed; raw private output withheld"
+            return 0
+          }
+
           run_stage 'b-smt-web-locked-install' npm --prefix apps/smt-web ci --no-audit --no-fund
           run_stage 'b-g5-targeted' npm run test:g5
           run_stage 'b-current-regression' npm run test:current
           run_stage 'b-g5-typecheck' npm run typecheck:g5
           run_stage 'b-smt-web-test' npm --prefix apps/smt-web test
           run_stage 'b-smt-web-build' npm --prefix apps/smt-web run build
+
+          if (( g5_failed == 1 )); then
+            diagnose_g5_file 'g5-order-service-mode' node --experimental-strip-types --test packages/order/order-service-mode.test.ts
+            diagnose_g5_file 'g5-runtime-projection' node --experimental-strip-types --test packages/runtime/business-runtime-projection.test.ts
+            diagnose_g5_file 'g5-ui-module-contract' node --experimental-strip-types --test packages/ui/module-contract.test.ts
+            diagnose_g5_file 'g5-ui-state' node --experimental-strip-types --test apps/smt-web/src/ui-state.test.ts
+            diagnose_g5_file 'g5-runtime-adapter' node --experimental-strip-types --test apps/smt-web/src/smt-runtime-adapter.test.ts
+            diagnose_g5_file 'g5-active-work-port' node --experimental-strip-types --test apps/smt-web/src/smt-active-work-port.test.ts
+            diagnose_g5_file 'g5-active-work-lifecycle' node --experimental-strip-types --test apps/smt-web/src/smt-active-work-lifecycle.test.ts
+            diagnose_g5_file 'g5-dine-in-port' node --experimental-strip-types --test apps/smt-web/src/smt-dine-in-port.test.ts
+            diagnose_g5_file 'g5-availability-port' node --experimental-strip-types --test apps/smt-web/src/smt-availability-port.test.ts
+            diagnose_g5_file 'g5-business-day-port' node --experimental-strip-types --test apps/smt-web/src/smt-business-day-port.test.ts
+            diagnose_g5_file 'g5-reporting-port' node --experimental-strip-types --test apps/smt-web/src/smt-reporting-port.test.ts
+            diagnose_g5_file 'g5-printing-port' node --experimental-strip-types --test apps/smt-web/src/smt-printing-port.test.ts
+            diagnose_g5_file 'g5-orders-port' node --experimental-strip-types --test apps/smt-web/src/smt-orders-port.test.ts
+            diagnose_g5_file 'g5-ui-authority-boundary' node --test packages/ui/ui-authority-boundary.test.mjs
+            diagnose_g5_file 'g5-sdk-passthrough' node --test packages/ui/sdk-passthrough.test.mjs
+            diagnose_g5_file 'g5-g1g-static' node --test apps/smt-web/src/g1g-static.test.mjs
+            diagnose_g5_file 'g5-g5-static' node --test apps/smt-web/src/g5-static.test.mjs
+            diagnose_g5_file 'g5-b3-static' node --test apps/smt-web/src/b3-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-01-static' node --test apps/smt-web/src/ui-smt-01-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-02-static' node --test apps/smt-web/src/ui-smt-02-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-03-static' node --test apps/smt-web/src/ui-smt-03-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-04-static' node --test apps/smt-web/src/ui-smt-04-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-05-static' node --test apps/smt-web/src/ui-smt-05-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-06a-static' node --test apps/smt-web/src/ui-smt-06a-static.test.mjs
+            diagnose_g5_file 'g5-ui-smt-07-static' node --test apps/smt-web/src/ui-smt-07-static.test.mjs
+          fi
           exit "$failed"
