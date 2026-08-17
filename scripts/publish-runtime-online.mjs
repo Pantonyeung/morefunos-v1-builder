@@ -41,15 +41,34 @@ function runWrangler(args, options = {}) {
   });
 }
 
-async function fetchBytes(url) {
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchBytesOnce(url) {
   const response = await fetch(url, { cache: 'no-store', redirect: 'follow' });
   if (!response.ok) fail(`ONLINE_OTA_HTTP_${response.status}:${url}`);
   const bytes = Buffer.from(await response.arrayBuffer());
   return { response, bytes };
 }
 
-async function fetchManifest() {
-  const { response, bytes } = await fetchBytes(`${OTA_PUBLIC_ORIGIN}/${PUBLIC_MANIFEST_PATH}`);
+async function retry(label, operation, accept = () => true) {
+  let lastError;
+  for (let attempt = 1; attempt <= 10; attempt += 1) {
+    try {
+      const result = await operation();
+      if (accept(result)) return result;
+      lastError = new Error(`${label}_NOT_OBSERVED_ATTEMPT_${attempt}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 10) await delay(1500);
+  }
+  throw lastError ?? new Error(`${label}_FAILED`);
+}
+
+async function fetchManifestOnce() {
+  const { response, bytes } = await fetchBytesOnce(`${OTA_PUBLIC_ORIGIN}/${PUBLIC_MANIFEST_PATH}`);
   let json;
   try {
     json = JSON.parse(bytes.toString('utf8'));
@@ -132,7 +151,11 @@ runWrangler([
   '--content-type=application/octet-stream',
 ]);
 
-const packagePublic = await fetchBytes(`${OTA_PUBLIC_ORIGIN}/${encodeURIComponent(runtimeFilename)}`);
+const packagePublic = await retry(
+  'ONLINE_OTA_PUBLIC_BUNDLE',
+  () => fetchBytesOnce(`${OTA_PUBLIC_ORIGIN}/${encodeURIComponent(runtimeFilename)}`),
+  ({ bytes }) => bytes.byteLength === bundleBytes.byteLength && sha256(bytes) === localBundleSha,
+);
 assertEqual(packagePublic.bytes.byteLength, bundleBytes.byteLength, 'ONLINE_OTA_PUBLIC_BUNDLE_BYTES_MISMATCH');
 assertEqual(sha256(packagePublic.bytes), localBundleSha, 'ONLINE_OTA_PUBLIC_BUNDLE_HASH_MISMATCH');
 console.log('online-ota-package-public-get=PASS');
@@ -140,12 +163,16 @@ console.log('online-ota-package-public-get=PASS');
 // Migration/self-heal: deploy the canonical read-only Worker only if the live origin
 // does not yet expose the R2/source-fallback marker. This runs after package proof and
 // before the new publication-switch object is written.
-let liveManifest = await fetchManifest();
+let liveManifest = await fetchManifestOnce();
 let manifestSource = liveManifest.response.headers.get('x-morefunos-manifest-source');
 if (manifestSource !== 'r2' && manifestSource !== 'source-fallback') {
   console.log('online-ota-worker-migration=REQUIRED');
   runWrangler(['deploy', '--config', 'wrangler.jsonc'], { cwd: otaWorkerDir });
-  liveManifest = await fetchManifest();
+  liveManifest = await retry(
+    'ONLINE_OTA_WORKER_MIGRATION',
+    fetchManifestOnce,
+    ({ response }) => ['r2', 'source-fallback'].includes(response.headers.get('x-morefunos-manifest-source')),
+  );
   manifestSource = liveManifest.response.headers.get('x-morefunos-manifest-source');
   if (manifestSource !== 'r2' && manifestSource !== 'source-fallback') {
     fail('ONLINE_OTA_WORKER_MIGRATION_NOT_OBSERVED');
@@ -164,7 +191,19 @@ runWrangler([
   '--content-type=application/json',
 ]);
 
-const finalManifest = await fetchManifest();
+const finalManifest = await retry(
+  'ONLINE_OTA_PUBLIC_MANIFEST',
+  fetchManifestOnce,
+  ({ response, json, bytes }) => {
+    if (response.headers.get('x-morefunos-manifest-source') !== 'r2') return false;
+    try {
+      assertManifestIdentity(json, manifest);
+      return bytes.toString('utf8') === fs.readFileSync(manifestPath, 'utf8');
+    } catch {
+      return false;
+    }
+  },
+);
 assertEqual(finalManifest.response.headers.get('x-morefunos-manifest-source'), 'r2', 'ONLINE_OTA_PUBLIC_MANIFEST_SOURCE_MISMATCH');
 assertManifestIdentity(finalManifest.json, manifest);
 assertEqual(finalManifest.bytes.toString('utf8'), fs.readFileSync(manifestPath, 'utf8'), 'ONLINE_OTA_PUBLIC_MANIFEST_BYTES_MISMATCH');
