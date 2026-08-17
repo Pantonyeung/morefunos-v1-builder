@@ -24,6 +24,7 @@ const required = [
   'RUNTIME_VERSION="${RELEASE_ID}"',
   'V1_ARTIFACT_DELIVERY_TOKEN',
   'GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}',
+  'GH_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}',
   '--repo "$SOURCE_REPO"',
   '--target "$NORMALIZED_SOURCE_SHA"',
   'run_stage "runtime-g6-static" npm run test:g6',
@@ -65,6 +66,7 @@ const required = [
   'Publish verified Runtime online package-first and manifest-last',
   'Publish existing verified Runtime online package-first and manifest-last',
   'Existing Runtime locked signer + internal identity: PASS',
+  'gh release view "$RELEASE_TAG" --repo "$SOURCE_REPO"',
 ];
 for (const needle of required) {
   if (!workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PRIVATE_DELIVERY_REQUIRED:${needle}`);
@@ -107,6 +109,9 @@ if (!/startsWith\(github\.event\.comment\.body, '\/publish-runtime '\)/.test(wor
 }
 if (!/gh release download "\$RELEASE_TAG" --repo "\$SOURCE_REPO"/.test(workflow)) {
   throw new Error('RUNTIME_EXISTING_PUBLICATION_PRIVATE_RELEASE_DOWNLOAD_REQUIRED');
+}
+if (!/Download exact existing private Runtime Release artifacts[\s\S]{0,320}GH_TOKEN:\s*\$\{\{ secrets\.V1_SOURCE_READ_TOKEN \}\}/.test(workflow)) {
+  throw new Error('RUNTIME_EXISTING_PUBLICATION_READ_ONLY_SOURCE_TOKEN_REQUIRED');
 }
 
 const publisherRequired = [
