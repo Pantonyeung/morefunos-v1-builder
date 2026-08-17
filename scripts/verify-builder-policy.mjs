@@ -1,4 +1,5 @@
 import './verify-android-release-ota-endpoint-contract.mjs';
+import './verify-runtime-release-private-delivery-contract.mjs';
 import fs from 'node:fs';
 
 const workflowPath = '.github/workflows/manual-verify.yml';
