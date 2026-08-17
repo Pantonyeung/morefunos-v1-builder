@@ -107,6 +107,28 @@ jobs:
             return 1
           }
 
+          run_ui_stage() {
+            local stage="$1"
+            shift
+            local stage_log="$GITHUB_WORKSPACE/private-smm-ui.log"
+            local plain_log="$GITHUB_WORKSPACE/private-smm-ui-plain.log"
+            : > "$stage_log"
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" > "$stage_log" 2>&1; then
+              cat "$stage_log" >> "$LOG"
+              echo "$stage: PASS"
+              return 0
+            fi
+            cat "$stage_log" >> "$LOG"
+            sed -r 's/\x1B\[[0-9;]*[mK]//g' "$stage_log" > "$plain_log"
+            echo "$stage: FAIL (assertions/source/DOM withheld; sanitized test identifiers follow)"
+            grep -E '^[[:space:]]*(FAIL[[:space:]]+|❯[[:space:]].*\.(test|spec)\.[cm]?[jt]sx?|×[[:space:]])' "$plain_log" \
+              | sed -E 's/[[:space:]]+at[[:space:]].*$//' \
+              | head -20 || true
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
           run_typecheck_stage() {
             local stage="$1"
             shift
@@ -136,7 +158,7 @@ jobs:
           run_stage 'b-smm-active-work-contract' node --experimental-strip-types --test apps/smm-web/src/smm-active-work-port.test.ts || exit 1
           run_stage 'b-smm-ordering-contract' node --experimental-strip-types --test apps/smm-web/src/smm-ordering-port.test.ts || exit 1
           run_stage 'b-smm-static-boundary' node --test apps/smm-web/src/b-smm-01a-static.test.mjs apps/smm-web/src/b-smm-01b-static.test.mjs || exit 1
-          run_stage 'b-smm-ui-test' npm --prefix apps/smm-web run test:ui || exit 1
+          run_ui_stage 'b-smm-ui-test' npm --prefix apps/smm-web run test:ui || exit 1
           run_typecheck_stage 'b-smm-typecheck' tsc --noEmit -p apps/smm-web/tsconfig.json || exit 1
           run_stage 'b-smm-build' npm --prefix apps/smm-web run build || exit 1
 
