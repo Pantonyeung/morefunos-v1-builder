@@ -14,7 +14,8 @@ for (const stalePath of staleRuntimeProductionPaths) {
 
 const required = [
   'SOURCE_REPO: Pantonyeung/morefunos-v1',
-  "MIN_CARRIER_VERSION_CODE: '15'",
+  "MIN_CARRIER_VERSION_CODE: '21'",
+  'RUNTIME_VERSION="${RELEASE_ID}"',
   'V1_ARTIFACT_DELIVERY_TOKEN',
   'GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}',
   '--repo "$SOURCE_REPO"',
@@ -58,6 +59,8 @@ const forbidden = [
   '--repo "$GITHUB_REPOSITORY"',
   'Signed runtime GitHub Release delivery: PASS',
   "MIN_CARRIER_VERSION_CODE: '13'",
+  "MIN_CARRIER_VERSION_CODE: '15'",
+  'RUNTIME_VERSION="${SHORT_SHA}"',
   'npm run test:g6:web',
 ];
 for (const needle of forbidden) {
