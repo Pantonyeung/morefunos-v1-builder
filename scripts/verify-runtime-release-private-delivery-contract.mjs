@@ -4,8 +4,10 @@ const path = '.github/workflows/manual-runtime-release.yml';
 const workflow = fs.readFileSync(path, 'utf8');
 const onlinePublisherPath = 'scripts/publish-runtime-online.mjs';
 const existingReleaseVerifierPath = 'scripts/verify-existing-runtime-release.mjs';
+const existingReleaseDownloaderPath = 'scripts/download-existing-runtime-release.sh';
 const onlinePublisher = fs.readFileSync(onlinePublisherPath, 'utf8');
 const existingReleaseVerifier = fs.readFileSync(existingReleaseVerifierPath, 'utf8');
+const existingReleaseDownloader = fs.readFileSync(existingReleaseDownloaderPath, 'utf8');
 
 const staleRuntimeProductionPaths = [
   '.github/workflows/manual-runtime-ota.yml',
@@ -63,10 +65,10 @@ const required = [
   'path: ota-delivery',
   'node scripts/publish-runtime-online.mjs',
   'node scripts/verify-existing-runtime-release.mjs existing-release "$RELEASE_TAG"',
+  'bash scripts/download-existing-runtime-release.sh existing-release',
   'Publish verified Runtime online package-first and manifest-last',
   'Publish existing verified Runtime online package-first and manifest-last',
   'Existing Runtime locked signer + internal identity: PASS',
-  'gh release view "$RELEASE_TAG" --repo "$SOURCE_REPO"',
 ];
 for (const needle of required) {
   if (!workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PRIVATE_DELIVERY_REQUIRED:${needle}`);
@@ -107,11 +109,21 @@ if (/actions\/upload-artifact|--repo\s+"\$GITHUB_REPOSITORY"/.test(workflow)) {
 if (!/startsWith\(github\.event\.comment\.body, '\/publish-runtime '\)/.test(workflow)) {
   throw new Error('RUNTIME_EXISTING_PUBLICATION_OWNER_COMMAND_REQUIRED');
 }
-if (!/gh release download "\$RELEASE_TAG" --repo "\$SOURCE_REPO"/.test(workflow)) {
-  throw new Error('RUNTIME_EXISTING_PUBLICATION_PRIVATE_RELEASE_DOWNLOAD_REQUIRED');
-}
 if (!/Download exact existing private Runtime Release artifacts[\s\S]{0,320}GH_TOKEN:\s*\$\{\{ secrets\.V1_SOURCE_READ_TOKEN \}\}/.test(workflow)) {
   throw new Error('RUNTIME_EXISTING_PUBLICATION_READ_ONLY_SOURCE_TOKEN_REQUIRED');
+}
+
+const downloaderRequired = [
+  'gh release view "$RELEASE_TAG" --repo "$SOURCE_REPO"',
+  'gh release download "$RELEASE_TAG" --repo "$SOURCE_REPO"',
+  'RUNTIME_EXISTING_RELEASE_LOOKUP_FAILED',
+  'RUNTIME_EXISTING_RELEASE_DOWNLOAD_FAILED',
+  'RUNTIME_EXISTING_RELEASE_ASSET_MISSING',
+  'RUNTIME_EXISTING_RELEASE_BUNDLE_CARDINALITY_INVALID',
+  'No R2 mutation was attempted.',
+];
+for (const needle of downloaderRequired) {
+  if (!existingReleaseDownloader.includes(needle)) throw new Error(`RUNTIME_EXISTING_RELEASE_DOWNLOADER_REQUIRED:${needle}`);
 }
 
 const publisherRequired = [
