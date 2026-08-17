@@ -12,11 +12,31 @@ const required = [
   '--target "$NORMALIZED_SOURCE_SHA"',
   'run_stage "runtime-g6-static" npm run test:g6',
   'run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test',
+  'run_stage "runtime-package-candidate-stable-bootstrap-ready" node --experimental-strip-types --test apps/smt-web/src/smt-device-gate-bootstrap-consumer.test.ts apps/smt-web/src/runtime-carrier-ready.test.ts',
   'run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build',
   'jarsigner -verify -strict',
   '-keystore "$KEYSTORE" -storetype PKCS12',
   '-storepass "$V1_ANDROID_KEYSTORE_PASSWORD"',
   '"$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS"',
+  'Verify signed Runtime Package P0 contract',
+  "test -f \"$EXTRACT_DIR/index.html\"",
+  "test -f \"$EXTRACT_DIR/META-INF/MANIFEST.MF\"",
+  "normalize_manifest_value 'MoreFun-Release-Id'",
+  "normalize_manifest_value 'MoreFun-Runtime-Version'",
+  "normalize_manifest_value 'MoreFun-Channel'",
+  "normalize_manifest_value 'MoreFun-Min-Carrier-Version-Code'",
+  "normalize_manifest_value 'MoreFun-Bridge-Version'",
+  'RUNTIME_PACKAGE_REMOTE_',
+  'RUNTIME_PACKAGE_MISSING_',
+  'RUNTIME_PACKAGE_REMOTE_CORE_DEPENDENCY_FORBIDDEN',
+  'package_contract=PASS',
+  'runtimePackageContract: process.env.PACKAGE_CONTRACT',
+  'Verify external OTA manifest matches signed package',
+  'RUNTIME_EXTERNAL_MANIFEST_MISMATCH_',
+  'external_contract=PASS',
+  'runtime-package-contract=PASS',
+  'runtime-package-candidate-stable-bootstrap-ready=PASS',
+  'runtime-package-internal-external-identity=PASS',
   'Private V1 Runtime delivery: PASS',
 ];
 for (const needle of required) {
@@ -42,5 +62,11 @@ if (!/permissions:\s*\n\s*contents:\s*read/.test(workflow)) {
 if (/persist-credentials:\s*true/.test(workflow)) {
   throw new Error('RUNTIME_RELEASE_PERSIST_CREDENTIALS_FORBIDDEN');
 }
+if (!/if:\s*steps\.external_contract\.outcome == 'success'[\s\S]{0,2200}gh release create/.test(workflow)) {
+  throw new Error('RUNTIME_RELEASE_DELIVERY_MUST_REQUIRE_PACKAGE_EXTERNAL_CONTRACT_PASS');
+}
+if (/actions\/upload-artifact|--repo\s+"\$GITHUB_REPOSITORY"/.test(workflow)) {
+  throw new Error('RUNTIME_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
+}
 
-console.log('Runtime release private delivery contract: PASS');
+console.log('Runtime release private delivery + package P0 contract: PASS');
