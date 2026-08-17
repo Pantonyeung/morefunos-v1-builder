@@ -1,0 +1,66 @@
+name: GitHub Contents Crosscheck
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  probe:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/probe-github-contents ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body || '' }}
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+
+    steps:
+      - name: Validate request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          read -r VERB RELEASE_TAG EXTRA <<< "$COMMAND"
+          if [[ "$VERB" != "/probe-github-contents" || -z "${RELEASE_TAG:-}" || -n "${EXTRA:-}" ]]; then
+            echo "Command must contain exactly: /probe-github-contents <release-tag>." >&2
+            exit 1
+          fi
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Crosscheck Contents vs Git ref access
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "TOKEN=MISSING" >&2; exit 20; }
+          API="https://api.github.com/repos/${SOURCE_REPO}"
+          headers=(-H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28")
+
+          probe() {
+            local name="$1" url="$2"
+            local body="$RUNNER_TEMP/${name}.json" hdr="$RUNNER_TEMP/${name}.hdr" status accepted remaining retry message
+            status="$(curl -sS -D "$hdr" -o "$body" -w '%{http_code}' "${headers[@]}" "$url")"
+            accepted="$(awk 'BEGIN{IGNORECASE=1} /^x-accepted-github-permissions:/ {sub(/^[^:]+:[[:space:]]*/,""); gsub("\r",""); print; exit}' "$hdr")"
+            remaining="$(awk 'BEGIN{IGNORECASE=1} /^x-ratelimit-remaining:/ {sub(/^[^:]+:[[:space:]]*/,""); gsub("\r",""); print; exit}' "$hdr")"
+            retry="$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {sub(/^[^:]+:[[:space:]]*/,""); gsub("\r",""); print; exit}' "$hdr")"
+            message="$(node -e 'const fs=require("fs");try{const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(typeof x.message==="string"?x.message:"NO_JSON_MESSAGE")}catch{process.stdout.write("NON_JSON_RESPONSE")}' "$body")"
+            echo "${name}_HTTP=${status}"
+            echo "${name}_ACCEPTED_PERMISSIONS=${accepted:-UNSPECIFIED}"
+            echo "${name}_RATELIMIT_REMAINING=${remaining:-UNSPECIFIED}"
+            echo "${name}_RETRY_AFTER=${retry:-UNSPECIFIED}"
+            echo "${name}_MESSAGE=${message}"
+          }
+
+          probe REPO_METADATA "$API"
+          probe CONTENTS_ROOT "$API/contents"
+          probe TAG_REF "$API/git/ref/tags/${RELEASE_TAG}"
+          probe RELEASE_BY_TAG "$API/releases/tags/${RELEASE_TAG}"
