@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const workflow = fs.readFileSync('.github/workflows/manual-runtime-ota.yml', 'utf8');
 
 const required = [
+  'node scripts/verify-runtime-ota-manifest-contract.mjs',
   'runtime-update.json',
   'bundleUrl: process.env.BUNDLE',
   'archiveSha256: process.env.BUNDLE_SHA256',
@@ -11,7 +12,6 @@ const required = [
   'channel: process.env.CHANNEL',
   'minCarrierVersionCode: Number(process.env.MIN_CARRIER)',
   'bridgeVersion: Number(process.env.BRIDGE_VERSION)',
-  'runtime-update.json \\\',
 ];
 
 for (const needle of required) {
