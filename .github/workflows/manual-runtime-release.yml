@@ -27,6 +27,14 @@ concurrency:
   group: owner-manual-v1-runtime-release
   cancel-in-progress: false
 
+env:
+  SOURCE_REPO: Pantonyeung/morefunos-v1
+  OTA_DELIVERY_BRANCH: infra/cloudflare-ota-delivery
+  EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+  MIN_CARRIER_VERSION_CODE: '21'
+  BRIDGE_VERSION: '1'
+  WRANGLER_VERSION: '4.118.0'
+
 jobs:
   release:
     if: >-
@@ -36,15 +44,11 @@ jobs:
         github.event.issue.number == 2 &&
         startsWith(github.event.comment.body, '/release-runtime ')))
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
-      SOURCE_REPO: Pantonyeung/morefunos-v1
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || '' }}
       RELEASE_CHANNEL: ${{ inputs.release_channel || '' }}
       COMMENT_BODY: ${{ github.event.comment.body || '' }}
-      EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
-      MIN_CARRIER_VERSION_CODE: '21'
-      BRIDGE_VERSION: '1'
 
     steps:
       - name: Validate immutable runtime release request
@@ -378,13 +382,44 @@ jobs:
             --repo "$SOURCE_REPO" \
             --target "$NORMALIZED_SOURCE_SHA" \
             --title "MoreFunOS SMT ${RELEASE_ID}" \
-            --notes "Owner-manual immutable V1 Runtime package from ${NORMALIZED_SOURCE_SHA}. Channel: ${RELEASE_CHANNEL}. Runtime Package P0: PASS. Minimum carrier versionCode: ${MIN_CARRIER_VERSION_CODE}. Stable signing certificate SHA-256: ${CERT_SHA256}. Bundle SHA-256: ${RUNTIME_SHA256}. Private artifact delivery only; not Device/Hardware/Operational PASS." \
+            --notes "Owner-manual immutable V1 Runtime package from ${NORMALIZED_SOURCE_SHA}. Channel: ${RELEASE_CHANNEL}. Runtime Package P0: PASS. Minimum carrier versionCode: ${MIN_CARRIER_VERSION_CODE}. Stable signing certificate SHA-256: ${CERT_SHA256}. Bundle SHA-256: ${RUNTIME_SHA256}. Private artifact delivery + online publication are separate evidence gates; not Device/Hardware/Operational PASS." \
             "${EXTRA[@]}"
           echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Private V1 Runtime delivery: PASS"
 
-      - name: Generate sanitized runtime release evidence
+      - name: Checkout canonical OTA delivery source
         if: steps.delivery.outcome == 'success'
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: infra/cloudflare-ota-delivery
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: ota-delivery
+          persist-credentials: false
+
+      - name: Install pinned Wrangler for official Cloudflare publication
+        if: steps.delivery.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent "wrangler@${WRANGLER_VERSION}"
+          wrangler --version | grep -F "$WRANGLER_VERSION" >/dev/null
+
+      - name: Publish verified Runtime online package-first and manifest-last
+        if: steps.delivery.outcome == 'success'
+        id: online_publish
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RUNTIME_MANIFEST: ${{ github.workspace }}/runtime-update.json
+          RUNTIME_METADATA: ${{ github.workspace }}/runtime-build-metadata.json
+          OTA_WORKER_DIR: ${{ github.workspace }}/ota-delivery/infra/cloudflare/ota-worker
+        run: node scripts/publish-runtime-online.mjs
+
+      - name: Generate sanitized runtime release evidence
+        if: always() && steps.delivery.outcome == 'success'
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.delivery.outputs.release_tag }}
@@ -392,6 +427,7 @@ jobs:
           RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
           RUNTIME_BYTES: ${{ steps.signing.outputs.runtime_bytes }}
           CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+          ONLINE_OUTCOME: ${{ steps.online_publish.outcome }}
         run: |
           set -euo pipefail
           echo "runtime-release-tag=$RELEASE_TAG"
@@ -403,13 +439,183 @@ jobs:
           echo "runtime-package-contract=PASS"
           echo "runtime-package-candidate-stable-bootstrap-ready=PASS"
           echo "runtime-package-internal-external-identity=PASS"
+          echo "runtime-online-publication=$ONLINE_OUTCOME"
 
       - name: Fail after sanitized evidence
-        if: always() && (steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.package_contract.outcome == 'failure' || steps.metadata.outcome == 'failure' || steps.external_contract.outcome == 'failure' || steps.delivery.outcome == 'failure')
+        if: always() && (steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.package_contract.outcome == 'failure' || steps.metadata.outcome == 'failure' || steps.external_contract.outcome == 'failure' || steps.delivery.outcome == 'failure' || steps.online_publish.outcome == 'failure')
         shell: bash
         env:
           BUILD_FAILED_STAGE: ${{ steps.build_core.outputs.failed_stage }}
         run: |
           set -euo pipefail
-          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-package-contract-signing-or-delivery}. Private details withheld." >&2
+          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-package-contract-signing-private-delivery-or-online-publication}. Private details withheld." >&2
           exit 1
+
+  publish_existing:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/publish-runtime ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body || '' }}
+
+    steps:
+      - name: Validate existing immutable runtime publication request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          read -r COMMAND_VERB RELEASE_TAG COMMAND_EXTRA <<< "$COMMAND"
+          if [[ "$COMMAND_VERB" != "/publish-runtime" || -z "${RELEASE_TAG:-}" || -n "${COMMAND_EXTRA:-}" ]]; then
+            echo "Runtime publication command must contain exactly: /publish-runtime <release-tag>." >&2
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TAG" =~ ^builder-v1-runtime-(stable|candidate|dev)-[0-9a-f]{12}-run-[0-9]+$ ]]; then
+            echo "Runtime publication release tag shape is invalid." >&2
+            exit 1
+          fi
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Accepted existing immutable Runtime publication request."
+
+      - name: Checkout builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup JDK 17 for locked signer verification
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Verify builder remains policy-constrained
+        run: node scripts/verify-builder-policy.mjs
+
+      - name: Download exact existing private Runtime Release artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "Private artifact delivery configuration is incomplete: missing V1_ARTIFACT_DELIVERY_TOKEN" >&2; exit 1; }
+          mkdir -p existing-release
+          gh release download "$RELEASE_TAG" --repo "$SOURCE_REPO" --dir existing-release
+          test -f existing-release/runtime-update.json
+          test -f existing-release/runtime-build-metadata.json
+          test -f existing-release/RUNTIME_SHA256SUMS
+          test "$(find existing-release -maxdepth 1 -type f -name '*.mfos' | wc -l | tr -d ' ')" = "1"
+          echo "Existing private Runtime Release download: PASS"
+
+      - name: Verify existing Runtime Release metadata/hash identity
+        id: existing
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
+        run: node scripts/verify-existing-runtime-release.mjs existing-release "$RELEASE_TAG"
+
+      - name: Reverify existing Runtime locked signing identity and internal manifest
+        shell: bash
+        env:
+          V1_ANDROID_KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          V1_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          V1_ANDROID_KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          RUNTIME_BUNDLE: ${{ steps.existing.outputs.runtime_bundle }}
+          EXPECTED_RELEASE_ID: ${{ steps.existing.outputs.release_id }}
+          EXPECTED_RUNTIME_VERSION: ${{ steps.existing.outputs.runtime_version }}
+          EXPECTED_CHANNEL: ${{ steps.existing.outputs.release_channel }}
+        run: |
+          set -euo pipefail
+          for required_name in V1_ANDROID_KEYSTORE_B64 V1_ANDROID_KEYSTORE_PASSWORD V1_ANDROID_KEY_ALIAS; do
+            test -n "${!required_name:-}" || { echo "Stable signing verification configuration incomplete: $required_name" >&2; exit 1; }
+          done
+          KEYSTORE="$RUNNER_TEMP/morefunos-v1-app-signing.p12"
+          CERT_DER="$RUNNER_TEMP/morefunos-v1-app-signing.der"
+          printf '%s' "$V1_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -exportcert \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$V1_ANDROID_KEY_ALIAS" \
+            -file "$CERT_DER" >/dev/null 2>&1
+          CERT_SHA256="$(sha256sum "$CERT_DER" | awk '{print $1}')"
+          test "$CERT_SHA256" = "$EXPECTED_APP_SIGNING_CERT_SHA256"
+          jarsigner -verify -strict \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
+
+          EXTRACT_DIR="$RUNNER_TEMP/existing-runtime-contract"
+          rm -rf "$EXTRACT_DIR"
+          mkdir -p "$EXTRACT_DIR"
+          (cd "$EXTRACT_DIR" && jar xf "$RUNTIME_BUNDLE")
+          MANIFEST="$EXTRACT_DIR/META-INF/MANIFEST.MF"
+          test -f "$EXTRACT_DIR/index.html"
+          test -f "$MANIFEST"
+          normalize_manifest_value() {
+            local key="$1"
+            awk -v k="$key" 'BEGIN{RS="\r?\n"} index($0,k ": ")==1 {sub("^" k ": ",""); gsub("\r",""); print; exit}' "$MANIFEST"
+          }
+          test "$(normalize_manifest_value 'MoreFun-Release-Id')" = "$EXPECTED_RELEASE_ID"
+          test "$(normalize_manifest_value 'MoreFun-Runtime-Version')" = "$EXPECTED_RUNTIME_VERSION"
+          test "$(normalize_manifest_value 'MoreFun-Channel')" = "$EXPECTED_CHANNEL"
+          test "$(normalize_manifest_value 'MoreFun-Min-Carrier-Version-Code')" = "$MIN_CARRIER_VERSION_CODE"
+          test "$(normalize_manifest_value 'MoreFun-Bridge-Version')" = "$BRIDGE_VERSION"
+          rm -f "$KEYSTORE" "$CERT_DER"
+          echo "Existing Runtime locked signer + internal identity: PASS"
+
+      - name: Checkout canonical OTA delivery source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: infra/cloudflare-ota-delivery
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: ota-delivery
+          persist-credentials: false
+
+      - name: Install pinned Wrangler for official Cloudflare publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent "wrangler@${WRANGLER_VERSION}"
+          wrangler --version | grep -F "$WRANGLER_VERSION" >/dev/null
+
+      - name: Publish existing verified Runtime online package-first and manifest-last
+        id: online_publish
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RUNTIME_BUNDLE: ${{ steps.existing.outputs.runtime_bundle }}
+          RUNTIME_MANIFEST: ${{ steps.existing.outputs.runtime_manifest }}
+          RUNTIME_METADATA: ${{ steps.existing.outputs.runtime_metadata }}
+          OTA_WORKER_DIR: ${{ github.workspace }}/ota-delivery/infra/cloudflare/ota-worker
+        run: node scripts/publish-runtime-online.mjs
+
+      - name: Generate sanitized existing Runtime online publication evidence
+        if: always()
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
+          RELEASE_ID: ${{ steps.existing.outputs.release_id }}
+          SOURCE_SHA: ${{ steps.existing.outputs.source_sha }}
+          RUNTIME_SHA256: ${{ steps.existing.outputs.runtime_sha256 }}
+          RUNTIME_BYTES: ${{ steps.existing.outputs.runtime_bytes }}
+          ONLINE_OUTCOME: ${{ steps.online_publish.outcome }}
+        run: |
+          set -euo pipefail
+          echo "runtime-existing-release-tag=$RELEASE_TAG"
+          echo "runtime-existing-release-id=$RELEASE_ID"
+          echo "runtime-existing-source-sha=$SOURCE_SHA"
+          echo "runtime-existing-sha256=$RUNTIME_SHA256"
+          echo "runtime-existing-bytes=$RUNTIME_BYTES"
+          echo "runtime-existing-online-publication=$ONLINE_OUTCOME"
