@@ -100,6 +100,7 @@ jobs:
         run: |
           node scripts/verify-builder-policy.mjs
           node scripts/verify-runtime-ota-policy.mjs
+          node scripts/verify-runtime-ota-manifest-contract.mjs
 
       - name: Checkout exact private MoreFunOS V1 source SHA
         uses: actions/checkout@v7
@@ -232,7 +233,17 @@ jobs:
             signerCertificateSha256: process.env.CERT_SHA256,
             builtAtUtc: new Date().toISOString()
           };
+          const updateManifest = {
+            releaseId: process.env.RELEASE_ID,
+            runtimeVersion: process.env.RUNTIME_VERSION,
+            channel: process.env.CHANNEL,
+            minCarrierVersionCode: Number(process.env.MIN_CARRIER),
+            bridgeVersion: Number(process.env.BRIDGE_VERSION),
+            bundleUrl: process.env.BUNDLE,
+            archiveSha256: process.env.BUNDLE_SHA256
+          };
           fs.writeFileSync('runtime-build-metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+          fs.writeFileSync('runtime-update.json', JSON.stringify(updateManifest, null, 2) + '\n');
           NODE
 
           echo "bundle=$BUNDLE" >> "$GITHUB_OUTPUT"
@@ -264,6 +275,7 @@ jobs:
           gh release create "$TAG" \
             "$BUNDLE" \
             runtime-build-metadata.json \
+            runtime-update.json \
             RUNTIME_SHA256SUMS \
             --repo "$SOURCE_REPO" \
             --target "$SOURCE_SHA" \
