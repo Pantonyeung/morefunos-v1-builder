@@ -77,12 +77,60 @@ jobs:
             echo "$stage: FAIL (raw private output withheld)"
             echo "::error title=$stage::$stage failed; raw private output withheld"
             failed=1
-            return 0
+            return 1
           }
-          run_stage 'b-smt-web-locked-install' npm --prefix apps/smt-web ci --no-audit --no-fund
-          run_stage 'b-g5-targeted' npm run test:g5
-          run_stage 'b-current-regression' npm run test:current
-          run_stage 'b-g5-typecheck' npm run typecheck:g5
-          run_stage 'b-smt-web-test' npm --prefix apps/smt-web test
-          run_stage 'b-smt-web-build' npm --prefix apps/smt-web run build
+          diagnose_g5_files() {
+            run_stage 'g5-order-service-mode' node --experimental-strip-types --test packages/order/order-service-mode.test.ts || true
+            run_stage 'g5-runtime-projection' node --experimental-strip-types --test packages/runtime/business-runtime-projection.test.ts || true
+            run_stage 'g5-ui-module-contract' node --experimental-strip-types --test packages/ui/module-contract.test.ts || true
+            run_stage 'g5-ui-state' node --experimental-strip-types --test apps/smt-web/src/ui-state.test.ts || true
+            run_stage 'g5-runtime-adapter' node --experimental-strip-types --test apps/smt-web/src/smt-runtime-adapter.test.ts || true
+            run_stage 'g5-active-work-port' node --experimental-strip-types --test apps/smt-web/src/smt-active-work-port.test.ts || true
+            run_stage 'g5-active-work-lifecycle' node --experimental-strip-types --test apps/smt-web/src/smt-active-work-lifecycle.test.ts || true
+            run_stage 'g5-dine-in-port' node --experimental-strip-types --test apps/smt-web/src/smt-dine-in-port.test.ts || true
+            run_stage 'g5-availability-port' node --experimental-strip-types --test apps/smt-web/src/smt-availability-port.test.ts || true
+            run_stage 'g5-business-day-port' node --experimental-strip-types --test apps/smt-web/src/smt-business-day-port.test.ts || true
+            run_stage 'g5-reporting-port' node --experimental-strip-types --test apps/smt-web/src/smt-reporting-port.test.ts || true
+            run_stage 'g5-printing-port' node --experimental-strip-types --test apps/smt-web/src/smt-printing-port.test.ts || true
+            run_stage 'g5-orders-port' node --experimental-strip-types --test apps/smt-web/src/smt-orders-port.test.ts || true
+            run_stage 'g5-ui-authority-boundary' node --test packages/ui/ui-authority-boundary.test.mjs || true
+            run_stage 'g5-sdk-passthrough' node --test packages/ui/sdk-passthrough.test.mjs || true
+            run_stage 'g5-g1g-static' node --test apps/smt-web/src/g1g-static.test.mjs || true
+            if ! run_stage 'g5-g5-static' node --test apps/smt-web/src/g5-static.test.mjs; then
+              local titles=(
+                'G5 P01 exclusively owns payment overlay as presentation-only state'
+                'G5 payment component submits operator evidence but does not calculate change or mutate Payment Authority directly'
+                'G5 RuntimePort adapter, not React, owns the Payment Authority command mapping'
+                'G5 Web service mode imports the canonical core contract instead of redefining a parallel vocabulary'
+                'G5 P01 adaptive cart keeps only Owner-approved 25 28 32 presets and handedness'
+                'G5 Rebuild39 ordering route has no separate start hold retrieve page'
+                'G5 Rebuild39 search is local presentation state derived from authoritative catalog data'
+                'G5 first product remains selectable before a workspace and Runtime lazily owns workspace creation'
+                'G5 P01 layout controls remain presentation-only and use anchored nonmodal popover behavior'
+                'G5 P01 blocking configuration and payment surfaces use task-sheet geometry without adding Business state'
+                'G5 browser typecheck keeps the production boundary and permits the source .ts import style used by SMT'
+                'G5 shared UI file dependency is installed, not symlinked across the app dependency boundary'
+                'G5 app test gate includes the Rebuild39 direct-ordering regression'
+              )
+              local i=0
+              for title in "${titles[@]}"; do
+                i=$((i+1))
+                run_stage "g5-static-assertion-${i}" node --test --test-name-pattern "$title" apps/smt-web/src/g5-static.test.mjs || true
+              done
+            fi
+            run_stage 'g5-b3-static' node --test apps/smt-web/src/b3-static.test.mjs || true
+            run_stage 'g5-ui-smt-01-static' node --test apps/smt-web/src/ui-smt-01-static.test.mjs || true
+            run_stage 'g5-ui-smt-02-static' node --test apps/smt-web/src/ui-smt-02-static.test.mjs || true
+            run_stage 'g5-ui-smt-03-static' node --test apps/smt-web/src/ui-smt-03-static.test.mjs || true
+            run_stage 'g5-ui-smt-04-static' node --test apps/smt-web/src/ui-smt-04-static.test.mjs || true
+            run_stage 'g5-ui-smt-05-static' node --test apps/smt-web/src/ui-smt-05-static.test.mjs || true
+            run_stage 'g5-ui-smt-06a-static' node --test apps/smt-web/src/ui-smt-06a-static.test.mjs || true
+            run_stage 'g5-ui-smt-07-static' node --test apps/smt-web/src/ui-smt-07-static.test.mjs || true
+          }
+          run_stage 'b-smt-web-locked-install' npm --prefix apps/smt-web ci --no-audit --no-fund || true
+          if ! run_stage 'b-g5-targeted' npm run test:g5; then diagnose_g5_files; fi
+          run_stage 'b-current-regression' npm run test:current || true
+          run_stage 'b-g5-typecheck' npm run typecheck:g5 || true
+          run_stage 'b-smt-web-test' npm --prefix apps/smt-web test || true
+          run_stage 'b-smt-web-build' npm --prefix apps/smt-web run build || true
           exit "$failed"
