@@ -1,0 +1,110 @@
+name: C4 Safe Diagnostic
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung' && github.event.issue.number == 2 && startsWith(github.event.comment.body, '/diagnose-c4 ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+    steps:
+      - name: Parse exact C4 diagnostic request
+        id: request
+        shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          case "$COMMAND" in
+            '/diagnose-c4 '*) ;;
+            *) echo 'Unsupported diagnostic command.' >&2; exit 1 ;;
+          esac
+          SOURCE_SHA="${COMMAND#* }"
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'Diagnostic command requires one exact 40-character source SHA.' >&2
+            exit 1
+          fi
+          EXPECTED="/diagnose-c4 ${SOURCE_SHA}"
+          if [[ "$COMMAND" != "$EXPECTED" ]]; then
+            echo 'Diagnostic command must contain exactly one command and one SHA.' >&2
+            exit 1
+          fi
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+          echo 'Accepted exact C4 diagnostic request.'
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          echo 'C4 diagnostic exact source identity: PASS'
+
+      - name: Install pinned TypeScript toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = 'Version 5.8.3'
+          echo 'C4 diagnostic TypeScript 5.8.3: PASS'
+
+      - name: Run sanitized C4 diagnostic groups
+        shell: bash
+        run: |
+          set -u
+          cd source
+          LOG="$RUNNER_TEMP/c4-private-diagnostic.log"
+          : > "$LOG"
+          failed=0
+
+          run_group() {
+            local name="$1"
+            shift
+            printf '\n== %s ==\n' "$name" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$name: PASS"
+            else
+              echo "$name: FAIL (details withheld)"
+              failed=1
+            fi
+          }
+
+          run_group 'c4-customer' node --experimental-strip-types --test packages/customer/*.test.ts
+          run_group 'c4-loyalty' node --experimental-strip-types --test packages/loyalty/*.test.ts
+          run_group 'c4-order' node --experimental-strip-types --test packages/order/*.test.ts
+          run_group 'c4-pricing' node --experimental-strip-types --test packages/pricing/*.test.ts
+          run_group 'c4-staff' node --experimental-strip-types --test packages/staff/*.test.ts
+          run_group 'c4-runtime-targeted' node --experimental-strip-types --test packages/runtime/c4-customer-loyalty.test.ts packages/runtime/business-runtime-c4-benefit.test.ts packages/runtime/business-runtime-c4.test.ts
+          run_group 'c4-runtime-all' node --experimental-strip-types --test packages/runtime/*.test.ts
+          run_group 'c4-typecheck' tsc --noEmit -p tsconfig.json
+
+          if [[ "$failed" -ne 0 ]]; then
+            echo 'C4 diagnostic verdict: FAIL'
+            exit 1
+          fi
+          echo 'C4 diagnostic verdict: PASS'
