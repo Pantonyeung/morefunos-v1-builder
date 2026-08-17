@@ -10,6 +10,9 @@ const required = [
   'GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}',
   '--repo "$SOURCE_REPO"',
   '--target "$NORMALIZED_SOURCE_SHA"',
+  'run_stage "runtime-g6-static" npm run test:g6',
+  'run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test',
+  'run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build',
   'Private V1 Runtime delivery: PASS',
 ];
 for (const needle of required) {
@@ -22,6 +25,7 @@ const forbidden = [
   '--repo "$GITHUB_REPOSITORY"',
   'Signed runtime GitHub Release delivery: PASS',
   "MIN_CARRIER_VERSION_CODE: '13'",
+  'npm run test:g6:web',
 ];
 for (const needle of forbidden) {
   if (workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PUBLIC_OR_STALE_CONTRACT_FORBIDDEN:${needle}`);
