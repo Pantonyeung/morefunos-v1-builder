@@ -1,19 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${GH_TOKEN:?V1_SOURCE_READ_TOKEN is required}"
+: "${GH_TOKEN:?Configured private Release token is required}"
 : "${SOURCE_REPO:?SOURCE_REPO is required}"
 : "${RELEASE_TAG:?RELEASE_TAG is required}"
 
 DEST_DIR="${1:-existing-release}"
 mkdir -p "$DEST_DIR"
 
-if ! gh release view "$RELEASE_TAG" --repo "$SOURCE_REPO" --json tagName,isPrerelease --jq '.tagName' >/dev/null 2>&1; then
-  echo "::error title=RUNTIME_EXISTING_RELEASE_LOOKUP_FAILED::The exact private Runtime Release tag is not readable with V1_SOURCE_READ_TOKEN. No R2 mutation was attempted."
+API_ROOT="https://api.github.com"
+AUTH_HEADER="Authorization: Bearer ${GH_TOKEN}"
+ACCEPT_HEADER="Accept: application/vnd.github+json"
+API_VERSION_HEADER="X-GitHub-Api-Version: 2022-11-28"
+
+repo_body="$RUNNER_TEMP/existing-runtime-repo.json"
+repo_status="$(curl --silent --show-error --location \
+  --output "$repo_body" \
+  --write-out '%{http_code}' \
+  --header "$AUTH_HEADER" \
+  --header "$ACCEPT_HEADER" \
+  --header "$API_VERSION_HEADER" \
+  "$API_ROOT/repos/$SOURCE_REPO")"
+if [[ "$repo_status" != "200" ]]; then
+  echo "::error title=RUNTIME_EXISTING_RELEASE_REPO_ACCESS_FAILED::Configured private Release token cannot read SOURCE_REPO (HTTP $repo_status). Check token expiry, repository selection and Contents permission. No R2 mutation was attempted."
+  exit 20
+fi
+
+echo "Existing private source repository access: PASS"
+
+release_body="$RUNNER_TEMP/existing-runtime-release.json"
+release_status="$(curl --silent --show-error --location \
+  --output "$release_body" \
+  --write-out '%{http_code}' \
+  --header "$AUTH_HEADER" \
+  --header "$ACCEPT_HEADER" \
+  --header "$API_VERSION_HEADER" \
+  "$API_ROOT/repos/$SOURCE_REPO/releases/tags/$RELEASE_TAG")"
+if [[ "$release_status" != "200" ]]; then
+  echo "::error title=RUNTIME_EXISTING_RELEASE_LOOKUP_FAILED::Private repository access is valid, but the exact Runtime Release tag was not readable (HTTP $release_status). No R2 mutation was attempted."
   exit 21
 fi
 
-echo "Existing private Runtime Release lookup: PASS"
+release_id="$(jq -r '.id // empty' "$release_body")"
+resolved_tag="$(jq -r '.tag_name // empty' "$release_body")"
+if [[ -z "$release_id" || "$resolved_tag" != "$RELEASE_TAG" ]]; then
+  echo "::error title=RUNTIME_EXISTING_RELEASE_IDENTITY_INVALID::Release lookup returned an invalid identity. No R2 mutation was attempted."
+  exit 25
+fi
+
+echo "Existing private Runtime Release lookup: PASS (release-id=$release_id)"
 
 if ! gh release download "$RELEASE_TAG" --repo "$SOURCE_REPO" --dir "$DEST_DIR" >/dev/null 2>&1; then
   echo "::error title=RUNTIME_EXISTING_RELEASE_DOWNLOAD_FAILED::The exact private Runtime Release exists but its assets could not be downloaded. No R2 mutation was attempted."
