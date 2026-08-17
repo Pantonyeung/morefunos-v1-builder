@@ -505,17 +505,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
-        run: |
-          set -euo pipefail
-          test -n "${GH_TOKEN:-}" || { echo "Private source read configuration is incomplete: missing V1_SOURCE_READ_TOKEN" >&2; exit 1; }
-          mkdir -p existing-release
-          gh release view "$RELEASE_TAG" --repo "$SOURCE_REPO" --json tagName,isPrerelease --jq '.tagName' >/dev/null
-          gh release download "$RELEASE_TAG" --repo "$SOURCE_REPO" --dir existing-release
-          test -f existing-release/runtime-update.json
-          test -f existing-release/runtime-build-metadata.json
-          test -f existing-release/RUNTIME_SHA256SUMS
-          test "$(find existing-release -maxdepth 1 -type f -name '*.mfos' | wc -l | tr -d ' ')" = "1"
-          echo "Existing private Runtime Release download: PASS"
+        run: bash scripts/download-existing-runtime-release.sh existing-release
 
       - name: Verify existing Runtime Release metadata/hash identity
         id: existing
