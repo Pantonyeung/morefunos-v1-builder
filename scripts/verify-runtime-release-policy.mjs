@@ -16,7 +16,7 @@ const required = [
   'SOURCE_REPO: Pantonyeung/morefunos-v1',
   'V1_SOURCE_READ_TOKEN',
   'COMMENT_BODY: ${{ github.event.comment.body || \'\' }}',
-  "COMMAND_VERB='/release-runtime'",
+  "EXPECTED_VERB='/release-runtime'",
   'source_sha must normalize to an exact 40-character Git commit SHA',
   'release_channel invalid',
   'Runtime release command must contain exactly: /release-runtime <sha> <channel>.',
