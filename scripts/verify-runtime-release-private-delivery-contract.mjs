@@ -62,6 +62,7 @@ const forbidden = [
   "MIN_CARRIER_VERSION_CODE: '15'",
   'RUNTIME_VERSION="${SHORT_SHA}"',
   'npm run test:g6:web',
+  'jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null',
 ];
 for (const needle of forbidden) {
   if (workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PUBLIC_OR_STALE_CONTRACT_FORBIDDEN:${needle}`);
