@@ -22,11 +22,38 @@ repo_status="$(curl --silent --show-error --location \
   --header "$API_VERSION_HEADER" \
   "$API_ROOT/repos/$SOURCE_REPO")"
 if [[ "$repo_status" != "200" ]]; then
-  echo "::error title=RUNTIME_EXISTING_RELEASE_REPO_ACCESS_FAILED::Configured private Release token cannot read SOURCE_REPO (HTTP $repo_status). Check token expiry, repository selection and Contents permission. No R2 mutation was attempted."
+  echo "::error title=RUNTIME_EXISTING_RELEASE_REPO_ACCESS_FAILED::Configured private Release token cannot read SOURCE_REPO (HTTP $repo_status). Check token expiry and repository selection. No R2 mutation was attempted."
   exit 20
 fi
 
-echo "Existing private source repository access: PASS"
+echo "Existing private source repository metadata access: PASS"
+
+ref_body="$RUNNER_TEMP/existing-runtime-tag-ref.json"
+ref_status="$(curl --silent --show-error --location \
+  --output "$ref_body" \
+  --write-out '%{http_code}' \
+  --header "$AUTH_HEADER" \
+  --header "$ACCEPT_HEADER" \
+  --header "$API_VERSION_HEADER" \
+  "$API_ROOT/repos/$SOURCE_REPO/git/ref/tags/$RELEASE_TAG")"
+if [[ "$ref_status" == "403" || "$ref_status" == "401" ]]; then
+  echo "::error title=RUNTIME_EXISTING_RELEASE_CONTENTS_ACCESS_FAILED::Repository metadata is readable, but Contents-backed tag-ref access is denied (HTTP $ref_status). Refresh V1_ARTIFACT_DELIVERY_TOKEN repository Contents permission/access. No R2 mutation was attempted."
+  exit 26
+fi
+if [[ "$ref_status" != "200" && "$ref_status" != "404" ]]; then
+  echo "::error title=RUNTIME_EXISTING_RELEASE_TAG_REF_CHECK_FAILED::Exact tag-ref check returned HTTP $ref_status. No R2 mutation was attempted."
+  exit 27
+fi
+if [[ "$ref_status" == "200" ]]; then
+  resolved_ref="$(jq -r '.ref // empty' "$ref_body")"
+  if [[ "$resolved_ref" != "refs/tags/$RELEASE_TAG" ]]; then
+    echo "::error title=RUNTIME_EXISTING_RELEASE_TAG_REF_IDENTITY_INVALID::Tag-ref lookup returned an unexpected identity. No R2 mutation was attempted."
+    exit 28
+  fi
+  echo "Existing private Runtime tag ref: PASS"
+else
+  echo "Existing private Runtime tag ref: NOT FOUND; checking Release API independently"
+fi
 
 release_body="$RUNNER_TEMP/existing-runtime-release.json"
 release_status="$(curl --silent --show-error --location \
@@ -37,7 +64,8 @@ release_status="$(curl --silent --show-error --location \
   --header "$API_VERSION_HEADER" \
   "$API_ROOT/repos/$SOURCE_REPO/releases/tags/$RELEASE_TAG")"
 if [[ "$release_status" != "200" ]]; then
-  echo "::error title=RUNTIME_EXISTING_RELEASE_LOOKUP_FAILED::Private repository access is valid, but the exact Runtime Release tag was not readable (HTTP $release_status). No R2 mutation was attempted."
+  api_message="$(jq -r '.message // "no-message"' "$release_body" 2>/dev/null || printf 'unparseable-response')"
+  echo "::error title=RUNTIME_EXISTING_RELEASE_LOOKUP_FAILED::Private repository access is valid, but the exact Runtime Release tag was not readable (HTTP $release_status; GitHub message: $api_message). No R2 mutation was attempted."
   exit 21
 fi
 
