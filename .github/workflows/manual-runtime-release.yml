@@ -147,6 +147,7 @@ jobs:
           run_stage "runtime-g6-typecheck" npm run typecheck:g6 || exit 1
           run_stage "runtime-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
           run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test || exit 1
+          run_stage "runtime-package-candidate-stable-bootstrap-ready" node --experimental-strip-types --test apps/smt-web/src/smt-device-gate-bootstrap-consumer.test.ts apps/smt-web/src/runtime-carrier-ready.test.ts || exit 1
           run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build || exit 1
           test -f apps/smt-web/dist/index.html || { echo "failed_stage=runtime-entrypoint" >> "$GITHUB_OUTPUT"; exit 1; }
           echo "Private runtime verification/build core: PASS"
@@ -219,8 +220,69 @@ jobs:
 
           rm -f "$KEYSTORE" "$CERT_DER" "$MANIFEST"
 
-      - name: Generate provider-neutral runtime OTA manifest
+      - name: Verify signed Runtime Package P0 contract
         if: steps.build_core.outcome == 'success' && steps.signing.outcome == 'success'
+        id: package_contract
+        shell: bash
+        env:
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          EXPECTED_RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          EXPECTED_RUNTIME_VERSION: ${{ steps.signing.outputs.runtime_version }}
+          EXPECTED_RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+        run: |
+          set -euo pipefail
+          test -f "$RUNTIME_BUNDLE"
+          test "$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')" = "$EXPECTED_RUNTIME_SHA256"
+          jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null
+
+          EXTRACT_DIR="$RUNNER_TEMP/runtime-package-contract"
+          rm -rf "$EXTRACT_DIR"
+          mkdir -p "$EXTRACT_DIR"
+          (cd "$EXTRACT_DIR" && jar xf "$RUNTIME_BUNDLE")
+          test -f "$EXTRACT_DIR/index.html"
+          test -f "$EXTRACT_DIR/META-INF/MANIFEST.MF"
+
+          MANIFEST="$EXTRACT_DIR/META-INF/MANIFEST.MF"
+          normalize_manifest_value() {
+            local key="$1"
+            awk -v k="$key" 'BEGIN{RS="\r?\n"} index($0,k ": ")==1 {sub("^" k ": ",""); gsub("\r",""); print; exit}' "$MANIFEST"
+          }
+          test "$(normalize_manifest_value 'MoreFun-Release-Id')" = "$EXPECTED_RELEASE_ID"
+          test "$(normalize_manifest_value 'MoreFun-Runtime-Version')" = "$EXPECTED_RUNTIME_VERSION"
+          test "$(normalize_manifest_value 'MoreFun-Channel')" = "$RELEASE_CHANNEL"
+          test "$(normalize_manifest_value 'MoreFun-Min-Carrier-Version-Code')" = "$MIN_CARRIER_VERSION_CODE"
+          test "$(normalize_manifest_value 'MoreFun-Bridge-Version')" = "$BRIDGE_VERSION"
+
+          node - "$EXTRACT_DIR" <<'NODE'
+          const fs=require('node:fs');
+          const path=require('node:path');
+          const root=process.argv[2];
+          const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+          const refs=[];
+          for(const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) refs.push({kind:'script',ref:match[1]});
+          for(const match of html.matchAll(/<link\b[^>]*\brel=["'][^"']*stylesheet[^"']*["'][^>]*\bhref=["']([^"']+)["']/gi)) refs.push({kind:'style',ref:match[1]});
+          for(const match of html.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["'][^"']*stylesheet[^"']*["']/gi)) refs.push({kind:'style',ref:match[1]});
+          if(!refs.some(x=>x.kind==='script')) throw new Error('RUNTIME_PACKAGE_SCRIPT_ENTRY_REQUIRED');
+          for(const {kind,ref} of refs){
+            if(/^(?:https?:)?\/\//i.test(ref)) throw new Error(`RUNTIME_PACKAGE_REMOTE_${kind.toUpperCase()}_FORBIDDEN`);
+            const clean=ref.split(/[?#]/,1)[0].replace(/^\.\//,'').replace(/^\//,'');
+            if(!clean||clean.startsWith('../')) throw new Error(`RUNTIME_PACKAGE_INVALID_${kind.toUpperCase()}_REF`);
+            if(!fs.existsSync(path.join(root,clean))) throw new Error(`RUNTIME_PACKAGE_MISSING_${kind.toUpperCase()}_ASSET`);
+          }
+          const builtFiles=[];
+          const walk=(dir)=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);if(entry.isDirectory()){if(entry.name!=='META-INF')walk(p);}else if(/\.(?:js|css)$/i.test(entry.name))builtFiles.push(p);}};
+          walk(root);
+          for(const file of builtFiles){
+            const text=fs.readFileSync(file,'utf8');
+            if(/(?:import\s*\(|from\s*)["']https?:\/\//i.test(text)||/@import\s+(?:url\()?\s*["']?https?:\/\//i.test(text)) throw new Error('RUNTIME_PACKAGE_REMOTE_CORE_DEPENDENCY_FORBIDDEN');
+          }
+          NODE
+
+          echo "package_contract=PASS" >> "$GITHUB_OUTPUT"
+          echo "Runtime Package P0 internal identity/assets: PASS"
+
+      - name: Generate provider-neutral runtime OTA manifest
+        if: steps.package_contract.outcome == 'success'
         id: metadata
         shell: bash
         env:
@@ -231,9 +293,10 @@ jobs:
           RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
           RUNTIME_BYTES: ${{ steps.signing.outputs.runtime_bytes }}
           CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+          PACKAGE_CONTRACT: ${{ steps.package_contract.outputs.package_contract }}
         run: |
           set -euo pipefail
-          export NORMALIZED_SOURCE_SHA RELEASE_ID RUNTIME_VERSION RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 RELEASE_CHANNEL MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
+          export NORMALIZED_SOURCE_SHA RELEASE_ID RUNTIME_VERSION RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 RELEASE_CHANNEL MIN_CARRIER_VERSION_CODE BRIDGE_VERSION PACKAGE_CONTRACT
           node <<'NODE'
           const fs = require('node:fs');
           const update = {
@@ -252,6 +315,7 @@ jobs:
             runtimeFilename: process.env.RUNTIME_FILENAME,
             runtimeBytes: Number(process.env.RUNTIME_BYTES),
             signingCertificateSha256: process.env.CERT_SHA256,
+            runtimePackageContract: process.env.PACKAGE_CONTRACT,
             builderRepository: process.env.GITHUB_REPOSITORY,
             builderSha: process.env.GITHUB_SHA,
             builderRunId: process.env.GITHUB_RUN_ID,
@@ -262,8 +326,36 @@ jobs:
           fs.writeFileSync('RUNTIME_SHA256SUMS', `${process.env.RUNTIME_SHA256}  ${process.env.RUNTIME_FILENAME}\n`);
           NODE
 
+      - name: Verify external OTA manifest matches signed package
+        if: steps.metadata.outcome == 'success'
+        id: external_contract
+        shell: bash
+        env:
+          EXPECTED_RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          EXPECTED_RUNTIME_VERSION: ${{ steps.signing.outputs.runtime_version }}
+          EXPECTED_FILENAME: ${{ steps.signing.outputs.runtime_filename }}
+          EXPECTED_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const update=JSON.parse(fs.readFileSync('runtime-update.json','utf8'));
+          const expected={
+            releaseId:process.env.EXPECTED_RELEASE_ID,
+            runtimeVersion:process.env.EXPECTED_RUNTIME_VERSION,
+            channel:process.env.RELEASE_CHANNEL,
+            minCarrierVersionCode:Number(process.env.MIN_CARRIER_VERSION_CODE),
+            bridgeVersion:Number(process.env.BRIDGE_VERSION),
+            bundleUrl:process.env.EXPECTED_FILENAME,
+            archiveSha256:process.env.EXPECTED_SHA256,
+          };
+          for(const [key,value] of Object.entries(expected)) if(update[key]!==value) throw new Error(`RUNTIME_EXTERNAL_MANIFEST_MISMATCH_${key}`);
+          NODE
+          echo "external_contract=PASS" >> "$GITHUB_OUTPUT"
+          echo "Runtime Package P0 external manifest identity: PASS"
+
       - name: Deliver signed runtime privately to V1 source repository Release
-        if: steps.build_core.outcome == 'success' && steps.signing.outcome == 'success'
+        if: steps.external_contract.outcome == 'success'
         id: delivery
         shell: bash
         env:
@@ -287,7 +379,7 @@ jobs:
             --repo "$SOURCE_REPO" \
             --target "$NORMALIZED_SOURCE_SHA" \
             --title "MoreFunOS SMT ${RELEASE_ID}" \
-            --notes "Owner-manual immutable V1 Runtime package from ${NORMALIZED_SOURCE_SHA}. Channel: ${RELEASE_CHANNEL}. Minimum carrier versionCode: ${MIN_CARRIER_VERSION_CODE}. Stable signing certificate SHA-256: ${CERT_SHA256}. Bundle SHA-256: ${RUNTIME_SHA256}. Private artifact delivery only; not Device/Hardware/Operational PASS." \
+            --notes "Owner-manual immutable V1 Runtime package from ${NORMALIZED_SOURCE_SHA}. Channel: ${RELEASE_CHANNEL}. Runtime Package P0: PASS. Minimum carrier versionCode: ${MIN_CARRIER_VERSION_CODE}. Stable signing certificate SHA-256: ${CERT_SHA256}. Bundle SHA-256: ${RUNTIME_SHA256}. Private artifact delivery only; not Device/Hardware/Operational PASS." \
             "${EXTRA[@]}"
           echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Private V1 Runtime delivery: PASS"
@@ -309,13 +401,16 @@ jobs:
           echo "runtime-release-bytes=$RUNTIME_BYTES"
           echo "runtime-release-signing-cert-sha256=$CERT_SHA256"
           echo "runtime-release-min-carrier-version-code=$MIN_CARRIER_VERSION_CODE"
+          echo "runtime-package-contract=PASS"
+          echo "runtime-package-candidate-stable-bootstrap-ready=PASS"
+          echo "runtime-package-internal-external-identity=PASS"
 
       - name: Fail after sanitized evidence
-        if: always() && (steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.delivery.outcome == 'failure')
+        if: always() && (steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.package_contract.outcome == 'failure' || steps.metadata.outcome == 'failure' || steps.external_contract.outcome == 'failure' || steps.delivery.outcome == 'failure')
         shell: bash
         env:
           BUILD_FAILED_STAGE: ${{ steps.build_core.outputs.failed_stage }}
         run: |
           set -euo pipefail
-          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-signing-or-delivery}. Private details withheld." >&2
+          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-package-contract-signing-or-delivery}. Private details withheld." >&2
           exit 1
