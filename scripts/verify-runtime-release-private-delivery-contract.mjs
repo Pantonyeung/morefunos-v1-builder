@@ -3,6 +3,15 @@ import fs from 'node:fs';
 const path = '.github/workflows/manual-runtime-release.yml';
 const workflow = fs.readFileSync(path, 'utf8');
 
+const staleRuntimeProductionPaths = [
+  '.github/workflows/manual-runtime-ota.yml',
+  'scripts/verify-runtime-ota-policy.mjs',
+  'scripts/verify-runtime-ota-manifest-contract.mjs',
+];
+for (const stalePath of staleRuntimeProductionPaths) {
+  if (fs.existsSync(stalePath)) throw new Error(`RUNTIME_RELEASE_SECOND_PRODUCTION_AUTHORITY_FORBIDDEN:${stalePath}`);
+}
+
 const required = [
   'SOURCE_REPO: Pantonyeung/morefunos-v1',
   "MIN_CARRIER_VERSION_CODE: '15'",
@@ -71,4 +80,4 @@ if (/actions\/upload-artifact|--repo\s+"\$GITHUB_REPOSITORY"/.test(workflow)) {
   throw new Error('RUNTIME_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
 }
 
-console.log('Runtime release private delivery + package P0 contract: PASS');
+console.log('Runtime release single-authority private delivery + package P0 contract: PASS');
