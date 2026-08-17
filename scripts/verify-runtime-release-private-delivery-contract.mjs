@@ -26,7 +26,6 @@ const required = [
   'RUNTIME_VERSION="${RELEASE_ID}"',
   'V1_ARTIFACT_DELIVERY_TOKEN',
   'GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}',
-  'GH_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}',
   '--repo "$SOURCE_REPO"',
   '--target "$NORMALIZED_SOURCE_SHA"',
   'run_stage "runtime-g6-static" npm run test:g6',
