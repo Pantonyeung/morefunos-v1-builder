@@ -89,12 +89,36 @@ jobs:
             echo "::error file=$file,title=$stage::$code location=$location; raw private output withheld"
             failed=1
           }
+          run_node_test() {
+            local stage="$1"
+            local file="$2"
+            local file_log="$RUNNER_TEMP/${stage}.log"
+            : > "$file_log"
+            if node --experimental-strip-types --test "$file" >> "$file_log" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            local code='OTHER'
+            if grep -qi 'AssertionError' "$file_log"; then code='ASSERTION_MISMATCH'
+            elif grep -qi 'SyntaxError' "$file_log"; then code='SYNTAX_ERROR'
+            elif grep -qi 'ReferenceError' "$file_log"; then code='REFERENCE_ERROR'
+            elif grep -qi 'TypeError' "$file_log"; then code='TYPE_ERROR'
+            fi
+            echo "$stage: FAIL code=$code (raw private output withheld)"
+            echo "::error file=$file,title=$stage::$code; raw private output withheld"
+            failed=1
+          }
           run_file 'component-app' 'src/app.vitest.test.tsx'
           run_file 'component-shared-ui' 'src/shared-ui.vitest.test.tsx'
+          run_file 'component-p01-layout-controls' 'src/p01-layout-controls.vitest.test.tsx'
+          run_file 'component-p01-rebuild39' 'src/p01-rebuild39-flow.vitest.test.tsx'
           run_file 'component-orders' 'src/orders-page.vitest.test.tsx'
           run_file 'component-dine-in' 'src/dine-in-page.vitest.test.tsx'
           run_file 'component-soldout' 'src/soldout-page.vitest.test.tsx'
           run_file 'component-business-day' 'src/business-day-page.vitest.test.tsx'
           run_file 'component-reporting' 'src/reporting-page.vitest.test.tsx'
           run_file 'component-printing' 'src/printing-panel.vitest.test.tsx'
+          run_node_test 'runtime-installed-bootstrap' 'src/smt-device-gate-bootstrap-consumer.test.ts'
+          run_node_test 'runtime-ready-handshake' 'src/runtime-carrier-ready.test.ts'
+          run_node_test 'ui-refresh-static' 'src/ui-smt-refresh-static.test.mjs'
           exit "$failed"
