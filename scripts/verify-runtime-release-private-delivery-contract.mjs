@@ -109,8 +109,8 @@ if (/actions\/upload-artifact|--repo\s+"\$GITHUB_REPOSITORY"/.test(workflow)) {
 if (!/startsWith\(github\.event\.comment\.body, '\/publish-runtime '\)/.test(workflow)) {
   throw new Error('RUNTIME_EXISTING_PUBLICATION_OWNER_COMMAND_REQUIRED');
 }
-if (!/Download exact existing private Runtime Release artifacts[\s\S]{0,320}GH_TOKEN:\s*\$\{\{ secrets\.V1_SOURCE_READ_TOKEN \}\}/.test(workflow)) {
-  throw new Error('RUNTIME_EXISTING_PUBLICATION_READ_ONLY_SOURCE_TOKEN_REQUIRED');
+if (!/Download exact existing private Runtime Release artifacts[\s\S]{0,320}GH_TOKEN:\s*\$\{\{ secrets\.V1_ARTIFACT_DELIVERY_TOKEN \}\}/.test(workflow)) {
+  throw new Error('RUNTIME_EXISTING_PUBLICATION_RELEASE_DELIVERY_TOKEN_REQUIRED');
 }
 
 const downloaderRequired = [

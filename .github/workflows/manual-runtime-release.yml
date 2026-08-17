@@ -503,7 +503,7 @@ jobs:
       - name: Download exact existing private Runtime Release artifacts
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
           RELEASE_TAG: ${{ steps.request.outputs.release_tag }}
         run: bash scripts/download-existing-runtime-release.sh existing-release
 
