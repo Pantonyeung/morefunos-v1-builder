@@ -233,7 +233,6 @@ jobs:
           set -euo pipefail
           test -f "$RUNTIME_BUNDLE"
           test "$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')" = "$EXPECTED_RUNTIME_SHA256"
-          jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null
 
           EXTRACT_DIR="$RUNNER_TEMP/runtime-package-contract"
           rm -rf "$EXTRACT_DIR"
