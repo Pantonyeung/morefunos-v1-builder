@@ -13,6 +13,10 @@ const required = [
   'run_stage "runtime-g6-static" npm run test:g6',
   'run_stage "runtime-smt-web-tests" npm --prefix apps/smt-web test',
   'run_stage "runtime-smt-web-build" npm --prefix apps/smt-web run build',
+  'jarsigner -verify -strict',
+  '-keystore "$KEYSTORE" -storetype PKCS12',
+  '-storepass "$V1_ANDROID_KEYSTORE_PASSWORD"',
+  '"$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS"',
   'Private V1 Runtime delivery: PASS',
 ];
 for (const needle of required) {
@@ -26,6 +30,7 @@ const forbidden = [
   'Signed runtime GitHub Release delivery: PASS',
   "MIN_CARRIER_VERSION_CODE: '13'",
   'npm run test:g6:web',
+  'jarsigner -verify -strict "$RUNTIME_BUNDLE"',
 ];
 for (const needle of forbidden) {
   if (workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PUBLIC_OR_STALE_CONTRACT_FORBIDDEN:${needle}`);
