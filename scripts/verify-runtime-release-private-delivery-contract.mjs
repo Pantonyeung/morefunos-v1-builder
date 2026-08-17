@@ -2,9 +2,15 @@ import fs from 'node:fs';
 
 const path = '.github/workflows/manual-runtime-release.yml';
 const workflow = fs.readFileSync(path, 'utf8');
+const onlinePublisherPath = 'scripts/publish-runtime-online.mjs';
+const existingReleaseVerifierPath = 'scripts/verify-existing-runtime-release.mjs';
+const onlinePublisher = fs.readFileSync(onlinePublisherPath, 'utf8');
+const existingReleaseVerifier = fs.readFileSync(existingReleaseVerifierPath, 'utf8');
 
 const staleRuntimeProductionPaths = [
   '.github/workflows/manual-runtime-ota.yml',
+  '.github/workflows/publish-runtime.yml',
+  '.github/workflows/runtime-online-publish.yml',
   'scripts/verify-runtime-ota-policy.mjs',
   'scripts/verify-runtime-ota-manifest-contract.mjs',
 ];
@@ -48,6 +54,17 @@ const required = [
   'runtime-package-candidate-stable-bootstrap-ready=PASS',
   'runtime-package-internal-external-identity=PASS',
   'Private V1 Runtime delivery: PASS',
+  '/publish-runtime ',
+  'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}',
+  'CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+  "WRANGLER_VERSION: '4.118.0'",
+  'ref: infra/cloudflare-ota-delivery',
+  'path: ota-delivery',
+  'node scripts/publish-runtime-online.mjs',
+  'node scripts/verify-existing-runtime-release.mjs existing-release "$RELEASE_TAG"',
+  'Publish verified Runtime online package-first and manifest-last',
+  'Publish existing verified Runtime online package-first and manifest-last',
+  'Existing Runtime locked signer + internal identity: PASS',
 ];
 for (const needle of required) {
   if (!workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PRIVATE_DELIVERY_REQUIRED:${needle}`);
@@ -63,6 +80,8 @@ const forbidden = [
   'RUNTIME_VERSION="${SHORT_SHA}"',
   'npm run test:g6:web',
   'jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null',
+  'CLOUDFLARE_API_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}',
+  'CLOUDFLARE_API_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}',
 ];
 for (const needle of forbidden) {
   if (workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PUBLIC_OR_STALE_CONTRACT_FORBIDDEN:${needle}`);
@@ -83,5 +102,56 @@ if (!/if:\s*steps\.external_contract\.outcome == 'success'[\s\S]{0,2200}gh relea
 if (/actions\/upload-artifact|--repo\s+"\$GITHUB_REPOSITORY"/.test(workflow)) {
   throw new Error('RUNTIME_RELEASE_PUBLIC_ARTIFACT_DELIVERY_FORBIDDEN');
 }
+if (!/startsWith\(github\.event\.comment\.body, '\/publish-runtime '\)/.test(workflow)) {
+  throw new Error('RUNTIME_EXISTING_PUBLICATION_OWNER_COMMAND_REQUIRED');
+}
+if (!/gh release download "\$RELEASE_TAG" --repo "\$SOURCE_REPO"/.test(workflow)) {
+  throw new Error('RUNTIME_EXISTING_PUBLICATION_PRIVATE_RELEASE_DOWNLOAD_REQUIRED');
+}
 
-console.log('Runtime release single-authority private delivery + package P0 contract: PASS');
+const publisherRequired = [
+  "const OTA_BUCKET = 'morefunos-v1-ota'",
+  "const OTA_PUBLIC_ORIGIN = 'https://morefunos-v1-ota.pantonyeung.workers.dev'",
+  "const PUBLISHED_MANIFEST_KEY = 'runtime-update-published.json'",
+  "const EXPECTED_WRANGLER_VERSION = '4.118.0'",
+  "requiredEnv('CLOUDFLARE_API_TOKEN')",
+  "requiredEnv('CLOUDFLARE_ACCOUNT_ID')",
+  "'r2', 'object', 'put', `${OTA_BUCKET}/${runtimeFilename}`",
+  "'--remote'",
+  "online-ota-package-public-get=PASS",
+  "'r2', 'object', 'put', `${OTA_BUCKET}/${PUBLISHED_MANIFEST_KEY}`",
+  "online-ota-manifest-public-get=PASS",
+  "online-ota-publication=PASS",
+  "runWrangler(['deploy', '--config', 'wrangler.jsonc']",
+  "X-MoreFunOS-Manifest-Source",
+];
+for (const needle of publisherRequired) {
+  if (!onlinePublisher.includes(needle)) throw new Error(`RUNTIME_ONLINE_PUBLISHER_REQUIRED:${needle}`);
+}
+const packagePutIndex = onlinePublisher.indexOf("'r2', 'object', 'put', `${OTA_BUCKET}/${runtimeFilename}`");
+const packageProofIndex = onlinePublisher.indexOf("online-ota-package-public-get=PASS");
+const manifestPutIndex = onlinePublisher.indexOf("'r2', 'object', 'put', `${OTA_BUCKET}/${PUBLISHED_MANIFEST_KEY}`");
+const manifestProofIndex = onlinePublisher.indexOf("online-ota-manifest-public-get=PASS");
+if (!(packagePutIndex >= 0 && packagePutIndex < packageProofIndex && packageProofIndex < manifestPutIndex && manifestPutIndex < manifestProofIndex)) {
+  throw new Error('RUNTIME_ONLINE_PACKAGE_FIRST_MANIFEST_LAST_ORDER_REQUIRED');
+}
+if (/r2['",\s]+object['",\s]+delete|r2['",\s]+bucket['",\s]+delete|httpMetadata.*PUT|request\.method\s*===?\s*['"]PUT['"]/i.test(onlinePublisher)) {
+  throw new Error('RUNTIME_ONLINE_DESTRUCTIVE_OR_PUBLIC_UPLOAD_PATH_FORBIDDEN');
+}
+
+const existingVerifierRequired = [
+  "const EXPECTED_SOURCE_REPO = 'Pantonyeung/morefunos-v1'",
+  "const EXPECTED_SIGNING_CERT_SHA256 = '8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a'",
+  "assertEqual(metadata.runtimePackageContract, 'PASS'",
+  "assertEqual(manifest.runtimeVersion, manifest.releaseId",
+  "assertEqual(manifest.minCarrierVersionCode, 21",
+  'EXISTING_RUNTIME_BUNDLE_HASH_MANIFEST_MISMATCH',
+  'EXISTING_RUNTIME_SHA256SUMS_MISMATCH',
+  'EXISTING_RUNTIME_RELEASE_TAG_MISMATCH',
+  'existing-runtime-release-metadata=PASS',
+];
+for (const needle of existingVerifierRequired) {
+  if (!existingReleaseVerifier.includes(needle)) throw new Error(`RUNTIME_EXISTING_RELEASE_VERIFIER_REQUIRED:${needle}`);
+}
+
+console.log('Runtime release single-authority private delivery + package P0 + online R2 publication contract: PASS');
