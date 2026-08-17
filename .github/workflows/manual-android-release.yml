@@ -7,10 +7,6 @@ on:
         description: 'Exact 40-character commit SHA from Pantonyeung/morefunos-v1'
         required: true
         type: string
-      runtime_update_manifest_url:
-        description: 'Owner-approved HTTPS URL for device-readable runtime-update.json'
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -27,7 +23,6 @@ jobs:
     env:
       SOURCE_REPO: Pantonyeung/morefunos-v1
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
-      RUNTIME_UPDATE_MANIFEST_URL: ${{ inputs.runtime_update_manifest_url }}
       EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
 
     steps:
@@ -41,25 +36,8 @@ jobs:
             echo "source_sha must normalize to an exact 40-character Git commit SHA" >&2
             exit 1
           fi
-          if [[ -z "${RUNTIME_UPDATE_MANIFEST_URL:-}" || "$RUNTIME_UPDATE_MANIFEST_URL" =~ [[:space:]] || ! "$RUNTIME_UPDATE_MANIFEST_URL" =~ ^https:// ]]; then
-            echo "RUNTIME_UPDATE_ENDPOINT_INVALID" >&2
-            exit 1
-          fi
-          export RUNTIME_UPDATE_MANIFEST_URL
-          node <<'NODE'
-          const raw = process.env.RUNTIME_UPDATE_MANIFEST_URL;
-          try {
-            const url = new URL(raw);
-            if (url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.hash) {
-              throw new Error('invalid');
-            }
-          } catch {
-            console.error('RUNTIME_UPDATE_ENDPOINT_INVALID');
-            process.exit(1);
-          }
-          NODE
           echo "source_sha=${NORMALIZED_SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
-          echo "Validated immutable private release source SHA and HTTPS OTA endpoint."
+          echo "Validated immutable private release source SHA."
 
       - name: Checkout builder definition
         uses: actions/checkout@v7
@@ -153,8 +131,8 @@ jobs:
           run_stage "android-release-smt-web-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
           run_stage "android-release-smt-web-build" npm --prefix apps/smt-web run build || exit 1
           run_stage "android-release-sdk-components" verify_android_sdk || exit 1
-          run_stage "android-release-lint-debug" gradle -p apps/smt-android :app:lintDebug --no-daemon -PmorefunRuntimeUpdateManifestUrl="$RUNTIME_UPDATE_MANIFEST_URL" || exit 1
-          run_stage "android-release-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon -PmorefunRuntimeUpdateManifestUrl="$RUNTIME_UPDATE_MANIFEST_URL" || exit 1
+          run_stage "android-release-lint-debug" gradle -p apps/smt-android :app:lintDebug --no-daemon || exit 1
+          run_stage "android-release-assemble-debug" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
 
           APK_PATH="apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
           if [[ ! -f "$APK_PATH" ]]; then
@@ -267,7 +245,7 @@ jobs:
             versionCode: Number(process.env.VERSION_CODE),
             minSdk: Number(process.env.MIN_SDK),
             targetSdk: Number(process.env.TARGET_SDK),
-            runtimeUpdateManifestUrl: process.env.RUNTIME_UPDATE_MANIFEST_URL,
+            runtimeUpdateEndpointMode: "built-in-default-plus-persistent-owner-override",
             apkFilename: process.env.APK_FILENAME,
             apkSha256: process.env.APK_SHA256,
             apkBytes: Number(process.env.APK_BYTES),
