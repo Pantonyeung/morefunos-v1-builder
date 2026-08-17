@@ -6,10 +6,20 @@ const workflow = fs.readFileSync(path, 'utf8');
 const required = [
   'name: Owner Manual V1 Runtime Release',
   'workflow_dispatch:',
-  "if: github.actor == 'Pantonyeung'",
+  'issue_comment:',
+  'types: [created]',
+  "github.actor == 'Pantonyeung'",
+  "github.event.issue.number == 2",
+  "startsWith(github.event.comment.body, '/release-runtime ')",
   'permissions:\n  contents: write',
+  'issues: read',
   'SOURCE_REPO: Pantonyeung/morefunos-v1',
   'V1_SOURCE_READ_TOKEN',
+  'COMMENT_BODY: ${{ github.event.comment.body || \'\' }}',
+  "COMMAND_VERB='/release-runtime'",
+  'source_sha must normalize to an exact 40-character Git commit SHA',
+  'release_channel invalid',
+  'Runtime release command must contain exactly: /release-runtime <sha> <channel>.',
   'V1_ANDROID_KEYSTORE_B64',
   'V1_ANDROID_KEYSTORE_PASSWORD',
   'V1_ANDROID_KEY_ALIAS',
@@ -53,5 +63,9 @@ if (/actions\/upload-artifact/.test(workflow)) throw new Error('BUILDER_RUNTIME_
 if (/GH_TOKEN:\s*\$\{\{\s*secrets\.V1_SOURCE_READ_TOKEN\s*\}\}/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_SOURCE_TOKEN_REUSE_FORBIDDEN');
 if (/cat\s+.*(?:MainActivity|business-runtime|\.ts|\.java)/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_SOURCE_LOG_FORBIDDEN');
 if (!/RELEASE_CHANNEL/.test(workflow) || !/stable\|candidate\|dev/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_CHANNEL_GATE_REQUIRED');
+if (!/github\.event_name\s*==\s*'workflow_dispatch'/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_MANUAL_EVENT_GATE_REQUIRED');
+if (!/github\.event_name\s*==\s*'issue_comment'/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_COMMENT_EVENT_GATE_REQUIRED');
+if (!/github\.event\.issue\.number\s*==\s*2/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_CONTROL_ISSUE_REQUIRED');
+if (!/startsWith\(github\.event\.comment\.body, '\/release-runtime '\)/.test(workflow)) throw new Error('BUILDER_RUNTIME_RELEASE_COMMAND_PREFIX_REQUIRED');
 
 console.log('Builder runtime release policy: PASS');
