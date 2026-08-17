@@ -43,7 +43,7 @@ jobs:
       RELEASE_CHANNEL: ${{ inputs.release_channel || '' }}
       COMMENT_BODY: ${{ github.event.comment.body || '' }}
       EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
-      MIN_CARRIER_VERSION_CODE: '15'
+      MIN_CARRIER_VERSION_CODE: '21'
       BRIDGE_VERSION: '1'
 
     steps:
@@ -182,7 +182,7 @@ jobs:
 
           SHORT_SHA="${NORMALIZED_SOURCE_SHA:0:12}"
           RELEASE_ID="runtime-${RELEASE_CHANNEL}-${SHORT_SHA}"
-          RUNTIME_VERSION="${SHORT_SHA}"
+          RUNTIME_VERSION="${RELEASE_ID}"
           RUNTIME_FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
           RUNTIME_BUNDLE="$GITHUB_WORKSPACE/$RUNTIME_FILENAME"
           MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
