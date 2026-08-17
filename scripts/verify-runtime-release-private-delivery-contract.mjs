@@ -50,7 +50,6 @@ const forbidden = [
   'Signed runtime GitHub Release delivery: PASS',
   "MIN_CARRIER_VERSION_CODE: '13'",
   'npm run test:g6:web',
-  'jarsigner -verify -strict "$RUNTIME_BUNDLE"',
 ];
 for (const needle of forbidden) {
   if (workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_PUBLIC_OR_STALE_CONTRACT_FORBIDDEN:${needle}`);
@@ -61,6 +60,9 @@ if (!/permissions:\s*\n\s*contents:\s*read/.test(workflow)) {
 }
 if (/persist-credentials:\s*true/.test(workflow)) {
   throw new Error('RUNTIME_RELEASE_PERSIST_CREDENTIALS_FORBIDDEN');
+}
+if (!/jarsigner\s+-verify\s+-strict[\s\S]{0,240}-keystore\s+"\$KEYSTORE"[\s\S]{0,240}"\$RUNTIME_BUNDLE"\s+"\$V1_ANDROID_KEY_ALIAS"/.test(workflow)) {
+  throw new Error('RUNTIME_RELEASE_LOCKED_SIGNER_STRICT_VERIFY_REQUIRED');
 }
 if (!/if:\s*steps\.external_contract\.outcome == 'success'[\s\S]{0,2200}gh release create/.test(workflow)) {
   throw new Error('RUNTIME_RELEASE_DELIVERY_MUST_REQUIRE_PACKAGE_EXTERNAL_CONTRACT_PASS');
