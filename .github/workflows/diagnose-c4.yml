@@ -99,7 +99,9 @@ jobs:
           run_group 'c4-order' node --experimental-strip-types --test packages/order/*.test.ts
           run_group 'c4-pricing' node --experimental-strip-types --test packages/pricing/*.test.ts
           run_group 'c4-staff' node --experimental-strip-types --test packages/staff/*.test.ts
-          run_group 'c4-runtime-targeted' node --experimental-strip-types --test packages/runtime/c4-customer-loyalty.test.ts packages/runtime/business-runtime-c4-benefit.test.ts packages/runtime/business-runtime-c4.test.ts
+          run_group 'c4-runtime-control-plane' node --experimental-strip-types --test packages/runtime/c4-customer-loyalty.test.ts
+          run_group 'c4-runtime-pricing-handoff' node --experimental-strip-types --test packages/runtime/business-runtime-c4-benefit.test.ts
+          run_group 'c4-runtime-canonical' node --experimental-strip-types --test packages/runtime/business-runtime-c4.test.ts
           run_group 'c4-runtime-all' node --experimental-strip-types --test packages/runtime/*.test.ts
           run_group 'c4-typecheck' tsc --noEmit -p tsconfig.json
 
