@@ -20,7 +20,7 @@ on:
     types: [created]
 
 permissions:
-  contents: write
+  contents: read
   issues: read
 
 concurrency:
@@ -36,14 +36,14 @@ jobs:
         github.event.issue.number == 2 &&
         startsWith(github.event.comment.body, '/release-runtime ')))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       SOURCE_REPO: Pantonyeung/morefunos-v1
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || '' }}
       RELEASE_CHANNEL: ${{ inputs.release_channel || '' }}
       COMMENT_BODY: ${{ github.event.comment.body || '' }}
       EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
-      MIN_CARRIER_VERSION_CODE: '13'
+      MIN_CARRIER_VERSION_CODE: '15'
       BRIDGE_VERSION: '1'
 
     steps:
@@ -183,7 +183,8 @@ jobs:
           SHORT_SHA="${NORMALIZED_SOURCE_SHA:0:12}"
           RELEASE_ID="runtime-${RELEASE_CHANNEL}-${SHORT_SHA}"
           RUNTIME_VERSION="${SHORT_SHA}"
-          RUNTIME_BUNDLE="$GITHUB_WORKSPACE/MoreFunOS-SMT-runtime-${RELEASE_ID}.mfos"
+          RUNTIME_FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
+          RUNTIME_BUNDLE="$GITHUB_WORKSPACE/$RUNTIME_FILENAME"
           MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
           cat > "$MANIFEST" <<EOF
           Manifest-Version: 1.0
@@ -204,46 +205,115 @@ jobs:
           jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null
 
           BUNDLE_SHA256="$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')"
+          BUNDLE_BYTES="$(stat -c%s "$RUNTIME_BUNDLE")"
           echo "runtime_bundle=$RUNTIME_BUNDLE" >> "$GITHUB_OUTPUT"
-          echo "runtime_filename=$(basename "$RUNTIME_BUNDLE")" >> "$GITHUB_OUTPUT"
+          echo "runtime_filename=$RUNTIME_FILENAME" >> "$GITHUB_OUTPUT"
           echo "runtime_sha256=$BUNDLE_SHA256" >> "$GITHUB_OUTPUT"
+          echo "runtime_bytes=$BUNDLE_BYTES" >> "$GITHUB_OUTPUT"
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "runtime_version=$RUNTIME_VERSION" >> "$GITHUB_OUTPUT"
+          echo "certificate_sha256=$CERT_SHA256" >> "$GITHUB_OUTPUT"
           echo "Stable runtime signing identity verified: PASS"
 
           rm -f "$KEYSTORE" "$CERT_DER" "$MANIFEST"
 
-      - name: Publish signed runtime to public Builder Release
+      - name: Generate provider-neutral runtime OTA manifest
         if: steps.build_core.outcome == 'success' && steps.signing.outcome == 'success'
+        id: metadata
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
           RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          RUNTIME_VERSION: ${{ steps.signing.outputs.runtime_version }}
+          RUNTIME_FILENAME: ${{ steps.signing.outputs.runtime_filename }}
           RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+          RUNTIME_BYTES: ${{ steps.signing.outputs.runtime_bytes }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
         run: |
           set -euo pipefail
-          TAG="smt-${RELEASE_ID}"
-          NOTES="$RUNNER_TEMP/runtime-release-notes.txt"
-          printf 'MoreFunOS SMT runtime\nsource_sha=%s\nchannel=%s\nsha256=%s\nmin_carrier_version_code=%s\nbridge_version=%s\n' \
-            "$NORMALIZED_SOURCE_SHA" "$RELEASE_CHANNEL" "$RUNTIME_SHA256" "$MIN_CARRIER_VERSION_CODE" "$BRIDGE_VERSION" > "$NOTES"
-          EXTRA=()
-          if [[ "$RELEASE_CHANNEL" != "stable" ]]; then EXTRA+=(--prerelease); fi
-          gh release create "$TAG" "$RUNTIME_BUNDLE" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
+          export NORMALIZED_SOURCE_SHA RELEASE_ID RUNTIME_VERSION RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 RELEASE_CHANNEL MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
+          node <<'NODE'
+          const fs = require('node:fs');
+          const update = {
+            releaseId: process.env.RELEASE_ID,
+            runtimeVersion: process.env.RUNTIME_VERSION,
+            channel: process.env.RELEASE_CHANNEL,
+            minCarrierVersionCode: Number(process.env.MIN_CARRIER_VERSION_CODE),
+            bridgeVersion: Number(process.env.BRIDGE_VERSION),
+            bundleUrl: process.env.RUNTIME_FILENAME,
+            archiveSha256: process.env.RUNTIME_SHA256,
+          };
+          const metadata = {
+            sourceRepository: process.env.SOURCE_REPO,
+            sourceSha: process.env.NORMALIZED_SOURCE_SHA,
+            ...update,
+            runtimeFilename: process.env.RUNTIME_FILENAME,
+            runtimeBytes: Number(process.env.RUNTIME_BYTES),
+            signingCertificateSha256: process.env.CERT_SHA256,
+            builderRepository: process.env.GITHUB_REPOSITORY,
+            builderSha: process.env.GITHUB_SHA,
+            builderRunId: process.env.GITHUB_RUN_ID,
+            builtAtUtc: new Date().toISOString(),
+          };
+          fs.writeFileSync('runtime-update.json', JSON.stringify(update, null, 2) + '\n');
+          fs.writeFileSync('runtime-build-metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+          fs.writeFileSync('RUNTIME_SHA256SUMS', `${process.env.RUNTIME_SHA256}  ${process.env.RUNTIME_FILENAME}\n`);
+          NODE
+
+      - name: Deliver signed runtime privately to V1 source repository Release
+        if: steps.build_core.outcome == 'success' && steps.signing.outcome == 'success'
+        id: delivery
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          NORMALIZED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RUNTIME_FILENAME: ${{ steps.signing.outputs.runtime_filename }}
+          RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "Private artifact delivery configuration is incomplete: missing V1_ARTIFACT_DELIVERY_TOKEN" >&2; exit 1; }
+          TAG="builder-v1-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
+          EXTRA=(--prerelease)
+          gh release create "$TAG" \
+            "$RUNTIME_BUNDLE" \
+            runtime-update.json \
+            runtime-build-metadata.json \
+            RUNTIME_SHA256SUMS \
+            --repo "$SOURCE_REPO" \
+            --target "$NORMALIZED_SOURCE_SHA" \
             --title "MoreFunOS SMT ${RELEASE_ID}" \
-            --notes-file "$NOTES" \
+            --notes "Owner-manual immutable V1 Runtime package from ${NORMALIZED_SOURCE_SHA}. Channel: ${RELEASE_CHANNEL}. Minimum carrier versionCode: ${MIN_CARRIER_VERSION_CODE}. Stable signing certificate SHA-256: ${CERT_SHA256}. Bundle SHA-256: ${RUNTIME_SHA256}. Private artifact delivery only; not Device/Hardware/Operational PASS." \
             "${EXTRA[@]}"
-          rm -f "$NOTES"
-          echo "Signed runtime GitHub Release delivery: PASS"
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Private V1 Runtime delivery: PASS"
+
+      - name: Generate sanitized runtime release evidence
+        if: steps.delivery.outcome == 'success'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.delivery.outputs.release_tag }}
+          RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+          RUNTIME_BYTES: ${{ steps.signing.outputs.runtime_bytes }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+        run: |
+          set -euo pipefail
+          echo "runtime-release-tag=$RELEASE_TAG"
+          echo "runtime-release-id=$RELEASE_ID"
+          echo "runtime-release-sha256=$RUNTIME_SHA256"
+          echo "runtime-release-bytes=$RUNTIME_BYTES"
+          echo "runtime-release-signing-cert-sha256=$CERT_SHA256"
+          echo "runtime-release-min-carrier-version-code=$MIN_CARRIER_VERSION_CODE"
 
       - name: Fail after sanitized evidence
-        if: steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure'
+        if: steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.delivery.outcome == 'failure'
         shell: bash
         env:
           BUILD_FAILED_STAGE: ${{ steps.build_core.outputs.failed_stage }}
         run: |
           set -euo pipefail
-          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-signing}. Private details withheld." >&2
+          echo "Runtime release failed at ${BUILD_FAILED_STAGE:-signing-or-delivery}. Private details withheld." >&2
           exit 1
