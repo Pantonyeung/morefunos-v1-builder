@@ -201,7 +201,10 @@ jobs:
             -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
             -keypass "$V1_ANDROID_KEY_PASSWORD" \
             "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
-          jarsigner -verify -strict "$RUNTIME_BUNDLE" >/dev/null
+          jarsigner -verify -strict \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" \
+            "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
 
           BUNDLE_SHA256="$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')"
           BUNDLE_BYTES="$(stat -c%s "$RUNTIME_BUNDLE")"
@@ -308,7 +311,7 @@ jobs:
           echo "runtime-release-min-carrier-version-code=$MIN_CARRIER_VERSION_CODE"
 
       - name: Fail after sanitized evidence
-        if: steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.delivery.outcome == 'failure'
+        if: always() && (steps.build_core.outcome != 'success' || steps.signing.outcome == 'failure' || steps.delivery.outcome == 'failure')
         shell: bash
         env:
           BUILD_FAILED_STAGE: ${{ steps.build_core.outputs.failed_stage }}
