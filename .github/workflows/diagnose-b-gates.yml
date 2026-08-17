@@ -1,0 +1,88 @@
+name: Owner B Gate Diagnostics
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/diagnose-b-gates ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REQUEST: ${{ github.event.comment.body }}
+    steps:
+      - name: Parse exact diagnostic request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(printf '%s' "$REQUEST" | awk '{print $2}' | tr -d '[:space:]')"
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'diagnostic source SHA must be exact 40-character Git SHA' >&2
+            exit 1
+          fi
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact private source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          echo 'Exact private source identity: PASS'
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install pinned TypeScript toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = "Version 5.8.3"
+
+      - name: Diagnose exact B verification gates without private logs
+        shell: bash
+        run: |
+          set -u
+          cd source
+          failed=0
+          run_stage() {
+            local stage="$1"; shift
+            local stage_log="$RUNNER_TEMP/${stage}.log"
+            : > "$stage_log"
+            if "$@" >> "$stage_log" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (raw private output withheld)"
+            echo "::error title=$stage::$stage failed; raw private output withheld"
+            failed=1
+            return 0
+          }
+          run_stage 'b-smt-web-locked-install' npm --prefix apps/smt-web ci --no-audit --no-fund
+          run_stage 'b-g5-targeted' npm run test:g5
+          run_stage 'b-current-regression' npm run test:current
+          run_stage 'b-g5-typecheck' npm run typecheck:g5
+          run_stage 'b-smt-web-test' npm --prefix apps/smt-web test
+          run_stage 'b-smt-web-build' npm --prefix apps/smt-web run build
+          exit "$failed"
