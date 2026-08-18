@@ -108,11 +108,7 @@ jobs:
 
           has_script() {
             local name="$1"
-            node - "$APP_DIR/package.json" "$name" <<'NODE'
-          const fs = require('node:fs');
-          const pkg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          process.exit(pkg.scripts && typeof pkg.scripts[process.argv[3]] === 'string' ? 0 : 1);
-          NODE
+            node -e "const fs=require('node:fs'); const pkg=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.exit(pkg.scripts && typeof pkg.scripts[process.argv[2]] === 'string' ? 0 : 1)" "$APP_DIR/package.json" "$name"
           }
 
           sanitize_identifier() {
