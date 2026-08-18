@@ -147,9 +147,27 @@ jobs:
               exit 1
             fi
           done
-          CHANGED="$(git status --porcelain --untracked-files=all | sed -E 's/^.. //' | sort)"
-          EXPECTED="$(printf '%s\n' apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json apps/smm-web/package-lock.json | sort)"
-          test "$CHANGED" = "$EXPECTED" || { echo 'result=UNEXPECTED_DIFF' >> "$GITHUB_OUTPUT"; exit 1; }
+
+          # npm ci creates temporary node_modules trees. They are verification artifacts,
+          # not source changes, so remove them before the source-diff gate.
+          for APP in "${APPS[@]}"; do
+            rm -rf "$APP/node_modules"
+          done
+          rm -rf packages/ui/node_modules
+
+          TRACKED="$(git diff --name-only | sort)"
+          EXPECTED_TRACKED='apps/smm-web/package-lock.json'
+          test "$TRACKED" = "$EXPECTED_TRACKED" || {
+            echo 'result=UNEXPECTED_TRACKED_DIFF' >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+
+          UNTRACKED="$(git ls-files --others --exclude-standard | sort)"
+          EXPECTED_UNTRACKED="$(printf '%s\n' apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json | sort)"
+          test "$UNTRACKED" = "$EXPECTED_UNTRACKED" || {
+            echo 'result=UNEXPECTED_UNTRACKED_DIFF' >> "$GITHUB_OUTPUT"
+            exit 1
+          }
           echo 'result=PASS' >> "$GITHUB_OUTPUT"
 
       - name: Commit verified lockfiles and fast-forward integration branch
