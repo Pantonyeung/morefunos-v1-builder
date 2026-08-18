@@ -1,0 +1,133 @@
+name: Owner V1 Verify Feature Bundle
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify-feature-bundle:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/verify-feature-bundle ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      REQUESTED_SOURCE: ${{ github.event.comment.body }}
+    steps:
+      - name: Validate exact V1 source request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="$(printf '%s' "$REQUESTED_SOURCE" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${RAW#'/verify-feature-bundle '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'source_sha must be one exact 40-character Git SHA' >&2
+            exit 1
+          fi
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Install pinned TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = 'Version 5.8.3'
+
+      - name: Execute COMBO-001 cross-surface verification
+        id: verify
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          cd source
+          fail=''
+          run_stage() {
+            local name="$1"; shift
+            echo "== $name =="
+            if "$@" >/tmp/feature-stage.log 2>&1; then
+              echo "$name: PASS"
+              return 0
+            fi
+            echo "$name: FAIL"
+            fail="$name"
+            return 1
+          }
+
+          run_stage 'c-combo-contract' node --experimental-strip-types --test packages/admin/combo-policy-control.test.ts packages/runtime/business-runtime-projection.test.ts || true
+          [[ -z "$fail" ]] && run_stage 'c-typecheck' tsc --noEmit -p tsconfig.json || true
+
+          [[ -z "$fail" ]] && run_stage 'smm-install' npm --prefix apps/smm-web ci --no-audit --no-fund || true
+          [[ -z "$fail" ]] && run_stage 'smm-contract' node --experimental-strip-types --test apps/smm-web/src/smm-ordering-port.test.ts || true
+          [[ -z "$fail" ]] && run_stage 'smm-ui' npm --prefix apps/smm-web run test:ui || true
+          [[ -z "$fail" ]] && run_stage 'smm-typecheck' tsc --noEmit -p apps/smm-web/tsconfig.json || true
+          [[ -z "$fail" ]] && run_stage 'smm-build' npm --prefix apps/smm-web run build || true
+
+          [[ -z "$fail" ]] && run_stage 'customer-install' npm --prefix apps/customer-web install --no-audit --no-fund || true
+          [[ -z "$fail" ]] && run_stage 'customer-test' npm --prefix apps/customer-web test || true
+          [[ -z "$fail" ]] && run_stage 'customer-typecheck' tsc --noEmit -p apps/customer-web/tsconfig.json || true
+          [[ -z "$fail" ]] && run_stage 'customer-build' npm --prefix apps/customer-web run build || true
+
+          [[ -z "$fail" ]] && run_stage 'admin-install' npm --prefix apps/admin-web install --no-audit --no-fund || true
+          [[ -z "$fail" ]] && run_stage 'admin-test' npm --prefix apps/admin-web test || true
+          [[ -z "$fail" ]] && run_stage 'admin-typecheck' tsc --noEmit -p apps/admin-web/tsconfig.json || true
+          [[ -z "$fail" ]] && run_stage 'admin-build' npm --prefix apps/admin-web run build || true
+
+          if [[ -n "$fail" ]]; then
+            echo "failed_stage=$fail" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo 'failed_stage=' >> "$GITHUB_OUTPUT"
+
+      - name: Report machine-readable result to Builder issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          FAILED_STAGE: ${{ steps.verify.outputs.failed_stage }}
+        run: |
+          set -euo pipefail
+          if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
+            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=PASS scope=COMBO-001"
+          else
+            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=FAIL failed_stage=${FAILED_STAGE:-UNAVAILABLE} scope=COMBO-001"
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/issues/2/comments" -f body="$BODY" >/dev/null
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          test "$VERIFY_OUTCOME" = 'success'
