@@ -1,0 +1,6 @@
+{
+  "sourceRepository": "Pantonyeung/morefunos-v1",
+  "sourceSha": "d13367a9b794ea81ca896c22714371aff0169f11",
+  "purpose": "dependency-lockfile-evidence-only",
+  "surfaces": ["smm-web", "admin-web", "customer-web", "owner-web"]
+}
