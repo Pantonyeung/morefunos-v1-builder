@@ -1,0 +1,4 @@
+Functional dependency-lock source: d13367a9b794ea81ca896c22714371aff0169f11
+Final governance-complete V1 integration head: facf8441ed80f3694a71c875ea83478bdf9d5557
+Final exact-head cross-surface verification: PASS
+Hardware verdict: NO CHANGE
