@@ -147,6 +147,8 @@ jobs:
             sed -r 's/\x1B\[[0-9;]*[mK]//g' "$STAGE_LOG" > "$PLAIN_LOG"
             local diagnostic
             local test_identifier
+            local error_code
+            local error_kind
             diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?:[0-9]+:[0-9]+' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
             if [[ -z "$diagnostic" ]]; then
               diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
@@ -157,6 +159,14 @@ jobs:
               if [[ -n "$test_identifier" ]]; then
                 diagnostic="${diagnostic:+${diagnostic},}test:${test_identifier}"
               fi
+            fi
+            error_code="$(grep -Eo 'ERR_[A-Z0-9_]+' "$PLAIN_LOG" | head -1 || true)"
+            if [[ -n "$error_code" ]]; then
+              diagnostic="${diagnostic:+${diagnostic},}code:${error_code}"
+            fi
+            error_kind="$(grep -Eo '(SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
+            if [[ -n "$error_kind" ]]; then
+              diagnostic="${diagnostic:+${diagnostic},}kind:${error_kind}"
             fi
             set_failure "$stage" "${diagnostic:-UNAVAILABLE}"
             return 1
