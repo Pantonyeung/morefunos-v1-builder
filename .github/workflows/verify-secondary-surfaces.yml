@@ -1,0 +1,141 @@
+name: Owner V1 Verify Secondary Surfaces
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/verify-secondary ')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: admin
+            dir: apps/admin-web
+          - id: customer
+            dir: apps/customer-web
+          - id: owner
+            dir: apps/owner-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      SURFACE_ID: ${{ matrix.id }}
+      APP_DIR: ${{ matrix.dir }}
+    steps:
+      - name: Validate exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/verify-secondary '}"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "$COMMAND" == "/verify-secondary ${SOURCE_SHA}" ]]
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify source identity
+        run: test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
+
+      - name: Install surface
+        id: install
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd source
+          if [[ -f "$APP_DIR/package-lock.json" ]]; then
+            npm --prefix "$APP_DIR" ci --no-audit --no-fund >/dev/null 2>&1
+          else
+            npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false >/dev/null 2>&1
+          fi
+
+      - name: Run contract test
+        if: steps.install.outcome == 'success'
+        id: contract
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd source
+          npm --prefix "$APP_DIR" run test:contract >/dev/null 2>&1
+
+      - name: Run UI test
+        if: steps.install.outcome == 'success' && steps.contract.outcome == 'success'
+        id: ui
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd source
+          npm --prefix "$APP_DIR" run test:ui >/dev/null 2>&1
+
+      - name: Typecheck surface
+        if: steps.install.outcome == 'success' && steps.contract.outcome == 'success' && steps.ui.outcome == 'success'
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd source
+          "$APP_DIR/node_modules/.bin/tsc" --noEmit -p "$APP_DIR/tsconfig.json" >/dev/null 2>&1
+
+      - name: Build surface
+        if: steps.install.outcome == 'success' && steps.contract.outcome == 'success' && steps.ui.outcome == 'success' && steps.typecheck.outcome == 'success'
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd source
+          npm --prefix "$APP_DIR" run build >/dev/null 2>&1
+
+      - name: Report sanitized result
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          INSTALL: ${{ steps.install.outcome }}
+          CONTRACT: ${{ steps.contract.outcome }}
+          UI: ${{ steps.ui.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$INSTALL" != 'success' ]]; then STAGE='install'; RESULT='FAIL';
+          elif [[ "$CONTRACT" != 'success' ]]; then STAGE='contract'; RESULT='FAIL';
+          elif [[ "$UI" != 'success' ]]; then STAGE='ui'; RESULT='FAIL';
+          elif [[ "$TYPECHECK" != 'success' ]]; then STAGE='typecheck'; RESULT='FAIL';
+          elif [[ "$BUILD" != 'success' ]]; then STAGE='build'; RESULT='FAIL';
+          else STAGE='complete'; RESULT='PASS'; fi
+          gh issue comment 2 --body "secondary-${SURFACE_ID} ${SOURCE_SHA} ${RESULT} stage=${STAGE}" >/dev/null
+
+      - name: Enforce pass
+        if: always()
+        shell: bash
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          CONTRACT: ${{ steps.contract.outcome }}
+          UI: ${{ steps.ui.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          [[ "$INSTALL" == 'success' && "$CONTRACT" == 'success' && "$UI" == 'success' && "$TYPECHECK" == 'success' && "$BUILD" == 'success' ]]
