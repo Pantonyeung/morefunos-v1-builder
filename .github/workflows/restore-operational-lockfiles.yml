@@ -19,7 +19,7 @@ jobs:
     env:
       COMMENT_BODY: ${{ github.event.comment.body }}
       BASELINE_SHA: d13367a9b794ea81ca896c22714371aff0169f11
-      EVIDENCE_REF: generated/operational-lockfiles-d13367a9b794
+      EVIDENCE_COMMIT: 301d49e8401fc379c0ce4e029625a8f41c347136
       TARGET_BRANCH: agent/operational-chain-integration-159-162
     steps:
       - name: Validate immutable restore request
@@ -39,10 +39,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Checkout certified Builder lockfile evidence
+      - name: Checkout immutable Builder lockfile evidence commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.EVIDENCE_REF }}
+          ref: ${{ env.EVIDENCE_COMMIT }}
           path: evidence
           persist-credentials: false
 
@@ -69,6 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git -C evidence rev-parse HEAD)" = "$EVIDENCE_COMMIT"
           test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
           test "$(git -C baseline rev-parse HEAD)" = "$BASELINE_SHA"
           APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
@@ -84,23 +85,32 @@ jobs:
           }
           echo "result=PASS" >> "$GITHUB_OUTPUT"
 
-      - name: Verify certified lockfile hashes and restore
+      - name: Verify immutable evidence metadata and restore lockfiles
         id: locks
         shell: bash
         run: |
           set -euo pipefail
           ROOT="evidence/generated/${BASELINE_SHA}"
-          declare -A EXPECTED
-          EXPECTED[apps/smm-web/package-lock.json]='4c42f3a4bc273fed899ffefa46256c6727440b2c8369427b4136ebef6905de1d'
-          EXPECTED[apps/admin-web/package-lock.json]='8cb05bdaa9d171ad61facd008835de9ff61a4a4667e0863b201f6a1bd78e0c81'
-          EXPECTED[apps/customer-web/package-lock.json]='49d5cbb2b536ad776924bcb82f56d5fb2ae3592235d5bf38732093db4a3'
-          EXPECTED[apps/owner-web/package-lock.json]='9d125cdc2a57f8c49a3be2140350650dc973b1cde351dc6475dac0eb1700a6d9'
-          for LOCK in "${!EXPECTED[@]}"; do
-            FILE="$ROOT/$LOCK"
-            test -f "$FILE"
-            ACTUAL="$(sha256sum "$FILE" | awk '{print $1}')"
-            test "$ACTUAL" = "${EXPECTED[$LOCK]}"
-            cp "$FILE" "source/$LOCK"
+          test -f "$ROOT/METADATA.json"
+          node - "$ROOT/METADATA.json" "$BASELINE_SHA" <<'NODE'
+          const fs = require('node:fs');
+          const [metadataPath, baselineSha] = process.argv.slice(2);
+          const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+          if (metadata.sourceRepository !== 'Pantonyeung/morefunos-v1') process.exit(2);
+          if (metadata.sourceSha !== baselineSha) process.exit(3);
+          if (metadata.purpose !== 'dependency-lockfile-evidence-only') process.exit(4);
+          const expected = ['smm-web', 'admin-web', 'customer-web', 'owner-web'];
+          if (JSON.stringify(metadata.surfaces) !== JSON.stringify(expected)) process.exit(5);
+          NODE
+          LOCKS=(
+            apps/smm-web/package-lock.json
+            apps/admin-web/package-lock.json
+            apps/customer-web/package-lock.json
+            apps/owner-web/package-lock.json
+          )
+          for LOCK in "${LOCKS[@]}"; do
+            test -f "$ROOT/$LOCK"
+            cp "$ROOT/$LOCK" "source/$LOCK"
           done
           echo 'result=PASS' >> "$GITHUB_OUTPUT"
 
@@ -137,7 +147,7 @@ jobs:
               exit 1
             fi
           done
-          CHANGED="$(git diff --name-only | sort)"
+          CHANGED="$(git status --porcelain --untracked-files=all | sed -E 's/^.. //' | sort)"
           EXPECTED="$(printf '%s\n' apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json apps/smm-web/package-lock.json | sort)"
           test "$CHANGED" = "$EXPECTED" || { echo 'result=UNEXPECTED_DIFF' >> "$GITHUB_OUTPUT"; exit 1; }
           echo 'result=PASS' >> "$GITHUB_OUTPUT"
