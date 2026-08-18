@@ -166,7 +166,7 @@ jobs:
             run_stage "${SURFACE_ID}-install" npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false || exit 1
           fi
           run_test_stage "${SURFACE_ID}-test" npm --prefix "$APP_DIR" test || exit 1
-          run_typecheck_stage "${SURFACE_ID}-typecheck" tsc --noEmit -p "$APP_DIR/tsconfig.json" || exit 1
+          run_typecheck_stage "${SURFACE_ID}-typecheck" "$APP_DIR/node_modules/.bin/tsc" --noEmit -p "$APP_DIR/tsconfig.json" || exit 1
           run_stage "${SURFACE_ID}-build" npm --prefix "$APP_DIR" run build || exit 1
 
       - name: Report sanitized surface result
