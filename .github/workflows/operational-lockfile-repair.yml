@@ -5,7 +5,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 concurrency:
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout Builder definition
         uses: actions/checkout@v7
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -68,14 +68,13 @@ jobs:
           test -z "$(git -C source status --porcelain)"
           echo "Exact private source identity: PASS"
 
-      - name: Canonicalize operational surface lockfiles
+      - name: Canonicalize and verify operational surface lockfiles
         id: lockfiles
         shell: bash
         run: |
           set -euo pipefail
-          cd source
           APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
-          EXPECTED=$'apps/admin-web/package-lock.json\napps/customer-web/package-lock.json\napps/owner-web/package-lock.json\napps/smm-web/package-lock.json'
+          cd source
 
           for APP in "${APPS[@]}"; do
             test -f "$APP/package.json"
@@ -87,12 +86,6 @@ jobs:
             npm --prefix "$APP" ci --ignore-scripts --no-audit --no-fund >/dev/null
             echo "$APP lockfile + npm ci: PASS"
           done
-
-          git add -- apps/smm-web/package-lock.json apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json
-          STAGED="$(git diff --cached --name-only | sort)"
-          test "$STAGED" = "$EXPECTED"
-          test -z "$(git status --porcelain | grep -vE '^(M |A |\?\?) (apps/(smm-web|admin-web|customer-web|owner-web)/package-lock\.json)$' || true)"
-          echo "Operational lockfile-only diff: PASS"
 
           for LOCK in apps/smm-web/package-lock.json apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json; do
             APP_JSON="${LOCK%/package-lock.json}/package.json"
@@ -116,50 +109,59 @@ jobs:
             echo "owner_sha256=$(sha256sum apps/owner-web/package-lock.json | awk '{print $1}')"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Commit lockfiles to isolated private repair branch
-        id: writeback
+      - name: Publish dependency-only evidence branch in Builder
+        id: publish
         shell: bash
         env:
-          V1_LOCKFILE_WRITE_TOKEN: ${{ secrets.V1_B2_LOCKFILE_WRITE_TOKEN }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
-          test -n "$V1_LOCKFILE_WRITE_TOKEN"
-          cd source
           SHORT_SHA="${SOURCE_SHA:0:12}"
-          REPAIR_BRANCH="builder/operational-lockfiles-${SHORT_SHA}"
-          git switch -c "$REPAIR_BRANCH"
+          EVIDENCE_BRANCH="generated/operational-lockfiles-${SHORT_SHA}"
+          EVIDENCE_ROOT="generated/${SOURCE_SHA}"
+
           git config user.name "MoreFunOS V1 Builder"
           git config user.email "107616897+Pantonyeung@users.noreply.github.com"
-          git commit -m "build(operational): canonicalize surface dependency lockfiles"
-          REPAIR_COMMIT="$(git rev-parse HEAD)"
+          git switch -c "$EVIDENCE_BRANCH"
+          mkdir -p "$EVIDENCE_ROOT/apps/smm-web" "$EVIDENCE_ROOT/apps/admin-web" "$EVIDENCE_ROOT/apps/customer-web" "$EVIDENCE_ROOT/apps/owner-web"
+          cp source/apps/smm-web/package-lock.json "$EVIDENCE_ROOT/apps/smm-web/package-lock.json"
+          cp source/apps/admin-web/package-lock.json "$EVIDENCE_ROOT/apps/admin-web/package-lock.json"
+          cp source/apps/customer-web/package-lock.json "$EVIDENCE_ROOT/apps/customer-web/package-lock.json"
+          cp source/apps/owner-web/package-lock.json "$EVIDENCE_ROOT/apps/owner-web/package-lock.json"
 
-          ASKPASS="$RUNNER_TEMP/v1-operational-lockfile-write-askpass.sh"
-          cat > "$ASKPASS" <<'EOF'
-          #!/bin/sh
-          case "$1" in
-            *Username*) echo "x-access-token" ;;
-            *Password*) printf '%s\n' "$V1_LOCKFILE_WRITE_TOKEN" ;;
-            *) exit 1 ;;
-          esac
+          cat > "$EVIDENCE_ROOT/METADATA.json" <<EOF
+          {
+            "sourceRepository": "Pantonyeung/morefunos-v1",
+            "sourceSha": "${SOURCE_SHA}",
+            "purpose": "dependency-lockfile-evidence-only",
+            "surfaces": ["smm-web", "admin-web", "customer-web", "owner-web"]
+          }
           EOF
-          chmod 700 "$ASKPASS"
-          export GIT_ASKPASS="$ASKPASS"
-          export GIT_TERMINAL_PROMPT=0
-          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${REPAIR_BRANCH}"
-          rm -f "$ASKPASS"
 
-          echo "repair_branch=$REPAIR_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "repair_commit=$REPAIR_COMMIT" >> "$GITHUB_OUTPUT"
-          echo "Operational lockfile repair writeback: PASS"
+          git add -- "$EVIDENCE_ROOT"
+          STAGED="$(git diff --cached --name-only | sort)"
+          EXPECTED="$(printf '%s\n' \
+            "$EVIDENCE_ROOT/METADATA.json" \
+            "$EVIDENCE_ROOT/apps/admin-web/package-lock.json" \
+            "$EVIDENCE_ROOT/apps/customer-web/package-lock.json" \
+            "$EVIDENCE_ROOT/apps/owner-web/package-lock.json" \
+            "$EVIDENCE_ROOT/apps/smm-web/package-lock.json" | sort)"
+          test "$STAGED" = "$EXPECTED"
+          git commit -m "build(operational): record canonical surface lockfiles for ${SHORT_SHA}"
+          EVIDENCE_COMMIT="$(git rev-parse HEAD)"
+          git push origin "HEAD:refs/heads/${EVIDENCE_BRANCH}"
+
+          echo "evidence_branch=$EVIDENCE_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "evidence_commit=$EVIDENCE_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Dependency-only Builder evidence branch: PASS"
 
       - name: Post sanitized repair result
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-          REPAIR_BRANCH: ${{ steps.writeback.outputs.repair_branch }}
-          REPAIR_COMMIT: ${{ steps.writeback.outputs.repair_commit }}
+          EVIDENCE_BRANCH: ${{ steps.publish.outputs.evidence_branch }}
+          EVIDENCE_COMMIT: ${{ steps.publish.outputs.evidence_commit }}
           SMM_SHA256: ${{ steps.lockfiles.outputs.smm_sha256 }}
           ADMIN_SHA256: ${{ steps.lockfiles.outputs.admin_sha256 }}
           CUSTOMER_SHA256: ${{ steps.lockfiles.outputs.customer_sha256 }}
@@ -167,5 +169,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BODY="operational-lockfiles ${SOURCE_SHA} PASS branch=${REPAIR_BRANCH} commit=${REPAIR_COMMIT} smm=${SMM_SHA256} admin=${ADMIN_SHA256} customer=${CUSTOMER_SHA256} owner=${OWNER_SHA256}"
+          BODY="operational-lockfiles ${SOURCE_SHA} PASS builder_branch=${EVIDENCE_BRANCH} builder_commit=${EVIDENCE_COMMIT} smm=${SMM_SHA256} admin=${ADMIN_SHA256} customer=${CUSTOMER_SHA256} owner=${OWNER_SHA256}"
           gh api "repos/${GITHUB_REPOSITORY}/issues/2/comments" -f body="$BODY" >/dev/null
