@@ -60,6 +60,24 @@ jobs:
         run: |
           set -u
           cd source
+          NODE_VERSION="$(node --version | tr -cd '0-9A-Za-z._-')"
+          NPM_VERSION="$(npm --version | tr -cd '0-9A-Za-z._-')"
+
+          extract_npm_code() {
+            local log="$1"
+            local code
+            code="$(sed -nE 's/^npm (ERR!|error) code ([A-Z][A-Z0-9_]*)$/\2/p' "$log" | head -1 || true)"
+            if [[ -z "$code" ]]; then
+              for candidate in ERESOLVE EAI_AGAIN ECONNRESET ETIMEDOUT ENETUNREACH ENOENT ETARGET E404 EACCES EPERM; do
+                if grep -Eq "(^|[^A-Z0-9_])${candidate}([^A-Z0-9_]|$)" "$log"; then
+                  code="$candidate"
+                  break
+                fi
+              done
+            fi
+            printf '%s' "${code:-UNKNOWN}"
+          }
+
           APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
           for APP in "${APPS[@]}"; do
             ID="$(basename "$APP" | tr '-' '_')"
@@ -67,19 +85,17 @@ jobs:
             rm -rf "$APP/node_modules"
             rm -f "$APP/package-lock.json"
             if ! npm --prefix "$APP" install --package-lock-only --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
-              CODE="$(grep -Eo '(npm (ERR!|error) code )?[A-Z][A-Z0-9_]+' "$LOG" | tail -1 | grep -Eo '[A-Z][A-Z0-9_]+' || true)"
-              CODE="${CODE:-UNKNOWN}"
-              echo "result=${ID}:lockgen:${CODE}" >> "$GITHUB_OUTPUT"
+              CODE="$(extract_npm_code "$LOG")"
+              echo "result=${ID}:lockgen:${CODE}:node_${NODE_VERSION}:npm_${NPM_VERSION}" >> "$GITHUB_OUTPUT"
               exit 1
             fi
             if ! npm --prefix "$APP" ci --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
-              CODE="$(grep -Eo '(npm (ERR!|error) code )?[A-Z][A-Z0-9_]+' "$LOG" | tail -1 | grep -Eo '[A-Z][A-Z0-9_]+' || true)"
-              CODE="${CODE:-UNKNOWN}"
-              echo "result=${ID}:ci:${CODE}" >> "$GITHUB_OUTPUT"
+              CODE="$(extract_npm_code "$LOG")"
+              echo "result=${ID}:ci:${CODE}:node_${NODE_VERSION}:npm_${NPM_VERSION}" >> "$GITHUB_OUTPUT"
               exit 1
             fi
           done
-          echo "result=PASS" >> "$GITHUB_OUTPUT"
+          echo "result=PASS:node_${NODE_VERSION}:npm_${NPM_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Report sanitized diagnostic
         if: ${{ !cancelled() }}
