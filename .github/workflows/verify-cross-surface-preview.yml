@@ -106,17 +106,26 @@ jobs:
           : > "$LOG"
           cd source
 
+          has_script() {
+            local name="$1"
+            node - "$APP_DIR/package.json" "$name" <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          process.exit(pkg.scripts && typeof pkg.scripts[process.argv[3]] === 'string' ? 0 : 1);
+          NODE
+          }
+
           sanitize_identifier() {
             printf '%s' "$1" \
               | tr '[:space:]' '_' \
-              | tr -cd 'A-Za-z0-9_./,:-' \
-              | cut -c1-180
+              | tr -cd 'A-Za-z0-9_./,:>+-' \
+              | cut -c1-220
           }
 
           set_failure() {
             local stage="$1"
             local diagnostic="${2:-UNAVAILABLE}"
-            if [[ ! "$diagnostic" =~ ^[A-Za-z0-9_./,:-]+$ ]]; then diagnostic='UNAVAILABLE'; fi
+            if [[ ! "$diagnostic" =~ ^[A-Za-z0-9_./,:>+-]+$ ]]; then diagnostic='UNAVAILABLE'; fi
             echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
             echo "diagnostic=$diagnostic" >> "$GITHUB_OUTPUT"
             echo "$stage: FAIL diagnostic=$diagnostic"
@@ -145,33 +154,25 @@ jobs:
             fi
             cat "$STAGE_LOG" >> "$LOG"
             sed -r 's/\x1B\[[0-9;]*[mK]//g' "$STAGE_LOG" > "$PLAIN_LOG"
-            local diagnostic
-            local test_identifier
-            local error_code
-            local error_kind
-            local source_location
+            local diagnostic=''
+            local test_identifier=''
+            local error_code=''
+            local error_kind=''
+            local source_location=''
             diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?:[0-9]+:[0-9]+' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
             if [[ -z "$diagnostic" ]]; then
               diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
             fi
-            test_identifier="$(grep -E '^[[:space:]]*(not ok [0-9]+ - |× |FAIL )' "$PLAIN_LOG" | head -1 | sed -E 's/^[[:space:]]*not ok [0-9]+ - //; s/^[[:space:]]*×[[:space:]]*//; s/^[[:space:]]*FAIL[[:space:]]+//' || true)"
+            test_identifier="$(grep -E '^[[:space:]]*(not ok [0-9]+ - |× |❯ |FAIL )' "$PLAIN_LOG" | head -1 | sed -E 's/^[[:space:]]*not ok [0-9]+ - //; s/^[[:space:]]*[×❯][[:space:]]*//; s/^[[:space:]]*FAIL[[:space:]]+//' || true)"
             if [[ -n "$test_identifier" ]]; then
               test_identifier="$(sanitize_identifier "$test_identifier")"
-              if [[ -n "$test_identifier" ]]; then
-                diagnostic="${diagnostic:+${diagnostic},}test:${test_identifier}"
-              fi
+              diagnostic="${diagnostic:+${diagnostic},}test:${test_identifier}"
             fi
             error_code="$(grep -Eo 'ERR_[A-Z0-9_]+' "$PLAIN_LOG" | head -1 || true)"
-            if [[ -n "$error_code" ]]; then
-              diagnostic="${diagnostic:+${diagnostic},}code:${error_code}"
-            fi
-            error_kind="$(grep -Eo '(SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
-            if [[ -n "$error_kind" ]]; then
-              diagnostic="${diagnostic:+${diagnostic},}kind:${error_kind}"
-            fi
-            source_location="$(grep -Eo '(packages|apps)/[A-Za-z0-9_./-]+\.[cm]?[jt]sx?:[0-9]+(:[0-9]+)?' "$PLAIN_LOG" \
-              | grep -Ev '\.(test|spec)\.' \
-              | head -1 || true)"
+            if [[ -n "$error_code" ]]; then diagnostic="${diagnostic:+${diagnostic},}code:${error_code}"; fi
+            error_kind="$(grep -Eo '(TestingLibraryElementError|AssertionError|SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
+            if [[ -n "$error_kind" ]]; then diagnostic="${diagnostic:+${diagnostic},}kind:${error_kind}"; fi
+            source_location="$(grep -Eo '(packages|apps)/[A-Za-z0-9_./-]+\.[cm]?[jt]sx?:[0-9]+(:[0-9]+)?' "$PLAIN_LOG" | grep -Ev '\.(test|spec)\.' | head -1 || true)"
             if [[ -n "$source_location" ]]; then
               source_location="$(sanitize_identifier "$source_location")"
               diagnostic="${diagnostic:+${diagnostic},}source:${source_location}"
@@ -201,7 +202,19 @@ jobs:
           else
             run_stage "${SURFACE_ID}-install" npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false || exit 1
           fi
-          run_test_stage "${SURFACE_ID}-test" npm --prefix "$APP_DIR" test || exit 1
+
+          if has_script 'test:contract'; then
+            run_test_stage "${SURFACE_ID}-contract-test" npm --prefix "$APP_DIR" run test:contract || exit 1
+          fi
+          if has_script 'test:ui'; then
+            run_test_stage "${SURFACE_ID}-ui-test" npm --prefix "$APP_DIR" run test:ui -- --reporter=verbose || exit 1
+            if [[ "$SURFACE_ID" == 'smm' ]]; then
+              run_test_stage "${SURFACE_ID}-remaining-tests" npm --prefix "$APP_DIR" test || exit 1
+            fi
+          else
+            run_test_stage "${SURFACE_ID}-test" npm --prefix "$APP_DIR" test || exit 1
+          fi
+
           run_typecheck_stage "${SURFACE_ID}-typecheck" "$APP_DIR/node_modules/.bin/tsc" --noEmit -p "$APP_DIR/tsconfig.json" || exit 1
           run_stage "${SURFACE_ID}-build" npm --prefix "$APP_DIR" run build || exit 1
 
