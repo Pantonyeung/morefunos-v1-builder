@@ -139,7 +139,10 @@ jobs:
             cat "$STAGE_LOG" >> "$LOG"
             sed -r 's/\x1B\[[0-9;]*[mK]//g' "$STAGE_LOG" > "$PLAIN_LOG"
             local diagnostic
-            diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?' "$PLAIN_LOG" | sort -u | head -5 | paste -sd, - || true)"
+            diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?:[0-9]+:[0-9]+' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
+            if [[ -z "$diagnostic" ]]; then
+              diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
+            fi
             set_failure "$stage" "${diagnostic:-UNAVAILABLE}"
             return 1
           }
