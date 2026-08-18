@@ -149,6 +149,7 @@ jobs:
             local test_identifier
             local error_code
             local error_kind
+            local source_location
             diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?:[0-9]+:[0-9]+' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
             if [[ -z "$diagnostic" ]]; then
               diagnostic="$(grep -Eo '([A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(test|spec)\.[cm]?[jt]sx?' "$PLAIN_LOG" | sed -E 's#^.*/(src/[^ ]+)$#\1#' | sort -u | head -5 | paste -sd, - || true)"
@@ -167,6 +168,13 @@ jobs:
             error_kind="$(grep -Eo '(SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
             if [[ -n "$error_kind" ]]; then
               diagnostic="${diagnostic:+${diagnostic},}kind:${error_kind}"
+            fi
+            source_location="$(grep -Eo '(packages|apps)/[A-Za-z0-9_./-]+\.[cm]?[jt]sx?:[0-9]+(:[0-9]+)?' "$PLAIN_LOG" \
+              | grep -Ev '\.(test|spec)\.' \
+              | head -1 || true)"
+            if [[ -n "$source_location" ]]; then
+              source_location="$(sanitize_identifier "$source_location")"
+              diagnostic="${diagnostic:+${diagnostic},}source:${source_location}"
             fi
             set_failure "$stage" "${diagnostic:-UNAVAILABLE}"
             return 1
