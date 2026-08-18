@@ -1,0 +1,171 @@
+name: Owner Operational Surface Lockfile Repair
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: operational-lockfile-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/generate-operational-lockfiles ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      COMMENT_BODY: ${{ github.event.comment.body }}
+
+    steps:
+      - name: Validate immutable source request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(printf '%s' "$COMMENT_BODY" | sed -nE 's#^/generate-operational-lockfiles[[:space:]]+([0-9a-fA-F]{40})[[:space:]]*$#\1#p' | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "command must contain one exact 40-character source SHA" >&2
+            exit 1
+          fi
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "Exact operational lockfile source request: PASS"
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          test -z "$(git -C source status --porcelain)"
+          echo "Exact private source identity: PASS"
+
+      - name: Canonicalize operational surface lockfiles
+        id: lockfiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
+          EXPECTED=$'apps/admin-web/package-lock.json\napps/customer-web/package-lock.json\napps/owner-web/package-lock.json\napps/smm-web/package-lock.json'
+
+          for APP in "${APPS[@]}"; do
+            test -f "$APP/package.json"
+            rm -rf "$APP/node_modules"
+            rm -f "$APP/package-lock.json"
+            npm --prefix "$APP" install --package-lock-only --ignore-scripts --no-audit --no-fund >/dev/null
+            test -f "$APP/package-lock.json"
+            node -e "JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8'))" "$APP/package-lock.json"
+            npm --prefix "$APP" ci --ignore-scripts --no-audit --no-fund >/dev/null
+            echo "$APP lockfile + npm ci: PASS"
+          done
+
+          git add -- apps/smm-web/package-lock.json apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json
+          STAGED="$(git diff --cached --name-only | sort)"
+          test "$STAGED" = "$EXPECTED"
+          test -z "$(git status --porcelain | grep -vE '^(M |A |\?\?) (apps/(smm-web|admin-web|customer-web|owner-web)/package-lock\.json)$' || true)"
+          echo "Operational lockfile-only diff: PASS"
+
+          for LOCK in apps/smm-web/package-lock.json apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json; do
+            APP_JSON="${LOCK%/package-lock.json}/package.json"
+            node - "$APP_JSON" "$LOCK" <<'NODE'
+          const fs = require('node:fs');
+          const [pkgPath, lockPath] = process.argv.slice(2);
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+          const root = lock.packages?.[''];
+          if (!root || root.name !== pkg.name || root.version !== pkg.version) {
+            throw new Error(`LOCK_IDENTITY_MISMATCH:${lockPath}`);
+          }
+          NODE
+          done
+          echo "Operational lockfile identity: PASS"
+
+          {
+            echo "smm_sha256=$(sha256sum apps/smm-web/package-lock.json | awk '{print $1}')"
+            echo "admin_sha256=$(sha256sum apps/admin-web/package-lock.json | awk '{print $1}')"
+            echo "customer_sha256=$(sha256sum apps/customer-web/package-lock.json | awk '{print $1}')"
+            echo "owner_sha256=$(sha256sum apps/owner-web/package-lock.json | awk '{print $1}')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Commit lockfiles to isolated private repair branch
+        id: writeback
+        shell: bash
+        env:
+          V1_LOCKFILE_WRITE_TOKEN: ${{ secrets.V1_B2_LOCKFILE_WRITE_TOKEN }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$V1_LOCKFILE_WRITE_TOKEN"
+          cd source
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          REPAIR_BRANCH="builder/operational-lockfiles-${SHORT_SHA}"
+          git switch -c "$REPAIR_BRANCH"
+          git config user.name "MoreFunOS V1 Builder"
+          git config user.email "107616897+Pantonyeung@users.noreply.github.com"
+          git commit -m "build(operational): canonicalize surface dependency lockfiles"
+          REPAIR_COMMIT="$(git rev-parse HEAD)"
+
+          ASKPASS="$RUNNER_TEMP/v1-operational-lockfile-write-askpass.sh"
+          cat > "$ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "x-access-token" ;;
+            *Password*) printf '%s\n' "$V1_LOCKFILE_WRITE_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS"
+          export GIT_TERMINAL_PROMPT=0
+          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${REPAIR_BRANCH}"
+          rm -f "$ASKPASS"
+
+          echo "repair_branch=$REPAIR_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "repair_commit=$REPAIR_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Operational lockfile repair writeback: PASS"
+
+      - name: Post sanitized repair result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          REPAIR_BRANCH: ${{ steps.writeback.outputs.repair_branch }}
+          REPAIR_COMMIT: ${{ steps.writeback.outputs.repair_commit }}
+          SMM_SHA256: ${{ steps.lockfiles.outputs.smm_sha256 }}
+          ADMIN_SHA256: ${{ steps.lockfiles.outputs.admin_sha256 }}
+          CUSTOMER_SHA256: ${{ steps.lockfiles.outputs.customer_sha256 }}
+          OWNER_SHA256: ${{ steps.lockfiles.outputs.owner_sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="operational-lockfiles ${SOURCE_SHA} PASS branch=${REPAIR_BRANCH} commit=${REPAIR_COMMIT} smm=${SMM_SHA256} admin=${ADMIN_SHA256} customer=${CUSTOMER_SHA256} owner=${OWNER_SHA256}"
+          gh api "repos/${GITHUB_REPOSITORY}/issues/2/comments" -f body="$BODY" >/dev/null
