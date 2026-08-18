@@ -1,0 +1,96 @@
+name: Owner Diagnose Operational Lockfiles
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  diagnose:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/diagnose-operational-lockfiles ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+    steps:
+      - name: Validate immutable diagnostic request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/diagnose-operational-lockfiles '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          test "$COMMAND" = "/diagnose-operational-lockfiles ${SOURCE_SHA}"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git -C source status --porcelain)"
+
+      - name: Diagnose package-lock generation and npm ci
+        id: diag
+        shell: bash
+        run: |
+          set -u
+          cd source
+          APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
+          for APP in "${APPS[@]}"; do
+            ID="$(basename "$APP" | tr '-' '_')"
+            LOG="$RUNNER_TEMP/${ID}.log"
+            rm -rf "$APP/node_modules"
+            rm -f "$APP/package-lock.json"
+            if ! npm --prefix "$APP" install --package-lock-only --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
+              CODE="$(grep -Eo '(npm (ERR!|error) code )?[A-Z][A-Z0-9_]+' "$LOG" | tail -1 | grep -Eo '[A-Z][A-Z0-9_]+' || true)"
+              CODE="${CODE:-UNKNOWN}"
+              echo "result=${ID}:lockgen:${CODE}" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            if ! npm --prefix "$APP" ci --ignore-scripts --no-audit --no-fund >"$LOG" 2>&1; then
+              CODE="$(grep -Eo '(npm (ERR!|error) code )?[A-Z][A-Z0-9_]+' "$LOG" | tail -1 | grep -Eo '[A-Z][A-Z0-9_]+' || true)"
+              CODE="${CODE:-UNKNOWN}"
+              echo "result=${ID}:ci:${CODE}" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          done
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Report sanitized diagnostic
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RESULT: ${{ steps.diag.outputs.result }}
+        run: |
+          set -euo pipefail
+          BODY="operational-lockfile-diagnostic ${SOURCE_SHA} ${RESULT:-UNKNOWN}"
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
