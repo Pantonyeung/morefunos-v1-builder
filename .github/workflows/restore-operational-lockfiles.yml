@@ -1,0 +1,198 @@
+name: Owner Restore Verified Operational Lockfiles
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  restore:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/restore-operational-lockfiles ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      BASELINE_SHA: d13367a9b794ea81ca896c22714371aff0169f11
+      EVIDENCE_REF: generated/operational-lockfiles-d13367a9b794
+      TARGET_BRANCH: agent/operational-chain-integration-159-162
+    steps:
+      - name: Validate immutable restore request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/restore-operational-lockfiles '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          test "$COMMAND" = "/restore-operational-lockfiles ${SOURCE_SHA}"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout certified Builder lockfile evidence
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.EVIDENCE_REF }}
+          path: evidence
+          persist-credentials: false
+
+      - name: Checkout exact current private source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Checkout certified private dependency baseline
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.BASELINE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: baseline
+          persist-credentials: false
+
+      - name: Prove dependency manifests are unchanged
+        id: manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
+          test "$(git -C baseline rev-parse HEAD)" = "$BASELINE_SHA"
+          APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
+          for APP in "${APPS[@]}"; do
+            cmp -s "source/$APP/package.json" "baseline/$APP/package.json" || {
+              echo "result=MANIFEST_CHANGED:$(basename "$APP" | tr '-' '_')" >> "$GITHUB_OUTPUT"
+              exit 1
+            }
+          done
+          cmp -s source/packages/ui/package.json baseline/packages/ui/package.json || {
+            echo "result=MANIFEST_CHANGED:ui" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Verify certified lockfile hashes and restore
+        id: locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="evidence/generated/${BASELINE_SHA}"
+          declare -A EXPECTED
+          EXPECTED[apps/smm-web/package-lock.json]='4c42f3a4bc273fed899ffefa46256c6727440b2c8369427b4136ebef6905de1d'
+          EXPECTED[apps/admin-web/package-lock.json]='8cb05bdaa9d171ad61facd008835de9ff61a4a4667e0863b201f6a1bd78e0c81'
+          EXPECTED[apps/customer-web/package-lock.json]='49d5cbb2b536ad776924bcb82f56d5fb2ae3592235d5bf38732093db4a3'
+          EXPECTED[apps/owner-web/package-lock.json]='9d125cdc2a57f8c49a3be2140350650dc973b1cde351dc6475dac0eb1700a6d9'
+          for LOCK in "${!EXPECTED[@]}"; do
+            FILE="$ROOT/$LOCK"
+            test -f "$FILE"
+            ACTUAL="$(sha256sum "$FILE" | awk '{print $1}')"
+            test "$ACTUAL" = "${EXPECTED[$LOCK]}"
+            cp "$FILE" "source/$LOCK"
+          done
+          echo 'result=PASS' >> "$GITHUB_OUTPUT"
+
+      - name: Validate restored identities and npm ci
+        id: ci
+        shell: bash
+        run: |
+          set -u
+          extract_code() {
+            local log="$1" code
+            code="$(sed -nE 's/^npm (ERR!|error) code ([A-Z][A-Z0-9_]*)$/\2/p' "$log" | head -1 || true)"
+            printf '%s' "${code:-UNKNOWN}"
+          }
+          cd source
+          APPS=(apps/smm-web apps/admin-web apps/customer-web apps/owner-web)
+          for APP in "${APPS[@]}"; do
+            ID="$(basename "$APP" | tr '-' '_')"
+            node - "$APP/package.json" "$APP/package-lock.json" <<'NODE'
+          const fs = require('node:fs');
+          const [pkgPath, lockPath] = process.argv.slice(2);
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+          const root = lock.packages?.[''];
+          if (!root || root.name !== pkg.name || root.version !== pkg.version) process.exit(2);
+          NODE
+            if [[ $? -ne 0 ]]; then
+              echo "result=${ID}:LOCK_IDENTITY" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            LOG="$RUNNER_TEMP/${ID}.log"
+            rm -rf "$APP/node_modules"
+            if ! npm --prefix "$APP" ci --ignore-scripts --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=10000 >"$LOG" 2>&1; then
+              echo "result=${ID}:ci:$(extract_code "$LOG")" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          done
+          CHANGED="$(git diff --name-only | sort)"
+          EXPECTED="$(printf '%s\n' apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json apps/smm-web/package-lock.json | sort)"
+          test "$CHANGED" = "$EXPECTED" || { echo 'result=UNEXPECTED_DIFF' >> "$GITHUB_OUTPUT"; exit 1; }
+          echo 'result=PASS' >> "$GITHUB_OUTPUT"
+
+      - name: Commit verified lockfiles and fast-forward integration branch
+        id: writeback
+        if: steps.manifests.outputs.result == 'PASS' && steps.locks.outputs.result == 'PASS' && steps.ci.outputs.result == 'PASS'
+        shell: bash
+        env:
+          V1_WRITE_TOKEN: ${{ secrets.V1_B2_LOCKFILE_WRITE_TOKEN }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$V1_WRITE_TOKEN"
+          cd source
+          REMOTE_HEAD="$(git ls-remote https://x-access-token:${V1_WRITE_TOKEN}@github.com/Pantonyeung/morefunos-v1.git refs/heads/${TARGET_BRANCH} | awk '{print $1}')"
+          test "$REMOTE_HEAD" = "$SOURCE_SHA"
+          git config user.name 'MoreFunOS V1 Builder'
+          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git add -- apps/smm-web/package-lock.json apps/admin-web/package-lock.json apps/customer-web/package-lock.json apps/owner-web/package-lock.json
+          git commit -m 'build(operational): restore certified reproducible lockfiles'
+          NEW_SHA="$(git rev-parse HEAD)"
+          ASKPASS="$RUNNER_TEMP/v1-lock-restore-askpass.sh"
+          cat > "$ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "x-access-token" ;;
+            *Password*) printf '%s\n' "$V1_WRITE_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS"
+          export GIT_TERMINAL_PROMPT=0
+          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${TARGET_BRANCH}"
+          rm -f "$ASKPASS"
+          echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Report sanitized restore result
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          MANIFEST_RESULT: ${{ steps.manifests.outputs.result }}
+          LOCK_RESULT: ${{ steps.locks.outputs.result }}
+          CI_RESULT: ${{ steps.ci.outputs.result }}
+          NEW_SHA: ${{ steps.writeback.outputs.new_sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${NEW_SHA:-}" ]]; then
+            BODY="operational-lockfile-restore ${SOURCE_SHA} PASS new_sha=${NEW_SHA}"
+          else
+            BODY="operational-lockfile-restore ${SOURCE_SHA} FAIL manifest=${MANIFEST_RESULT:-UNKNOWN} locks=${LOCK_RESULT:-UNKNOWN} ci=${CI_RESULT:-UNKNOWN}"
+          fi
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
