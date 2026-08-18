@@ -20,6 +20,8 @@ jobs:
         include:
           - id: smt
             directory: apps/smt-web
+          - id: smm
+            directory: apps/smm-web
           - id: admin
             directory: apps/admin-web
           - id: customer
@@ -32,6 +34,7 @@ jobs:
       COMMENT_BODY: ${{ github.event.comment.body }}
       APP_DIR: ${{ matrix.directory }}
       SURFACE_ID: ${{ matrix.id }}
+
     steps:
       - name: Validate exact source SHA
         id: request
@@ -40,10 +43,8 @@ jobs:
           set -euo pipefail
           COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
           SOURCE_SHA="${COMMAND#'/diagnose-ui '}"
-          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ || "$COMMAND" != "/diagnose-ui ${SOURCE_SHA}" ]]; then
-            echo 'UI diagnostic requires exactly one 40-character source SHA.' >&2
-            exit 1
-          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "$COMMAND" == "/diagnose-ui ${SOURCE_SHA}" ]]
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node 22
@@ -66,62 +67,87 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
 
+      - name: Install surface
+        id: install
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if [[ -f "$APP_DIR/package-lock.json" ]]; then
+            npm --prefix "$APP_DIR" ci --no-audit --no-fund >/dev/null 2>&1
+          else
+            npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false >/dev/null 2>&1
+          fi
+
       - name: Run UI test and sanitize first failure
         id: ui
+        if: steps.install.outcome == 'success'
         continue-on-error: true
         shell: bash
         run: |
           set -u
           cd source
-          if [[ -f "$APP_DIR/package-lock.json" ]]; then
-            npm --prefix "$APP_DIR" ci --no-audit --no-fund >/dev/null 2>&1 || {
-              echo 'result=INSTALL_FAIL' >> "$GITHUB_OUTPUT"
-              exit 1
-            }
-          else
-            npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false >/dev/null 2>&1 || {
-              echo 'result=INSTALL_FAIL' >> "$GITHUB_OUTPUT"
-              exit 1
-            }
-          fi
+          LOG="$GITHUB_WORKSPACE/private-${SURFACE_ID}-ui.log"
+          PLAIN="$GITHUB_WORKSPACE/private-${SURFACE_ID}-ui-plain.log"
 
           if ! node -e "const p=require('./$APP_DIR/package.json'); process.exit(p.scripts?.['test:ui'] ? 0 : 1)"; then
             echo 'result=NO_UI_SCRIPT' >> "$GITHUB_OUTPUT"
-            exit 0
+            exit 1
           fi
 
-          LOG="$GITHUB_WORKSPACE/private-${SURFACE_ID}-ui.log"
-          PLAIN="$GITHUB_WORKSPACE/private-${SURFACE_ID}-ui-plain.log"
           if npm --prefix "$APP_DIR" run test:ui -- --reporter=verbose >"$LOG" 2>&1; then
             echo 'result=PASS' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
           sed -r 's/\x1B\[[0-9;]*[mK]//g' "$LOG" > "$PLAIN"
+
           TEST_NAME="$(grep -E '^[[:space:]]*[×]' "$PLAIN" | head -1 | sed -E 's/^[[:space:]]*×[[:space:]]*//' || true)"
           if [[ -z "$TEST_NAME" ]]; then
             TEST_NAME="$(grep -E '^[[:space:]]*FAIL[[:space:]]+' "$PLAIN" | head -1 | sed -E 's/^[[:space:]]*FAIL[[:space:]]+//' || true)"
           fi
-          TEST_NAME="$(printf '%s' "$TEST_NAME" | tr '[:space:]' '_' | tr -cd 'A-Za-z0-9_./,:>+-' | cut -c1-220)"
-          ERROR_KIND="$(grep -Eo '(TestingLibraryElementError|AssertionError|TypeError|ReferenceError|SyntaxError)' "$PLAIN" | head -1 || true)"
-          echo "result=FAIL" >> "$GITHUB_OUTPUT"
+          TEST_NAME="$(printf '%s' "$TEST_NAME" | tr '[:space:]' '_' | tr -cd 'A-Za-z0-9_./,:>+-' | cut -c1-180)"
+
+          ERROR_KIND="$(grep -Eo '(TestingLibraryElementError|AssertionError|TypeError|ReferenceError|SyntaxError|RangeError)' "$PLAIN" | head -1 || true)"
+          SOURCE_LOCATION="$(grep -Eo '(packages|apps)/[A-Za-z0-9_./-]+\.[cm]?[jt]sx?:[0-9]+(:[0-9]+)?' "$PLAIN" | grep -Ev '\.(test|spec)\.' | head -1 || true)"
+          SOURCE_LOCATION="$(printf '%s' "$SOURCE_LOCATION" | tr -cd 'A-Za-z0-9_./:-' | cut -c1-180)"
+
+          echo 'result=FAIL' >> "$GITHUB_OUTPUT"
           echo "test_name=${TEST_NAME:-UNAVAILABLE}" >> "$GITHUB_OUTPUT"
           echo "error_kind=${ERROR_KIND:-UNAVAILABLE}" >> "$GITHUB_OUTPUT"
+          echo "source_location=${SOURCE_LOCATION:-UNAVAILABLE}" >> "$GITHUB_OUTPUT"
           exit 1
 
       - name: Report sanitized UI result
         if: always()
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          UI_OUTCOME: ${{ steps.ui.outcome }}
           RESULT: ${{ steps.ui.outputs.result }}
           TEST_NAME: ${{ steps.ui.outputs.test_name }}
           ERROR_KIND: ${{ steps.ui.outputs.error_kind }}
+          SOURCE_LOCATION: ${{ steps.ui.outputs.source_location }}
         run: |
           set -euo pipefail
-          BODY="ui-diagnostic-${SURFACE_ID} ${SOURCE_SHA} result=${RESULT:-FAILED} test=${TEST_NAME:-UNAVAILABLE} kind=${ERROR_KIND:-UNAVAILABLE}"
+          if [[ "$INSTALL_OUTCOME" != 'success' ]]; then
+            BODY="ui-diagnostic-${SURFACE_ID} ${SOURCE_SHA} result=INSTALL_FAIL"
+          elif [[ "$UI_OUTCOME" == 'success' && "$RESULT" == 'PASS' ]]; then
+            BODY="ui-diagnostic-${SURFACE_ID} ${SOURCE_SHA} result=PASS"
+          else
+            BODY="ui-diagnostic-${SURFACE_ID} ${SOURCE_SHA} result=${RESULT:-FAIL} kind=${ERROR_KIND:-UNAVAILABLE} test=${TEST_NAME:-UNAVAILABLE} source=${SOURCE_LOCATION:-UNAVAILABLE}"
+          fi
           gh issue comment 2 --body "$BODY" >/dev/null
 
-      - name: Fail after sanitized diagnostic
-        if: steps.ui.outcome == 'failure'
-        run: exit 1
+      - name: Enforce diagnostic execution
+        if: always()
+        shell: bash
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          UI_OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          [[ "$INSTALL_OUTCOME" == 'success' ]]
+          [[ "$UI_OUTCOME" == 'success' ]]
