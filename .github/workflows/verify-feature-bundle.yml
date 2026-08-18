@@ -62,7 +62,7 @@ jobs:
           npm install --global --silent typescript@5.8.3
           test "$(tsc --version)" = 'Version 5.8.3'
 
-      - name: Execute COMBO-001 cross-surface verification
+      - name: Execute cross-surface feature verification
         id: verify
         continue-on-error: true
         shell: bash
@@ -106,6 +106,12 @@ jobs:
           [[ -z "$fail" ]] && run_stage 'admin-typecheck' tsc --noEmit -p apps/admin-web/tsconfig.json || true
           [[ -z "$fail" ]] && run_stage 'admin-build' npm --prefix apps/admin-web run build || true
 
+          [[ -z "$fail" ]] && run_stage 'owner-install' npm --prefix apps/owner-web install --no-audit --no-fund || true
+          [[ -z "$fail" ]] && run_stage 'owner-contract' node --experimental-strip-types --test apps/owner-web/src/owner-reporting-port.test.ts || true
+          [[ -z "$fail" ]] && run_stage 'owner-ui' npm --prefix apps/owner-web run test:ui || true
+          [[ -z "$fail" ]] && run_stage 'owner-typecheck' tsc --noEmit -p apps/owner-web/tsconfig.json || true
+          [[ -z "$fail" ]] && run_stage 'owner-build' npm --prefix apps/owner-web run build || true
+
           if [[ -n "$fail" ]]; then
             echo "failed_stage=$fail" >> "$GITHUB_OUTPUT"
             exit 1
@@ -123,10 +129,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
-            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=PASS scope=COMBO-001"
+            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=PASS scope=CROSS-SURFACE-POS"
           else
             EXCERPT="$(tail -c 3500 /tmp/feature-failure-excerpt.txt 2>/dev/null || true)"
-            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=FAIL failed_stage=${FAILED_STAGE:-UNAVAILABLE} scope=COMBO-001"
+            BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=FAIL failed_stage=${FAILED_STAGE:-UNAVAILABLE} scope=CROSS-SURFACE-POS"
             if [[ -n "$EXCERPT" ]]; then
               BODY="${BODY}
 
