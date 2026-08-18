@@ -1,0 +1,178 @@
+name: Owner V1 Verify Cross-Surface Preview
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  validate:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/verify-cross-surface ')
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.request.outputs.source_sha }}
+    steps:
+      - name: Validate immutable cross-surface verification request
+        id: request
+        shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          case "$COMMAND" in
+            '/verify-cross-surface '*) SOURCE_SHA="${COMMAND#'/verify-cross-surface '}" ;;
+            *) echo 'Unsupported cross-surface verification command.' >&2; exit 1 ;;
+          esac
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'source SHA must be exactly 40 hexadecimal characters.' >&2
+            exit 1
+          fi
+          EXPECTED="/verify-cross-surface ${SOURCE_SHA}"
+          if [[ "$COMMAND" != "$EXPECTED" ]]; then
+            echo 'Command must contain exactly one command and one SHA.' >&2
+            exit 1
+          fi
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+          echo 'Immutable cross-surface source request: PASS'
+
+  surface:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: smt
+            label: SMT
+            directory: apps/smt-web
+          - id: smm
+            label: SMM
+            directory: apps/smm-web
+          - id: admin
+            label: Admin
+            directory: apps/admin-web
+          - id: customer
+            label: Customer
+            directory: apps/customer-web
+          - id: owner
+            label: Owner
+            directory: apps/owner-web
+    name: ${{ matrix.label }} Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ needs.validate.outputs.source_sha }}
+      APP_DIR: ${{ matrix.directory }}
+      SURFACE_ID: ${{ matrix.id }}
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ needs.validate.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact private source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$SOURCE_SHA"
+          echo "${SURFACE_ID}-source-identity: PASS"
+
+      - name: Verify surface without exposing private build logs
+        id: verify
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          LOG="$GITHUB_WORKSPACE/private-${SURFACE_ID}-verification.log"
+          : > "$LOG"
+          cd source
+
+          run_stage() {
+            local stage="$1"
+            shift
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (private details withheld)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          if [[ -f "$APP_DIR/package-lock.json" ]]; then
+            run_stage "${SURFACE_ID}-locked-install" npm --prefix "$APP_DIR" ci --no-audit --no-fund || exit 1
+          else
+            run_stage "${SURFACE_ID}-install" npm --prefix "$APP_DIR" install --no-audit --no-fund --package-lock=false || exit 1
+          fi
+          run_stage "${SURFACE_ID}-test" npm --prefix "$APP_DIR" test || exit 1
+          run_stage "${SURFACE_ID}-build" npm --prefix "$APP_DIR" run build || exit 1
+
+      - name: Publish sanitized surface result
+        if: always()
+        shell: bash
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          FAILED_STAGE: ${{ steps.verify.outputs.failed_stage }}
+        run: |
+          set -euo pipefail
+          echo "surface=${SURFACE_ID}"
+          echo "source_sha=${SOURCE_SHA}"
+          if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
+            echo "cross-surface-${SURFACE_ID}=PASS"
+          else
+            echo "cross-surface-${SURFACE_ID}=FAIL stage=${FAILED_STAGE:-UNAVAILABLE}"
+            exit 1
+          fi
+
+  preview-contract:
+    needs: validate
+    name: Preview Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ needs.validate.outputs.source_sha }}
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Checkout exact private MoreFunOS V1 source SHA
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ needs.validate.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SOURCE_SHA" = "$SOURCE_SHA"
+          echo 'preview-source-identity: PASS'
+      - name: Run public-safe preview contract test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          npm run test:preview >/dev/null 2>&1
+          echo 'preview-contract: PASS'
