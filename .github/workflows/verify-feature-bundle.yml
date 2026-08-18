@@ -70,6 +70,7 @@ jobs:
           set -u
           cd source
           fail=''
+          : > /tmp/feature-failure-excerpt.txt
           run_stage() {
             local name="$1"; shift
             echo "== $name =="
@@ -79,6 +80,7 @@ jobs:
             fi
             echo "$name: FAIL"
             fail="$name"
+            tail -n 60 /tmp/feature-stage.log > /tmp/feature-failure-excerpt.txt || true
             return 1
           }
 
@@ -123,7 +125,15 @@ jobs:
           if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
             BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=PASS scope=COMBO-001"
           else
+            EXCERPT="$(tail -c 3500 /tmp/feature-failure-excerpt.txt 2>/dev/null || true)"
             BODY="FEATURE_BUNDLE_VERIFY source=${SOURCE_SHA:-UNKNOWN} status=FAIL failed_stage=${FAILED_STAGE:-UNAVAILABLE} scope=COMBO-001"
+            if [[ -n "$EXCERPT" ]]; then
+              BODY="${BODY}
+
+\`\`\`text
+${EXCERPT}
+\`\`\`"
+            fi
           fi
           gh api "repos/${GITHUB_REPOSITORY}/issues/2/comments" -f body="$BODY" >/dev/null
 
