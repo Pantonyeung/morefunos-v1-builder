@@ -84,6 +84,7 @@ jobs:
 
           run_stage 'c-combo-contract' node --experimental-strip-types --test packages/admin/combo-policy-control.test.ts packages/runtime/business-runtime-projection.test.ts || true
           [[ -z "$fail" ]] && run_stage 'c-typecheck' tsc --noEmit -p tsconfig.json || true
+          [[ -z "$fail" ]] && run_stage 'smt-combo-contract' npm run test:c-smt-p0 || true
 
           [[ -z "$fail" ]] && run_stage 'smm-install' npm --prefix apps/smm-web ci --no-audit --no-fund || true
           [[ -z "$fail" ]] && run_stage 'smm-contract' node --experimental-strip-types --test apps/smm-web/src/smm-ordering-port.test.ts || true
@@ -92,12 +93,14 @@ jobs:
           [[ -z "$fail" ]] && run_stage 'smm-build' npm --prefix apps/smm-web run build || true
 
           [[ -z "$fail" ]] && run_stage 'customer-install' npm --prefix apps/customer-web install --no-audit --no-fund || true
-          [[ -z "$fail" ]] && run_stage 'customer-test' npm --prefix apps/customer-web test || true
+          [[ -z "$fail" ]] && run_stage 'customer-contract' node --experimental-strip-types --test apps/customer-web/src/customer-combo-port.test.ts || true
+          [[ -z "$fail" ]] && run_stage 'customer-ui' npm --prefix apps/customer-web run test:ui || true
           [[ -z "$fail" ]] && run_stage 'customer-typecheck' tsc --noEmit -p apps/customer-web/tsconfig.json || true
           [[ -z "$fail" ]] && run_stage 'customer-build' npm --prefix apps/customer-web run build || true
 
           [[ -z "$fail" ]] && run_stage 'admin-install' npm --prefix apps/admin-web install --no-audit --no-fund || true
-          [[ -z "$fail" ]] && run_stage 'admin-test' npm --prefix apps/admin-web test || true
+          [[ -z "$fail" ]] && run_stage 'admin-contract' node --experimental-strip-types --test apps/admin-web/src/admin-combo-port.test.ts || true
+          [[ -z "$fail" ]] && run_stage 'admin-ui' npm --prefix apps/admin-web run test:ui || true
           [[ -z "$fail" ]] && run_stage 'admin-typecheck' tsc --noEmit -p apps/admin-web/tsconfig.json || true
           [[ -z "$fail" ]] && run_stage 'admin-build' npm --prefix apps/admin-web run build || true
 
