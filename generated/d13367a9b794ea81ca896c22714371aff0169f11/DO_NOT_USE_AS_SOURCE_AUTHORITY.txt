@@ -1,0 +1,1 @@
+Builder-generated lockfiles and receipts are verification evidence only. MoreFunOS V1 private repository remains the sole Product/Source/Business/Development Authority.
