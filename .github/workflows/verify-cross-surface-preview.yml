@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
 
 jobs:
   validate:
@@ -125,22 +125,28 @@ jobs:
           run_stage "${SURFACE_ID}-test" npm --prefix "$APP_DIR" test || exit 1
           run_stage "${SURFACE_ID}-build" npm --prefix "$APP_DIR" run build || exit 1
 
-      - name: Publish sanitized surface result
+      - name: Report sanitized surface result
         if: always()
         shell: bash
         env:
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
           FAILED_STAGE: ${{ steps.verify.outputs.failed_stage }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          echo "surface=${SURFACE_ID}"
-          echo "source_sha=${SOURCE_SHA}"
           if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
-            echo "cross-surface-${SURFACE_ID}=PASS"
+            RESULT="PASS"
           else
-            echo "cross-surface-${SURFACE_ID}=FAIL stage=${FAILED_STAGE:-UNAVAILABLE}"
-            exit 1
+            RESULT="FAIL stage=${FAILED_STAGE:-UNAVAILABLE}"
           fi
+          BODY="cross-surface-${SURFACE_ID} ${SOURCE_SHA} ${RESULT}"
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
+
+      - name: Fail surface after sanitized result
+        if: steps.verify.outcome == 'failure'
+        run: exit 1
 
   preview-contract:
     needs: validate
@@ -170,9 +176,27 @@ jobs:
           test "$ACTUAL_SOURCE_SHA" = "$SOURCE_SHA"
           echo 'preview-source-identity: PASS'
       - name: Run public-safe preview contract test
+        id: preview
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           cd source
           npm run test:preview >/dev/null 2>&1
           echo 'preview-contract: PASS'
+      - name: Report sanitized preview result
+        if: always()
+        shell: bash
+        env:
+          PREVIEW_OUTCOME: ${{ steps.preview.outcome }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ "$PREVIEW_OUTCOME" == 'success' ]]; then RESULT='PASS'; else RESULT='FAIL'; fi
+          BODY="cross-surface-preview-contract ${SOURCE_SHA} ${RESULT}"
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
+      - name: Fail preview contract after sanitized result
+        if: steps.preview.outcome == 'failure'
+        run: exit 1
