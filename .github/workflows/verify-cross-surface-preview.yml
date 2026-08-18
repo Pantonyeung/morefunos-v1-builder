@@ -165,7 +165,7 @@ jobs:
             if [[ -n "$error_code" ]]; then
               diagnostic="${diagnostic:+${diagnostic},}code:${error_code}"
             fi
-            error_kind="$(grep -Eo '(SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
+            error_kind="$(grep -Eo '(TestingLibraryElementError|AssertionError|SyntaxError|TypeError|ReferenceError|RangeError)' "$PLAIN_LOG" | head -1 || true)"
             if [[ -n "$error_kind" ]]; then
               diagnostic="${diagnostic:+${diagnostic},}kind:${error_kind}"
             fi
