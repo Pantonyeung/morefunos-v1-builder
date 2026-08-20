@@ -39,6 +39,7 @@ jobs:
             /verify-ui-mother) COMMAND=verify-ui-mother ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
             /release-runtime) COMMAND=release-runtime ;;
+            /release-android) COMMAND=release-android ;;
             /runtime-status) COMMAND=runtime-status ;;
             *) echo 'Unsupported Owner Control V2 command.' >&2; exit 1 ;;
           esac
@@ -114,15 +115,20 @@ jobs:
       release_channel: ${{ needs.prepare.outputs.channel }}
     secrets: inherit
 
+  release-android:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'release-android'
+    uses: ./.github/workflows/android-release-v2.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
+
   runtime-status:
     needs: prepare
     if: needs.prepare.outputs.command == 'runtime-status'
     runs-on: ubuntu-24.04
-    outputs:
-      result: ${{ steps.status.outputs.result }}
     steps:
       - name: Check public OTA identity
-        id: status
         shell: bash
         env:
           SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
@@ -130,8 +136,7 @@ jobs:
           OTA_PUBLIC_ORIGIN: https://morefunos-v1-ota.pantonyeung.workers.dev
         run: |
           set -euo pipefail
-          SHORT_SHA="${SOURCE_SHA:0:12}"
-          EXPECTED="runtime-${CHANNEL}-${SHORT_SHA}"
+          EXPECTED="runtime-${CHANNEL}-${SOURCE_SHA:0:12}"
           curl --fail --silent --show-error --location --max-time 20 "$OTA_PUBLIC_ORIGIN/runtime-update.json" > "$RUNNER_TEMP/runtime-update.json"
           node - "$RUNNER_TEMP/runtime-update.json" "$EXPECTED" "$CHANNEL" <<'NODE'
           const fs=require('node:fs');
@@ -139,11 +144,10 @@ jobs:
           const m=JSON.parse(fs.readFileSync(file,'utf8'));
           if(m.releaseId!==expected || m.runtimeVersion!==expected || m.channel!==channel) process.exit(2);
           NODE
-          echo 'result=success' >> "$GITHUB_OUTPUT"
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-a, verify-b, verify-c, verify-abc, repair-smt-p01-lockfile, verify-ui-mother, release-runtime, runtime-status]
+    needs: [prepare, verify-a, verify-b, verify-c, verify-abc, repair-smt-p01-lockfile, verify-ui-mother, release-runtime, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -159,7 +163,8 @@ jobs:
           ABC: ${{ needs.verify-abc.result }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
           UI: ${{ needs.verify-ui-mother.result }}
-          RELEASE: ${{ needs.release-runtime.result }}
+          RUNTIME_RELEASE: ${{ needs.release-runtime.result }}
+          ANDROID_RELEASE: ${{ needs.release-android.result }}
           STATUS: ${{ needs.runtime-status.result }}
         run: |
           set -euo pipefail
@@ -170,7 +175,8 @@ jobs:
             verify-abc) RESULT="$ABC" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
             verify-ui-mother) RESULT="$UI" ;;
-            release-runtime) RESULT="$RELEASE" ;;
+            release-runtime) RESULT="$RUNTIME_RELEASE" ;;
+            release-android) RESULT="$ANDROID_RELEASE" ;;
             runtime-status) RESULT="$STATUS" ;;
             *) RESULT=unknown ;;
           esac
