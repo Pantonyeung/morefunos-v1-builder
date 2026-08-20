@@ -1,0 +1,94 @@
+name: P01 Canonical Verify
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prepare:
+    if: >-
+      github.event.issue.number == 50 &&
+      github.event.comment.user.login == 'Pantonyeung' &&
+      startsWith(github.event.comment.body, '/p01-canonical ')
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.parse.outputs.source_sha }}
+    steps:
+      - id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(printf '%s' "$BODY" | awk '{print $2}' | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Verify exact SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Locked install
+        run: npm --prefix apps/smt-web ci --no-audit --no-fund
+
+      - name: P01 canonical contract behavior
+        shell: bash
+        run: |
+          node --experimental-strip-types --test \
+            packages/order/order-service-mode.test.ts \
+            packages/runtime/smt-p01-workspace.test.ts \
+            packages/runtime/smt-p01-workspace-p0-contracts.test.ts \
+            packages/runtime/business-runtime-smt-p01.test.ts \
+            packages/customer/customer-authority.test.ts \
+            packages/customer/payment-restriction.test.ts \
+            apps/smt-web/src/smt-active-work-lifecycle.test.ts \
+            apps/smt-web/src/smt-active-work-port.test.ts
+
+      - name: P01 UI behavior + typecheck + build
+        run: npm --prefix apps/smt-web run verify:p01
+
+  report:
+    if: always() && needs.prepare.result == 'success'
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Publish one canonical result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$VERIFY_RESULT" == "success" ]]; then
+            BODY="P01_CANONICAL_VERIFY source_sha=$SOURCE_SHA result=PASS"
+          else
+            BODY="P01_CANONICAL_VERIFY source_sha=$SOURCE_SHA result=FAIL"
+          fi
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "$BODY"
