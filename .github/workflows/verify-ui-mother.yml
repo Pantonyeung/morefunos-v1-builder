@@ -13,6 +13,9 @@ on:
       failure_stage:
         description: 'Sanitized failing stage, or none'
         value: ${{ jobs.verify-ui-mother.outputs.failure_stage }}
+      failure_detail:
+        description: 'Sanitized compiler location/code detail when available'
+        value: ${{ jobs.verify-ui-mother.outputs.failure_detail }}
     secrets:
       V1_SOURCE_READ_TOKEN:
         required: true
@@ -41,6 +44,7 @@ jobs:
     outputs:
       artifact_name: ${{ steps.artifact.outputs.name }}
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
+      failure_detail: ${{ steps.diagnostic.outputs.detail }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
@@ -119,8 +123,19 @@ jobs:
         id: typescript
         shell: bash
         run: |
+          set -o pipefail
+          npm --prefix source/apps/smt-web exec -- tsc -b 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
+
+      - name: Capture sanitized TypeScript diagnostics
+        id: diagnostic
+        if: ${{ always() && steps.typescript.outcome == 'failure' }}
+        shell: bash
+        run: |
           set -euo pipefail
-          npm --prefix source/apps/smt-web exec -- tsc -b
+          DETAIL="$(sed -nE 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' "$RUNNER_TEMP/mother-tsc.log" | head -5 | paste -sd ',' -)"
+          if [[ -z "$DETAIL" ]]; then DETAIL='typescript-error-detail-unavailable'; fi
+          echo "detail=$DETAIL" >> "$GITHUB_OUTPUT"
+          echo "sanitized-typescript-detail=$DETAIL"
 
       - name: Run Vite production build
         id: vite_build
