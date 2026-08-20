@@ -95,10 +95,10 @@ jobs:
           test -f apps/smt-web/package.json
           rm -rf apps/smt-web/node_modules
           rm -f apps/smt-web/package-lock.json
-          npm --prefix apps/smt-web install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smt-web install --package-lock-only --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           test -f apps/smt-web/package-lock.json
           node -e "JSON.parse(require('node:fs').readFileSync('apps/smt-web/package-lock.json','utf8'))"
-          npm --prefix apps/smt-web ci --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smt-web ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           rm -rf apps/smt-web/node_modules
           test "$(git diff --name-only)" = "apps/smt-web/package-lock.json"
           test -z "$(git ls-files --others --exclude-standard)"
@@ -198,5 +198,5 @@ jobs:
           fi
           echo "$BODY"
           if [[ "$EVENT_NAME" == 'issue_comment' ]]; then
-            gh issue comment 2 --body "$BODY" >/dev/null
+            gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
           fi
