@@ -50,7 +50,8 @@ jobs:
             .github/workflows/owner-control-v2.yml \
             .github/workflows/verify-ui-mother.yml \
             .github/workflows/runtime-release-v2.yml \
-            .github/workflows/android-release-v2.yml
+            .github/workflows/android-release-v2.yml \
+            .github/workflows/repair-smt-p01-lockfile.yml
 
       - name: Inventory legacy workflow debt
         continue-on-error: true
