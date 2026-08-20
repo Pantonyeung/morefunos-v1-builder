@@ -1,8 +1,6 @@
 name: Repair SMT P01 Lockfile
 
 on:
-  issue_comment:
-    types: [created]
   workflow_call:
     inputs:
       source_sha:
@@ -26,24 +24,17 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   repair:
-    if: >-
-      github.actor == 'Pantonyeung' &&
-      (
-        inputs.source_sha != '' ||
-        (github.event.issue.number == 2 && startsWith(github.event.comment.body, '/repair-smt-p01-lockfile '))
-      )
-    runs-on: ubuntu-latest
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     outputs:
       new_sha: ${{ steps.writeback.outputs.new_sha }}
       lock_sha256: ${{ steps.lock.outputs.lock_sha256 }}
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
-      COMMENT_BODY: ${{ github.event.comment.body }}
       INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - name: Validate immutable repair request
@@ -51,26 +42,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -n "${INPUT_SOURCE_SHA:-}" ]]; then
-            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]')"
-          else
-            COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-            SOURCE_SHA="${COMMAND#'/repair-smt-p01-lockfile '}"
-            SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
-            test "$COMMAND" = "/repair-smt-p01-lockfile ${SOURCE_SHA}"
-          fi
+          SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Setup Node 22
+      - name: Setup Node 22.12
         id: node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '22'
+          node-version: '22.12.0'
 
       - name: Checkout exact private source SHA
         id: checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ steps.request.outputs.source_sha }}
@@ -173,30 +157,3 @@ jobs:
           fi
           echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
           echo "repair-stage=$STAGE"
-
-      - name: Report sanitized result
-        if: ${{ always() && !cancelled() }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
-          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-          NEW_SHA: ${{ steps.writeback.outputs.new_sha }}
-          LOCK_SHA256: ${{ steps.lock.outputs.lock_sha256 }}
-          STAGE: ${{ steps.stage.outputs.failure_stage }}
-          REQUEST_OUTCOME: ${{ steps.request.outcome }}
-          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
-          IDENTITY_OUTCOME: ${{ steps.identity.outcome }}
-          LOCK_OUTCOME: ${{ steps.lock.outcome }}
-          WRITEBACK_OUTCOME: ${{ steps.writeback.outcome }}
-        run: |
-          set -euo pipefail
-          if [[ -n "${NEW_SHA:-}" ]]; then
-            BODY="smt-p01-lockfile-repair ${SOURCE_SHA} PASS new_sha=${NEW_SHA} lock_sha256=${LOCK_SHA256}"
-          else
-            BODY="smt-p01-lockfile-repair ${SOURCE_SHA:-UNKNOWN} FAIL stage=${STAGE:-unknown} request=${REQUEST_OUTCOME:-UNKNOWN} checkout=${CHECKOUT_OUTCOME:-UNKNOWN} identity=${IDENTITY_OUTCOME:-UNKNOWN} lock=${LOCK_OUTCOME:-UNKNOWN} writeback=${WRITEBACK_OUTCOME:-UNKNOWN}"
-          fi
-          echo "$BODY"
-          if [[ "$EVENT_NAME" == 'issue_comment' ]]; then
-            gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
-          fi

@@ -1,0 +1,66 @@
+name: Builder Workflow Self Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+      - 'scripts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ACTIONLINT_VERSION: '1.7.12'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout Builder source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download attested actionlint release
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          gh release download "v${ACTIONLINT_VERSION}" --repo rhysd/actionlint --pattern "$ARCHIVE" --dir "$RUNNER_TEMP/actionlint"
+          gh attestation verify --repo rhysd/actionlint "$RUNNER_TEMP/actionlint/$ARCHIVE"
+          tar -xzf "$RUNNER_TEMP/actionlint/$ARCHIVE" -C "$RUNNER_TEMP/actionlint"
+          test -x "$RUNNER_TEMP/actionlint/actionlint"
+          "$RUNNER_TEMP/actionlint/actionlint" -version
+
+      - name: Hard gate replacement workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          LINTER="$RUNNER_TEMP/actionlint/actionlint"
+          "$LINTER" -color \
+            .github/workflows/builder-self-check.yml \
+            .github/workflows/owner-control-v2.yml \
+            .github/workflows/verify-ui-mother.yml \
+            .github/workflows/runtime-release-v2.yml \
+            .github/workflows/android-release-v2.yml \
+            .github/workflows/repair-smt-p01-lockfile.yml
+
+      - name: Verify one-router active topology
+        shell: bash
+        run: node scripts/verify-active-workflow-topology.mjs
+
+      - name: Inventory remaining legacy workflow debt
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          LINTER="$RUNNER_TEMP/actionlint/actionlint"
+          "$LINTER" -color
