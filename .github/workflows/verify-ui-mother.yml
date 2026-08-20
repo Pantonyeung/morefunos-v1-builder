@@ -124,7 +124,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm --prefix source/apps/smt-web exec -- tsc -b 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
+          cd source/apps/smt-web
+          ./node_modules/.bin/tsc -b --pretty false 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
 
       - name: Capture sanitized TypeScript diagnostics
         id: diagnostic
@@ -132,7 +133,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DETAIL="$(sed -nE 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' "$RUNNER_TEMP/mother-tsc.log" | head -5 | paste -sd ',' -)"
+          DETAIL="$(sed -nE \
+            -e 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' \
+            -e 's#^error (TS[0-9]+):.*#\1#p' \
+            "$RUNNER_TEMP/mother-tsc.log" | head -5 | paste -sd ',' -)"
           if [[ -z "$DETAIL" ]]; then DETAIL='typescript-error-detail-unavailable'; fi
           echo "detail=$DETAIL" >> "$GITHUB_OUTPUT"
           echo "sanitized-typescript-detail=$DETAIL"
@@ -142,7 +146,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm --prefix source/apps/smt-web exec -- vite build
+          cd source/apps/smt-web
+          ./node_modules/.bin/vite build
 
       - name: Verify Vite production output integrity
         id: dist
