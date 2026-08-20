@@ -47,6 +47,7 @@ jobs:
           LINTER="$RUNNER_TEMP/actionlint/actionlint"
           "$LINTER" -color \
             .github/workflows/builder-self-check.yml \
+            .github/workflows/owner-control-v2.yml \
             .github/workflows/verify-ui-mother.yml \
             .github/workflows/runtime-release-v2.yml
 
