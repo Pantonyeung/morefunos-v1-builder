@@ -37,7 +37,7 @@ jobs:
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "short_sha=${SOURCE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
-      - name: Inspect latest runtime release workflow run
+      - name: Inspect actual runtime release workflow run
         id: run
         continue-on-error: true
         shell: bash
@@ -45,12 +45,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ROW="$(gh run list --repo Pantonyeung/morefunos-v1-builder --workflow manual-runtime-release.yml --event issue_comment --limit 1 --json databaseId,status,conclusion --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv')"
-          if [[ -z "$ROW" ]]; then
+          RUN_ID=''
+          RUN_STATUS=''
+          RUN_CONCLUSION=''
+          while IFS= read -r candidate; do
+            [[ -n "$candidate" ]] || continue
+            JOB_ROW="$(gh run view "$candidate" --repo Pantonyeung/morefunos-v1-builder --json jobs --jq '.jobs[] | select(.name=="release") | [.status,(.conclusion // "")] | @tsv' | head -n1)"
+            [[ -n "$JOB_ROW" ]] || continue
+            IFS=$'\t' read -r JOB_STATUS JOB_CONCLUSION <<< "$JOB_ROW"
+            if [[ "$JOB_STATUS" == 'completed' && "$JOB_CONCLUSION" == 'skipped' ]]; then
+              continue
+            fi
+            RUN_ID="$candidate"
+            RUN_STATUS="$JOB_STATUS"
+            RUN_CONCLUSION="$JOB_CONCLUSION"
+            break
+          done < <(gh run list --repo Pantonyeung/morefunos-v1-builder --workflow manual-runtime-release.yml --event issue_comment --limit 20 --json databaseId --jq '.[].databaseId')
+
+          if [[ -z "$RUN_ID" ]]; then
             echo 'run_state=NOT_FOUND' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          IFS=$'\t' read -r RUN_ID RUN_STATUS RUN_CONCLUSION <<< "$ROW"
           echo 'run_state=FOUND' >> "$GITHUB_OUTPUT"
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "run_status=$RUN_STATUS" >> "$GITHUB_OUTPUT"
