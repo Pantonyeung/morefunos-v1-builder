@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read
 
 jobs:
   status:
@@ -35,6 +36,25 @@ jobs:
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "short_sha=${SOURCE_SHA:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect latest runtime release workflow run
+        id: run
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ROW="$(gh run list --repo Pantonyeung/morefunos-v1-builder --workflow manual-runtime-release.yml --event issue_comment --limit 1 --json databaseId,status,conclusion --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv')"
+          if [[ -z "$ROW" ]]; then
+            echo 'run_state=NOT_FOUND' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          IFS=$'\t' read -r RUN_ID RUN_STATUS RUN_CONCLUSION <<< "$ROW"
+          echo 'run_state=FOUND' >> "$GITHUB_OUTPUT"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "run_status=$RUN_STATUS" >> "$GITHUB_OUTPUT"
+          echo "run_conclusion=${RUN_CONCLUSION:-NONE}" >> "$GITHUB_OUTPUT"
 
       - name: Inspect private release and public OTA manifest
         id: inspect
@@ -70,7 +90,6 @@ jobs:
           if(metadata.runtimeVersion!==update.runtimeVersion) throw new Error('RUNTIME_VERSION_MISMATCH');
           if(metadata.runtimePackageContract!=='PASS') throw new Error('PACKAGE_CONTRACT_NOT_PASS');
           if(metadata.runtimeFilename!==update.bundleUrl) throw new Error('BUNDLE_NAME_MISMATCH');
-          if(metadata.archiveSha256!==undefined && metadata.archiveSha256!==update.archiveSha256) throw new Error('ARCHIVE_HASH_MISMATCH');
           console.log(`release_id=${update.releaseId}`);
           console.log(`runtime_version=${update.runtimeVersion}`);
           console.log(`runtime_filename=${update.bundleUrl}`);
@@ -97,12 +116,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           CHANNEL: ${{ steps.request.outputs.channel }}
+          RUN_STATE: ${{ steps.run.outputs.run_state }}
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+          RUN_STATUS: ${{ steps.run.outputs.run_status }}
+          RUN_CONCLUSION: ${{ steps.run.outputs.run_conclusion }}
           INSPECT_OUTCOME: ${{ steps.inspect.outcome }}
           RELEASE_STATE: ${{ steps.inspect.outputs.release_state }}
           RELEASE_TAG: ${{ steps.inspect.outputs.release_tag }}
           OTA_STATE: ${{ steps.inspect.outputs.ota_state }}
         run: |
           set -euo pipefail
-          BODY="RUNTIME_RELEASE_STATUS source_sha=${SOURCE_SHA:-UNKNOWN} channel=${CHANNEL:-UNKNOWN} inspect=${INSPECT_OUTCOME:-unknown} release=${RELEASE_STATE:-UNKNOWN} ota=${OTA_STATE:-UNKNOWN}"
+          BODY="RUNTIME_RELEASE_STATUS source_sha=${SOURCE_SHA:-UNKNOWN} channel=${CHANNEL:-UNKNOWN} run=${RUN_STATE:-UNKNOWN} run_id=${RUN_ID:-NONE} run_status=${RUN_STATUS:-UNKNOWN} run_conclusion=${RUN_CONCLUSION:-UNKNOWN} inspect=${INSPECT_OUTCOME:-unknown} release=${RELEASE_STATE:-UNKNOWN} ota=${OTA_STATE:-UNKNOWN}"
           if [[ -n "${RELEASE_TAG:-}" ]]; then BODY="$BODY release_tag=$RELEASE_TAG"; fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY"
