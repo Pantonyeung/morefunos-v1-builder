@@ -68,14 +68,83 @@ jobs:
           LOG="$RUNNER_TEMP/channel-diagnostic-private.log"
           : > "$LOG"
           cd source
+
           if ! node --experimental-strip-types --test packages/runtime/operator-sales-channel-attribution.test.ts >> "$LOG" 2>&1; then
             echo "stage=attribution-contract" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if ! npm run test:current >> "$LOG" 2>&1; then
-            echo "stage=current-regression-other" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+
+          shopt -s nullglob
+          FILES=(
+            packages/contracts/*.test.ts
+            packages/customer/*.test.ts
+            packages/loyalty/*.test.ts
+            packages/order/*.test.ts
+            packages/pricing/*.test.ts
+            packages/payment/*.test.ts
+            packages/fulfillment/*.test.ts
+            packages/printing/*.test.ts
+            packages/durability/*.test.ts
+            packages/native/*.test.ts
+            packages/admin/*.test.ts
+            packages/staff/*.test.ts
+            packages/store-settings/*.test.ts
+            packages/catalog/*.test.ts
+            packages/availability/*.test.ts
+            packages/inventory/*.test.ts
+            packages/procurement/*.test.ts
+            packages/table/*.test.ts
+            packages/channels/*.test.ts
+            packages/facts/*.test.ts
+            packages/runtime/*.test.ts
+            packages/business-day/*.test.ts
+            packages/reporting/*.test.ts
+            packages/ui/module-contract.test.ts
+            apps/smt-web/src/ui-state.test.ts
+            apps/smt-web/src/smt-runtime-adapter.test.ts
+            apps/smt-web/src/smt-active-work-port.test.ts
+            apps/smt-web/src/smt-active-work-lifecycle.test.ts
+            apps/smt-web/src/smt-dine-in-port.test.ts
+            apps/smt-web/src/smt-availability-port.test.ts
+            apps/smt-web/src/smt-business-day-port.test.ts
+            apps/smt-web/src/smt-reporting-port.test.ts
+            apps/smt-web/src/smt-printing-port.test.ts
+            apps/smt-web/src/smt-orders-port.test.ts
+          )
+          for file in "${FILES[@]}"; do
+            [[ "$file" == "packages/runtime/operator-sales-channel-attribution.test.ts" ]] && continue
+            if ! node --experimental-strip-types --test "$file" >> "$LOG" 2>&1; then
+              if [[ "$file" =~ ^[A-Za-z0-9_./-]+$ ]]; then
+                echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
+              else
+                echo "stage=test-file:UNAVAILABLE" >> "$GITHUB_OUTPUT"
+              fi
+              exit 0
+            fi
+          done
+
+          STATIC_FILES=(
+            packages/ui/ui-authority-boundary.test.mjs
+            packages/ui/sdk-passthrough.test.mjs
+            apps/smt-web/src/g1g-static.test.mjs
+            apps/smt-web/src/g5-static.test.mjs
+            apps/smt-web/src/b3-static.test.mjs
+            apps/smt-web/src/ui-smt-01-static.test.mjs
+            apps/smt-web/src/ui-smt-02-static.test.mjs
+            apps/smt-web/src/ui-smt-03-static.test.mjs
+            apps/smt-web/src/ui-smt-04-static.test.mjs
+            apps/smt-web/src/ui-smt-05-static.test.mjs
+            apps/smt-web/src/ui-smt-06a-static.test.mjs
+            apps/smt-web/src/ui-smt-07-static.test.mjs
+            apps/smt-android/g6-carrier-static.test.mjs
+          )
+          for file in "${STATIC_FILES[@]}"; do
+            if ! node --test "$file" >> "$LOG" 2>&1; then
+              echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
           if ! npm run typecheck:current >> "$LOG" 2>&1; then
             echo "stage=current-typecheck" >> "$GITHUB_OUTPUT"
             exit 0
@@ -90,8 +159,7 @@ jobs:
           STAGE: ${{ steps.diagnose.outputs.stage }}
         run: |
           set -euo pipefail
-          case "$STAGE" in
-            attribution-contract|current-regression-other|current-typecheck|pass) ;;
-            *) STAGE=diagnostic-unknown ;;
-          esac
+          if [[ "$STAGE" != "attribution-contract" && "$STAGE" != "current-typecheck" && "$STAGE" != "pass" && ! "$STAGE" =~ ^test-file:[A-Za-z0-9_./-]+$ ]]; then
+            STAGE=diagnostic-unknown
+          fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "diagnose-channel source_sha=$SHA stage=$STAGE" >/dev/null
