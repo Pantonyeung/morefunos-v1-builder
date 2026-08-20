@@ -1,0 +1,25 @@
+name: P01 Trigger Diagnostic
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prove-trigger:
+    if: github.event.issue.number == 50 && github.event.comment.body == '/p01-trigger-diagnostic'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish trigger proof
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          EVENT_SENDER: ${{ github.event.sender.login }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "P01_TRIGGER_DIAGNOSTIC_PASS actor=${ACTOR} sender=${EVENT_SENDER} run_id=${RUN_ID}" >/dev/null
