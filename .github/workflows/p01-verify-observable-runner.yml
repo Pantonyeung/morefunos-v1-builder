@@ -1,0 +1,53 @@
+name: P01 Observable Verify-B Runner
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prepare:
+    if: github.actor == 'Pantonyeung' && github.event.issue.number == 50 && startsWith(github.event.comment.body, '/p01-verify-b ')
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.parse.outputs.source_sha }}
+    steps:
+      - id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/p01-verify-b '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$COMMAND" = "/p01-verify-b ${SOURCE_SHA}"
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+  verify-b:
+    needs: prepare
+    uses: ./.github/workflows/verify-b.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
+
+  report:
+    if: ${{ always() }}
+    needs: [prepare, verify-b]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish observable Verify-B result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          VERIFY_RESULT: ${{ needs.verify-b.result }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "P01_VERIFY_B_OBSERVABLE run_id=${RUN_ID} prepare=${PREPARE_RESULT:-UNKNOWN} source_sha=${SOURCE_SHA:-UNKNOWN} verify_b=${VERIFY_RESULT:-UNKNOWN}" >/dev/null
