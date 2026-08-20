@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   actionlint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       ACTIONLINT_VERSION: '1.7.12'
@@ -34,13 +34,8 @@ jobs:
           set -euo pipefail
           ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           mkdir -p "$RUNNER_TEMP/actionlint"
-          gh release download "v${ACTIONLINT_VERSION}" \
-            --repo rhysd/actionlint \
-            --pattern "$ARCHIVE" \
-            --dir "$RUNNER_TEMP/actionlint"
-          gh attestation verify \
-            --repo rhysd/actionlint \
-            "$RUNNER_TEMP/actionlint/$ARCHIVE"
+          gh release download "v${ACTIONLINT_VERSION}" --repo rhysd/actionlint --pattern "$ARCHIVE" --dir "$RUNNER_TEMP/actionlint"
+          gh attestation verify --repo rhysd/actionlint "$RUNNER_TEMP/actionlint/$ARCHIVE"
           tar -xzf "$RUNNER_TEMP/actionlint/$ARCHIVE" -C "$RUNNER_TEMP/actionlint"
           test -x "$RUNNER_TEMP/actionlint/actionlint"
           "$RUNNER_TEMP/actionlint/actionlint" -version
@@ -52,7 +47,8 @@ jobs:
           LINTER="$RUNNER_TEMP/actionlint/actionlint"
           "$LINTER" -color \
             .github/workflows/builder-self-check.yml \
-            .github/workflows/verify-ui-mother.yml
+            .github/workflows/verify-ui-mother.yml \
+            .github/workflows/runtime-release-v2.yml
 
       - name: Inventory legacy workflow debt
         continue-on-error: true
