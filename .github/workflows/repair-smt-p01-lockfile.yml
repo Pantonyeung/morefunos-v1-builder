@@ -134,18 +134,33 @@ jobs:
           echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Report sanitized result
-        if: ${{ !cancelled() && github.event_name == 'issue_comment' }}
+        if: ${{ always() && !cancelled() && github.event_name == 'issue_comment' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           NEW_SHA: ${{ steps.writeback.outputs.new_sha }}
           LOCK_SHA256: ${{ steps.lock.outputs.lock_sha256 }}
+          REQUEST_OUTCOME: ${{ steps.request.outcome }}
+          LOCK_OUTCOME: ${{ steps.lock.outcome }}
+          WRITEBACK_OUTCOME: ${{ steps.writeback.outcome }}
         run: |
           set -euo pipefail
           if [[ -n "${NEW_SHA:-}" ]]; then
             BODY="smt-p01-lockfile-repair ${SOURCE_SHA} PASS new_sha=${NEW_SHA} lock_sha256=${LOCK_SHA256}"
           else
-            BODY="smt-p01-lockfile-repair ${SOURCE_SHA} FAIL"
+            if [[ "${REQUEST_OUTCOME:-}" != 'success' ]]; then
+              STAGE='request'
+            elif [[ "${LOCK_OUTCOME:-}" == 'failure' ]]; then
+              STAGE='lock_or_npm_ci'
+            elif [[ "${LOCK_OUTCOME:-}" != 'success' ]]; then
+              STAGE='checkout_or_identity_before_lock'
+            elif [[ "${WRITEBACK_OUTCOME:-}" == 'failure' ]]; then
+              STAGE='writeback'
+            else
+              STAGE='unknown'
+            fi
+            BODY="smt-p01-lockfile-repair ${SOURCE_SHA:-UNKNOWN} FAIL stage=${STAGE} request=${REQUEST_OUTCOME:-UNKNOWN} lock=${LOCK_OUTCOME:-UNKNOWN} writeback=${WRITEBACK_OUTCOME:-UNKNOWN}"
           fi
+          echo "$BODY"
           gh issue comment 2 --body "$BODY" >/dev/null
