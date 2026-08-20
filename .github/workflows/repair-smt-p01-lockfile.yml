@@ -3,6 +3,16 @@ name: Repair SMT P01 Lockfile
 on:
   issue_comment:
     types: [created]
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
+      V1_B2_LOCKFILE_WRITE_TOKEN:
+        required: true
 
 permissions:
   contents: read
@@ -12,12 +22,15 @@ jobs:
   repair:
     if: >-
       github.actor == 'Pantonyeung' &&
-      github.event.issue.number == 2 &&
-      startsWith(github.event.comment.body, '/repair-smt-p01-lockfile ')
+      (
+        inputs.source_sha != '' ||
+        (github.event.issue.number == 2 && startsWith(github.event.comment.body, '/repair-smt-p01-lockfile '))
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       COMMENT_BODY: ${{ github.event.comment.body }}
+      INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
       SOURCE_REPO: Pantonyeung/morefunos-v1
       TARGET_BRANCH: agent/smt-p01-owner-locked-implementation-20260820
     steps:
@@ -26,10 +39,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-          SOURCE_SHA="${COMMAND#'/repair-smt-p01-lockfile '}"
-          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
-          test "$COMMAND" = "/repair-smt-p01-lockfile ${SOURCE_SHA}"
+          if [[ -n "${INPUT_SOURCE_SHA:-}" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]')"
+          else
+            COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+            SOURCE_SHA="${COMMAND#'/repair-smt-p01-lockfile '}"
+            SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+            test "$COMMAND" = "/repair-smt-p01-lockfile ${SOURCE_SHA}"
+          fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
 
@@ -68,8 +85,6 @@ jobs:
           node -e "JSON.parse(require('node:fs').readFileSync('apps/smt-web/package-lock.json','utf8'))"
           npm --prefix apps/smt-web ci --ignore-scripts --no-audit --no-fund
           rm -rf apps/smt-web/node_modules
-          CHANGED="$(git status --short)"
-          printf '%s\n' "$CHANGED"
           test "$(git diff --name-only)" = "apps/smt-web/package-lock.json"
           test -z "$(git ls-files --others --exclude-standard)"
           LOCK_SHA256="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
