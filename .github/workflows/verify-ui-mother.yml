@@ -124,6 +124,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          # tsc -b resolves tsconfig.json from the current working directory when no project path is passed.
           (
             cd source/apps/smt-web
             npm exec -- tsc -b --pretty false
@@ -145,6 +146,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Keep Vite root explicit by executing from the SMT package root as well.
           cd source/apps/smt-web
           npm exec -- vite build
 
