@@ -112,6 +112,13 @@ jobs:
           set -euo pipefail
           npm --prefix source/apps/smt-web ls react react-dom react-router lucide-react vite typescript vitest --depth=0
 
+      - name: Run SMT functional regression tests
+        id: functional_tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web test
+
       - name: Run current Mother contract
         id: mother_contract
         shell: bash
@@ -195,6 +202,7 @@ jobs:
           TOOLCHAIN: ${{ steps.toolchain.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          FUNCTIONAL_TESTS: ${{ steps.functional_tests.outcome }}
           MOTHER_CONTRACT: ${{ steps.mother_contract.outcome }}
           TYPESCRIPT: ${{ steps.typescript.outcome }}
           VITE_BUILD: ${{ steps.vite_build.outcome }}
@@ -212,6 +220,7 @@ jobs:
           elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
           elif [[ "$INSTALL" == failure ]]; then STAGE=npm_ci;
           elif [[ "$DEPENDENCIES" == failure ]]; then STAGE=dependency_graph;
+          elif [[ "$FUNCTIONAL_TESTS" == failure ]]; then STAGE=functional_tests;
           elif [[ "$MOTHER_CONTRACT" == failure ]]; then STAGE=mother_contract;
           elif [[ "$TYPESCRIPT" == failure ]]; then STAGE=typescript;
           elif [[ "$VITE_BUILD" == failure ]]; then STAGE=vite_build;
