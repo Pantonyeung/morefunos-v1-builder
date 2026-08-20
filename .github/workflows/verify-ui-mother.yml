@@ -124,7 +124,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm --prefix source/apps/smt-web exec -- tsc -b 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
+          (
+            cd source/apps/smt-web
+            npm exec -- tsc -b --pretty false
+          ) 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
 
       - name: Capture sanitized TypeScript diagnostics
         id: diagnostic
@@ -142,7 +145,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm --prefix source/apps/smt-web exec -- vite build
+          cd source/apps/smt-web
+          npm exec -- vite build
 
       - name: Verify Vite production output integrity
         id: dist
