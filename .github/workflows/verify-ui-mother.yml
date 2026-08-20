@@ -116,8 +116,20 @@ jobs:
         id: p01_tests
         shell: bash
         run: |
-          set -o pipefail
-          npm --prefix source/apps/smt-web run test:p01 2>&1 | tee "$RUNNER_TEMP/p01-tests.log"
+          set -euo pipefail
+          cd source/apps/smt-web
+          : > "$RUNNER_TEMP/p01-failed-file"
+          for TEST in \
+            src/p01-layout-controls.vitest.test.tsx \
+            src/p01-rebuild39-flow.vitest.test.tsx \
+            src/app.vitest.test.tsx \
+            src/smt-top-status-bar.vitest.test.tsx
+          do
+            if ! FORCE_COLOR=0 ./node_modules/.bin/vitest run "$TEST"; then
+              printf '%s' "$TEST" > "$RUNNER_TEMP/p01-failed-file"
+              exit 1
+            fi
+          done
 
       - name: Run SMT carrier/runtime adapter regression tests
         id: carrier_tests
@@ -152,8 +164,8 @@ jobs:
           set -euo pipefail
           DETAIL=''
           if [[ "${{ steps.p01_tests.outcome }}" == failure ]]; then
-            DETAIL="$(grep -Eo 'src/[A-Za-z0-9_./-]+\.(test|spec)\.(tsx|ts|jsx|js|mjs)' "$RUNNER_TEMP/p01-tests.log" | sort -u | head -5 | paste -sd ',' - || true)"
-            if [[ -z "$DETAIL" ]]; then DETAIL='p01-test-file-unavailable'; fi
+            DETAIL="$(cat "$RUNNER_TEMP/p01-failed-file" 2>/dev/null || true)"
+            if [[ ! "$DETAIL" =~ ^src/[A-Za-z0-9_./-]+\.vitest\.test\.tsx$ ]]; then DETAIL='p01-test-file-unavailable'; fi
           elif [[ "${{ steps.typescript.outcome }}" == failure ]]; then
             DETAIL="$(sed -nE \
               -e 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' \
