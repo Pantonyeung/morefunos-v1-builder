@@ -114,11 +114,7 @@ jobs:
           for file in "${FILES[@]}"; do
             [[ "$file" == "packages/runtime/operator-sales-channel-attribution.test.ts" ]] && continue
             if ! node --experimental-strip-types --test "$file" >> "$LOG" 2>&1; then
-              if [[ "$file" =~ ^[A-Za-z0-9_./-]+$ ]]; then
-                echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
-              else
-                echo "stage=test-file:UNAVAILABLE" >> "$GITHUB_OUTPUT"
-              fi
+              echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
@@ -141,24 +137,30 @@ jobs:
           for file in "${STATIC_FILES[@]}"; do
             if ! node --test "$file" >> "$LOG" 2>&1; then
               if [[ "$file" == "apps/smt-web/src/g5-static.test.mjs" ]]; then
-                FAIL_NAME="$(node --input-type=module <<'NODE'
-          import { run } from 'node:test';
-          import path from 'node:path';
-          const stream = run({ files: [path.resolve('apps/smt-web/src/g5-static.test.mjs')] });
-          const failures = [];
-          stream.on('test:fail', (data) => {
-            const name = String(data?.name ?? '').trim();
-            if (name && !name.endsWith('.mjs') && !name.includes('/g5-static.test.mjs')) failures.push(name);
-          });
-          stream.on('end', () => {
-            const first = failures[0] ?? '';
-            const safe = first.replace(/[^A-Za-z0-9 _.:()'\-/]/g, '').slice(0, 160);
-            process.stdout.write(safe || 'UNAVAILABLE');
-          });
-          stream.resume();
-          NODE
-          )"
-                echo "test_name=$FAIL_NAME" >> "$GITHUB_OUTPUT"
+                G5_PATTERNS=(
+                  "G5 P01 exclusively owns payment overlay"
+                  "G5 payment component submits operator evidence"
+                  "G5 RuntimePort adapter, not React"
+                  "G5 Web service mode imports the canonical core contract"
+                  "G5 P01 adaptive cart keeps only Owner-approved"
+                  "G5 Rebuild39 ordering route has no separate start hold retrieve page"
+                  "G5 Rebuild39 search is local presentation state"
+                  "G5 first product remains selectable before a workspace"
+                  "G5 P01 layout controls remain presentation-only"
+                  "G5 P01 blocking configuration and payment surfaces"
+                  "G5 browser typecheck keeps the production boundary"
+                  "G5 shared UI file dependency is installed"
+                  "G5 app test gate includes the Rebuild39"
+                )
+                for pattern in "${G5_PATTERNS[@]}"; do
+                  if ! node --test --test-name-pattern="$pattern" "$file" >> "$LOG" 2>&1; then
+                    SAFE_NAME="$(printf '%s' "$pattern" | tr -cd "A-Za-z0-9 _.,:'()/-" | cut -c1-160)"
+                    echo "test_name=$SAFE_NAME" >> "$GITHUB_OUTPUT"
+                    echo "stage=test-name" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+                done
+                echo "test_name=UNAVAILABLE" >> "$GITHUB_OUTPUT"
                 echo "stage=test-name" >> "$GITHUB_OUTPUT"
               else
                 echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
@@ -183,7 +185,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$STAGE" == "test-name" ]]; then
-            SAFE_NAME="$(printf '%s' "${TEST_NAME:-UNAVAILABLE}" | tr -cd "A-Za-z0-9 _.:()'/-" | cut -c1-160)"
+            SAFE_NAME="$(printf '%s' "${TEST_NAME:-UNAVAILABLE}" | tr -cd "A-Za-z0-9 _.,:'()/-" | cut -c1-160)"
             gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "diagnose-channel source_sha=$SHA stage=test-name name=$SAFE_NAME" >/dev/null
             exit 0
           fi
