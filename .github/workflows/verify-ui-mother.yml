@@ -108,12 +108,26 @@ jobs:
           set -euo pipefail
           npm --prefix source/apps/smt-web ls react react-dom react-router lucide-react vite typescript vitest --depth=0
 
-      - name: Run current Mother contract, TypeScript and Vite production gate
-        id: mother_gate
+      - name: Run current Mother contract
+        id: mother_contract
         shell: bash
         run: |
           set -euo pipefail
-          npm --prefix source/apps/smt-web run verify:mother
+          node --test source/apps/smt-web/src/mother-ui-contract.test.mjs
+
+      - name: Run TypeScript project gate
+        id: typescript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web exec -- tsc -b
+
+      - name: Run Vite production build
+        id: vite_build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web exec -- vite build
 
       - name: Verify Vite production output integrity
         id: dist
@@ -161,7 +175,9 @@ jobs:
           TOOLCHAIN: ${{ steps.toolchain.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
-          MOTHER_GATE: ${{ steps.mother_gate.outcome }}
+          MOTHER_CONTRACT: ${{ steps.mother_contract.outcome }}
+          TYPESCRIPT: ${{ steps.typescript.outcome }}
+          VITE_BUILD: ${{ steps.vite_build.outcome }}
           DIST: ${{ steps.dist.outcome }}
           ARTIFACT: ${{ steps.artifact.outcome }}
           UPLOAD: ${{ steps.upload.outcome }}
@@ -176,7 +192,9 @@ jobs:
           elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
           elif [[ "$INSTALL" == failure ]]; then STAGE=npm_ci;
           elif [[ "$DEPENDENCIES" == failure ]]; then STAGE=dependency_graph;
-          elif [[ "$MOTHER_GATE" == failure ]]; then STAGE=mother_contract_type_vite;
+          elif [[ "$MOTHER_CONTRACT" == failure ]]; then STAGE=mother_contract;
+          elif [[ "$TYPESCRIPT" == failure ]]; then STAGE=typescript;
+          elif [[ "$VITE_BUILD" == failure ]]; then STAGE=vite_build;
           elif [[ "$DIST" == failure ]]; then STAGE=dist_integrity;
           elif [[ "$ARTIFACT" == failure ]]; then STAGE=artifact_name;
           elif [[ "$UPLOAD" == failure ]]; then STAGE=artifact_upload;
