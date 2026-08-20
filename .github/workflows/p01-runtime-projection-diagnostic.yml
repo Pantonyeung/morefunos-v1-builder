@@ -1,0 +1,44 @@
+name: P01 Runtime Projection Diagnostic
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung' && github.event.issue.number == 50 && startsWith(github.event.comment.body, '/p01-runtime-projection ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/p01-runtime-projection '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$COMMAND" = "/p01-runtime-projection ${SOURCE_SHA}"
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.parse.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Run exact failing diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          node --experimental-strip-types --test packages/runtime/business-runtime-projection.test.ts
