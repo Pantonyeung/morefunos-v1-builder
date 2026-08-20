@@ -1,0 +1,110 @@
+name: Owner V1 Verify SMT Mother UI
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character MoreFunOS V1 SMT Mother UI source SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefunos-v1-ui-mother-verify
+  cancel-in-progress: false
+
+jobs:
+  verify-ui-mother:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Validate exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'source_sha must be an exact 40-character Git SHA' >&2; exit 1; }
+          echo "source_sha=${SHA,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: source/apps/smt-web/package-lock.json
+
+      - name: Checkout exact private MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED_SOURCE_SHA"
+          echo "exact-source-identity=PASS"
+
+      - name: Clean install from committed lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/apps/smt-web/package-lock.json
+          npm --prefix source/apps/smt-web ci --no-audit --no-fund
+
+      - name: Verify maintained dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web ls react react-dom react-router lucide-react vite typescript vitest --depth=0
+
+      - name: Run Mother UI contract plus official TypeScript and Vite production gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web run verify:mother
+
+      - name: Verify Vite production output integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIST=source/apps/smt-web/dist
+          test -s "$DIST/index.html"
+          find "$DIST" -maxdepth 2 -type f -size +0c | grep -q .
+          if grep -Eqi '<script[^>]+src=["'"']https?://|<link[^>]+href=["'"']https?://' "$DIST/index.html"; then
+            echo 'Remote core startup dependency detected in dist/index.html' >&2
+            exit 1
+          fi
+          echo "vite-dist-integrity=PASS"
+
+      - name: Publish verification summary
+        if: always()
+        shell: bash
+        run: |
+          echo "SMT Mother UI evidence gate completed for ${{ steps.request.outputs.source_sha }}"
