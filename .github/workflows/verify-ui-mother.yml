@@ -104,10 +104,15 @@ jobs:
           DIST=source/apps/smt-web/dist
           test -s "$DIST/index.html"
           find "$DIST" -maxdepth 2 -type f -size +0c | grep -q .
-          if grep -Eqi '<script[^>]+src=["'"']https?://|<link[^>]+href=["'"']https?://' "$DIST/index.html"; then
-            echo 'Remote core startup dependency detected in dist/index.html' >&2
-            exit 1
-          fi
+          node - "$DIST/index.html" <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync(process.argv[2], 'utf8');
+          const remoteScript = /<script\b[^>]*\bsrc=["']https?:\/\//i.test(html);
+          const remoteStyle = /<link\b[^>]*\bhref=["']https?:\/\//i.test(html);
+          if (remoteScript || remoteStyle) {
+            throw new Error('REMOTE_CORE_STARTUP_DEPENDENCY_DETECTED');
+          }
+          NODE
           echo "vite-dist-integrity=PASS"
 
       - name: Publish verification summary
