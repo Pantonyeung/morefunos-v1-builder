@@ -284,7 +284,7 @@ jobs:
 
       - name: Upload generated SMT lockfile artifact
         if: inputs.verification_profile == 'smt-lock' && steps.verify_core.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smt-web-package-lock-${{ steps.request.outputs.source_sha }}
           path: source/apps/smt-web/package-lock.json
