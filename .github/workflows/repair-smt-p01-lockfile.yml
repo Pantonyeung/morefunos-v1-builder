@@ -15,6 +15,9 @@ on:
       lock_sha256:
         description: 'Canonical SMT package-lock SHA-256'
         value: ${{ jobs.repair.outputs.lock_sha256 }}
+      failure_stage:
+        description: 'Sanitized failure stage for caller diagnostics'
+        value: ${{ jobs.repair.outputs.failure_stage }}
     secrets:
       V1_SOURCE_READ_TOKEN:
         required: true
@@ -38,10 +41,10 @@ jobs:
     outputs:
       new_sha: ${{ steps.writeback.outputs.new_sha }}
       lock_sha256: ${{ steps.lock.outputs.lock_sha256 }}
+      failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       COMMENT_BODY: ${{ github.event.comment.body }}
       INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
-      TARGET_BRANCH: agent/smt-p01-owner-locked-implementation-20260820
     steps:
       - name: Validate immutable repair request
         id: request
@@ -60,11 +63,13 @@ jobs:
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node 22
+        id: node
         uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Checkout exact private source SHA
+        id: checkout
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -74,6 +79,7 @@ jobs:
           persist-credentials: false
 
       - name: Verify exact source identity
+        id: identity
         shell: bash
         run: |
           set -euo pipefail
@@ -99,7 +105,7 @@ jobs:
           LOCK_SHA256="$(sha256sum apps/smt-web/package-lock.json | awk '{print $1}')"
           echo "lock_sha256=$LOCK_SHA256" >> "$GITHUB_OUTPUT"
 
-      - name: Commit only lockfile and fast-forward isolated implementation branch
+      - name: Commit only lockfile and push immutable repair branch
         id: writeback
         shell: bash
         env:
@@ -109,8 +115,8 @@ jobs:
           set -euo pipefail
           test -n "$V1_WRITE_TOKEN"
           cd source
-          REMOTE_HEAD="$(git ls-remote https://x-access-token:${V1_WRITE_TOKEN}@github.com/Pantonyeung/morefunos-v1.git refs/heads/${TARGET_BRANCH} | awk '{print $1}')"
-          test "$REMOTE_HEAD" = "$SOURCE_SHA"
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          REPAIR_BRANCH="builder/p01-lockfile-${SHORT_SHA}"
           git config user.name 'MoreFunOS V1 Builder'
           git config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git add -- apps/smt-web/package-lock.json
@@ -129,19 +135,58 @@ jobs:
           chmod 700 "$ASKPASS"
           export GIT_ASKPASS="$ASKPASS"
           export GIT_TERMINAL_PROMPT=0
-          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${TARGET_BRANCH}"
+          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${REPAIR_BRANCH}"
           rm -f "$ASKPASS"
           echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
+          echo "repair_branch=$REPAIR_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Derive sanitized failure stage
+        id: stage
+        if: ${{ always() && !cancelled() }}
+        shell: bash
+        env:
+          REQUEST_OUTCOME: ${{ steps.request.outcome }}
+          NODE_OUTCOME: ${{ steps.node.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          IDENTITY_OUTCOME: ${{ steps.identity.outcome }}
+          LOCK_OUTCOME: ${{ steps.lock.outcome }}
+          WRITEBACK_OUTCOME: ${{ steps.writeback.outcome }}
+          NEW_SHA: ${{ steps.writeback.outputs.new_sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${NEW_SHA:-}" ]]; then
+            STAGE='none'
+          elif [[ "${REQUEST_OUTCOME:-}" != 'success' ]]; then
+            STAGE='request'
+          elif [[ "${NODE_OUTCOME:-}" != 'success' ]]; then
+            STAGE='setup_node'
+          elif [[ "${CHECKOUT_OUTCOME:-}" != 'success' ]]; then
+            STAGE='checkout'
+          elif [[ "${IDENTITY_OUTCOME:-}" != 'success' ]]; then
+            STAGE='identity'
+          elif [[ "${LOCK_OUTCOME:-}" != 'success' ]]; then
+            STAGE='lock_or_npm_ci'
+          elif [[ "${WRITEBACK_OUTCOME:-}" != 'success' ]]; then
+            STAGE='writeback'
+          else
+            STAGE='unknown'
+          fi
+          echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "repair-stage=$STAGE"
 
       - name: Report sanitized result
-        if: ${{ always() && !cancelled() && github.event_name == 'issue_comment' }}
+        if: ${{ always() && !cancelled() }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           NEW_SHA: ${{ steps.writeback.outputs.new_sha }}
           LOCK_SHA256: ${{ steps.lock.outputs.lock_sha256 }}
+          STAGE: ${{ steps.stage.outputs.failure_stage }}
           REQUEST_OUTCOME: ${{ steps.request.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          IDENTITY_OUTCOME: ${{ steps.identity.outcome }}
           LOCK_OUTCOME: ${{ steps.lock.outcome }}
           WRITEBACK_OUTCOME: ${{ steps.writeback.outcome }}
         run: |
@@ -149,18 +194,9 @@ jobs:
           if [[ -n "${NEW_SHA:-}" ]]; then
             BODY="smt-p01-lockfile-repair ${SOURCE_SHA} PASS new_sha=${NEW_SHA} lock_sha256=${LOCK_SHA256}"
           else
-            if [[ "${REQUEST_OUTCOME:-}" != 'success' ]]; then
-              STAGE='request'
-            elif [[ "${LOCK_OUTCOME:-}" == 'failure' ]]; then
-              STAGE='lock_or_npm_ci'
-            elif [[ "${LOCK_OUTCOME:-}" != 'success' ]]; then
-              STAGE='checkout_or_identity_before_lock'
-            elif [[ "${WRITEBACK_OUTCOME:-}" == 'failure' ]]; then
-              STAGE='writeback'
-            else
-              STAGE='unknown'
-            fi
-            BODY="smt-p01-lockfile-repair ${SOURCE_SHA:-UNKNOWN} FAIL stage=${STAGE} request=${REQUEST_OUTCOME:-UNKNOWN} lock=${LOCK_OUTCOME:-UNKNOWN} writeback=${WRITEBACK_OUTCOME:-UNKNOWN}"
+            BODY="smt-p01-lockfile-repair ${SOURCE_SHA:-UNKNOWN} FAIL stage=${STAGE:-unknown} request=${REQUEST_OUTCOME:-UNKNOWN} checkout=${CHECKOUT_OUTCOME:-UNKNOWN} identity=${IDENTITY_OUTCOME:-UNKNOWN} lock=${LOCK_OUTCOME:-UNKNOWN} writeback=${WRITEBACK_OUTCOME:-UNKNOWN}"
           fi
           echo "$BODY"
-          gh issue comment 2 --body "$BODY" >/dev/null
+          if [[ "$EVENT_NAME" == 'issue_comment' ]]; then
+            gh issue comment 2 --body "$BODY" >/dev/null
+          fi
