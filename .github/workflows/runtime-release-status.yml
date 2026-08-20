@@ -1,0 +1,108 @@
+name: Runtime Release Status
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  status:
+    if: >-
+      github.actor == 'Pantonyeung' &&
+      github.event.issue.number == 2 &&
+      startsWith(github.event.comment.body, '/runtime-status ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_REPO: Pantonyeung/morefunos-v1
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      OTA_PUBLIC_ORIGIN: https://morefunos-v1-ota.pantonyeung.workers.dev
+    steps:
+      - name: Parse immutable status request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r VERB SOURCE_SHA CHANNEL EXTRA <<< "$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | xargs)"
+          [[ "$VERB" == '/runtime-status' ]]
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          case "$CHANNEL" in stable|candidate|dev) ;; *) exit 1 ;; esac
+          [[ -z "${EXTRA:-}" ]]
+          SOURCE_SHA="${SOURCE_SHA,,}"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SOURCE_SHA:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect private release and public OTA manifest
+        id: inspect
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          SHORT_SHA: ${{ steps.request.outputs.short_sha }}
+          CHANNEL: ${{ steps.request.outputs.channel }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}"
+          PREFIX="builder-v1-runtime-${CHANNEL}-${SHORT_SHA}-run-"
+          RELEASE_TAG="$(gh release list --repo "$SOURCE_REPO" --limit 100 --json tagName --jq ".[] | select(.tagName | startswith(\"$PREFIX\")) | .tagName" | head -n1)"
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo 'release_state=NOT_FOUND' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "release_state=FOUND" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+          TMP="$(mktemp -d)"
+          gh release download "$RELEASE_TAG" --repo "$SOURCE_REPO" --dir "$TMP" --pattern 'runtime-build-metadata.json' --pattern 'runtime-update.json' --pattern 'RUNTIME_SHA256SUMS'
+          node - "$TMP/runtime-build-metadata.json" "$TMP/runtime-update.json" "$SOURCE_SHA" "$CHANNEL" <<'NODE'
+          const fs=require('node:fs');
+          const [metadataPath,updatePath,sourceSha,channel]=process.argv.slice(2);
+          const metadata=JSON.parse(fs.readFileSync(metadataPath,'utf8'));
+          const update=JSON.parse(fs.readFileSync(updatePath,'utf8'));
+          if(metadata.sourceSha!==sourceSha) throw new Error('SOURCE_SHA_MISMATCH');
+          if(metadata.channel!==channel || update.channel!==channel) throw new Error('CHANNEL_MISMATCH');
+          if(metadata.releaseId!==update.releaseId) throw new Error('RELEASE_ID_MISMATCH');
+          if(metadata.runtimeVersion!==update.runtimeVersion) throw new Error('RUNTIME_VERSION_MISMATCH');
+          if(metadata.runtimePackageContract!=='PASS') throw new Error('PACKAGE_CONTRACT_NOT_PASS');
+          if(metadata.runtimeFilename!==update.bundleUrl) throw new Error('BUNDLE_NAME_MISMATCH');
+          if(metadata.archiveSha256!==undefined && metadata.archiveSha256!==update.archiveSha256) throw new Error('ARCHIVE_HASH_MISMATCH');
+          console.log(`release_id=${update.releaseId}`);
+          console.log(`runtime_version=${update.runtimeVersion}`);
+          console.log(`runtime_filename=${update.bundleUrl}`);
+          console.log(`runtime_sha256=${update.archiveSha256}`);
+          console.log(`signing_cert_sha256=${metadata.signingCertificateSha256}`);
+          NODE
+
+          PUBLIC_JSON="$(curl --fail --silent --show-error --location --max-time 20 "$OTA_PUBLIC_ORIGIN/runtime-update.json")"
+          printf '%s' "$PUBLIC_JSON" > "$TMP/public-runtime-update.json"
+          node - "$TMP/runtime-update.json" "$TMP/public-runtime-update.json" <<'NODE'
+          const fs=require('node:fs');
+          const expected=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const actual=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          for(const key of ['releaseId','runtimeVersion','channel','minCarrierVersionCode','bridgeVersion','bundleUrl','archiveSha256']) {
+            if(actual[key]!==expected[key]) throw new Error(`PUBLIC_MANIFEST_MISMATCH_${key}`);
+          }
+          NODE
+          echo 'ota_state=PASS' >> "$GITHUB_OUTPUT"
+
+      - name: Publish sanitized status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          CHANNEL: ${{ steps.request.outputs.channel }}
+          INSPECT_OUTCOME: ${{ steps.inspect.outcome }}
+          RELEASE_STATE: ${{ steps.inspect.outputs.release_state }}
+          RELEASE_TAG: ${{ steps.inspect.outputs.release_tag }}
+          OTA_STATE: ${{ steps.inspect.outputs.ota_state }}
+        run: |
+          set -euo pipefail
+          BODY="RUNTIME_RELEASE_STATUS source_sha=${SOURCE_SHA:-UNKNOWN} channel=${CHANNEL:-UNKNOWN} inspect=${INSPECT_OUTCOME:-unknown} release=${RELEASE_STATE:-UNKNOWN} ota=${OTA_STATE:-UNKNOWN}"
+          if [[ -n "${RELEASE_TAG:-}" ]]; then BODY="$BODY release_tag=$RELEASE_TAG"; fi
+          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY"
