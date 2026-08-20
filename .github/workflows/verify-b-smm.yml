@@ -12,54 +12,35 @@ on:
         description: 'Exact 40-character MoreFunOS V1 SMM candidate SHA'
         required: true
         type: string
-  issue_comment:
-    types: [created]
 
 permissions:
   contents: read
-  issues: read
 
 jobs:
   verify-b-smm:
-    if: >-
-      github.actor == 'Pantonyeung' &&
-      (github.event_name != 'issue_comment' ||
-        (github.event.issue.number == 2 && startsWith(github.event.comment.body, '/verify-b-smm ')))
-    runs-on: ubuntu-latest
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       SOURCE_REPO: Pantonyeung/morefunos-v1
-      REQUESTED_SOURCE: ${{ github.event_name == 'issue_comment' && github.event.comment.body || inputs.source_sha }}
+      REQUESTED_SOURCE: ${{ inputs.source_sha }}
     steps:
       - name: Validate immutable SMM verification request
         id: request
         shell: bash
         run: |
           set -euo pipefail
-          RAW="$(printf '%s' "$REQUESTED_SOURCE" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-          if [[ "$GITHUB_EVENT_NAME" == 'issue_comment' ]]; then
-            case "$RAW" in
-              '/verify-b-smm '*) SOURCE_SHA="${RAW#'/verify-b-smm '}" ;;
-              *) echo 'Unsupported SMM verification comment.' >&2; exit 1 ;;
-            esac
-          else
-            SOURCE_SHA="$RAW"
-          fi
-          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
-          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
-            echo 'source_sha must normalize to one exact 40-character Git SHA' >&2
-            exit 1
-          fi
+          SOURCE_SHA="$(printf '%s' "$REQUESTED_SOURCE" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'source_sha must normalize to one exact 40-character Git SHA' >&2; exit 1; }
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
-          echo 'Validated immutable SMM source SHA.'
 
-      - name: Setup Node 22
-        uses: actions/setup-node@v7
+      - name: Setup Node 22.12
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '22'
+          node-version: '22.12.0'
 
       - name: Checkout exact private MoreFunOS V1 source SHA
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ steps.request.outputs.source_sha }}
@@ -73,8 +54,7 @@ jobs:
           EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
-          ACTUAL_SOURCE_SHA="$(git -C source rev-parse HEAD)"
-          test "$ACTUAL_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
           echo 'Exact SMM source identity: PASS'
 
       - name: Install pinned TypeScript toolchain
@@ -82,8 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           npm install --global --silent typescript@5.8.3
-          test "$(tsc --version)" = "Version 5.8.3"
-          echo 'Pinned TypeScript 5.8.3: PASS'
+          test "$(tsc --version)" = 'Version 5.8.3'
 
       - name: Execute private SMM verification without public source logs
         id: verify
@@ -113,7 +92,6 @@ jobs:
             local stage_log="$GITHUB_WORKSPACE/private-smm-ui.log"
             local plain_log="$GITHUB_WORKSPACE/private-smm-ui-plain.log"
             : > "$stage_log"
-            printf '\n== %s ==\n' "$stage" >> "$LOG"
             if "$@" > "$stage_log" 2>&1; then
               cat "$stage_log" >> "$LOG"
               echo "$stage: PASS"
@@ -121,10 +99,8 @@ jobs:
             fi
             cat "$stage_log" >> "$LOG"
             sed -r 's/\x1B\[[0-9;]*[mK]//g' "$stage_log" > "$plain_log"
-            echo "$stage: FAIL (assertions/source/DOM withheld; sanitized test identifiers follow)"
-            grep -E '^[[:space:]]*(FAIL[[:space:]]+|❯[[:space:]].*\.(test|spec)\.[cm]?[jt]sx?|×[[:space:]])' "$plain_log" \
-              | sed -E 's/[[:space:]]+at[[:space:]].*$//' \
-              | head -20 || true
+            echo "$stage: FAIL (sanitized test identifiers follow)"
+            grep -E '^[[:space:]]*(FAIL[[:space:]]+|❯[[:space:]].*\.(test|spec)\.[cm]?[jt]sx?|×[[:space:]])' "$plain_log" | sed -E 's/[[:space:]]+at[[:space:]].*$//' | head -20 || true
             echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
             return 1
           }
@@ -134,26 +110,20 @@ jobs:
             shift
             local stage_log="$GITHUB_WORKSPACE/private-smm-typecheck.log"
             : > "$stage_log"
-            printf '\n== %s ==\n' "$stage" >> "$LOG"
             if "$@" > "$stage_log" 2>&1; then
               cat "$stage_log" >> "$LOG"
               echo "$stage: PASS"
               return 0
             fi
             cat "$stage_log" >> "$LOG"
-            echo "$stage: FAIL (compiler messages withheld; sanitized locations follow)"
+            echo "$stage: FAIL (sanitized compiler locations follow)"
             sed -nE 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3 \4#p' "$stage_log" | head -20
             echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
             return 1
           }
 
           cd source
-          if [[ ! -f apps/smm-web/package-lock.json ]]; then
-            echo 'b-smm-lockfile: FAIL (committed apps/smm-web/package-lock.json required)'
-            echo 'failed_stage=b-smm-lockfile' >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
+          test -f apps/smm-web/package-lock.json || { echo 'failed_stage=b-smm-lockfile' >> "$GITHUB_OUTPUT"; exit 1; }
           run_stage 'b-smm-locked-install' npm --prefix apps/smm-web ci --no-audit --no-fund || exit 1
           run_stage 'b-smm-active-work-contract' node --experimental-strip-types --test apps/smm-web/src/smm-active-work-port.test.ts || exit 1
           run_stage 'b-smm-ordering-contract' node --experimental-strip-types --test apps/smm-web/src/smm-ordering-port.test.ts || exit 1
@@ -172,7 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "SMM source SHA: $SOURCE_SHA"
-          if [[ "$VERIFY_OUTCOME" == 'success' ]]; then
+          if [[ "$VERIFY_OUTCOME" == success ]]; then
             echo 'SMM verification: PASS'
           else
             echo "SMM verification: FAIL stage=${FAILED_STAGE:-UNAVAILABLE}"
