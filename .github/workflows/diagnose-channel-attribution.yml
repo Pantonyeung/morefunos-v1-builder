@@ -174,8 +174,6 @@ jobs:
             exit 0
           fi
 
-          # Mirror the remaining formal integration profile stages so a full-gate
-          # failure can be located without exposing the private verification log.
           if [[ ! -f apps/smt-web/package-lock.json ]]; then
             echo "stage=integration-smt-lockfile" >> "$GITHUB_OUTPUT"
             exit 0
@@ -194,6 +192,22 @@ jobs:
           fi
           if ! npm run typecheck:g5 >> "$LOG" 2>&1; then
             echo "stage=integration-b-g5-typecheck" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Decompose the package-level SMT test command into its named children.
+          # The formal gate still executes `npm --prefix apps/smt-web test`; these
+          # checks only expose which child suite is red without publishing logs.
+          if ! npm --prefix apps/smt-web run test:p01 >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-test-p01" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm --prefix apps/smt-web run test:legacy >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-test-legacy" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! node --experimental-strip-types --test apps/smt-web/src/smt-device-gate-bootstrap-consumer.test.ts apps/smt-web/src/runtime-carrier-ready.test.ts apps/smt-web/src/carrier-ota-port.test.ts >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-test-carrier" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if ! npm --prefix apps/smt-web test >> "$LOG" 2>&1; then
@@ -230,7 +244,7 @@ jobs:
             exit 0
           fi
           case "$STAGE" in
-            attribution-contract|current-typecheck|integration-smt-lockfile|integration-smt-web-locked-install|integration-current-regression|integration-b-g5-targeted|integration-b-g5-typecheck|integration-smt-web-test|integration-smt-web-build|integration-a-g6-static|integration-a-g6-typecheck|pass) ;;
+            attribution-contract|current-typecheck|integration-smt-lockfile|integration-smt-web-locked-install|integration-current-regression|integration-b-g5-targeted|integration-b-g5-typecheck|integration-smt-web-test-p01|integration-smt-web-test-legacy|integration-smt-web-test-carrier|integration-smt-web-test|integration-smt-web-build|integration-a-g6-static|integration-a-g6-typecheck|pass) ;;
             test-file:*) [[ "$STAGE" =~ ^test-file:[A-Za-z0-9_./-]+$ ]] || STAGE=diagnostic-unknown ;;
             *) STAGE=diagnostic-unknown ;;
           esac
