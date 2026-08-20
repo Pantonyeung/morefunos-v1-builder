@@ -36,6 +36,7 @@ jobs:
       SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
     steps:
       - name: Checkout exact source
+        id: checkout
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -44,18 +45,22 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node 22
+        id: node
         uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Verify exact SHA
+        id: identity
         shell: bash
         run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
 
       - name: Locked install
+        id: install
         run: npm --prefix apps/smt-web ci --no-audit --no-fund
 
       - name: P01 canonical contract behavior
+        id: contract
         shell: bash
         run: |
           node --experimental-strip-types --test \
@@ -69,6 +74,7 @@ jobs:
             apps/smt-web/src/smt-active-work-port.test.ts
 
       - name: P01 UI behavior + typecheck + build
+        id: app
         run: npm --prefix apps/smt-web run verify:p01
 
   report:
@@ -89,6 +95,6 @@ jobs:
           if [[ "$VERIFY_RESULT" == "success" ]]; then
             BODY="P01_CANONICAL_VERIFY source_sha=$SOURCE_SHA result=PASS"
           else
-            BODY="P01_CANONICAL_VERIFY source_sha=$SOURCE_SHA result=FAIL"
+            BODY="P01_CANONICAL_VERIFY source_sha=$SOURCE_SHA result=FAIL run_id=$GITHUB_RUN_ID inspect=verify-job"
           fi
           gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "$BODY"
