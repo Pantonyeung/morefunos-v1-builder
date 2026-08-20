@@ -25,10 +25,11 @@ jobs:
           set -euo pipefail
           COMMAND="$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
           case "$COMMAND" in
-            '/verify-a '*) LINE='a' ;;
-            '/verify-b '*) LINE='b' ;;
-            '/verify-c '*) LINE='c' ;;
-            '/verify-abc '*) LINE='abc' ;;
+            '/verify-a '*) LINE='a'; EXPECTED_PREFIX='/verify-a' ;;
+            '/verify-b '*) LINE='b'; EXPECTED_PREFIX='/verify-b' ;;
+            '/verify-c '*) LINE='c'; EXPECTED_PREFIX='/verify-c' ;;
+            '/verify-abc '*) LINE='abc'; EXPECTED_PREFIX='/verify-abc' ;;
+            '/repair-smt-p01-lockfile '*) LINE='repair-smt-p01-lockfile'; EXPECTED_PREFIX='/repair-smt-p01-lockfile' ;;
             *) echo 'Unsupported verification command.' >&2; exit 1 ;;
           esac
           SOURCE_SHA="${COMMAND#* }"
@@ -36,7 +37,7 @@ jobs:
             echo 'Verification command requires one exact 40-character source SHA.' >&2
             exit 1
           fi
-          EXPECTED="/verify-${LINE} ${SOURCE_SHA}"
+          EXPECTED="${EXPECTED_PREFIX} ${SOURCE_SHA}"
           if [[ "$COMMAND" != "$EXPECTED" ]]; then
             echo 'Verification command must contain exactly one command and one SHA.' >&2
             exit 1
@@ -44,6 +45,14 @@ jobs:
           echo "line=$LINE" >> "$GITHUB_OUTPUT"
           echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
           echo "Accepted Owner verification command for line: $LINE"
+
+  repair-smt-p01-lockfile:
+    needs: prepare
+    if: needs.prepare.outputs.line == 'repair-smt-p01-lockfile'
+    uses: ./.github/workflows/repair-smt-p01-lockfile.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
 
   verify-a:
     needs: prepare
