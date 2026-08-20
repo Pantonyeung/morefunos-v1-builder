@@ -1,0 +1,256 @@
+name: Runtime Release V2
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      release_channel:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
+      V1_ARTIFACT_DELIVERY_TOKEN:
+        required: true
+      V1_ANDROID_KEYSTORE_B64:
+        required: true
+      V1_ANDROID_KEYSTORE_PASSWORD:
+        required: true
+      V1_ANDROID_KEY_ALIAS:
+        required: true
+      V1_ANDROID_KEY_PASSWORD:
+        required: true
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact MoreFunOS V1 source SHA'
+        required: true
+        type: string
+      release_channel:
+        description: 'Runtime channel'
+        required: true
+        default: candidate
+        type: choice
+        options: [candidate, stable, dev]
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_REPO: Pantonyeung/morefunos-v1
+  EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+  MIN_CARRIER_VERSION_CODE: '21'
+  BRIDGE_VERSION: '1'
+  WRANGLER_VERSION: '4.118.0'
+
+concurrency:
+  group: runtime-release-v2-${{ inputs.source_sha }}-${{ inputs.release_channel }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify-ui-mother.yml
+    with:
+      source_sha: ${{ inputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+
+  release:
+    needs: verify
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_CHANNEL: ${{ inputs.release_channel }}
+      VERIFIED_ARTIFACT: ${{ needs.verify.outputs.artifact_name }}
+    steps:
+      - name: Validate release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          case "$RELEASE_CHANNEL" in candidate|stable|dev) ;; *) exit 1 ;; esac
+          test -n "$VERIFIED_ARTIFACT"
+
+      - name: Checkout Builder release scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22.12
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22.12.0'
+
+      - name: Setup JDK 17 for JAR signing
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download exact verified production dist
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: ${{ env.VERIFIED_ARTIFACT }}
+          path: verified-dist
+
+      - name: Verify artifact handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s verified-dist/index.html
+          find verified-dist -maxdepth 2 -type f -size +0c | grep -q .
+
+      - name: Sign immutable Runtime package
+        id: signing
+        shell: bash
+        env:
+          V1_ANDROID_KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          V1_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          V1_ANDROID_KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          V1_ANDROID_KEY_PASSWORD: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/morefunos-v1-app-signing.p12"
+          CERT_DER="$RUNNER_TEMP/morefunos-v1-app-signing.der"
+          MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
+          cleanup() { rm -f "$KEYSTORE" "$CERT_DER" "$MANIFEST"; }
+          trap cleanup EXIT
+
+          printf '%s' "$V1_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -exportcert -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" -alias "$V1_ANDROID_KEY_ALIAS" -file "$CERT_DER" >/dev/null 2>&1
+          CERT_SHA256="$(sha256sum "$CERT_DER" | awk '{print $1}')"
+          test "$CERT_SHA256" = "$EXPECTED_APP_SIGNING_CERT_SHA256"
+
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          RELEASE_ID="runtime-${RELEASE_CHANNEL}-${SHORT_SHA}"
+          RUNTIME_FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
+          RUNTIME_BUNDLE="$GITHUB_WORKSPACE/$RUNTIME_FILENAME"
+          cat > "$MANIFEST" <<EOF
+          Manifest-Version: 1.0
+          MoreFun-Release-Id: ${RELEASE_ID}
+          MoreFun-Runtime-Version: ${RELEASE_ID}
+          MoreFun-Channel: ${RELEASE_CHANNEL}
+          MoreFun-Min-Carrier-Version-Code: ${MIN_CARRIER_VERSION_CODE}
+          MoreFun-Bridge-Version: ${BRIDGE_VERSION}
+          EOF
+          sed -i 's/^          //' "$MANIFEST"
+
+          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C verified-dist .
+          jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" -keypass "$V1_ANDROID_KEY_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
+          jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
+
+          BUNDLE_SHA256="$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')"
+          BUNDLE_BYTES="$(stat -c%s "$RUNTIME_BUNDLE")"
+          {
+            echo "runtime_bundle=$RUNTIME_BUNDLE"
+            echo "runtime_filename=$RUNTIME_FILENAME"
+            echo "runtime_sha256=$BUNDLE_SHA256"
+            echo "runtime_bytes=$BUNDLE_BYTES"
+            echo "release_id=$RELEASE_ID"
+            echo "certificate_sha256=$CERT_SHA256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify package and generate provider-neutral metadata
+        id: metadata
+        shell: bash
+        env:
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RUNTIME_FILENAME: ${{ steps.signing.outputs.runtime_filename }}
+          RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+          RUNTIME_BYTES: ${{ steps.signing.outputs.runtime_bytes }}
+          RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+        run: |
+          set -euo pipefail
+          test -f "$RUNTIME_BUNDLE"
+          test "$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')" = "$RUNTIME_SHA256"
+          EXTRACT_DIR="$RUNNER_TEMP/runtime-package-contract"
+          mkdir -p "$EXTRACT_DIR"
+          (cd "$EXTRACT_DIR" && jar xf "$RUNTIME_BUNDLE")
+          test -s "$EXTRACT_DIR/index.html"
+          test -s "$EXTRACT_DIR/META-INF/MANIFEST.MF"
+
+          export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL MIN_CARRIER_VERSION_CODE BRIDGE_VERSION RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES RELEASE_ID CERT_SHA256
+          node <<'NODE'
+          const fs = require('node:fs');
+          const update = {
+            releaseId: process.env.RELEASE_ID,
+            runtimeVersion: process.env.RELEASE_ID,
+            channel: process.env.RELEASE_CHANNEL,
+            minCarrierVersionCode: Number(process.env.MIN_CARRIER_VERSION_CODE),
+            bridgeVersion: Number(process.env.BRIDGE_VERSION),
+            bundleUrl: process.env.RUNTIME_FILENAME,
+            archiveSha256: process.env.RUNTIME_SHA256,
+          };
+          const metadata = {
+            sourceRepository: process.env.SOURCE_REPO,
+            sourceSha: process.env.SOURCE_SHA,
+            ...update,
+            runtimeFilename: process.env.RUNTIME_FILENAME,
+            runtimeBytes: Number(process.env.RUNTIME_BYTES),
+            signingCertificateSha256: process.env.CERT_SHA256,
+            runtimePackageContract: 'PASS',
+            builderRepository: process.env.GITHUB_REPOSITORY,
+            builderSha: process.env.GITHUB_SHA,
+            builderRunId: process.env.GITHUB_RUN_ID,
+            builtAtUtc: new Date().toISOString(),
+          };
+          fs.writeFileSync('runtime-update.json', JSON.stringify(update, null, 2) + '\n');
+          fs.writeFileSync('runtime-build-metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+          fs.writeFileSync('RUNTIME_SHA256SUMS', `${process.env.RUNTIME_SHA256}  ${process.env.RUNTIME_FILENAME}\n`);
+          NODE
+          echo 'package_contract=PASS' >> "$GITHUB_OUTPUT"
+
+      - name: Deliver signed Runtime privately to V1 Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V1_ARTIFACT_DELIVERY_TOKEN }}
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RELEASE_ID: ${{ steps.signing.outputs.release_id }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+          RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
+        run: |
+          set -euo pipefail
+          TAG="builder-v2-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
+          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Builder V2 verified-artifact Runtime package. Source ${SOURCE_SHA}. Package contract PASS. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
+
+      - name: Checkout canonical OTA delivery source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: infra/cloudflare-ota-delivery
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: ota-delivery
+          persist-credentials: false
+
+      - name: Install pinned official Wrangler CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent "wrangler@${WRANGLER_VERSION}"
+          wrangler --version | grep -F "$WRANGLER_VERSION" >/dev/null
+
+      - name: Publish Runtime package-first and manifest-last
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
+          RUNTIME_MANIFEST: ${{ github.workspace }}/runtime-update.json
+          RUNTIME_METADATA: ${{ github.workspace }}/runtime-build-metadata.json
+          OTA_WORKER_DIR: ${{ github.workspace }}/ota-delivery/infra/cloudflare/ota-worker
+        run: node scripts/publish-runtime-online.mjs
+
+      - name: Runtime V2 summary
+        shell: bash
+        run: |
+          echo "runtime-release-v2=PASS source_sha=$SOURCE_SHA channel=$RELEASE_CHANNEL release_id=${{ steps.signing.outputs.release_id }}"
