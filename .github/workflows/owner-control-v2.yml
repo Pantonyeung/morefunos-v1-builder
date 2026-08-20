@@ -163,6 +163,7 @@ jobs:
           ABC: ${{ needs.verify-abc.result }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
           UI: ${{ needs.verify-ui-mother.result }}
+          UI_STAGE: ${{ needs.verify-ui-mother.outputs.failure_stage }}
           RUNTIME_RELEASE: ${{ needs.release-runtime.result }}
           ANDROID_RELEASE: ${{ needs.release-android.result }}
           STATUS: ${{ needs.runtime-status.result }}
@@ -181,6 +182,7 @@ jobs:
             *) RESULT=unknown ;;
           esac
           BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
+          if [[ "$COMMAND" == verify-ui-mother ]]; then BODY="$BODY stage=${UI_STAGE:-unknown}"; fi
           if [[ "$CHANNEL" != none ]]; then BODY="$BODY channel=$CHANNEL"; fi
           echo "$BODY"
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
