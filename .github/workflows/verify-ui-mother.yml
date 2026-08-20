@@ -14,7 +14,7 @@ on:
         description: 'Sanitized failing stage, or none'
         value: ${{ jobs.verify-ui-mother.outputs.failure_stage }}
       failure_detail:
-        description: 'Sanitized compiler location/code detail when available'
+        description: 'Sanitized failing test/compiler detail when available'
         value: ${{ jobs.verify-ui-mother.outputs.failure_detail }}
     secrets:
       V1_SOURCE_READ_TOKEN:
@@ -116,8 +116,8 @@ jobs:
         id: p01_tests
         shell: bash
         run: |
-          set -euo pipefail
-          npm --prefix source/apps/smt-web run test:p01
+          set -o pipefail
+          npm --prefix source/apps/smt-web run test:p01 2>&1 | tee "$RUNNER_TEMP/p01-tests.log"
 
       - name: Run SMT carrier/runtime adapter regression tests
         id: carrier_tests
@@ -144,19 +144,25 @@ jobs:
           cd source/apps/smt-web
           ./node_modules/.bin/tsc -b --pretty false 2>&1 | tee "$RUNNER_TEMP/mother-tsc.log"
 
-      - name: Capture sanitized TypeScript diagnostics
+      - name: Capture sanitized verification diagnostics
         id: diagnostic
-        if: ${{ always() && steps.typescript.outcome == 'failure' }}
+        if: ${{ always() && (steps.p01_tests.outcome == 'failure' || steps.typescript.outcome == 'failure') }}
         shell: bash
         run: |
           set -euo pipefail
-          DETAIL="$(sed -nE \
-            -e 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' \
-            -e 's#^error (TS[0-9]+):.*#\1#p' \
-            "$RUNNER_TEMP/mother-tsc.log" | head -5 | paste -sd ',' -)"
-          if [[ -z "$DETAIL" ]]; then DETAIL='typescript-error-detail-unavailable'; fi
+          DETAIL=''
+          if [[ "${{ steps.p01_tests.outcome }}" == failure ]]; then
+            DETAIL="$(grep -Eo 'src/[A-Za-z0-9_./-]+\.(test|spec)\.(tsx|ts|jsx|js|mjs)' "$RUNNER_TEMP/p01-tests.log" | sort -u | head -5 | paste -sd ',' - || true)"
+            if [[ -z "$DETAIL" ]]; then DETAIL='p01-test-file-unavailable'; fi
+          elif [[ "${{ steps.typescript.outcome }}" == failure ]]; then
+            DETAIL="$(sed -nE \
+              -e 's#^([^(:]+)\(([0-9]+),([0-9]+)\): error (TS[0-9]+):.*#\1:\2:\3-\4#p' \
+              -e 's#^error (TS[0-9]+):.*#\1#p' \
+              "$RUNNER_TEMP/mother-tsc.log" | head -5 | paste -sd ',' -)"
+            if [[ -z "$DETAIL" ]]; then DETAIL='typescript-error-detail-unavailable'; fi
+          fi
           echo "detail=$DETAIL" >> "$GITHUB_OUTPUT"
-          echo "sanitized-typescript-detail=$DETAIL"
+          echo "sanitized-verification-detail=$DETAIL"
 
       - name: Run Vite production build
         id: vite_build
