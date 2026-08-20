@@ -1,0 +1,58 @@
+name: P01 G5 Static Diagnostic
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung' && github.event.issue.number == 50 && startsWith(github.event.comment.body, '/p01-g5-static ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/p01-g5-static '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$COMMAND" = "/p01-g5-static ${SOURCE_SHA}"
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.parse.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - id: exact_test
+        name: Run exact G5 static diagnostic
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          node --test apps/smt-web/src/g5-static.test.mjs
+      - name: Publish diagnostic run identity
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ steps.parse.outputs.source_sha }}
+          TEST_OUTCOME: ${{ steps.exact_test.outcome }}
+        run: |
+          set -euo pipefail
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "P01_G5_STATIC_DIAGNOSTIC run_id=${RUN_ID} source_sha=${SOURCE_SHA:-UNKNOWN} result=${TEST_OUTCOME:-UNKNOWN}" >/dev/null
+          test "${TEST_OUTCOME}" = 'success'
