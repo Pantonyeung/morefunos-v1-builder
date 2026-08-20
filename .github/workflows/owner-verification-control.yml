@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
 
 jobs:
   prepare:
@@ -85,3 +85,33 @@ jobs:
     with:
       source_sha: ${{ needs.prepare.outputs.source_sha }}
     secrets: inherit
+
+  report:
+    if: ${{ always() && needs.prepare.result == 'success' }}
+    needs: [prepare, repair-smt-p01-lockfile, verify-a, verify-b, verify-c, verify-abc]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish sanitized owner verification result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LINE: ${{ needs.prepare.outputs.line }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          REPAIR_RESULT: ${{ needs.repair-smt-p01-lockfile.result }}
+          A_RESULT: ${{ needs.verify-a.result }}
+          B_RESULT: ${{ needs.verify-b.result }}
+          C_RESULT: ${{ needs.verify-c.result }}
+          ABC_RESULT: ${{ needs.verify-abc.result }}
+        run: |
+          set -euo pipefail
+          case "$LINE" in
+            repair-smt-p01-lockfile) RESULT="$REPAIR_RESULT" ;;
+            a) RESULT="$A_RESULT" ;;
+            b) RESULT="$B_RESULT" ;;
+            c) RESULT="$C_RESULT" ;;
+            abc) RESULT="$ABC_RESULT" ;;
+            *) RESULT='unknown' ;;
+          esac
+          BODY="owner-verification line=${LINE:-UNKNOWN} source_sha=${SOURCE_SHA:-UNKNOWN} result=${RESULT:-UNKNOWN}"
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
