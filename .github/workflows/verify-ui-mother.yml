@@ -10,6 +10,9 @@ on:
       artifact_name:
         description: 'Verified SMT Mother dist artifact name'
         value: ${{ jobs.verify-ui-mother.outputs.artifact_name }}
+      failure_stage:
+        description: 'Sanitized failing stage, or none'
+        value: ${{ jobs.verify-ui-mother.outputs.failure_stage }}
     secrets:
       V1_SOURCE_READ_TOKEN:
         required: true
@@ -37,6 +40,7 @@ jobs:
     timeout-minutes: 25
     outputs:
       artifact_name: ${{ steps.artifact.outputs.name }}
+      failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
@@ -50,11 +54,13 @@ jobs:
           echo "source_sha=${SHA,,}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Builder definition
+        id: builder_checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Checkout exact private MoreFunOS V1 source
+        id: source_checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Pantonyeung/morefunos-v1
@@ -64,16 +70,16 @@ jobs:
           persist-credentials: false
 
       - name: Verify exact source identity
+        id: identity
         shell: bash
         env:
           EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
-          ACTUAL="$(git -C source rev-parse HEAD)"
-          test "$ACTUAL" = "$EXPECTED_SOURCE_SHA"
-          echo 'exact-source-identity=PASS'
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
 
       - name: Setup supported Node with npm lockfile cache
+        id: node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.12.0'
@@ -81,32 +87,36 @@ jobs:
           cache-dependency-path: source/apps/smt-web/package-lock.json
 
       - name: Verify runtime toolchain floor
+        id: toolchain
         shell: bash
         run: |
           set -euo pipefail
           node -e 'const [M,m]=process.versions.node.split(".").map(Number); if (!(M>22 || (M===22 && m>=12))) process.exit(1)'
           test -f source/apps/smt-web/package-lock.json
-          echo 'node-vite8-engine-floor=PASS'
 
       - name: Clean install from committed lockfile
+        id: install
         shell: bash
         run: |
           set -euo pipefail
           npm --prefix source/apps/smt-web ci --no-audit --no-fund
 
       - name: Verify maintained dependency graph
+        id: dependencies
         shell: bash
         run: |
           set -euo pipefail
           npm --prefix source/apps/smt-web ls react react-dom react-router lucide-react vite typescript vitest --depth=0
 
       - name: Run current Mother contract, TypeScript and Vite production gate
+        id: mother_gate
         shell: bash
         run: |
           set -euo pipefail
           npm --prefix source/apps/smt-web run verify:mother
 
       - name: Verify Vite production output integrity
+        id: dist
         shell: bash
         run: |
           set -euo pipefail
@@ -116,11 +126,8 @@ jobs:
           node - "$DIST/index.html" <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync(process.argv[2], 'utf8');
-          const remoteScript = /<script\b[^>]*\bsrc=["']https?:\/\//i.test(html);
-          const remoteStyle = /<link\b[^>]*\bhref=["']https?:\/\//i.test(html);
-          if (remoteScript || remoteStyle) throw new Error('REMOTE_CORE_STARTUP_DEPENDENCY_DETECTED');
+          if (/<script\b[^>]*\bsrc=["']https?:\/\//i.test(html) || /<link\b[^>]*\bhref=["']https?:\/\//i.test(html)) throw new Error('REMOTE_CORE_STARTUP_DEPENDENCY_DETECTED');
           NODE
-          echo 'vite-dist-integrity=PASS'
 
       - name: Name immutable verified artifact
         id: artifact
@@ -132,6 +139,7 @@ jobs:
           echo "name=${VERIFIED_DIST_PREFIX}-${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Upload verified production dist
+        id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ${{ steps.artifact.outputs.name }}
@@ -140,8 +148,43 @@ jobs:
           retention-days: 1
           compression-level: 6
 
+      - name: Derive sanitized verification stage
+        id: stage
+        if: always()
+        shell: bash
+        env:
+          REQUEST: ${{ steps.request.outcome }}
+          BUILDER_CHECKOUT: ${{ steps.builder_checkout.outcome }}
+          SOURCE_CHECKOUT: ${{ steps.source_checkout.outcome }}
+          IDENTITY: ${{ steps.identity.outcome }}
+          NODE_SETUP: ${{ steps.node.outcome }}
+          TOOLCHAIN: ${{ steps.toolchain.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          MOTHER_GATE: ${{ steps.mother_gate.outcome }}
+          DIST: ${{ steps.dist.outcome }}
+          ARTIFACT: ${{ steps.artifact.outcome }}
+          UPLOAD: ${{ steps.upload.outcome }}
+        run: |
+          set -euo pipefail
+          STAGE=none
+          if [[ "$REQUEST" == failure ]]; then STAGE=request;
+          elif [[ "$BUILDER_CHECKOUT" == failure ]]; then STAGE=builder_checkout;
+          elif [[ "$SOURCE_CHECKOUT" == failure ]]; then STAGE=source_checkout;
+          elif [[ "$IDENTITY" == failure ]]; then STAGE=identity;
+          elif [[ "$NODE_SETUP" == failure ]]; then STAGE=node_setup;
+          elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
+          elif [[ "$INSTALL" == failure ]]; then STAGE=npm_ci;
+          elif [[ "$DEPENDENCIES" == failure ]]; then STAGE=dependency_graph;
+          elif [[ "$MOTHER_GATE" == failure ]]; then STAGE=mother_contract_type_vite;
+          elif [[ "$DIST" == failure ]]; then STAGE=dist_integrity;
+          elif [[ "$ARTIFACT" == failure ]]; then STAGE=artifact_name;
+          elif [[ "$UPLOAD" == failure ]]; then STAGE=artifact_upload;
+          fi
+          echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "mother-verify-stage=$STAGE"
+
       - name: Publish verification summary
         if: always()
         shell: bash
-        run: |
-          echo "SMT Mother UI evidence gate completed for ${{ steps.request.outputs.source_sha }}"
+        run: echo "SMT Mother UI evidence gate source=${{ steps.request.outputs.source_sha }} stage=${{ steps.stage.outputs.failure_stage }}"
