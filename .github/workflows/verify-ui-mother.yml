@@ -112,12 +112,22 @@ jobs:
           set -euo pipefail
           npm --prefix source/apps/smt-web ls react react-dom react-router lucide-react vite typescript vitest --depth=0
 
-      - name: Run SMT functional regression tests
-        id: functional_tests
+      - name: Run SMT P01 interaction regression tests
+        id: p01_tests
         shell: bash
         run: |
           set -euo pipefail
-          npm --prefix source/apps/smt-web test
+          npm --prefix source/apps/smt-web run test:p01
+
+      - name: Run SMT carrier/runtime adapter regression tests
+        id: carrier_tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test \
+            source/apps/smt-web/src/smt-device-gate-bootstrap-consumer.test.ts \
+            source/apps/smt-web/src/runtime-carrier-ready.test.ts \
+            source/apps/smt-web/src/carrier-ota-port.test.ts
 
       - name: Run current Mother contract
         id: mother_contract
@@ -202,7 +212,8 @@ jobs:
           TOOLCHAIN: ${{ steps.toolchain.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           DEPENDENCIES: ${{ steps.dependencies.outcome }}
-          FUNCTIONAL_TESTS: ${{ steps.functional_tests.outcome }}
+          P01_TESTS: ${{ steps.p01_tests.outcome }}
+          CARRIER_TESTS: ${{ steps.carrier_tests.outcome }}
           MOTHER_CONTRACT: ${{ steps.mother_contract.outcome }}
           TYPESCRIPT: ${{ steps.typescript.outcome }}
           VITE_BUILD: ${{ steps.vite_build.outcome }}
@@ -220,7 +231,8 @@ jobs:
           elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
           elif [[ "$INSTALL" == failure ]]; then STAGE=npm_ci;
           elif [[ "$DEPENDENCIES" == failure ]]; then STAGE=dependency_graph;
-          elif [[ "$FUNCTIONAL_TESTS" == failure ]]; then STAGE=functional_tests;
+          elif [[ "$P01_TESTS" == failure ]]; then STAGE=p01_tests;
+          elif [[ "$CARRIER_TESTS" == failure ]]; then STAGE=carrier_tests;
           elif [[ "$MOTHER_CONTRACT" == failure ]]; then STAGE=mother_contract;
           elif [[ "$TYPESCRIPT" == failure ]]; then STAGE=typescript;
           elif [[ "$VITE_BUILD" == failure ]]; then STAGE=vite_build;
