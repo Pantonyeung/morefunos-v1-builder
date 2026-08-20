@@ -6,6 +6,10 @@ on:
       source_sha:
         required: true
         type: string
+    outputs:
+      artifact_name:
+        description: 'Verified SMT Mother dist artifact name'
+        value: ${{ jobs.verify-ui-mother.outputs.artifact_name }}
     secrets:
       V1_SOURCE_READ_TOKEN:
         required: true
@@ -19,6 +23,9 @@ on:
 permissions:
   contents: read
 
+env:
+  VERIFIED_DIST_PREFIX: smt-mother-dist
+
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.source_sha }}
   cancel-in-progress: true
@@ -26,8 +33,10 @@ concurrency:
 jobs:
   verify-ui-mother:
     if: github.actor == 'Pantonyeung'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.name }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
@@ -62,13 +71,13 @@ jobs:
           set -euo pipefail
           ACTUAL="$(git -C source rev-parse HEAD)"
           test "$ACTUAL" = "$EXPECTED_SOURCE_SHA"
-          echo "exact-source-identity=PASS"
+          echo 'exact-source-identity=PASS'
 
       - name: Setup supported Node with npm lockfile cache
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.12.0'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: source/apps/smt-web/package-lock.json
 
       - name: Verify runtime toolchain floor
@@ -77,7 +86,7 @@ jobs:
           set -euo pipefail
           node -e 'const [M,m]=process.versions.node.split(".").map(Number); if (!(M>22 || (M===22 && m>=12))) process.exit(1)'
           test -f source/apps/smt-web/package-lock.json
-          echo "node-vite8-engine-floor=PASS"
+          echo 'node-vite8-engine-floor=PASS'
 
       - name: Clean install from committed lockfile
         shell: bash
@@ -109,11 +118,27 @@ jobs:
           const html = fs.readFileSync(process.argv[2], 'utf8');
           const remoteScript = /<script\b[^>]*\bsrc=["']https?:\/\//i.test(html);
           const remoteStyle = /<link\b[^>]*\bhref=["']https?:\/\//i.test(html);
-          if (remoteScript || remoteStyle) {
-            throw new Error('REMOTE_CORE_STARTUP_DEPENDENCY_DETECTED');
-          }
+          if (remoteScript || remoteStyle) throw new Error('REMOTE_CORE_STARTUP_DEPENDENCY_DETECTED');
           NODE
-          echo "vite-dist-integrity=PASS"
+          echo 'vite-dist-integrity=PASS'
+
+      - name: Name immutable verified artifact
+        id: artifact
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          echo "name=${VERIFIED_DIST_PREFIX}-${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified production dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: source/apps/smt-web/dist
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 6
 
       - name: Publish verification summary
         if: always()
