@@ -8,6 +8,13 @@ on:
       source_sha:
         required: true
         type: string
+    outputs:
+      new_sha:
+        description: 'Source SHA after canonical SMT lockfile writeback'
+        value: ${{ jobs.repair.outputs.new_sha }}
+      lock_sha256:
+        description: 'Canonical SMT package-lock SHA-256'
+        value: ${{ jobs.repair.outputs.lock_sha256 }}
     secrets:
       V1_SOURCE_READ_TOKEN:
         required: true
@@ -28,10 +35,12 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      new_sha: ${{ steps.writeback.outputs.new_sha }}
+      lock_sha256: ${{ steps.lock.outputs.lock_sha256 }}
     env:
       COMMENT_BODY: ${{ github.event.comment.body }}
       INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
-      SOURCE_REPO: Pantonyeung/morefunos-v1
       TARGET_BRANCH: agent/smt-p01-owner-locked-implementation-20260820
     steps:
       - name: Validate immutable repair request
@@ -125,7 +134,7 @@ jobs:
           echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Report sanitized result
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name == 'issue_comment' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
