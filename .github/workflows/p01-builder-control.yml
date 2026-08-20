@@ -54,10 +54,11 @@ jobs:
           INPUT_SHA: ${{ needs.prepare.outputs.source_sha }}
           REPAIRED_SHA: ${{ needs.repair-lockfile.outputs.new_sha }}
           LOCK_SHA256: ${{ needs.repair-lockfile.outputs.lock_sha256 }}
+          FAILURE_STAGE: ${{ needs.repair-lockfile.outputs.failure_stage }}
           REPAIR_RESULT: ${{ needs.repair-lockfile.result }}
           VERIFY_RESULT: ${{ needs.verify-b.result }}
         run: |
           set -euo pipefail
-          BODY="p01-builder-control input_sha=${INPUT_SHA:-UNKNOWN} repair=${REPAIR_RESULT:-UNKNOWN} repaired_sha=${REPAIRED_SHA:-NONE} lock_sha256=${LOCK_SHA256:-NONE} verify_b=${VERIFY_RESULT:-UNKNOWN}"
+          BODY="p01-builder-control input_sha=${INPUT_SHA:-UNKNOWN} repair=${REPAIR_RESULT:-UNKNOWN} stage=${FAILURE_STAGE:-UNKNOWN} repaired_sha=${REPAIRED_SHA:-NONE} lock_sha256=${LOCK_SHA256:-NONE} verify_b=${VERIFY_RESULT:-UNKNOWN}"
           echo "$BODY"
           gh issue comment 2 --body "$BODY" >/dev/null
