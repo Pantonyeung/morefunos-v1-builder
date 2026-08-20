@@ -145,11 +145,13 @@ jobs:
           import { run } from 'node:test';
           import path from 'node:path';
           const stream = run({ files: [path.resolve('apps/smt-web/src/g5-static.test.mjs')] });
-          let first = '';
+          const failures = [];
           stream.on('test:fail', (data) => {
-            if (!first && data?.name && data.name !== 'apps/smt-web/src/g5-static.test.mjs') first = data.name;
+            const name = String(data?.name ?? '').trim();
+            if (name && !name.endsWith('.mjs') && !name.includes('/g5-static.test.mjs')) failures.push(name);
           });
           stream.on('end', () => {
+            const first = failures[0] ?? '';
             const safe = first.replace(/[^A-Za-z0-9 _.:()'\-/]/g, '').slice(0, 160);
             process.stdout.write(safe || 'UNAVAILABLE');
           });
