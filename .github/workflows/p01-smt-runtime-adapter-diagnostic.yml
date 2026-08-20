@@ -1,0 +1,58 @@
+name: P01 SMT Runtime Adapter Diagnostic
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung' && github.event.issue.number == 50 && startsWith(github.event.comment.body, '/p01-smt-runtime-adapter ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          COMMAND="$(printf '%s' "$BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          SOURCE_SHA="${COMMAND#'/p01-smt-runtime-adapter '}"
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$COMMAND" = "/p01-smt-runtime-adapter ${SOURCE_SHA}"
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.parse.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - id: exact_test
+        name: Run exact SMT Runtime adapter diagnostic
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          node --experimental-strip-types --test apps/smt-web/src/smt-runtime-adapter.test.ts
+      - name: Publish diagnostic run identity
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ steps.parse.outputs.source_sha }}
+          TEST_OUTCOME: ${{ steps.exact_test.outcome }}
+        run: |
+          set -euo pipefail
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "P01_SMT_RUNTIME_ADAPTER_DIAGNOSTIC run_id=${RUN_ID} source_sha=${SOURCE_SHA:-UNKNOWN} result=${TEST_OUTCOME:-UNKNOWN}" >/dev/null
+          test "${TEST_OUTCOME}" = 'success'
