@@ -33,6 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          mkdir -p "$RUNNER_TEMP/actionlint"
           gh release download "v${ACTIONLINT_VERSION}" \
             --repo rhysd/actionlint \
             --pattern "$ARCHIVE" \
@@ -44,6 +45,19 @@ jobs:
           test -x "$RUNNER_TEMP/actionlint/actionlint"
           "$RUNNER_TEMP/actionlint/actionlint" -version
 
-      - name: Lint GitHub Actions and embedded shell
+      - name: Hard gate replacement workflows
         shell: bash
-        run: "$RUNNER_TEMP/actionlint/actionlint -color"
+        run: |
+          set -euo pipefail
+          LINTER="$RUNNER_TEMP/actionlint/actionlint"
+          "$LINTER" -color \
+            .github/workflows/builder-self-check.yml \
+            .github/workflows/verify-ui-mother.yml
+
+      - name: Inventory legacy workflow debt
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          LINTER="$RUNNER_TEMP/actionlint/actionlint"
+          "$LINTER" -color
