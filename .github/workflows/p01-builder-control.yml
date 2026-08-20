@@ -1,0 +1,63 @@
+name: P01 Builder Control
+
+on:
+  push:
+    branches:
+      - builder/p01-control
+    paths:
+      - 'control/p01-source-sha.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prepare:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.source.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: source
+        name: Read exact isolated source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(tr -d '[:space:]' < control/p01-source-sha.txt)"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          echo "source_sha=${SOURCE_SHA,,}" >> "$GITHUB_OUTPUT"
+
+  repair-lockfile:
+    needs: prepare
+    uses: ./.github/workflows/repair-smt-p01-lockfile.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets: inherit
+
+  verify-b:
+    needs: repair-lockfile
+    uses: ./.github/workflows/verify-b.yml
+    with:
+      source_sha: ${{ needs.repair-lockfile.outputs.new_sha }}
+    secrets: inherit
+
+  report:
+    if: ${{ always() }}
+    needs: [prepare, repair-lockfile, verify-b]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish sanitized Builder result to Owner control
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_SHA: ${{ needs.prepare.outputs.source_sha }}
+          REPAIRED_SHA: ${{ needs.repair-lockfile.outputs.new_sha }}
+          LOCK_SHA256: ${{ needs.repair-lockfile.outputs.lock_sha256 }}
+          REPAIR_RESULT: ${{ needs.repair-lockfile.result }}
+          VERIFY_RESULT: ${{ needs.verify-b.result }}
+        run: |
+          set -euo pipefail
+          BODY="p01-builder-control input_sha=${INPUT_SHA:-UNKNOWN} repair=${REPAIR_RESULT:-UNKNOWN} repaired_sha=${REPAIRED_SHA:-NONE} lock_sha256=${LOCK_SHA256:-NONE} verify_b=${VERIFY_RESULT:-UNKNOWN}"
+          echo "$BODY"
+          gh issue comment 2 --body "$BODY" >/dev/null
