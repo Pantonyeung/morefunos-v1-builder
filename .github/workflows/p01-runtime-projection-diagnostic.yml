@@ -36,9 +36,23 @@ jobs:
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - name: Run exact failing diagnostic
+      - id: exact_test
+        name: Run exact failing diagnostic
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           cd source
           node --experimental-strip-types --test packages/runtime/business-runtime-projection.test.ts
+      - name: Publish diagnostic run identity
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ steps.parse.outputs.source_sha }}
+          TEST_OUTCOME: ${{ steps.exact_test.outcome }}
+        run: |
+          set -euo pipefail
+          gh issue comment 50 --repo Pantonyeung/morefunos-v1-builder --body "P01_RUNTIME_PROJECTION_DIAGNOSTIC run_id=${RUN_ID} source_sha=${SOURCE_SHA:-UNKNOWN} result=${TEST_OUTCOME:-UNKNOWN}" >/dev/null
+          test "${TEST_OUTCOME}" = 'success'
