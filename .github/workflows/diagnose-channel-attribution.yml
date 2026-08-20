@@ -173,6 +173,46 @@ jobs:
             echo "stage=current-typecheck" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # Mirror the remaining formal integration profile stages so a full-gate
+          # failure can be located without exposing the private verification log.
+          if [[ ! -f apps/smt-web/package-lock.json ]]; then
+            echo "stage=integration-smt-lockfile" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm --prefix apps/smt-web ci --no-audit --no-fund >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-locked-install" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm run test:current >> "$LOG" 2>&1; then
+            echo "stage=integration-current-regression" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm run test:g5 >> "$LOG" 2>&1; then
+            echo "stage=integration-b-g5-targeted" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm run typecheck:g5 >> "$LOG" 2>&1; then
+            echo "stage=integration-b-g5-typecheck" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm --prefix apps/smt-web test >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-test" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm --prefix apps/smt-web run build >> "$LOG" 2>&1; then
+            echo "stage=integration-smt-web-build" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm run test:g6 >> "$LOG" 2>&1; then
+            echo "stage=integration-a-g6-static" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! npm run typecheck:g6 >> "$LOG" 2>&1; then
+            echo "stage=integration-a-g6-typecheck" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "stage=pass" >> "$GITHUB_OUTPUT"
 
       - name: Publish sanitized result
@@ -189,7 +229,9 @@ jobs:
             gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "diagnose-channel source_sha=$SHA stage=test-name name=$SAFE_NAME" >/dev/null
             exit 0
           fi
-          if [[ "$STAGE" != "attribution-contract" && "$STAGE" != "current-typecheck" && "$STAGE" != "pass" && ! "$STAGE" =~ ^test-file:[A-Za-z0-9_./-]+$ ]]; then
-            STAGE=diagnostic-unknown
-          fi
+          case "$STAGE" in
+            attribution-contract|current-typecheck|integration-smt-lockfile|integration-smt-web-locked-install|integration-current-regression|integration-b-g5-targeted|integration-b-g5-typecheck|integration-smt-web-test|integration-smt-web-build|integration-a-g6-static|integration-a-g6-typecheck|pass) ;;
+            test-file:*) [[ "$STAGE" =~ ^test-file:[A-Za-z0-9_./-]+$ ]] || STAGE=diagnostic-unknown ;;
+            *) STAGE=diagnostic-unknown ;;
+          esac
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "diagnose-channel source_sha=$SHA stage=$STAGE" >/dev/null
