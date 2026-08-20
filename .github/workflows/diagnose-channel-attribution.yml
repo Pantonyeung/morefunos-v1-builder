@@ -140,7 +140,27 @@ jobs:
           )
           for file in "${STATIC_FILES[@]}"; do
             if ! node --test "$file" >> "$LOG" 2>&1; then
-              echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
+              if [[ "$file" == "apps/smt-web/src/g5-static.test.mjs" ]]; then
+                FAIL_NAME="$(node --input-type=module <<'NODE'
+          import { run } from 'node:test';
+          import path from 'node:path';
+          const stream = run({ files: [path.resolve('apps/smt-web/src/g5-static.test.mjs')] });
+          let first = '';
+          stream.on('test:fail', (data) => {
+            if (!first && data?.name && data.name !== 'apps/smt-web/src/g5-static.test.mjs') first = data.name;
+          });
+          stream.on('end', () => {
+            const safe = first.replace(/[^A-Za-z0-9 _.:()'\-/]/g, '').slice(0, 160);
+            process.stdout.write(safe || 'UNAVAILABLE');
+          });
+          stream.resume();
+          NODE
+          )"
+                echo "test_name=$FAIL_NAME" >> "$GITHUB_OUTPUT"
+                echo "stage=test-name" >> "$GITHUB_OUTPUT"
+              else
+                echo "stage=test-file:$file" >> "$GITHUB_OUTPUT"
+              fi
               exit 0
             fi
           done
@@ -157,8 +177,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.request.outputs.source_sha }}
           STAGE: ${{ steps.diagnose.outputs.stage }}
+          TEST_NAME: ${{ steps.diagnose.outputs.test_name }}
         run: |
           set -euo pipefail
+          if [[ "$STAGE" == "test-name" ]]; then
+            SAFE_NAME="$(printf '%s' "${TEST_NAME:-UNAVAILABLE}" | tr -cd "A-Za-z0-9 _.:()'/-" | cut -c1-160)"
+            gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "diagnose-channel source_sha=$SHA stage=test-name name=$SAFE_NAME" >/dev/null
+            exit 0
+          fi
           if [[ "$STAGE" != "attribution-contract" && "$STAGE" != "current-typecheck" && "$STAGE" != "pass" && ! "$STAGE" =~ ^test-file:[A-Za-z0-9_./-]+$ ]]; then
             STAGE=diagnostic-unknown
           fi
