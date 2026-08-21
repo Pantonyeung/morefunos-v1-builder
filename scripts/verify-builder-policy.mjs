@@ -6,6 +6,7 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 const v1 = read('.github/workflows/verify-v1.yml');
 const carrier = read('.github/workflows/verify-carrier.yml');
 const d103 = read('.github/workflows/verify-smt-p01-d103.yml');
+const runtimeRelease = read('.github/workflows/runtime-release-v2.yml');
 const owner = read('.github/workflows/owner-control-v2.yml');
 
 const requireAll = (text, needles, prefix) => {
@@ -84,6 +85,26 @@ const d103ForbiddenProductKnowledge = [
 ];
 for (const pattern of d103ForbiddenProductKnowledge) {
   if (pattern.test(d103)) throw new Error(`D103_BUILDER_PRODUCT_KNOWLEDGE_FORBIDDEN:${pattern}`);
+}
+
+// Read-only verification does not own a mutable shared resource. A workflow-level
+// concurrency lock here can leave future exact-SHA requests blocked behind a stale run.
+for (const [name, workflow] of [['verify-v1', v1], ['verify-carrier', carrier], ['verify-smt-p01-d103', d103]]) {
+  if (/^concurrency:\s*$/m.test(workflow)) throw new Error(`VERIFY_CONCURRENCY_LOCK_FORBIDDEN:${name}`);
+}
+
+// Runtime publication owns one mutable public manifest per channel. Serialize by channel,
+// not by source SHA. Candidate/dev may supersede a stale release; stable never auto-cancels.
+requireAll(runtimeRelease, [
+  'group: runtime-release-v2-${{ inputs.release_channel }}',
+  "cancel-in-progress: ${{ inputs.release_channel != 'stable' }}",
+  'jobs:',
+  'verify-smt-p01-d103:',
+  'needs: verify-smt-p01-d103',
+  'Publish Runtime package-first and manifest-last',
+], 'RUNTIME_RELEASE_SINGLE_CHAIN_REQUIRED');
+if (/group:\s*runtime-release-v2-\$\{\{\s*inputs\.source_sha/.test(runtimeRelease)) {
+  throw new Error('RUNTIME_RELEASE_SOURCE_SHA_CONCURRENCY_FORBIDDEN');
 }
 
 requireAll(owner, [
