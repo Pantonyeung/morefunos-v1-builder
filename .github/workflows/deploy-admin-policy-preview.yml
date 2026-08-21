@@ -19,6 +19,7 @@ jobs:
     steps:
       - name: Validate deployment credentials
         env:
+          GH_TOKEN: ${{ github.token }}
           CF_API: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
@@ -36,9 +37,16 @@ jobs:
           [ -n "$GOOGLE_PRIVATE_KEY" ] || missing+=(GOOGLE_PRIVATE_KEY)
           [ -n "$STAFF_SESSIONS_JSON" ] || missing+=(STAFF_SESSIONS_JSON)
           if [ ${#missing[@]} -gt 0 ]; then
-            printf 'ADMIN_PREVIEW_DEPLOY_CONFIG_MISSING:%s\n' "$(IFS=,; echo "${missing[*]}")"
+            message="MISSING:$(IFS=,; echo "${missing[*]}")"
+            printf 'ADMIN_PREVIEW_DEPLOY_CONFIG_%s\n' "$message"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state=failure -f context=admin-policy-preview-config \
+              -f description="${message:0:130}" >/dev/null
             exit 1
           fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success -f context=admin-policy-preview-config \
+            -f description='Preview deployment credentials available' >/dev/null
 
       - uses: actions/checkout@v7
         with:
