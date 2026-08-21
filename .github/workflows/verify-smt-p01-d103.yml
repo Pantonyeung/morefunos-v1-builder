@@ -95,7 +95,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm --prefix source/apps/smt-web exec -- tsc --noEmit -p tsconfig.json 2>&1 | tee "$RUNNER_TEMP/d103-typecheck.log"
+          npm --prefix source/apps/smt-web exec -- tsc --noEmit -p source/apps/smt-web/tsconfig.json 2>&1 | tee "$RUNNER_TEMP/d103-typecheck.log"
 
       - name: Publish sanitized typecheck diagnostic
         if: steps.typecheck.outcome == 'failure'
