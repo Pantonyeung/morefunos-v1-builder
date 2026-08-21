@@ -1,0 +1,120 @@
+name: Deploy Admin Policy Preview
+
+on:
+  push:
+    paths:
+      - '.github/workflows/deploy-admin-policy-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_SHA: c4ed2345676abdfe554a14e15d41b846ea1da13e
+
+jobs:
+  deploy-admin-policy-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate deployment credentials
+        env:
+          CF_API: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$CF_API" ] || missing+=(CLOUDFLARE_API_TOKEN)
+          [ -n "$CF_ACCOUNT" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
+          [ -n "$FIREBASE_DATABASE_URL" ] || missing+=(FIREBASE_DATABASE_URL)
+          [ -n "$GOOGLE_CLIENT_EMAIL" ] || missing+=(GOOGLE_CLIENT_EMAIL)
+          [ -n "$GOOGLE_PRIVATE_KEY" ] || missing+=(GOOGLE_PRIVATE_KEY)
+          [ -n "$STAFF_SESSIONS_JSON" ] || missing+=(STAFF_SESSIONS_JSON)
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'ADMIN_PREVIEW_DEPLOY_CONFIG_MISSING:%s\n' "$(IFS=,; echo "${missing[*]}")"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact source
+        run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Deploy preview Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: source/infra/cloudflare/admin-policy-worker
+          command: deploy --config wrangler.jsonc
+          secrets: |
+            FIREBASE_DATABASE_URL
+            GOOGLE_CLIENT_EMAIL
+            GOOGLE_PRIVATE_KEY
+            STAFF_SESSIONS_JSON
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
+
+      - name: Verify preview health
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYMENT_URL"
+          curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
+          grep -q '"ok":true' admin-preview-health.json
+
+      - name: Record preview URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        shell: bash
+        run: |
+          printf '%s\n' "$DEPLOYMENT_URL" > admin-policy-preview-url.txt
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-policy-preview-${{ env.SOURCE_SHA }}
+          path: |
+            admin-policy-preview-url.txt
+            admin-preview-health.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Report deployment success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success -f context=admin-policy-preview-deploy \
+            -f description='Admin policy Cloudflare Preview deployed and health checked' >/dev/null
+
+      - name: Report deployment failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=failure -f context=admin-policy-preview-deploy \
+            -f description='Admin policy Preview deployment blocked or failed' >/dev/null
