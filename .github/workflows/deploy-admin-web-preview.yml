@@ -1,0 +1,100 @@
+name: Deploy Admin Web Preview
+
+on:
+  push:
+    paths:
+      - '.github/workflows/deploy-admin-web-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_SHA: e2fc86123a285ce45f2279411e4fd9e202a333d9
+  PAGES_PROJECT: morefunos-v1-admin-preview
+
+jobs:
+  deploy-admin-web-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Use npm 11
+        run: npm install -g npm@11 --no-audit --no-fund
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact source
+        run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Install and build Admin Web
+        working-directory: source/apps/admin-web
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          test -f dist/_redirects
+      - name: Ensure Pages project exists
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ env.PAGES_PROJECT }} --production-branch=main
+      - name: Deploy Admin Web Preview
+        id: pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: source/apps/admin-web
+          command: pages deploy ./dist --project-name=${{ env.PAGES_PROJECT }} --branch=preview
+      - name: Verify deployed routes
+        env:
+          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYMENT_URL"
+          printf '%s\n' "$DEPLOYMENT_URL" > admin-web-preview-url.txt
+          for route in \
+            /admin/overview \
+            /admin/catalog/products/PRC-001 \
+            /admin/catalog/options \
+            /admin/catalog/combo \
+            /admin/storefront \
+            /admin/operations/pickup-queue \
+            /admin/settings/port-exposure \
+            /admin/print-kitchen \
+            /admin/publish; do
+            curl -fsS "$DEPLOYMENT_URL$route" >/dev/null
+          done
+      - name: Upload Preview evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-web-preview-${{ env.SOURCE_SHA }}
+          path: admin-web-preview-url.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success -f context=admin-web-preview-deploy \
+            -f description='Admin Web Cloudflare Pages Preview deployed and routes checked' >/dev/null
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=failure -f context=admin-web-preview-deploy \
+            -f description='Admin Web Cloudflare Pages Preview deployment failed' >/dev/null
