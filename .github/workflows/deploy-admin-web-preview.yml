@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 env:
@@ -75,6 +75,20 @@ jobs:
             /admin/publish; do
             curl -fsS "$DEPLOYMENT_URL$route" >/dev/null
           done
+      - name: Persist Preview URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-web-preview-url-latest.txt'
+          printf '%s\n' "$DEPLOYMENT_URL" > /tmp/admin-web-preview-url.txt
+          content="$(base64 -w0 /tmp/admin-web-preview-url.txt)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Web Preview URL' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
       - name: Upload Preview evidence
         uses: actions/upload-artifact@v4
         with:
