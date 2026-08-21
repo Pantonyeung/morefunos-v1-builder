@@ -1,5 +1,6 @@
 name: Admin D-105 Interaction Verify
 
+# D-105 thin interaction verifier; intentionally separate from D-104 visual evidence.
 on:
   push:
     branches:
