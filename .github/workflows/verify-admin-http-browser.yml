@@ -1,0 +1,105 @@
+name: Verify Admin HTTP Browser Acceptance
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-admin-http-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_SHA: 12fb28a36643bcac6cf04567a7ae54c134112ec0
+
+jobs:
+  verify-admin-http-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Install Admin dependencies
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.61.0
+          npx playwright install --with-deps chromium
+
+      - name: Test and build Admin Web
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test
+          npm run build
+
+      - name: Run real HTTP browser acceptance
+        working-directory: source/apps/admin-web
+        env:
+          ADMIN_HTTP_EVIDENCE_DIR: ${{ runner.temp }}/admin-http-evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types scripts/http-browser-acceptance.mjs 2>&1 | tee "$RUNNER_TEMP/admin-http-browser.log"
+
+      - name: Prepare evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+          cp "$RUNNER_TEMP/admin-http-browser.log" evidence/admin-http-browser.log 2>/dev/null || true
+          cp -R "$RUNNER_TEMP/admin-http-evidence/." evidence/ 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-http-browser-evidence-${{ env.SOURCE_SHA }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success -f context=admin-http-browser \
+            -f description='Real browser to HTTP Worker to canonical authority passed' >/dev/null
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=failure -f context=admin-http-browser \
+            -f description='Real HTTP browser acceptance failed' >/dev/null
