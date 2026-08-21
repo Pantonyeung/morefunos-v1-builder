@@ -8,12 +8,19 @@ exact_source=PASS
 build=PASS
 pages_project_check=STARTED
 pages_deploy=STARTED
+pages_deploy_outcome=failure
+deployment_url=
+deployment_alias_url=
+===== WRANGLER STDOUT =====
+
+===== WRANGLER STDERR =====
+
 
 ===== BUILD =====
 v22.23.2
 10.9.8
 
-added 121 packages in 11s
+added 121 packages in 16s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -21,14 +28,16 @@ added 121 packages in 11s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 743[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 919[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1356[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 604[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1512[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 396[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 16:57:59
-[2m   Duration [22m 2.62s[2m (transform 461ms, setup 0ms, import 1.72s, tests 1.68s, environment 2.32s)[22m
+[2m   Start at [22m 17:01:20
+[2m   Duration [22m 3.81s[2m (transform 451ms, setup 0ms, import 2.20s, tests 2.88s, environment 3.07s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -42,4 +51,4 @@ dist/index.html                   0.45 kB │ gzip:   0.29 kB
 dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
 dist/assets/index-64B7kndp.js   356.13 kB │ gzip: 106.82 kB
 
-[32m✓ built in 307ms[39m
+[32m✓ built in 381ms[39m
