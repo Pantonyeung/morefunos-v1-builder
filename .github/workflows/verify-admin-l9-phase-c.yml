@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  SOURCE_SHA: 5e6b1b1b9ea6decda477f3f7e5dc749feb75b7d9
+  SOURCE_SHA: 4ef013436e1078a4159da77e1c7134a2ff15aaee
 
 jobs:
   verify-admin-l9-phase-c:
@@ -48,6 +48,7 @@ jobs:
             packages/durability/firebase-rtdb-durability.test.ts \
             packages/runtime/admin-policy-runtime.test.ts \
             packages/runtime/admin-policy-http.test.ts \
+            packages/runtime/admin-policy-http-client.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-l9-phase-c.log"
 
       - name: Prepare evidence
