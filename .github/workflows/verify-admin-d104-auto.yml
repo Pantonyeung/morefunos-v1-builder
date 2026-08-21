@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: 8c43806becd4667e8bc9f97ec99e8a54fa7e8a81
+      SOURCE_SHA: 97aaaf3b30a88d6b1df6eb3500686572e8869573
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -118,17 +118,30 @@ jobs:
             ['mobile', {width:390,height:844}],
           ];
           const browser = await chromium.launch({headless:true});
+          const overflowFailures = [];
           for (const [name, viewport] of viewports) {
             const context = await browser.newContext({viewport, deviceScaleFactor:1, reducedMotion:'reduce'});
             const page = await context.newPage();
             for (const [id, route] of routes) {
               await page.goto(`http://127.0.0.1:4173${route}`, {waitUntil:'networkidle'});
               await page.evaluate(() => document.fonts?.ready);
+              const overflow = await page.evaluate(() => ({
+                width: window.innerWidth,
+                scrollWidth: document.documentElement.scrollWidth,
+                bodyScrollWidth: document.body.scrollWidth,
+              }));
+              if (overflow.scrollWidth > overflow.width + 2 || overflow.bodyScrollWidth > overflow.width + 2) {
+                overflowFailures.push({name,id,route,...overflow});
+              }
               await page.screenshot({path:`evidence/screenshots/${name}/${id}.png`, fullPage:false, animations:'disabled'});
             }
             await context.close();
           }
           await browser.close();
+          if (overflowFailures.length) {
+            console.error('Document-level horizontal overflow detected:', JSON.stringify(overflowFailures, null, 2));
+            process.exit(2);
+          }
           EOF
           mkdir -p "$RUNNER_TEMP/playwright-runner"
           cd "$RUNNER_TEMP/playwright-runner"
