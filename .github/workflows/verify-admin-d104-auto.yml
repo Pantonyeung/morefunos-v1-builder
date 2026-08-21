@@ -6,6 +6,11 @@ on:
       - verify/admin-d104-20260821
     paths:
       - .github/workflows/verify-admin-d104-auto.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/verify-admin-d104-auto.yml
   workflow_dispatch:
 
 permissions:
