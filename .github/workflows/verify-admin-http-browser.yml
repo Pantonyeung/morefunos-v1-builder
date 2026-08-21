@@ -44,9 +44,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --ignore-scripts --no-audit --no-fund
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.61.0
-          npx playwright install --with-deps chromium
+          {
+            echo '===== npm install app ====='
+            npm install --ignore-scripts --no-audit --no-fund
+            echo '===== npm install playwright ====='
+            npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.61.0
+            echo '===== playwright install chromium ====='
+            npx playwright install --with-deps chromium
+          } 2>&1 | tee "$RUNNER_TEMP/admin-http-browser-install.log"
 
       - name: Test and build Admin Web
         working-directory: source/apps/admin-web
@@ -72,6 +77,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+          cp "$RUNNER_TEMP/admin-http-browser-install.log" evidence/admin-http-browser-install.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-http-browser-test-build.log" evidence/admin-http-browser-test-build.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-http-browser.log" evidence/admin-http-browser.log 2>/dev/null || true
           cp -R "$RUNNER_TEMP/admin-http-evidence/." evidence/ 2>/dev/null || true
@@ -86,6 +92,8 @@ jobs:
           path='diagnostics/admin-http-browser-latest.log'
           {
             printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+            printf '\n===== INSTALL =====\n'
+            cat "$RUNNER_TEMP/admin-http-browser-install.log" 2>/dev/null || true
             printf '\n===== TEST + BUILD =====\n'
             cat "$RUNNER_TEMP/admin-http-browser-test-build.log" 2>/dev/null || true
             printf '\n===== BROWSER ACCEPTANCE =====\n'
