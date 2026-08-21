@@ -32,6 +32,9 @@ for (const needle of [
   'Deliver immutable Runtime evidence',
   'Publish Runtime package-first and manifest-last',
   'node scripts/publish-runtime-online.mjs',
+  'runtime-v3-stage',
+  'run_id=$GITHUB_RUN_ID',
+  'stage=$STAGE',
   'Runtime Release V3 final result',
 ]) requireText(needle);
 
