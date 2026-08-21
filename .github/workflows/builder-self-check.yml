@@ -40,7 +40,7 @@ jobs:
           test -x "$RUNNER_TEMP/actionlint/actionlint"
           "$RUNNER_TEMP/actionlint/actionlint" -version
 
-      - name: Hard gate replacement workflows
+      - name: Hard gate current workflows
         shell: bash
         run: |
           set -euo pipefail
@@ -48,16 +48,21 @@ jobs:
           "$LINTER" -color \
             .github/workflows/builder-self-check.yml \
             .github/workflows/owner-control-v2.yml \
-            .github/workflows/verify-ui-mother.yml \
+            .github/workflows/verify-v1.yml \
+            .github/workflows/verify-carrier.yml \
             .github/workflows/runtime-release-v2.yml \
             .github/workflows/android-release-v2.yml \
             .github/workflows/repair-smt-p01-lockfile.yml
+
+      - name: Verify current Builder policy
+        shell: bash
+        run: node scripts/verify-builder-policy.mjs
 
       - name: Verify one-router active topology
         shell: bash
         run: node scripts/verify-active-workflow-topology.mjs
 
-      - name: Inventory remaining legacy workflow debt
+      - name: Inventory remaining workflow debt
         continue-on-error: true
         shell: bash
         run: |
