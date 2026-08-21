@@ -92,6 +92,7 @@ jobs:
 
       - name: Deploy Admin Web Preview
         id: pages
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -99,15 +100,34 @@ jobs:
           workingDirectory: source/apps/admin-web
           command: pages deploy ./dist --project-name=${{ env.PAGES_PROJECT }} --branch=preview --commit-hash=${{ env.SOURCE_SHA }}
 
-      - name: Mark Pages deploy pass
+      - name: Capture Pages deploy result
+        env:
+          PAGES_OUTCOME: ${{ steps.pages.outcome }}
+          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
+          DEPLOYMENT_ALIAS_URL: ${{ steps.pages.outputs.pages-deployment-alias-url }}
+          CMD_OUTPUT: ${{ steps.pages.outputs.command-output }}
+          CMD_STDERR: ${{ steps.pages.outputs.command-stderr }}
         shell: bash
         run: |
+          set -euo pipefail
+          {
+            echo "pages_deploy_outcome=$PAGES_OUTCOME"
+            echo "deployment_url=$DEPLOYMENT_URL"
+            echo "deployment_alias_url=$DEPLOYMENT_ALIAS_URL"
+            echo '===== WRANGLER STDOUT ====='
+            printf '%s\n' "$CMD_OUTPUT"
+            echo '===== WRANGLER STDERR ====='
+            printf '%s\n' "$CMD_STDERR"
+          } >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          if [ "$PAGES_OUTCOME" != 'success' ]; then
+            exit 1
+          fi
           echo 'pages_deploy=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-          printf '%s\n' '${{ steps.pages.outputs.deployment-url }}' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
 
       - name: Verify deployed routes
         env:
           DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
+          DEPLOYMENT_ALIAS_URL: ${{ steps.pages.outputs.pages-deployment-alias-url }}
         shell: bash
         run: |
           set -euo pipefail
@@ -128,8 +148,9 @@ jobs:
             curl -fsS "$DEPLOYMENT_URL$route" >/dev/null
           done
           echo 'route_smoke=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-          STABLE_ALIAS="https://preview.${PAGES_PROJECT}.pages.dev"
+          STABLE_ALIAS="${DEPLOYMENT_ALIAS_URL:-https://preview.${PAGES_PROJECT}.pages.dev}"
           printf '%s\n' "$STABLE_ALIAS" > admin-web-preview-stable-url.txt
+          echo "stable_alias_url=$STABLE_ALIAS" >> "$RUNNER_TEMP/admin-web-preview-stages.log"
           echo 'stable_alias=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
           for i in 1 2 3 4 5 6; do
             if curl -fsS "$STABLE_ALIAS/admin/publish" >/dev/null; then
