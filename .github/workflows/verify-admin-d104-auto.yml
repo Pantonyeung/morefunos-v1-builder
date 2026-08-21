@@ -29,6 +29,13 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Use npm 11
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g npm@11 --no-audit --no-fund
+          npm --version
+
       - name: Checkout exact MoreFunOS V1 source
         uses: actions/checkout@v7
         with:
