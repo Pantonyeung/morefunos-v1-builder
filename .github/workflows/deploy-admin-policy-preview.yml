@@ -12,49 +12,25 @@ permissions:
 
 env:
   SOURCE_SHA: 403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
+  WORKER_NAME: morefunos-v1-admin-policy-preview
 
 jobs:
   deploy-admin-policy-preview:
     runs-on: ubuntu-24.04
     steps:
-      - name: Validate deployment credentials
+      - name: Validate Builder-only deployment credentials
         env:
-          GH_TOKEN: ${{ github.token }}
           CF_API: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
+          SOURCE_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          missing=()
-          [ -n "$CF_API" ] || missing+=(CLOUDFLARE_API_TOKEN)
-          [ -n "$CF_ACCOUNT" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
-          [ -n "$GOOGLE_CLIENT_EMAIL" ] || missing+=(GOOGLE_CLIENT_EMAIL)
-          [ -n "$GOOGLE_PRIVATE_KEY" ] || missing+=(GOOGLE_PRIVATE_KEY)
-          [ -n "$ADMIN_OWNER_TOKEN" ] || missing+=(ADMIN_OWNER_TOKEN)
-          if [ ${#missing[@]} -gt 0 ]; then
-            message="MISSING:$(IFS=,; echo "${missing[*]}")"
-          else
-            message='READY'
-          fi
-          printf '%s\n' "$message" > /tmp/admin-preview-config.txt
-          path='diagnostics/admin-policy-preview-config-latest.txt'
-          content="$(base64 -w0 /tmp/admin-preview-config.txt)"
-          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
-          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Preview config diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
-          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
-          gh api "${args[@]}" >/dev/null
-          if [ ${#missing[@]} -gt 0 ]; then
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-              -f state=failure -f context=admin-policy-preview-config \
-              -f description="${message:0:130}" >/dev/null
-            exit 1
-          fi
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=success -f context=admin-policy-preview-config \
-            -f description='Preview deployment credentials available' >/dev/null
+          test -n "$CF_API" || { echo 'MISSING:CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT" || { echo 'MISSING:CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$SOURCE_TOKEN" || { echo 'MISSING:V1_SOURCE_READ_TOKEN'; exit 1; }
+          echo 'BUILDER_DEPLOY_CREDENTIALS=PASS'
+          echo 'RUNTIME_SECRETS=Cloudflare Worker only'
 
       - uses: actions/checkout@v7
         with:
@@ -68,7 +44,7 @@ jobs:
       - name: Verify exact source
         run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
-      - name: Deploy preview Worker
+      - name: Deploy preview Worker code only
         id: deploy
         uses: cloudflare/wrangler-action@v4
         with:
@@ -76,111 +52,56 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: source/infra/cloudflare/admin-policy-worker
           command: deploy --config wrangler.jsonc
-          secrets: |
-            GOOGLE_CLIENT_EMAIL
-            GOOGLE_PRIVATE_KEY
-            ADMIN_OWNER_TOKEN
-        env:
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
 
-      - name: Verify preview health and authenticated canonical publish
+      - name: Verify remote Runtime Secret bindings
+        id: runtime
+        env:
+          CF_API: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts/$WORKER_NAME/secrets"
+          curl -fsS -H "Authorization: Bearer $CF_API" -H 'Content-Type: application/json' "$api" > /tmp/worker-secrets.json
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/worker-secrets.json', 'utf8'));
+          const names = (Array.isArray(payload.result) ? payload.result : []).map(x => x?.name).filter(Boolean).sort();
+          const required = ['GOOGLE_CLIENT_EMAIL','GOOGLE_PRIVATE_KEY','ADMIN_OWNER_TOKEN'];
+          const missing = required.filter(x => !names.includes(x));
+          fs.writeFileSync('/tmp/admin-preview-config.txt', missing.length ? `CLOUDFLARE_RUNTIME_MISSING:${missing.join(',')}\n` : 'CLOUDFLARE_RUNTIME_SECRETS=PASS\n');
+          console.log(JSON.stringify({worker: process.env.WORKER_NAME, requiredSecretNamesPresent: missing.length === 0, missingRequiredSecrets: missing}, null, 2));
+          if (missing.length) process.exit(2);
+          NODE
+
+      - name: Verify preview health
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$DEPLOYMENT_URL"
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
           grep -q '"ok":true' admin-preview-health.json
+          echo 'ADMIN_POLICY_PREVIEW_HEALTH=PASS'
 
-          STAFF_TOKEN="$ADMIN_OWNER_TOKEN"
-          test -n "$STAFF_TOKEN"
-
-          curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
-            "$DEPLOYMENT_URL/api/v1/admin/policy/active" | tee admin-preview-active.json
-
-          SHORT_SHA="${GITHUB_SHA:0:12}"
-          DRAFT_ID="cf-preview-${SHORT_SHA}"
-          POLICY_VERSION="cf-preview-policy-${SHORT_SHA}"
-          IDEMPOTENCY_KEY="cf-preview-publish-${SHORT_SHA}"
-          export DRAFT_ID POLICY_VERSION IDEMPOTENCY_KEY
-
-          node - <<'NODE' > /tmp/admin-preview-draft.json
-          const draftId = process.env.DRAFT_ID;
-          const payload = {
-            schema_version: '1.0',
-            projection_version: '1.0',
-            minimum_port_contract_version: '1.0',
-            template_type: 'admin.policy',
-            namespace_generation: 'morefunos-v1',
-            revision_version: `rev-${draftId}`,
-            draft_id: draftId,
-            store_scope: ['morefun-store'],
-            channel_scope: ['admin'],
-            impact_preview_ref: `impact-${draftId}`,
-            delivery_apply_state_ref: `apply-${draftId}`,
-            owner_decision_ref: 'owner-cloudflare-preview',
-            fields: [{
-              field_id: 'store.pickup.auto_complete_minutes',
-              capability_id: 'store.pickup',
-              type: 'number',
-              default_policy: {kind: 'value', value: 30},
-              visibility_when: {kind: 'always'},
-              required_when: {kind: 'core'},
-              enabled_when: {kind: 'authorized'},
-              dependency_refs: [],
-              scope: {store: 'morefun-store'},
-              permission_refs: ['store.settings.publish'],
-              validation_refs: [],
-              runtime_authority_ref: 'order',
-              projection_targets: ['smt', 'smm'],
-              contract_version: '1.0',
-              fallback_behavior: {kind: 'last_published'},
-              audit_ref: `audit-${draftId}`,
-              value: 30,
-            }],
-          };
-          process.stdout.write(JSON.stringify({draftId, payload}));
-          NODE
-
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $STAFF_TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data-binary @/tmp/admin-preview-draft.json \
-            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts" | tee admin-preview-create.json
-
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $STAFF_TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data '{}' \
-            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts/$DRAFT_ID/validate" | tee admin-preview-validate.json
-          grep -q '"ok":true' admin-preview-validate.json
-
-          ACTIVE_VERSION="$(node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("admin-preview-active.json","utf8")); process.stdout.write(x.active?.policyVersion ?? "")')"
-          export ACTIVE_VERSION
-          node - <<'NODE' > /tmp/admin-preview-publish.json
-          process.stdout.write(JSON.stringify({
-            policyVersion: process.env.POLICY_VERSION,
-            expectedActivePolicyVersion: process.env.ACTIVE_VERSION || null,
-            idempotencyKey: process.env.IDEMPOTENCY_KEY,
-          }));
-          NODE
-
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $STAFF_TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data-binary @/tmp/admin-preview-publish.json \
-            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts/$DRAFT_ID/publish" | tee admin-preview-publish.json
-          grep -q "$POLICY_VERSION" admin-preview-publish.json
-
-          curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
-            "$DEPLOYMENT_URL/api/v1/admin/policy/audit" | tee admin-preview-audit.json
-          grep -q "$POLICY_VERSION" admin-preview-audit.json
+      - name: Persist Preview config diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f /tmp/admin-preview-config.txt || printf 'DEPLOY_OR_REMOTE_SECRET_CHECK_FAILED\n' > /tmp/admin-preview-config.txt
+          path='diagnostics/admin-policy-preview-config-latest.txt'
+          content="$(base64 -w0 /tmp/admin-preview-config.txt)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Preview runtime binding diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
 
       - name: Record preview URL
+        if: success()
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
           GH_TOKEN: ${{ github.token }}
@@ -203,11 +124,6 @@ jobs:
           path: |
             admin-policy-preview-url.txt
             admin-preview-health.json
-            admin-preview-active.json
-            admin-preview-create.json
-            admin-preview-validate.json
-            admin-preview-publish.json
-            admin-preview-audit.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -219,7 +135,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Admin policy Cloudflare Preview deployed and canonical publish verified' >/dev/null
+            -f description='Worker code deployed; Cloudflare runtime secrets present; health PASS' >/dev/null
 
       - name: Report deployment failure
         if: failure()
@@ -229,4 +145,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-policy-preview-deploy \
-            -f description='Admin policy Preview deployment blocked or failed' >/dev/null
+            -f description='Worker deploy, remote secret binding, or health verification failed' >/dev/null
