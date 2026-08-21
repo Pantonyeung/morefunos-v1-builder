@@ -56,7 +56,7 @@ requireAll(carrier, [
   'carrier-web-compat',
   'npm --prefix apps/smt-web run test:carrier',
   'carrier-static',
-  'apps/smt-android/g6-carrier-static.test.mjs',
+  'apps/smt-android/carrier-static.test.mjs',
   ':app:compileDebugJavaWithJavac',
   ':app:lintDebug',
   ':app:assembleDebug',
