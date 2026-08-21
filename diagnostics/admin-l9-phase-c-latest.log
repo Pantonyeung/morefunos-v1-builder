@@ -4,55 +4,55 @@ TAP version 13
 # Subtest: draft and validation never mutate the active policy
 ok 1 - draft and validation never mutate the active policy
   ---
-  duration_ms: 1.8195
+  duration_ms: 1.596914
   type: 'test'
   ...
 # Subtest: publish creates immutable published policy but does not activate runtime
 ok 2 - publish creates immutable published policy but does not activate runtime
   ---
-  duration_ms: 119.091198
+  duration_ms: 18.981763
   type: 'test'
   ...
 # Subtest: activation is explicit permissioned and expected-active CAS protected
 ok 3 - activation is explicit permissioned and expected-active CAS protected
   ---
-  duration_ms: 1.141961
+  duration_ms: 1.3494
   type: 'test'
   ...
 # Subtest: publish requires permission validated draft and expected active version
 ok 4 - publish requires permission validated draft and expected active version
   ---
-  duration_ms: 0.509876
+  duration_ms: 0.58824
   type: 'test'
   ...
 # Subtest: publish replay is idempotent and conflicting replay fails
 ok 5 - publish replay is idempotent and conflicting replay fails
   ---
-  duration_ms: 0.42617
+  duration_ms: 0.542791
   type: 'test'
   ...
 # Subtest: snapshot restore survives authority restart including active audit and idempotency
 ok 6 - snapshot restore survives authority restart including active audit and idempotency
   ---
-  duration_ms: 2.050454
+  duration_ms: 2.403604
   type: 'test'
   ...
 # Subtest: invalid policy cannot publish
 ok 7 - invalid policy cannot publish
   ---
-  duration_ms: 0.3199
+  duration_ms: 0.381347
   type: 'test'
   ...
 # Subtest: rollback activates a previously published immutable snapshot without rewriting history
 ok 8 - rollback activates a previously published immutable snapshot without rewriting history
   ---
-  duration_ms: 0.546464
+  duration_ms: 0.713529
   type: 'test'
   ...
 # Subtest: external authorization hook is authoritative and caller permissions cannot bypass it
 ok 9 - external authorization hook is authoritative and caller permissions cannot bypass it
   ---
-  duration_ms: 0.511328
+  duration_ms: 2.188038
   type: 'test'
   ...
 1..9
@@ -63,7 +63,7 @@ ok 9 - external authorization hook is authoritative and caller permissions canno
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 368.90097
+# duration_ms 152.58937
 
 ===== phase-c-durable-authority :: packages/admin/policy-durable-authority.test.ts =====
 RESULT=PASS
@@ -71,19 +71,19 @@ TAP version 13
 # Subtest: durable policy authority restores active policy and audit across restart
 ok 1 - durable policy authority restores active policy and audit across restart
   ---
-  duration_ms: 18.112677
+  duration_ms: 13.482937
   type: 'test'
   ...
 # Subtest: durable policy authority preserves idempotency replay across restart
 ok 2 - durable policy authority preserves idempotency replay across restart
   ---
-  duration_ms: 1.767434
+  duration_ms: 1.768995
   type: 'test'
   ...
 # Subtest: durable policy authority fails closed when checkpoint CAS is stale
 ok 3 - durable policy authority fails closed when checkpoint CAS is stale
   ---
-  duration_ms: 0.545623
+  duration_ms: 0.488348
   type: 'test'
   ...
 1..3
@@ -94,7 +94,7 @@ ok 3 - durable policy authority fails closed when checkpoint CAS is stale
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 138.248585
+# duration_ms 123.9997
 
 ===== phase-c-durability :: packages/durability/durability.test.ts =====
 RESULT=PASS
@@ -102,43 +102,43 @@ TAP version 13
 # Subtest: durability rejects an adapter that cannot look up acknowledged outbox identity
 ok 1 - durability rejects an adapter that cannot look up acknowledged outbox identity
   ---
-  duration_ms: 1.200782
+  duration_ms: 1.17027
   type: 'test'
   ...
 # Subtest: checkpoint save uses revision CAS and fails closed on stale writer
 ok 2 - checkpoint save uses revision CAS and fails closed on stale writer
   ---
-  duration_ms: 0.598803
+  duration_ms: 0.538755
   type: 'test'
   ...
 # Subtest: restore returns opaque checkpoint payload and never interprets business status
 ok 3 - restore returns opaque checkpoint payload and never interprets business status
   ---
-  duration_ms: 0.891261
+  duration_ms: 0.816234
   type: 'test'
   ...
 # Subtest: schema mismatch fails closed rather than guessing migration
 ok 4 - schema mismatch fails closed rather than guessing migration
   ---
-  duration_ms: 0.281849
+  duration_ms: 0.273914
   type: 'test'
   ...
 # Subtest: outbox survives until explicit acknowledgement and identical enqueue is idempotent
 ok 5 - outbox survives until explicit acknowledgement and identical enqueue is idempotent
   ---
-  duration_ms: 8.080822
+  duration_ms: 8.090433
   type: 'test'
   ...
 # Subtest: acknowledged outbox cannot resurrect as pending after coordinator restart
 ok 6 - acknowledged outbox cannot resurrect as pending after coordinator restart
   ---
-  duration_ms: 0.361237
+  duration_ms: 0.292963
   type: 'test'
   ...
 # Subtest: conflicting outbox identity fails instead of overwriting durable side-effect intent
 ok 7 - conflicting outbox identity fails instead of overwriting durable side-effect intent
   ---
-  duration_ms: 0.395823
+  duration_ms: 0.398082
   type: 'test'
   ...
 1..7
@@ -149,7 +149,7 @@ ok 7 - conflicting outbox identity fails instead of overwriting durable side-eff
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 119.03996
+# duration_ms 128.342631
 
 ===== phase-c-firebase :: packages/durability/firebase-rtdb-durability.test.ts =====
 RESULT=PASS
@@ -157,25 +157,25 @@ TAP version 13
 # Subtest: Firebase durability requires HTTPS and an RTDB host
 ok 1 - Firebase durability requires HTTPS and an RTDB host
   ---
-  duration_ms: 1.516474
+  duration_ms: 1.436772
   type: 'test'
   ...
 # Subtest: checkpoint save uses Firebase ETag CAS and reports stale revision
 ok 2 - checkpoint save uses Firebase ETag CAS and reports stale revision
   ---
-  duration_ms: 81.209683
+  duration_ms: 31.078402
   type: 'test'
   ...
 # Subtest: outbox create is idempotent, conflicting identity fails, and acknowledgement persists
 ok 3 - outbox create is idempotent, conflicting identity fails, and acknowledgement persists
   ---
-  duration_ms: 11.35414
+  duration_ms: 11.567211
   type: 'test'
   ...
 # Subtest: empty Firebase bearer token fails closed
 ok 4 - empty Firebase bearer token fails closed
   ---
-  duration_ms: 0.313037
+  duration_ms: 0.299593
   type: 'test'
   ...
 1..4
@@ -186,7 +186,7 @@ ok 4 - empty Firebase bearer token fails closed
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 198.139214
+# duration_ms 158.302557
 
 ===== phase-c-runtime :: packages/runtime/admin-policy-runtime.test.ts =====
 RESULT=PASS
@@ -194,19 +194,19 @@ TAP version 13
 # Subtest: Admin runtime publish delegates canonical Authority and never auto-activates
 ok 1 - Admin runtime publish delegates canonical Authority and never auto-activates
   ---
-  duration_ms: 13.218916
+  duration_ms: 9.175724
   type: 'test'
   ...
 # Subtest: Admin runtime projects canonical rejection without inventing success
 ok 2 - Admin runtime projects canonical rejection without inventing success
   ---
-  duration_ms: 1.262376
+  duration_ms: 1.067804
   type: 'test'
   ...
 # Subtest: Admin runtime rollback delegates canonical rollback and updates active projection
 ok 3 - Admin runtime rollback delegates canonical rollback and updates active projection
   ---
-  duration_ms: 1.201213
+  duration_ms: 1.019491
   type: 'test'
   ...
 1..3
@@ -217,7 +217,167 @@ ok 3 - Admin runtime rollback delegates canonical rollback and updates active pr
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 119.697901
+# duration_ms 119.672462
+
+===== phase-c-staff :: packages/staff/staff-authority.test.ts =====
+RESULT=PASS
+TAP version 13
+# Subtest: active staff receives permissions from versioned roles
+ok 1 - active staff receives permissions from versioned roles
+  ---
+  duration_ms: 9.491732
+  type: 'test'
+  ...
+# Subtest: admin can delegate availability.schedule through the canonical Staff role model
+ok 2 - admin can delegate availability.schedule through the canonical Staff role model
+  ---
+  duration_ms: 0.882504
+  type: 'test'
+  ...
+# Subtest: inactive staff cannot authorize new operational mutations
+ok 3 - inactive staff cannot authorize new operational mutations
+  ---
+  duration_ms: 0.793019
+  type: 'test'
+  ...
+# Subtest: manager override records initiating and authorizing actors
+ok 4 - manager override records initiating and authorizing actors
+  ---
+  duration_ms: 0.361327
+  type: 'test'
+  ...
+# Subtest: override actor needs both override capability and requested permission
+ok 5 - override actor needs both override capability and requested permission
+  ---
+  duration_ms: 0.504383
+  type: 'test'
+  ...
+# Subtest: role updates are CAS protected and historical authorization snapshots stay immutable
+ok 6 - role updates are CAS protected and historical authorization snapshots stay immutable
+  ---
+  duration_ms: 0.551674
+  type: 'test'
+  ...
+# Subtest: idempotent mutation replay returns original snapshot and conflicting replay fails
+ok 7 - idempotent mutation replay returns original snapshot and conflicting replay fails
+  ---
+  duration_ms: 1.208528
+  type: 'test'
+  ...
+# Subtest: staff role membership update is CAS protected
+ok 8 - staff role membership update is CAS protected
+  ---
+  duration_ms: 0.550842
+  type: 'test'
+  ...
+# Subtest: staff administration requires configured root actor or active staff.admin
+ok 9 - staff administration requires configured root actor or active staff.admin
+  ---
+  duration_ms: 0.578295
+  type: 'test'
+  ...
+# Subtest: inactive staff admin cannot mutate staff authority
+ok 10 - inactive staff admin cannot mutate staff authority
+  ---
+  duration_ms: 0.589051
+  type: 'test'
+  ...
+# Subtest: unknown permission strings are rejected at the authority boundary
+ok 11 - unknown permission strings are rejected at the authority boundary
+  ---
+  duration_ms: 0.269788
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 133.008676
+
+===== phase-c-staff-durable :: packages/staff/staff-durable-authority.test.ts =====
+RESULT=PASS
+TAP version 13
+# Subtest: durable Staff journal restores roles, staff status, permissions and audit across restart
+ok 1 - durable Staff journal restores roles, staff status, permissions and audit across restart
+  ---
+  duration_ms: 14.385782
+  type: 'test'
+  ...
+# Subtest: durable Staff journal preserves canonical idempotency and CAS semantics after restart
+ok 2 - durable Staff journal preserves canonical idempotency and CAS semantics after restart
+  ---
+  duration_ms: 2.073646
+  type: 'test'
+  ...
+# Subtest: durable Staff authority fails closed if configured root actor set differs from checkpoint
+ok 3 - durable Staff authority fails closed if configured root actor set differs from checkpoint
+  ---
+  duration_ms: 0.565656
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 138.066605
+
+===== phase-c-session :: packages/runtime/json-admin-staff-token-verifier.test.ts =====
+RESULT=PASS
+TAP version 13
+# Subtest: Staff session adapter proves identity only and never grants policy permissions by role
+ok 1 - Staff session adapter proves identity only and never grants policy permissions by role
+  ---
+  duration_ms: 2.423845
+  type: 'test'
+  ...
+# Subtest: Staff session adapter validates session shape without creating a second permission map
+ok 2 - Staff session adapter validates session shape without creating a second permission map
+  ---
+  duration_ms: 0.783385
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 120.397407
+
+===== phase-c-staff-policy-map :: packages/runtime/admin-policy-staff-authorizer.test.ts =====
+RESULT=PASS
+TAP version 13
+# Subtest: Policy permission is granted only when canonical Staff Authority grants mapped permission
+ok 1 - Policy permission is granted only when canonical Staff Authority grants mapped permission
+  ---
+  duration_ms: 10.166092
+  type: 'test'
+  ...
+# Subtest: session identity or PolicyActorContext permissions cannot bypass canonical Staff Authority
+ok 2 - session identity or PolicyActorContext permissions cannot bypass canonical Staff Authority
+  ---
+  duration_ms: 0.749263
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 119.856846
 
 ===== phase-c-http :: packages/runtime/admin-policy-http.test.ts =====
 RESULT=PASS
@@ -225,31 +385,31 @@ TAP version 13
 # Subtest: Admin policy HTTP transport rejects missing and invalid staff session
 ok 1 - Admin policy HTTP transport rejects missing and invalid staff session
   ---
-  duration_ms: 30.967727
+  duration_ms: 49.29065
   type: 'test'
   ...
-# Subtest: canonical Policy Authority remains the permission authority behind HTTP
-ok 2 - canonical Policy Authority remains the permission authority behind HTTP
+# Subtest: canonical Staff Authority remains permission authority behind HTTP
+ok 2 - canonical Staff Authority remains permission authority behind HTTP
   ---
-  duration_ms: 4.350688
+  duration_ms: 4.787439
   type: 'test'
   ...
-# Subtest: HTTP lifecycle persists through durable authority and active read is canonical
-ok 3 - HTTP lifecycle persists through durable authority and active read is canonical
+# Subtest: HTTP lifecycle persists through durable Policy Authority and active read is canonical
+ok 3 - HTTP lifecycle persists through durable Policy Authority and active read is canonical
   ---
-  duration_ms: 12.492274
+  duration_ms: 6.796527
   type: 'test'
   ...
 # Subtest: stale active-version command is projected as HTTP 409, never success
 ok 4 - stale active-version command is projected as HTTP 409, never success
   ---
-  duration_ms: 5.632541
+  duration_ms: 5.531134
   type: 'test'
   ...
-# Subtest: invalid JSON fails closed with 400
-ok 5 - invalid JSON fails closed with 400
+# Subtest: invalid JSON fails closed with 400 after authorization
+ok 5 - invalid JSON fails closed with 400 after authorization
   ---
-  duration_ms: 0.755106
+  duration_ms: 0.699457
   type: 'test'
   ...
 1..5
@@ -260,33 +420,33 @@ ok 5 - invalid JSON fails closed with 400
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 180.146137
+# duration_ms 187.659626
 
 ===== phase-c-http-client :: packages/runtime/admin-policy-http-client.test.ts =====
 RESULT=PASS
 TAP version 13
-# Subtest: HTTP Admin runtime sends authenticated publish command and projects canonical response
-ok 1 - HTTP Admin runtime sends authenticated publish command and projects canonical response
+# Subtest: HTTP Admin runtime refreshes canonical active version before publish and projects response
+ok 1 - HTTP Admin runtime refreshes canonical active version before publish and projects response
   ---
-  duration_ms: 32.697472
+  duration_ms: 27.550869
   type: 'test'
   ...
-# Subtest: HTTP Admin runtime projects server CAS conflict as rejected and does not mutate snapshot
-ok 2 - HTTP Admin runtime projects server CAS conflict as rejected and does not mutate snapshot
+# Subtest: HTTP Admin runtime projects mutation CAS conflict and retains refreshed canonical active snapshot
+ok 2 - HTTP Admin runtime projects mutation CAS conflict and retains refreshed canonical active snapshot
   ---
-  duration_ms: 0.976952
+  duration_ms: 1.138071
   type: 'test'
   ...
 # Subtest: HTTP Admin runtime updates active projection only from canonical rollback response
 ok 3 - HTTP Admin runtime updates active projection only from canonical rollback response
   ---
-  duration_ms: 0.741009
+  duration_ms: 0.926391
   type: 'test'
   ...
-# Subtest: HTTP Admin runtime fails closed on missing token, invalid response, and insecure remote URL
-ok 4 - HTTP Admin runtime fails closed on missing token, invalid response, and insecure remote URL
+# Subtest: HTTP Admin runtime fails closed on refresh auth failure, invalid response, and insecure remote URL
+ok 4 - HTTP Admin runtime fails closed on refresh auth failure, invalid response, and insecure remote URL
   ---
-  duration_ms: 1.197134
+  duration_ms: 0.968504
   type: 'test'
   ...
 1..4
@@ -297,7 +457,7 @@ ok 4 - HTTP Admin runtime fails closed on missing token, invalid response, and i
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 142.64959
+# duration_ms 140.969238
 
 ===== phase-c-worker :: infra/cloudflare/admin-policy-worker/worker.test.ts =====
 RESULT=PASS
@@ -305,34 +465,40 @@ TAP version 13
 # Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
 ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
   ---
-  duration_ms: 32.871365
+  duration_ms: 46.752983
   type: 'test'
   ...
 # Subtest: Worker health is non-authoritative and method gate fails closed
 ok 2 - Worker health is non-authoritative and method gate fails closed
   ---
-  duration_ms: 2.562404
+  duration_ms: 2.756098
   type: 'test'
   ...
-# Subtest: Worker routes authenticated mutation into durable Canonical Policy Authority
-ok 3 - Worker routes authenticated mutation into durable Canonical Policy Authority
+# Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+ok 3 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
   ---
-  duration_ms: 12.838353
+  duration_ms: 6.666219
+  type: 'test'
+  ...
+# Subtest: Worker cannot publish merely because the session actor is authenticated
+ok 4 - Worker cannot publish merely because the session actor is authenticated
+  ---
+  duration_ms: 3.027668
   type: 'test'
   ...
 # Subtest: Worker requires at least one HTTPS allowed Origin
-ok 4 - Worker requires at least one HTTPS allowed Origin
+ok 5 - Worker requires at least one HTTPS allowed Origin
   ---
-  duration_ms: 0.524754
+  duration_ms: 0.624754
   type: 'test'
   ...
-1..4
-# tests 4
+1..5
+# tests 5
 # suites 0
-# pass 4
+# pass 5
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 178.425048
+# duration_ms 187.109936
 
