@@ -1,4 +1,4 @@
-SOURCE_SHA=e4323ee034cc2d073e4df385e7e932bfc49af39b
+SOURCE_SHA=403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
 PAGES_PROJECT=morefunos-v1-admin-preview
 
 ===== STAGES =====
@@ -17,7 +17,7 @@ pages_deploy=FAIL
 v22.23.2
 10.9.8
 
-added 121 packages in 14s
+added 121 packages in 12s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -25,16 +25,15 @@ added 121 packages in 14s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1115[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes [33m 450[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1271[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 325[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1013[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 420[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1103[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 17:03:32
-[2m   Duration [22m 3.56s[2m (transform 414ms, setup 0ms, import 2.24s, tests 2.41s, environment 3.12s)[22m
+[2m   Start at [22m 22:40:50
+[2m   Duration [22m 3.25s[2m (transform 484ms, setup 0ms, import 2.17s, tests 2.13s, environment 2.96s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -48,7 +47,7 @@ dist/index.html                   0.45 kB │ gzip:   0.29 kB
 dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
 dist/assets/index-64B7kndp.js   356.13 kB │ gzip: 106.82 kB
 
-[32m✓ built in 402ms[39m
+[32m✓ built in 378ms[39m
 
 ===== WRANGLER =====
 4.125.0
@@ -75,7 +74,7 @@ Getting User settings...
 └─────────────────────────────────┴──────────────────────────────────┘
 🔓 To see token permissions visit https://dash.cloudflare.com/690765acf1b9b85b9c09e12879ad9786/api-tokens
 🎢 Unable to get membership roles. Make sure you have permissions to read the account. Are you missing the `User->Memberships->Read` permission?
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_17-03-49_595.log"
+🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_22-41-06_328.log"
 
  ⛅️ wrangler 4.125.0
 ────────────────────
@@ -99,4 +98,4 @@ Getting User settings...
 └─────────────────────────────────┴──────────────────────────────────┘
 🔓 To see token permissions visit https://dash.cloudflare.com/690765acf1b9b85b9c09e12879ad9786/api-tokens
 🎢 Unable to get membership roles. Make sure you have permissions to read the account. Are you missing the `User->Memberships->Read` permission?
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_17-03-52_178.log"
+🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_22-41-09_083.log"
