@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: smt-p01-d103-verification
@@ -90,11 +91,27 @@ jobs:
 
       - name: Typecheck SMT
         id: typecheck
+        continue-on-error: true
         shell: bash
-        run: npm --prefix source/apps/smt-web exec -- tsc --noEmit -p tsconfig.json
+        run: |
+          set -o pipefail
+          npm --prefix source/apps/smt-web exec -- tsc --noEmit -p tsconfig.json 2>&1 | tee "$RUNNER_TEMP/d103-typecheck.log"
+
+      - name: Publish sanitized typecheck diagnostic
+        if: steps.typecheck.outcome == 'failure'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          DETAIL="$(tail -n 16 "$RUNNER_TEMP/d103-typecheck.log" | sed -E 's/[`$]/_/g' | head -c 5000)"
+          BODY=$(printf 'd103-typecheck-diagnostic source_sha=%s\n```text\n%s\n```' "$SOURCE_SHA" "$DETAIL")
+          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
 
       - name: Build SMT
         id: build
+        if: steps.typecheck.outcome == 'success'
         shell: bash
         run: npm --prefix source/apps/smt-web run build
 
@@ -123,3 +140,12 @@ jobs:
           fi
           echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
           echo "smt-p01-d103-stage=$STAGE"
+
+      - name: Enforce D-103 verification result
+        if: always()
+        shell: bash
+        env:
+          STAGE: ${{ steps.stage.outputs.failure_stage }}
+        run: |
+          set -euo pipefail
+          test "$STAGE" = none
