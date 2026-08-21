@@ -55,6 +55,10 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Verify current Builder policy
+        shell: bash
+        run: node scripts/verify-builder-policy.mjs
+
       - name: Setup JDK 17
         uses: actions/setup-java@v5
         with:
@@ -125,7 +129,7 @@ jobs:
           run_stage "carrier-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
           run_stage "carrier-runtime-contracts" node --experimental-strip-types --test packages/native/*.test.ts packages/printing/*.test.ts packages/durability/*.test.ts || exit 1
           run_stage "carrier-web-compat" npm --prefix apps/smt-web run test:carrier || exit 1
-          run_stage "carrier-static" node --test apps/smt-android/g6-carrier-static.test.mjs || exit 1
+          run_stage "carrier-static" node --test apps/smt-android/carrier-static.test.mjs || exit 1
           run_stage "carrier-typecheck" tsc --noEmit -p tsconfig.json || exit 1
           run_stage "carrier-smt-build" npm --prefix apps/smt-web run build || exit 1
           run_stage "carrier-android-compile" gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon || exit 1
@@ -136,5 +140,4 @@ jobs:
             echo "failed_stage=carrier-apk-artifact" >> "$GITHUB_OUTPUT"
             exit 1
           }
-
           echo "Carrier verification: PASS"
