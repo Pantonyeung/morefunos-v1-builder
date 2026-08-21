@@ -74,66 +74,56 @@ jobs:
           } 2>&1 | tee "$RUNNER_TEMP/admin-web-preview-build.log"
           echo 'build=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
 
-      - name: Mark Pages project check start
-        shell: bash
-        run: echo 'pages_project_check=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-
-      - name: Ensure Pages project exists
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create ${{ env.PAGES_PROJECT }} --production-branch=main
-
-      - name: Mark Pages deploy start
-        shell: bash
-        run: echo 'pages_deploy=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-
-      - name: Deploy Admin Web Preview
-        id: pages
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: source/apps/admin-web
-          command: pages deploy ./dist --project-name=${{ env.PAGES_PROJECT }} --branch=preview --commit-hash=${{ env.SOURCE_SHA }}
-
-      - name: Capture Pages deploy result
+      - name: Deploy Admin Web Preview with Wrangler CLI
+        working-directory: source/apps/admin-web
         env:
-          PAGES_OUTCOME: ${{ steps.pages.outcome }}
-          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
-          DEPLOYMENT_ALIAS_URL: ${{ steps.pages.outputs.pages-deployment-alias-url }}
-          CMD_OUTPUT: ${{ steps.pages.outputs.command-output }}
-          CMD_STDERR: ${{ steps.pages.outputs.command-stderr }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
-          {
-            echo "pages_deploy_outcome=$PAGES_OUTCOME"
-            echo "deployment_url=$DEPLOYMENT_URL"
-            echo "deployment_alias_url=$DEPLOYMENT_ALIAS_URL"
-            echo '===== WRANGLER STDOUT ====='
-            printf '%s\n' "$CMD_OUTPUT"
-            echo '===== WRANGLER STDERR ====='
-            printf '%s\n' "$CMD_STDERR"
-          } >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-          if [ "$PAGES_OUTCOME" != 'success' ]; then
-            exit 1
+          echo 'wrangler_cli=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          npx --yes wrangler@4 --version 2>&1 | tee "$RUNNER_TEMP/admin-web-preview-wrangler.log"
+
+          echo 'pages_project_check=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          set +e
+          npx --yes wrangler@4 pages project create "$PAGES_PROJECT" --production-branch=main \
+            2>&1 | tee -a "$RUNNER_TEMP/admin-web-preview-wrangler.log"
+          project_rc=${PIPESTATUS[0]}
+          set -e
+          echo "pages_project_check_rc=$project_rc" >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+
+          echo 'pages_deploy=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          set +e
+          npx --yes wrangler@4 pages deploy ./dist \
+            --project-name="$PAGES_PROJECT" \
+            --branch=preview \
+            --commit-hash="$SOURCE_SHA" \
+            2>&1 | tee -a "$RUNNER_TEMP/admin-web-preview-wrangler.log"
+          deploy_rc=${PIPESTATUS[0]}
+          set -e
+          echo "pages_deploy_rc=$deploy_rc" >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          if [ "$deploy_rc" -ne 0 ]; then
+            echo 'pages_deploy=FAIL' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+            exit "$deploy_rc"
           fi
           echo 'pages_deploy=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
 
+          DEPLOYMENT_URL="$(grep -Eo 'https://[^[:space:]]+\.pages\.dev' "$RUNNER_TEMP/admin-web-preview-wrangler.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo 'deployment_url_parse=FAIL' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+            exit 1
+          fi
+          printf '%s\n' "$DEPLOYMENT_URL" > "$GITHUB_WORKSPACE/admin-web-preview-url.txt"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+
       - name: Verify deployed routes
-        env:
-          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
-          DEPLOYMENT_ALIAS_URL: ${{ steps.pages.outputs.pages-deployment-alias-url }}
         shell: bash
         run: |
           set -euo pipefail
           echo 'route_smoke=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+          DEPLOYMENT_URL="$(cat admin-web-preview-url.txt)"
           test -n "$DEPLOYMENT_URL"
-          printf '%s\n' "$DEPLOYMENT_URL" > admin-web-preview-url.txt
           for route in \
             /admin/overview \
             /admin/catalog/products/PRC-001 \
@@ -148,7 +138,8 @@ jobs:
             curl -fsS "$DEPLOYMENT_URL$route" >/dev/null
           done
           echo 'route_smoke=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
-          STABLE_ALIAS="${DEPLOYMENT_ALIAS_URL:-https://preview.${PAGES_PROJECT}.pages.dev}"
+
+          STABLE_ALIAS="https://preview.${PAGES_PROJECT}.pages.dev"
           printf '%s\n' "$STABLE_ALIAS" > admin-web-preview-stable-url.txt
           echo "stable_alias_url=$STABLE_ALIAS" >> "$RUNNER_TEMP/admin-web-preview-stages.log"
           echo 'stable_alias=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
@@ -177,6 +168,8 @@ jobs:
             cat "$RUNNER_TEMP/admin-web-preview-stages.log" 2>/dev/null || true
             printf '\n===== BUILD =====\n'
             cat "$RUNNER_TEMP/admin-web-preview-build.log" 2>/dev/null || true
+            printf '\n===== WRANGLER =====\n'
+            cat "$RUNNER_TEMP/admin-web-preview-wrangler.log" 2>/dev/null || true
           } > /tmp/admin-web-preview-latest.log
           content="$(base64 -w0 /tmp/admin-web-preview-latest.log)"
           current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
