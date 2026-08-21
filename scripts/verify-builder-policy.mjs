@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const v1 = read('.github/workflows/verify-v1.yml');
 const carrier = read('.github/workflows/verify-carrier.yml');
+const d103 = read('.github/workflows/verify-smt-p01-d103.yml');
 const owner = read('.github/workflows/owner-control-v2.yml');
 
 const requireAll = (text, needles, prefix) => {
@@ -58,6 +59,33 @@ requireAll(carrier, [
   'carrier-apk-artifact',
 ], 'CARRIER_VERIFY_POLICY_REQUIRED');
 
+requireAll(d103, [
+  'name: SMT P01 D-103 Verification',
+  'workflow_call:',
+  'V1_SOURCE_READ_TOKEN',
+  'Checkout exact V1 source',
+  'Verify exact source identity',
+  'Run V1-owned D-103 profile',
+  'npm run verify:smt-p01-d103',
+  'source/artifacts/smt-p01-d103',
+  'failure_stage=',
+], 'D103_THIN_RELAY_REQUIRED');
+
+const d103ForbiddenProductKnowledge = [
+  /\bvitest\b/,
+  /\btsc\b/,
+  /vite\s+preview/,
+  /playwright@/,
+  /p01-d103-golden/,
+  /d103-visual\.html/,
+  /viewport-size/,
+  /data-d103-visual-ready/,
+  /apps\/smt-web\/src/,
+];
+for (const pattern of d103ForbiddenProductKnowledge) {
+  if (pattern.test(d103)) throw new Error(`D103_BUILDER_PRODUCT_KNOWLEDGE_FORBIDDEN:${pattern}`);
+}
+
 requireAll(owner, [
   '/verify-v1', '/verify-carrier', '/repair-smt-p01-lockfile',
   '/release-runtime', '/release-android', '/runtime-status',
@@ -75,9 +103,11 @@ for (const pattern of retiredOwnerCommandArms) {
   if (pattern.test(owner)) throw new Error(`OWNER_CONTROL_LEGACY_COMMAND_FORBIDDEN:${pattern}`);
 }
 
-for (const workflow of [v1, carrier]) {
+for (const workflow of [v1, carrier, d103]) {
   if (/contents:\s*write/.test(workflow)) throw new Error('VERIFY_CONTENTS_WRITE_FORBIDDEN');
   if (/persist-credentials:\s*true/.test(workflow)) throw new Error('VERIFY_PERSIST_CREDENTIALS_FORBIDDEN');
+}
+for (const workflow of [v1, carrier]) {
   if (/\b(?:test:g5|test:g6|test:b3|typecheck:g5|typecheck:g6)\b/.test(workflow)) throw new Error('CURRENT_VERIFY_LEGACY_GATE_NAME_FORBIDDEN');
 }
 

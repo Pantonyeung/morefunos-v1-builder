@@ -21,7 +21,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: smt-p01-d103-verification
@@ -31,13 +30,11 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     outputs:
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
-      SOVEREIGNTY_PATH: docs/authority/IMMUTABLE_MOREFUNOS_OWNER_SOVEREIGNTY_SNAPSHOT_V1_2026-08-21.md
-      SOVEREIGNTY_BLOB_SHA: d4767c95d566633fc241fe5fbbaaed6eeba2d351
     steps:
       - name: Validate exact request
         id: request
@@ -47,11 +44,6 @@ jobs:
           SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout Builder
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -68,7 +60,7 @@ jobs:
           path: source
           persist-credentials: false
 
-      - name: Verify exact source identity and sovereignty evidence
+      - name: Verify exact source identity
         id: identity
         shell: bash
         env:
@@ -76,97 +68,23 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
-          test -f "source/$SOVEREIGNTY_PATH"
-          test "$(git -C source hash-object "$SOVEREIGNTY_PATH")" = "$SOVEREIGNTY_BLOB_SHA"
 
-      - name: Install locked SMT dependencies
-        id: install
-        shell: bash
-        run: npm --prefix source/apps/smt-web ci --no-audit --no-fund
-
-      - name: Run D-103 P01 test
-        id: d103_test
-        shell: bash
-        run: npm --prefix source/apps/smt-web exec -- vitest run src/p01-d103-golden.vitest.test.tsx
-
-      - name: Typecheck SMT
-        id: typecheck
+      - name: Run V1-owned D-103 profile
+        id: v1_profile
         continue-on-error: true
+        working-directory: source
         shell: bash
         run: |
           set -o pipefail
-          npm --prefix source/apps/smt-web exec -- tsc --noEmit -p source/apps/smt-web/tsconfig.json 2>&1 | tee "$RUNNER_TEMP/d103-typecheck.log"
+          npm run verify:smt-p01-d103 2>&1 | tee "$RUNNER_TEMP/v1-d103-summary.log"
 
-      - name: Publish sanitized typecheck diagnostic
-        if: steps.typecheck.outcome == 'failure'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-        run: |
-          set -euo pipefail
-          DETAIL="$(tail -n 16 "$RUNNER_TEMP/d103-typecheck.log" | sed -E 's/[`$]/_/g' | head -c 5000)"
-          BODY=$(printf 'd103-typecheck-diagnostic source_sha=%s\n```text\n%s\n```' "$SOURCE_SHA" "$DETAIL")
-          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
-
-      - name: Build SMT
-        id: build
-        if: steps.typecheck.outcome == 'success'
-        shell: bash
-        run: npm --prefix source/apps/smt-web run build
-
-      - name: Capture deterministic D-103 screenshots
-        id: screenshot
-        if: steps.build.outcome == 'success'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          {
-            set -euo pipefail
-            test -f source/apps/smt-web/dist/d103-visual.html
-            mkdir -p "$RUNNER_TEMP/d103-screenshots"
-            npx --yes playwright@1.58.2 install chromium --with-deps
-            npm --prefix source/apps/smt-web exec -- vite preview --host 127.0.0.1 --port 4173 >"$RUNNER_TEMP/d103-vite-preview.log" 2>&1 &
-            PREVIEW_PID=$!
-            trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
-            for _ in $(seq 1 60); do
-              if curl --fail --silent --show-error 'http://127.0.0.1:4173/d103-visual.html?state=ordering' >/dev/null; then break; fi
-              sleep 1
-            done
-            curl --fail --silent --show-error 'http://127.0.0.1:4173/d103-visual.html?state=ordering' >/dev/null
-            npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1920,1080' --wait-for-selector 'html[data-d103-visual-ready="ordering"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=ordering' "$RUNNER_TEMP/d103-screenshots/SMT_ORDERING_MAIN_actual_1920x1080.png"
-            npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1280,800' --wait-for-selector 'html[data-d103-visual-ready="ordering"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=ordering' "$RUNNER_TEMP/d103-screenshots/SMT_ORDERING_MAIN_actual_1280x800.png"
-            npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1920,1080' --wait-for-selector 'html[data-d103-visual-ready="organize"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=organize' "$RUNNER_TEMP/d103-screenshots/SMT_ORGANIZE_WORKBENCH_actual_1920x1080.png"
-            npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1280,800' --wait-for-selector 'html[data-d103-visual-ready="organize"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=organize' "$RUNNER_TEMP/d103-screenshots/SMT_ORGANIZE_WORKBENCH_actual_1280x800.png"
-            sha256sum "$RUNNER_TEMP"/d103-screenshots/*.png | sort > "$RUNNER_TEMP/d103-screenshots/SHA256SUMS.txt"
-          } 2>&1 | tee "$RUNNER_TEMP/d103-screenshot.log"
-
-      - name: Publish sanitized screenshot diagnostic
-        if: steps.screenshot.outcome == 'failure'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-        run: |
-          set -euo pipefail
-          {
-            echo 'capture-log:'
-            tail -n 18 "$RUNNER_TEMP/d103-screenshot.log" 2>/dev/null || true
-            echo 'preview-log:'
-            tail -n 12 "$RUNNER_TEMP/d103-vite-preview.log" 2>/dev/null || true
-          } > "$RUNNER_TEMP/d103-screenshot-diagnostic.txt"
-          DETAIL="$(sed -E 's/[`$]/_/g' "$RUNNER_TEMP/d103-screenshot-diagnostic.txt" | head -c 6000)"
-          BODY=$(printf 'd103-screenshot-diagnostic source_sha=%s\n```text\n%s\n```' "$SOURCE_SHA" "$DETAIL")
-          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
-
-      - name: Upload D-103 screenshot evidence
-        id: screenshot_artifact
-        if: steps.screenshot.outcome == 'success'
+      - name: Upload V1-produced D-103 evidence
+        id: evidence_artifact
+        if: steps.v1_profile.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: smt-p01-d103-screenshots-${{ steps.request.outputs.source_sha }}
-          path: ${{ runner.temp }}/d103-screenshots
+          name: smt-p01-d103-evidence-${{ steps.request.outputs.source_sha }}
+          path: source/artifacts/smt-p01-d103
           if-no-files-found: error
           retention-days: 30
 
@@ -178,24 +96,22 @@ jobs:
           REQUEST: ${{ steps.request.outcome }}
           SOURCE: ${{ steps.source_checkout.outcome }}
           IDENTITY: ${{ steps.identity.outcome }}
-          INSTALL: ${{ steps.install.outcome }}
-          TEST: ${{ steps.d103_test.outcome }}
-          TYPECHECK: ${{ steps.typecheck.outcome }}
-          BUILD: ${{ steps.build.outcome }}
-          SCREENSHOT: ${{ steps.screenshot.outcome }}
-          SCREENSHOT_ARTIFACT: ${{ steps.screenshot_artifact.outcome }}
+          PROFILE: ${{ steps.v1_profile.outcome }}
+          ARTIFACT: ${{ steps.evidence_artifact.outcome }}
         run: |
           set -euo pipefail
           STAGE=none
-          if [[ "$REQUEST" == failure ]]; then STAGE=request;
-          elif [[ "$SOURCE" == failure ]]; then STAGE=source-checkout;
-          elif [[ "$IDENTITY" == failure ]]; then STAGE=identity;
-          elif [[ "$INSTALL" == failure ]]; then STAGE=install;
-          elif [[ "$TEST" == failure ]]; then STAGE=d103-test;
-          elif [[ "$TYPECHECK" == failure ]]; then STAGE=typecheck;
-          elif [[ "$BUILD" == failure ]]; then STAGE=build;
-          elif [[ "$SCREENSHOT" == failure ]]; then STAGE=screenshot;
-          elif [[ "$SCREENSHOT_ARTIFACT" == failure ]]; then STAGE=screenshot-artifact;
+          if [[ "$REQUEST" == failure ]]; then
+            STAGE=request
+          elif [[ "$SOURCE" == failure ]]; then
+            STAGE=source-checkout
+          elif [[ "$IDENTITY" == failure ]]; then
+            STAGE=identity
+          elif [[ "$PROFILE" == failure ]]; then
+            STAGE="$(grep -oE 'stage=[^ ]+' "$RUNNER_TEMP/v1-d103-summary.log" 2>/dev/null | tail -n1 | cut -d= -f2 || true)"
+            [[ -n "$STAGE" ]] || STAGE=v1-profile
+          elif [[ "$ARTIFACT" == failure ]]; then
+            STAGE=evidence-artifact
           fi
           echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
           echo "smt-p01-d103-stage=$STAGE"
