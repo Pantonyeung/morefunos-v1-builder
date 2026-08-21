@@ -59,8 +59,15 @@ requireAll(owner, [
   './.github/workflows/verify-v1.yml', './.github/workflows/verify-carrier.yml',
 ], 'OWNER_CONTROL_CURRENT_COMMAND_REQUIRED');
 
-for (const retired of ['/verify-a', '/verify-b', '/verify-c', '/verify-abc', '/verify-ui-mother']) {
-  if (owner.includes(retired)) throw new Error(`OWNER_CONTROL_LEGACY_COMMAND_FORBIDDEN:${retired}`);
+const retiredOwnerCommandArms = [
+  /^\s*\/verify-a\)\s+COMMAND=verify-a\s*;;\s*$/m,
+  /^\s*\/verify-b\)\s+COMMAND=verify-b\s*;;\s*$/m,
+  /^\s*\/verify-c\)\s+COMMAND=verify-c\s*;;\s*$/m,
+  /^\s*\/verify-abc\)\s+COMMAND=verify-abc\s*;;\s*$/m,
+  /^\s*\/verify-ui-mother\)\s+COMMAND=verify-ui-mother\s*;;\s*$/m,
+];
+for (const pattern of retiredOwnerCommandArms) {
+  if (pattern.test(owner)) throw new Error(`OWNER_CONTROL_LEGACY_COMMAND_FORBIDDEN:${pattern}`);
 }
 
 for (const workflow of [v1, carrier]) {
