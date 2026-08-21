@@ -20,7 +20,7 @@ jobs:
   verify-admin:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       SOURCE_SHA: a3d0c2970d6a42946bef2b7310f57e7e39fef905
     steps:
@@ -74,6 +74,63 @@ jobs:
           npm run build 2>&1 | tee "$RUNNER_TEMP/admin-build.log"
           test -f dist/index.html
 
+      - name: Install Playwright Chromium for D-103 capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y playwright@1.61.0 install --with-deps chromium
+
+      - name: Start deterministic Admin preview
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm exec vite -- preview --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/admin-preview.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/admin-preview.pid"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/admin/overview >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/admin-preview.log"
+          exit 1
+
+      - name: Capture nine locked desktop routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/screenshots/desktop
+          cat > "$RUNNER_TEMP/capture-admin.mjs" <<'EOF'
+          import { chromium } from 'playwright';
+          const routes = [
+            ['GR-ADM-01','/admin/overview'],
+            ['GR-ADM-02','/admin/catalog/products/PRC-001'],
+            ['GR-ADM-03','/admin/catalog/options/OPT-001'],
+            ['GR-ADM-04','/admin/catalog/combos/COM-001'],
+            ['GR-ADM-05','/admin/storefront'],
+            ['GR-ADM-06','/admin/operations/pickup-queue'],
+            ['GR-ADM-07','/admin/settings/port-exposure'],
+            ['GR-ADM-08','/admin/print-kitchen'],
+            ['GR-ADM-09','/admin/publish'],
+          ];
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:1448,height:1086}, deviceScaleFactor:1, reducedMotion:'reduce'});
+          const page = await context.newPage();
+          for (const [id, route] of routes) {
+            await page.goto(`http://127.0.0.1:4173${route}`, {waitUntil:'networkidle'});
+            await page.evaluate(() => document.fonts?.ready);
+            await page.screenshot({path:`evidence/screenshots/desktop/${id}.png`, fullPage:false, animations:'disabled'});
+          }
+          await browser.close();
+          EOF
+          mkdir -p "$RUNNER_TEMP/playwright-runner"
+          cd "$RUNNER_TEMP/playwright-runner"
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.61.0 --no-audit --no-fund >/dev/null
+          cp "$RUNNER_TEMP/capture-admin.mjs" ./capture-admin.mjs
+          ln -s "$GITHUB_WORKSPACE/evidence" ./evidence
+          node ./capture-admin.mjs
+          test "$(find evidence/screenshots/desktop -name 'GR-ADM-*.png' | wc -l)" -eq 9
+
       - name: Prepare evidence
         if: always()
         shell: bash
@@ -82,6 +139,7 @@ jobs:
           cp source/apps/admin-web/package-lock.json evidence/package-lock.json 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-test.log" evidence/admin-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-build.log" evidence/admin-build.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-preview.log" evidence/admin-preview.log 2>/dev/null || true
           printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
           if [ -d source/apps/admin-web/dist ]; then cp -R source/apps/admin-web/dist evidence/dist; fi
 
