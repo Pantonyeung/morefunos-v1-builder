@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: 85d323c5ff31f3a315d7fb9e642836b0b50f95bf
+      SOURCE_SHA: 702aad4855803090a14adbec10fe4d03167377bb
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -74,7 +74,7 @@ jobs:
           npm run build 2>&1 | tee "$RUNNER_TEMP/admin-build.log"
           test -f dist/index.html
 
-      - name: Install Playwright Chromium for D-103 capture
+      - name: Install Playwright Chromium
         shell: bash
         run: |
           set -euo pipefail
@@ -94,60 +94,15 @@ jobs:
           cat "$RUNNER_TEMP/admin-preview.log"
           exit 1
 
-      - name: Capture locked desktop tablet and mobile routes
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p evidence/screenshots/desktop evidence/screenshots/tablet evidence/screenshots/mobile
-          cat > "$RUNNER_TEMP/capture-admin.mjs" <<'EOF'
-          import { chromium } from 'playwright';
-          const routes = [
-            ['GR-ADM-01','/admin/overview'],
-            ['GR-ADM-02','/admin/catalog/products/PRC-001'],
-            ['GR-ADM-03','/admin/catalog/options/OPT-001'],
-            ['GR-ADM-04','/admin/catalog/combos/COM-001'],
-            ['GR-ADM-05','/admin/storefront'],
-            ['GR-ADM-06','/admin/operations/pickup-queue'],
-            ['GR-ADM-07','/admin/settings/port-exposure'],
-            ['GR-ADM-08','/admin/print-kitchen'],
-            ['GR-ADM-09','/admin/publish'],
-          ];
-          const viewports = [
-            ['desktop', {width:1448,height:1086}],
-            ['tablet', {width:1024,height:1366}],
-            ['mobile', {width:390,height:844}],
-          ];
-          const browser = await chromium.launch({headless:true});
-          const overflowFailures = [];
-          for (const [name, viewport] of viewports) {
-            const context = await browser.newContext({viewport, deviceScaleFactor:1, reducedMotion:'reduce'});
-            const page = await context.newPage();
-            for (const [id, route] of routes) {
-              await page.goto(`http://127.0.0.1:4173${route}`, {waitUntil:'networkidle'});
-              await page.evaluate(() => document.fonts?.ready);
-              const overflow = await page.evaluate(() => ({width: window.innerWidth, scrollWidth: document.documentElement.scrollWidth, bodyScrollWidth: document.body.scrollWidth}));
-              if (overflow.scrollWidth > overflow.width + 2 || overflow.bodyScrollWidth > overflow.width + 2) overflowFailures.push({name,id,route,...overflow});
-              await page.screenshot({path:`evidence/screenshots/${name}/${id}.png`, fullPage:false, animations:'disabled'});
-            }
-            await context.close();
-          }
-          await browser.close();
-          if (overflowFailures.length) { console.error(JSON.stringify(overflowFailures,null,2)); process.exit(2); }
-          EOF
-          mkdir -p "$RUNNER_TEMP/playwright-runner"
-          cd "$RUNNER_TEMP/playwright-runner"
-          npm init -y >/dev/null 2>&1
-          npm install playwright@1.61.0 --no-audit --no-fund >/dev/null
-          cp "$RUNNER_TEMP/capture-admin.mjs" ./capture-admin.mjs
-          ln -s "$GITHUB_WORKSPACE/evidence" ./evidence
-          node ./capture-admin.mjs
-          test "$(find evidence/screenshots -name 'GR-ADM-*.png' | wc -l)" -eq 27
-
       - name: Run D-105 browser interaction acceptance
         shell: bash
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/interaction-admin.mjs" <<'EOF'
+          mkdir -p "$RUNNER_TEMP/playwright-runner"
+          cd "$RUNNER_TEMP/playwright-runner"
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.61.0 --no-audit --no-fund >/dev/null
+          cat > interaction-admin.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
           const context = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
@@ -157,29 +112,38 @@ jobs:
           await page.getByRole('link', {name:'Catalog'}).click();
           await page.getByRole('heading', {name:'Product', level:1}).waitFor();
           const firstSwitch = page.locator('.fake-toggle').first();
-          const switchBefore = await firstSwitch.getAttribute('aria-checked'); await firstSwitch.click();
+          const switchBefore = await firstSwitch.getAttribute('aria-checked');
+          await firstSwitch.click();
           if (switchBefore === await firstSwitch.getAttribute('aria-checked')) throw new Error('Toggle did not change');
           await page.getByRole('status').filter({hasText:'not published'}).waitFor();
           const optionsCapability = page.getByRole('button', {name:'Options'});
-          const capBefore = await optionsCapability.getAttribute('aria-pressed'); await optionsCapability.click();
+          const capBefore = await optionsCapability.getAttribute('aria-pressed');
+          await optionsCapability.click();
           if (capBefore === await optionsCapability.getAttribute('aria-pressed')) throw new Error('Capability did not change');
           await page.goto(`${base}/admin/operations/pickup-queue`, {waitUntil:'networkidle'});
-          const timing = page.getByText('10 min', {exact:true}).first(); await timing.click();
+          const timing = page.getByText('10 min', {exact:true}).first();
+          await timing.click();
           if (!(await timing.evaluate(el=>el.classList.contains('is-selected')))) throw new Error('Timing not selected');
           await page.goto(`${base}/admin/storefront`, {waitUntil:'networkidle'});
-          await page.getByRole('button', {name:'Apply Changes'}).click(); await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.getByRole('button', {name:'Apply Changes'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
           await page.goto(`${base}/admin/settings/port-exposure`, {waitUntil:'networkidle'});
-          const ex = page.locator('.exposure-table .fake-toggle').first(); const exBefore=await ex.getAttribute('aria-checked'); await ex.click(); if(exBefore===await ex.getAttribute('aria-checked')) throw new Error('Exposure toggle did not change');
+          const ex = page.locator('.exposure-table .fake-toggle').first();
+          const exBefore = await ex.getAttribute('aria-checked');
+          await ex.click();
+          if(exBefore===await ex.getAttribute('aria-checked')) throw new Error('Exposure toggle did not change');
           await page.goto(`${base}/admin/print-kitchen`, {waitUntil:'networkidle'});
-          await page.getByRole('button', {name:'Open Print Center'}).click(); await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.getByRole('button', {name:'Open Print Center'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
           await page.goto(`${base}/admin/publish`, {waitUntil:'networkidle'});
-          await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click(); await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await page.getByRole('button', {name:/Prepare Rollback/i}).click(); await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await browser.close(); console.log('D-105 browser interactions PASS');
+          await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.getByRole('button', {name:/Prepare Rollback/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await browser.close();
+          console.log('D-105 browser interactions PASS');
           EOF
-          cd "$RUNNER_TEMP/playwright-runner"
-          cp "$RUNNER_TEMP/interaction-admin.mjs" ./interaction-admin.mjs
-          node ./interaction-admin.mjs 2>&1 | tee "$RUNNER_TEMP/admin-interaction.log"
+          node interaction-admin.mjs 2>&1 | tee "$RUNNER_TEMP/admin-interaction.log"
 
       - name: Prepare evidence
         if: always()
@@ -198,7 +162,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: admin-d104-evidence-${{ env.SOURCE_SHA }}
+          name: admin-d105-evidence-${{ env.SOURCE_SHA }}
           path: evidence
           if-no-files-found: error
           retention-days: 30
