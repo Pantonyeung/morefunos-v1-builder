@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  SOURCE_SHA: aec6b3ff8a41746cd27773ebe4f4ea1865a86f70
+  SOURCE_SHA: 5e6b1b1b9ea6decda477f3f7e5dc749feb75b7d9
 
 jobs:
   verify-admin-l9-phase-c:
@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
-      - name: Run canonical Admin durability tests
+      - name: Run canonical Admin durability and transport tests
         working-directory: source
         shell: bash
         run: |
@@ -47,6 +47,7 @@ jobs:
             packages/durability/durability.test.ts \
             packages/durability/firebase-rtdb-durability.test.ts \
             packages/runtime/admin-policy-runtime.test.ts \
+            packages/runtime/admin-policy-http.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-l9-phase-c.log"
 
       - name: Prepare evidence
