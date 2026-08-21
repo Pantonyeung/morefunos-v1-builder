@@ -127,7 +127,7 @@ jobs:
             test -f source/apps/smt-web/dist/d103-visual.html
             mkdir -p "$RUNNER_TEMP/d103-screenshots"
             npx --yes playwright@1.58.2 install chromium --with-deps
-            npm --prefix source/apps/smt-web exec -- vite preview --host 127.0.0.1 --port 4173 >"$RUNNER_TEMP/d103-vite-preview.log" 2>&1 &
+            (cd source/apps/smt-web && npm exec -- vite preview --host 127.0.0.1 --port 4173) >"$RUNNER_TEMP/d103-vite-preview.log" 2>&1 &
             PREVIEW_PID=$!
             trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
             for _ in $(seq 1 60); do
