@@ -1,5 +1,10 @@
 SOURCE_SHA=12fb28a36643bcac6cf04567a7ae54c134112ec0
 
+===== INSTALL =====
+===== npm install app =====
+npm error Cannot read properties of null (reading 'edgesOut')
+npm error A complete log of this run can be found in: /home/runner/.npm/_logs/2026-08-21T16_41_40_293Z-debug-0.log
+
 ===== TEST + BUILD =====
 
 ===== BROWSER ACCEPTANCE =====
