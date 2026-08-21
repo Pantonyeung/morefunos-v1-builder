@@ -29,11 +29,11 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: 'Exact MoreFunOS V1 source SHA'
+        description: Exact MoreFunOS V1 source SHA
         required: true
         type: string
       release_channel:
-        description: 'Runtime channel'
+        description: Runtime channel
         required: true
         default: candidate
         type: choice
@@ -54,22 +54,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify:
-    uses: ./.github/workflows/verify-ui-mother.yml
+  verify-v1:
+    uses: ./.github/workflows/verify-v1.yml
     with:
       source_sha: ${{ inputs.source_sha }}
     secrets:
       V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
 
   release:
-    needs: verify
+    needs: verify-v1
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       SOURCE_SHA: ${{ inputs.source_sha }}
       RELEASE_CHANNEL: ${{ inputs.release_channel }}
-      VERIFIED_ARTIFACT: ${{ needs.verify.outputs.artifact_name }}
     steps:
       - name: Validate release identity
         shell: bash
@@ -77,7 +76,6 @@ jobs:
           set -euo pipefail
           [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           case "$RELEASE_CHANNEL" in candidate|stable|dev) ;; *) exit 1 ;; esac
-          test -n "$VERIFIED_ARTIFACT"
 
       - name: Checkout Builder release scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -89,24 +87,39 @@ jobs:
         with:
           node-version: '22.12.0'
 
+      - name: Verify current Builder policy
+        shell: bash
+        run: node scripts/verify-builder-policy.mjs
+
+      - name: Checkout exact verified MoreFunOS V1 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Reproduce exact verified production dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix source/apps/smt-web ci --no-audit --no-fund
+          npm --prefix source/apps/smt-web run build
+          test -s source/apps/smt-web/dist/index.html
+          find source/apps/smt-web/dist -maxdepth 2 -type f -size +0c | grep -q .
+
       - name: Setup JDK 17 for JAR signing
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Download exact verified production dist
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: ${{ env.VERIFIED_ARTIFACT }}
-          path: verified-dist
-
-      - name: Verify artifact handoff
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s verified-dist/index.html
-          find verified-dist -maxdepth 2 -type f -size +0c | grep -q .
 
       - name: Sign immutable Runtime package
         id: signing
@@ -123,7 +136,6 @@ jobs:
           MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
           cleanup() { rm -f "$KEYSTORE" "$CERT_DER" "$MANIFEST"; }
           trap cleanup EXIT
-
           printf '%s' "$V1_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
           keytool -exportcert -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" -alias "$V1_ANDROID_KEY_ALIAS" -file "$CERT_DER" >/dev/null 2>&1
@@ -144,7 +156,7 @@ jobs:
           EOF
           sed -i 's/^          //' "$MANIFEST"
 
-          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C verified-dist .
+          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C source/apps/smt-web/dist .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" -keypass "$V1_ANDROID_KEY_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
           jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
 
@@ -221,7 +233,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="builder-v2-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
-          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Builder V2 verified-artifact Runtime package. Source ${SOURCE_SHA}. Package contract PASS. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
+          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Builder V2 current-V1 Runtime package. Source ${SOURCE_SHA}. Package contract PASS. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
 
       - name: Checkout canonical OTA delivery source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
