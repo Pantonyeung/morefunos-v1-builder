@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  SOURCE_SHA: 4ef013436e1078a4159da77e1c7134a2ff15aaee
+  SOURCE_SHA: 2bec48d97d72c042dace406972d77af193aef204
 
 jobs:
   verify-admin-l9-phase-c:
@@ -49,6 +49,7 @@ jobs:
             packages/runtime/admin-policy-runtime.test.ts \
             packages/runtime/admin-policy-http.test.ts \
             packages/runtime/admin-policy-http-client.test.ts \
+            infra/cloudflare/admin-policy-worker/worker.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-l9-phase-c.log"
 
       - name: Prepare evidence
