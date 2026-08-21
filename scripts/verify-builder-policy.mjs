@@ -1,6 +1,7 @@
 import './verify-android-release-ota-endpoint-contract.mjs';
 import './verify-runtime-release-private-delivery-contract.mjs';
 import './verify-runtime-release-trigger-contract.mjs';
+import './verify-owner-control-runtime-release-retired.mjs';
 import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
@@ -88,14 +89,10 @@ for (const pattern of d103ForbiddenProductKnowledge) {
   if (pattern.test(d103)) throw new Error(`D103_BUILDER_PRODUCT_KNOWLEDGE_FORBIDDEN:${pattern}`);
 }
 
-// Read-only verification does not own a mutable shared resource. A workflow-level
-// concurrency lock here can leave future exact-SHA requests blocked behind a stale run.
 for (const [name, workflow] of [['verify-v1', v1], ['verify-carrier', carrier], ['verify-smt-p01-d103', d103]]) {
   if (/^concurrency:\s*$/m.test(workflow)) throw new Error(`VERIFY_CONCURRENCY_LOCK_FORBIDDEN:${name}`);
 }
 
-// Runtime publication owns one mutable public manifest per channel. Serialize by channel,
-// not by source SHA. Candidate/dev may supersede a stale release; stable never auto-cancels.
 requireAll(runtimeRelease, [
   'group: runtime-release-v2-${{ inputs.release_channel }}',
   "cancel-in-progress: ${{ inputs.release_channel != 'stable' }}",
