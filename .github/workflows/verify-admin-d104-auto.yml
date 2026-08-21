@@ -94,11 +94,11 @@ jobs:
           cat "$RUNNER_TEMP/admin-preview.log"
           exit 1
 
-      - name: Capture nine locked desktop routes
+      - name: Capture locked desktop tablet and mobile routes
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p evidence/screenshots/desktop
+          mkdir -p evidence/screenshots/desktop evidence/screenshots/tablet evidence/screenshots/mobile
           cat > "$RUNNER_TEMP/capture-admin.mjs" <<'EOF'
           import { chromium } from 'playwright';
           const routes = [
@@ -112,13 +112,21 @@ jobs:
             ['GR-ADM-08','/admin/print-kitchen'],
             ['GR-ADM-09','/admin/publish'],
           ];
+          const viewports = [
+            ['desktop', {width:1448,height:1086}],
+            ['tablet', {width:1024,height:1366}],
+            ['mobile', {width:390,height:844}],
+          ];
           const browser = await chromium.launch({headless:true});
-          const context = await browser.newContext({viewport:{width:1448,height:1086}, deviceScaleFactor:1, reducedMotion:'reduce'});
-          const page = await context.newPage();
-          for (const [id, route] of routes) {
-            await page.goto(`http://127.0.0.1:4173${route}`, {waitUntil:'networkidle'});
-            await page.evaluate(() => document.fonts?.ready);
-            await page.screenshot({path:`evidence/screenshots/desktop/${id}.png`, fullPage:false, animations:'disabled'});
+          for (const [name, viewport] of viewports) {
+            const context = await browser.newContext({viewport, deviceScaleFactor:1, reducedMotion:'reduce'});
+            const page = await context.newPage();
+            for (const [id, route] of routes) {
+              await page.goto(`http://127.0.0.1:4173${route}`, {waitUntil:'networkidle'});
+              await page.evaluate(() => document.fonts?.ready);
+              await page.screenshot({path:`evidence/screenshots/${name}/${id}.png`, fullPage:false, animations:'disabled'});
+            }
+            await context.close();
           }
           await browser.close();
           EOF
@@ -130,6 +138,9 @@ jobs:
           ln -s "$GITHUB_WORKSPACE/evidence" ./evidence
           node ./capture-admin.mjs
           test "$(find evidence/screenshots/desktop -name 'GR-ADM-*.png' | wc -l)" -eq 9
+          test "$(find evidence/screenshots/tablet -name 'GR-ADM-*.png' | wc -l)" -eq 9
+          test "$(find evidence/screenshots/mobile -name 'GR-ADM-*.png' | wc -l)" -eq 9
+          test "$(find evidence/screenshots -name 'GR-ADM-*.png' | wc -l)" -eq 27
 
       - name: Prepare evidence
         if: always()
