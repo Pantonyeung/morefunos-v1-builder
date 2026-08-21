@@ -32,6 +32,8 @@ jobs:
           read -r VERB ARG1 ARG2 EXTRA <<< "$(printf '%s' "$COMMENT_BODY" | tr -d '\r' | xargs)"
           [[ -z "${EXTRA:-}" ]]
           case "$VERB" in
+            /verify-v1) COMMAND=verify-v1 ;;
+            /verify-carrier) COMMAND=verify-carrier ;;
             /verify-a) COMMAND=verify-a ;;
             /verify-b) COMMAND=verify-b ;;
             /verify-c) COMMAND=verify-c ;;
@@ -56,6 +58,24 @@ jobs:
             echo "source_sha=$SOURCE_SHA"
             echo "channel=$CHANNEL"
           } >> "$GITHUB_OUTPUT"
+
+  verify-v1:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-v1'
+    uses: ./.github/workflows/verify-v1.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+
+  verify-carrier:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-carrier'
+    uses: ./.github/workflows/verify-carrier.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
 
   verify-a:
     needs: prepare
@@ -147,7 +167,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-a, verify-b, verify-c, verify-abc, repair-smt-p01-lockfile, verify-ui-mother, release-runtime, release-android, runtime-status]
+    needs: [prepare, verify-v1, verify-carrier, verify-a, verify-b, verify-c, verify-abc, repair-smt-p01-lockfile, verify-ui-mother, release-runtime, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -157,6 +177,10 @@ jobs:
           COMMAND: ${{ needs.prepare.outputs.command }}
           SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
           CHANNEL: ${{ needs.prepare.outputs.channel }}
+          V1: ${{ needs.verify-v1.result }}
+          V1_STAGE: ${{ needs.verify-v1.outputs.failure_stage }}
+          CARRIER: ${{ needs.verify-carrier.result }}
+          CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
           A: ${{ needs.verify-a.result }}
           B: ${{ needs.verify-b.result }}
           C: ${{ needs.verify-c.result }}
@@ -171,22 +195,22 @@ jobs:
         run: |
           set -euo pipefail
           case "$COMMAND" in
+            verify-v1) RESULT="$V1"; STAGE="$V1_STAGE" ;;
+            verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
             verify-a) RESULT="$A" ;;
             verify-b) RESULT="$B" ;;
             verify-c) RESULT="$C" ;;
             verify-abc) RESULT="$ABC" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
-            verify-ui-mother) RESULT="$UI" ;;
+            verify-ui-mother) RESULT="$UI"; STAGE="$UI_STAGE" ;;
             release-runtime) RESULT="$RUNTIME_RELEASE" ;;
             release-android) RESULT="$ANDROID_RELEASE" ;;
             runtime-status) RESULT="$STATUS" ;;
             *) RESULT=unknown ;;
           esac
           BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
-          if [[ "$COMMAND" == verify-ui-mother ]]; then
-            BODY="$BODY stage=${UI_STAGE:-unknown}"
-            if [[ -n "${UI_DETAIL:-}" ]]; then BODY="$BODY detail=$UI_DETAIL"; fi
-          fi
+          if [[ -n "${STAGE:-}" ]]; then BODY="$BODY stage=$STAGE"; fi
+          if [[ "$COMMAND" == verify-ui-mother && -n "${UI_DETAIL:-}" ]]; then BODY="$BODY detail=$UI_DETAIL"; fi
           if [[ "$CHANNEL" != none ]]; then BODY="$BODY channel=$CHANNEL"; fi
           echo "$BODY"
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
