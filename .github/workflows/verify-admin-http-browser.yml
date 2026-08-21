@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 env:
-  SOURCE_SHA: 5881570840d09e7348771e7603682353970bee93
+  SOURCE_SHA: 12fb28a36643bcac6cf04567a7ae54c134112ec0
 
 jobs:
   verify-admin-http-browser:
@@ -53,8 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm test
-          npm run build
+          npm test 2>&1 | tee "$RUNNER_TEMP/admin-http-browser-test-build.log"
+          npm run build 2>&1 | tee -a "$RUNNER_TEMP/admin-http-browser-test-build.log"
 
       - name: Run real HTTP browser acceptance
         working-directory: source/apps/admin-web
@@ -72,8 +72,30 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+          cp "$RUNNER_TEMP/admin-http-browser-test-build.log" evidence/admin-http-browser-test-build.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-http-browser.log" evidence/admin-http-browser.log 2>/dev/null || true
           cp -R "$RUNNER_TEMP/admin-http-evidence/." evidence/ 2>/dev/null || true
+
+      - name: Persist latest diagnostic log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-http-browser-latest.log'
+          {
+            printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+            printf '\n===== TEST + BUILD =====\n'
+            cat "$RUNNER_TEMP/admin-http-browser-test-build.log" 2>/dev/null || true
+            printf '\n===== BROWSER ACCEPTANCE =====\n'
+            cat "$RUNNER_TEMP/admin-http-browser.log" 2>/dev/null || true
+          } > "$RUNNER_TEMP/admin-http-browser-combined.log"
+          content="$(base64 -w0 "$RUNNER_TEMP/admin-http-browser-combined.log")"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message="ci: refresh Admin HTTP browser diagnostic log" -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
 
       - name: Upload evidence
         if: always()
