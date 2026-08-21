@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: e4323ee034cc2d073e4df385e7e932bfc49af39b
+  SOURCE_SHA: 403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
 
 jobs:
   deploy-admin-policy-preview:
@@ -22,22 +22,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CF_API: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
-          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
+          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           missing=()
           [ -n "$CF_API" ] || missing+=(CLOUDFLARE_API_TOKEN)
           [ -n "$CF_ACCOUNT" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
-          [ -n "$FIREBASE_DATABASE_URL" ] || missing+=(FIREBASE_DATABASE_URL)
           [ -n "$GOOGLE_CLIENT_EMAIL" ] || missing+=(GOOGLE_CLIENT_EMAIL)
           [ -n "$GOOGLE_PRIVATE_KEY" ] || missing+=(GOOGLE_PRIVATE_KEY)
-          [ -n "$STAFF_SESSIONS_JSON" ] || missing+=(STAFF_SESSIONS_JSON)
-          [ -n "$ADMIN_STAFF_BOOTSTRAP_JSON" ] || missing+=(ADMIN_STAFF_BOOTSTRAP_JSON)
+          [ -n "$ADMIN_OWNER_TOKEN" ] || missing+=(ADMIN_OWNER_TOKEN)
           if [ ${#missing[@]} -gt 0 ]; then
             message="MISSING:$(IFS=,; echo "${missing[*]}")"
           else
@@ -81,22 +77,18 @@ jobs:
           workingDirectory: source/infra/cloudflare/admin-policy-worker
           command: deploy --config wrangler.jsonc
           secrets: |
-            FIREBASE_DATABASE_URL
             GOOGLE_CLIENT_EMAIL
             GOOGLE_PRIVATE_KEY
-            STAFF_SESSIONS_JSON
-            ADMIN_STAFF_BOOTSTRAP_JSON
+            ADMIN_OWNER_TOKEN
         env:
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
-          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
+          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
 
       - name: Verify preview health and authenticated canonical publish
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
+          ADMIN_OWNER_TOKEN: ${{ secrets.ADMIN_OWNER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -104,7 +96,7 @@ jobs:
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
           grep -q '"ok":true' admin-preview-health.json
 
-          STAFF_TOKEN="$(node -e 'const x=JSON.parse(process.env.STAFF_SESSIONS_JSON); const k=Object.keys(x)[0]; if(!k) process.exit(2); process.stdout.write(k)')"
+          STAFF_TOKEN="$ADMIN_OWNER_TOKEN"
           test -n "$STAFF_TOKEN"
 
           curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
