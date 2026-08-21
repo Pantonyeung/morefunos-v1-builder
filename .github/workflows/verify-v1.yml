@@ -35,6 +35,8 @@ jobs:
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      SOVEREIGNTY_PATH: docs/authority/IMMUTABLE_MOREFUNOS_OWNER_SOVEREIGNTY_SNAPSHOT_V1_2026-08-21.md
+      SOVEREIGNTY_BLOB_SHA: d4767c95d566633fc241fe5fbbaaed6eeba2d351
     steps:
       - name: Validate immutable verification request
         id: request
@@ -80,6 +82,16 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Verify immutable Owner Sovereignty Snapshot
+        id: sovereignty
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "source/$SOVEREIGNTY_PATH"
+          ACTUAL="$(git -C source hash-object "$SOVEREIGNTY_PATH")"
+          test "$ACTUAL" = "$SOVEREIGNTY_BLOB_SHA"
+          echo "owner-sovereignty-snapshot=PASS blob=$ACTUAL"
 
       - name: Setup pinned TypeScript
         id: toolchain
@@ -134,6 +146,7 @@ jobs:
           POLICY: ${{ steps.policy.outcome }}
           SOURCE_CHECKOUT: ${{ steps.source_checkout.outcome }}
           IDENTITY: ${{ steps.identity.outcome }}
+          SOVEREIGNTY: ${{ steps.sovereignty.outcome }}
           TOOLCHAIN: ${{ steps.toolchain.outcome }}
           VERIFY: ${{ steps.verify.outcome }}
           VERIFY_STAGE: ${{ steps.verify.outputs.failed_stage }}
@@ -146,6 +159,7 @@ jobs:
           elif [[ "$POLICY" == failure ]]; then STAGE=builder-policy;
           elif [[ "$SOURCE_CHECKOUT" == failure ]]; then STAGE=source-checkout;
           elif [[ "$IDENTITY" == failure ]]; then STAGE=source-identity;
+          elif [[ "$SOVEREIGNTY" == failure ]]; then STAGE=sovereignty-lock;
           elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
           elif [[ "$VERIFY" == failure ]]; then STAGE="${VERIFY_STAGE:-v1-verification}";
           fi
