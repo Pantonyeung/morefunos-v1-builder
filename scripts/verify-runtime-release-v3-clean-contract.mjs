@@ -4,8 +4,12 @@ const workflowPath = '.github/workflows/runtime-release-v3.yml';
 if (!fs.existsSync(workflowPath)) {
   throw new Error('RUNTIME_RELEASE_V3_WORKFLOW_REQUIRED');
 }
+if (fs.existsSync('.github/workflows/runtime-release-request.yml')) {
+  throw new Error('RUNTIME_RELEASE_OLD_REQUEST_RELAY_FORBIDDEN');
+}
 
 const workflow = fs.readFileSync(workflowPath, 'utf8');
+const v2 = fs.readFileSync('.github/workflows/runtime-release-v2.yml', 'utf8');
 const requireText = (needle) => {
   if (!workflow.includes(needle)) throw new Error(`RUNTIME_RELEASE_V3_REQUIRED:${needle}`);
 };
@@ -46,6 +50,13 @@ for (const pattern of forbidden) {
 const v1CheckoutCount = (workflow.match(/repository:\s*Pantonyeung\/morefunos-v1/g) ?? []).length;
 if (v1CheckoutCount !== 1) {
   throw new Error(`RUNTIME_RELEASE_V3_EXACTLY_ONE_V1_CHECKOUT_REQUIRED:${v1CheckoutCount}`);
+}
+
+if (!v2.includes('name: Runtime Release V2 Retired')) {
+  throw new Error('RUNTIME_RELEASE_V2_MUST_BE_RETIRED');
+}
+if (/workflow_dispatch:|push:/.test(v2)) {
+  throw new Error('RUNTIME_RELEASE_V2_DIRECT_TRIGGER_FORBIDDEN');
 }
 
 console.log('Runtime Release V3 clean contract: PASS');
