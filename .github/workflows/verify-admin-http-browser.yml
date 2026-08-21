@@ -45,10 +45,13 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo '===== npm install app ====='
-            npm install --ignore-scripts --no-audit --no-fund
+            echo '===== toolchain ====='
+            node --version
+            npm --version
+            echo '===== npm install app (legacy peer deps: verifier-only Arborist workaround) ====='
+            npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
             echo '===== npm install playwright ====='
-            npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.61.0
+            npm install --legacy-peer-deps --no-save --ignore-scripts --no-audit --no-fund playwright@1.61.0
             echo '===== playwright install chromium ====='
             npx playwright install --with-deps chromium
           } 2>&1 | tee "$RUNNER_TEMP/admin-http-browser-install.log"
