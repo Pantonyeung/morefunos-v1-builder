@@ -34,11 +34,6 @@ jobs:
           case "$VERB" in
             /verify-v1) COMMAND=verify-v1 ;;
             /verify-carrier) COMMAND=verify-carrier ;;
-            /verify-a) COMMAND=verify-a ;;
-            /verify-b) COMMAND=verify-b ;;
-            /verify-c) COMMAND=verify-c ;;
-            /verify-abc) COMMAND=verify-abc ;;
-            /verify-ui-mother) COMMAND=verify-ui-mother ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
             /release-runtime) COMMAND=release-runtime ;;
             /release-android) COMMAND=release-android ;;
@@ -77,38 +72,6 @@ jobs:
     secrets:
       V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
 
-  verify-a:
-    needs: prepare
-    if: needs.prepare.outputs.command == 'verify-a'
-    uses: ./.github/workflows/verify-a.yml
-    with:
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit
-
-  verify-b:
-    needs: prepare
-    if: needs.prepare.outputs.command == 'verify-b'
-    uses: ./.github/workflows/verify-b.yml
-    with:
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit
-
-  verify-c:
-    needs: prepare
-    if: needs.prepare.outputs.command == 'verify-c'
-    uses: ./.github/workflows/verify-c.yml
-    with:
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit
-
-  verify-abc:
-    needs: prepare
-    if: needs.prepare.outputs.command == 'verify-abc'
-    uses: ./.github/workflows/verify-abc-integration.yml
-    with:
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit
-
   repair-smt-p01-lockfile:
     needs: prepare
     if: needs.prepare.outputs.command == 'repair-smt-p01-lockfile'
@@ -116,15 +79,6 @@ jobs:
     with:
       source_sha: ${{ needs.prepare.outputs.source_sha }}
     secrets: inherit
-
-  verify-ui-mother:
-    needs: prepare
-    if: needs.prepare.outputs.command == 'verify-ui-mother'
-    uses: ./.github/workflows/verify-ui-mother.yml
-    with:
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets:
-      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
 
   release-runtime:
     needs: prepare
@@ -167,7 +121,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-v1, verify-carrier, verify-a, verify-b, verify-c, verify-abc, repair-smt-p01-lockfile, verify-ui-mother, release-runtime, release-android, runtime-status]
+    needs: [prepare, verify-v1, verify-carrier, repair-smt-p01-lockfile, release-runtime, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -181,36 +135,24 @@ jobs:
           V1_STAGE: ${{ needs.verify-v1.outputs.failure_stage }}
           CARRIER: ${{ needs.verify-carrier.result }}
           CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
-          A: ${{ needs.verify-a.result }}
-          B: ${{ needs.verify-b.result }}
-          C: ${{ needs.verify-c.result }}
-          ABC: ${{ needs.verify-abc.result }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
-          UI: ${{ needs.verify-ui-mother.result }}
-          UI_STAGE: ${{ needs.verify-ui-mother.outputs.failure_stage }}
-          UI_DETAIL: ${{ needs.verify-ui-mother.outputs.failure_detail }}
           RUNTIME_RELEASE: ${{ needs.release-runtime.result }}
           ANDROID_RELEASE: ${{ needs.release-android.result }}
           STATUS: ${{ needs.runtime-status.result }}
         run: |
           set -euo pipefail
+          STAGE=''
           case "$COMMAND" in
             verify-v1) RESULT="$V1"; STAGE="$V1_STAGE" ;;
             verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
-            verify-a) RESULT="$A" ;;
-            verify-b) RESULT="$B" ;;
-            verify-c) RESULT="$C" ;;
-            verify-abc) RESULT="$ABC" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
-            verify-ui-mother) RESULT="$UI"; STAGE="$UI_STAGE" ;;
             release-runtime) RESULT="$RUNTIME_RELEASE" ;;
             release-android) RESULT="$ANDROID_RELEASE" ;;
             runtime-status) RESULT="$STATUS" ;;
             *) RESULT=unknown ;;
           esac
           BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
-          if [[ -n "${STAGE:-}" ]]; then BODY="$BODY stage=$STAGE"; fi
-          if [[ "$COMMAND" == verify-ui-mother && -n "${UI_DETAIL:-}" ]]; then BODY="$BODY detail=$UI_DETAIL"; fi
+          if [[ -n "$STAGE" ]]; then BODY="$BODY stage=$STAGE"; fi
           if [[ "$CHANNEL" != none ]]; then BODY="$BODY channel=$CHANNEL"; fi
           echo "$BODY"
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
