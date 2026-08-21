@@ -12,7 +12,6 @@ The legacy system mixed three different concerns:
 - historical implementation-shape/static tests tied to old component locations and lane names.
 
 From 2026-08-21 the current verification authority is:
-
 - `/verify-v1 <exact-sha>` — current Business/Runtime contracts, UI authority boundary, SMT functional regression, TypeScript and Web production build.
 - `/verify-carrier <exact-sha>` — explicit Android/Native/OTA Carrier/Hardware verification only when that boundary changes.
 
@@ -25,6 +24,7 @@ The following files are archived by Git history and must not be restored to acti
 | Legacy workflow | Last recorded blob SHA | Historical purpose |
 | --- | --- | --- |
 | `.github/workflows/manual-verify.yml` | `ac7584e701340b4dd9a864a2ae746b8acd1bf3ee` | Multi-profile manual verification including current/G5/Android |
+| `.github/workflows/manual-android-release.yml` | `a75a9bcd122f804ce2c39dedea0a239f4e7c00ba` | Duplicate pre-convergence Android release path that directly invoked G6 naming |
 | `.github/workflows/verify-a.yml` | `752664078b5444ec579d182f56ad0ab76fa1b322` | A-line / Android carrier verification wrapper |
 | `.github/workflows/verify-b.yml` | `59f6a199e257f68a86fda69fb6068877956a720d` | B-line / SMT Web verification wrapper |
 | `.github/workflows/verify-c.yml` | `d06d48401a8db446c2f60d4e2372fdc8562c17a1` | C-line / Runtime-contract verification wrapper |
@@ -55,22 +55,20 @@ The Carrier gate keeps:
 
 ## What is no longer a current blocker
 
-The following naming/organization concepts are historical only:
+Historical only:
 - A-line, B-line and C-line verification ownership;
-- `/verify-a`, `/verify-b`, `/verify-c`, `/verify-abc`;
+- `/verify-a`, `/verify-b`, `/verify-c`, `/verify-abc`, `/verify-ui-mother`;
 - G5/G6/B3 as release-gate identities;
 - component-location/static regex tests whose only purpose is to preserve old file/class/prop placement.
 
-A historical test may still be useful as research evidence or migration parity reference. It does not regain blocking authority unless its underlying semantic invariant is deliberately promoted into a current V1 test.
+A historical test may still be useful as research evidence or migration parity reference. It does not regain blocking authority unless its underlying semantic invariant is deliberately promoted into a current V1 or Carrier test.
 
 ## Migration evidence
 
 The first current V1 verification was run against MoreFunOS V1 exact SHA:
-
 `b2ca59f9730120d2b292bd58c59923af5cbb3ff8`
 
 Result:
-
 `/verify-v1 ... -> success`
 
 This PASS was obtained before retiring the legacy Owner commands, preventing a verification vacuum.
