@@ -22,10 +22,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: morefunos-v1-carrier-verification
-  cancel-in-progress: false
-
 jobs:
   verify:
     if: github.actor == 'Pantonyeung'

@@ -50,8 +50,8 @@ env:
   WRANGLER_VERSION: '4.118.0'
 
 concurrency:
-  group: runtime-release-v2-${{ inputs.source_sha }}-${{ inputs.release_channel }}
-  cancel-in-progress: false
+  group: runtime-release-v2-${{ inputs.release_channel }}
+  cancel-in-progress: ${{ inputs.release_channel != 'stable' }}
 
 jobs:
   verify-smt-p01-d103:
