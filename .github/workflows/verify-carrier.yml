@@ -1,0 +1,140 @@
+name: Owner V1 Carrier Verification
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
+    outputs:
+      failure_stage:
+        value: ${{ jobs.verify.outputs.failure_stage }}
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact MoreFunOS V1 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefunos-v1-carrier-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      failure_stage: ${{ steps.verify.outputs.failed_stage }}
+    env:
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Validate immutable verification request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup pinned TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent typescript@5.8.3
+          test "$(tsc --version)" = "Version 5.8.3"
+
+      - name: Verify carrier without public source logs
+        id: verify
+        shell: bash
+        run: |
+          set -u
+          LOG="$RUNNER_TEMP/v1-carrier-private.log"
+          : > "$LOG"
+          cd source
+
+          run_stage() {
+            local stage="$1"
+            shift
+            printf '\n== %s ==\n' "$stage" >> "$LOG"
+            if "$@" >> "$LOG" 2>&1; then
+              echo "$stage: PASS"
+              return 0
+            fi
+            echo "$stage: FAIL (details withheld from public log)"
+            echo "failed_stage=$stage" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+
+          if [[ ! -f apps/smt-web/package-lock.json ]]; then
+            echo "failed_stage=carrier-smt-lockfile" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          run_stage "carrier-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
+          run_stage "carrier-runtime-contracts" node --experimental-strip-types --test packages/native/*.test.ts packages/printing/*.test.ts packages/durability/*.test.ts || exit 1
+          run_stage "carrier-web-compat" npm --prefix apps/smt-web run test:carrier || exit 1
+          run_stage "carrier-static" node --test apps/smt-android/g6-carrier-static.test.mjs || exit 1
+          run_stage "carrier-typecheck" tsc --noEmit -p tsconfig.json || exit 1
+          run_stage "carrier-smt-build" npm --prefix apps/smt-web run build || exit 1
+          run_stage "carrier-android-compile" gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon || exit 1
+          run_stage "carrier-android-lint" gradle -p apps/smt-android :app:lintDebug --no-daemon || exit 1
+          run_stage "carrier-android-assemble" gradle -p apps/smt-android :app:assembleDebug --no-daemon || exit 1
+
+          test -f apps/smt-android/app/build/outputs/apk/debug/app-debug.apk || {
+            echo "failed_stage=carrier-apk-artifact" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+
+          echo "Carrier verification: PASS"
