@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: 9dd2a94af9c36729a02e7ea57673e554ecc24e45
+      SOURCE_SHA: e66af9ab5f68eee700886ec60fbb7ecc42bf8cb0
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -155,6 +155,68 @@ jobs:
           test "$(find evidence/screenshots/mobile -name 'GR-ADM-*.png' | wc -l)" -eq 9
           test "$(find evidence/screenshots -name 'GR-ADM-*.png' | wc -l)" -eq 27
 
+      - name: Run D-105 browser interaction acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/interaction-admin.mjs" <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
+          const page = await context.newPage();
+          const base = 'http://127.0.0.1:4173';
+
+          await page.goto(`${base}/admin/overview`, {waitUntil:'networkidle'});
+          await page.getByRole('link', {name:'Catalog'}).click();
+          await page.getByRole('heading', {name:'Product', level:1}).waitFor();
+
+          const firstSwitch = page.locator('.fake-toggle').first();
+          await firstSwitch.waitFor();
+          const switchBefore = await firstSwitch.getAttribute('aria-checked');
+          await firstSwitch.click();
+          const switchAfter = await firstSwitch.getAttribute('aria-checked');
+          if (switchBefore === switchAfter) throw new Error('Toggle did not change local draft state');
+          await page.getByRole('status').filter({hasText:'not published'}).waitFor();
+
+          const optionsCapability = page.getByRole('button', {name:'Options'});
+          const capBefore = await optionsCapability.getAttribute('aria-pressed');
+          await optionsCapability.click();
+          const capAfter = await optionsCapability.getAttribute('aria-pressed');
+          if (capBefore === capAfter) throw new Error('Progressive capability did not change local draft state');
+
+          await page.goto(`${base}/admin/operations/pickup-queue`, {waitUntil:'networkidle'});
+          const timing = page.getByText('10 min', {exact:true}).first();
+          await timing.click();
+          if (!(await timing.evaluate(el => el.classList.contains('is-selected')))) throw new Error('Pickup timing did not become selected');
+          await page.getByRole('status').filter({hasText:'not published'}).waitFor();
+
+          await page.goto(`${base}/admin/storefront`, {waitUntil:'networkidle'});
+          await page.getByRole('button', {name:'Apply Changes'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
+          await page.goto(`${base}/admin/settings/port-exposure`, {waitUntil:'networkidle'});
+          const exposureSwitch = page.locator('.exposure-table .fake-toggle').first();
+          const exposureBefore = await exposureSwitch.getAttribute('aria-checked');
+          await exposureSwitch.click();
+          if (exposureBefore === await exposureSwitch.getAttribute('aria-checked')) throw new Error('Port exposure toggle did not change');
+
+          await page.goto(`${base}/admin/print-kitchen`, {waitUntil:'networkidle'});
+          await page.getByRole('button', {name:'Open Print Center'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
+          await page.goto(`${base}/admin/publish`, {waitUntil:'networkidle'});
+          await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.getByRole('button', {name:/Prepare Rollback/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
+          await browser.close();
+          console.log('D-105 browser interactions PASS');
+          EOF
+          cd "$RUNNER_TEMP/playwright-runner"
+          cp "$RUNNER_TEMP/interaction-admin.mjs" ./interaction-admin.mjs
+          node ./interaction-admin.mjs 2>&1 | tee "$RUNNER_TEMP/admin-interaction.log"
+
       - name: Prepare evidence
         if: always()
         shell: bash
@@ -164,6 +226,7 @@ jobs:
           cp "$RUNNER_TEMP/admin-test.log" evidence/admin-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-build.log" evidence/admin-build.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-preview.log" evidence/admin-preview.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-interaction.log" evidence/admin-interaction.log 2>/dev/null || true
           printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
           if [ -d source/apps/admin-web/dist ]; then cp -R source/apps/admin-web/dist evidence/dist; fi
 
