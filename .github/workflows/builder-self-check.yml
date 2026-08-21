@@ -52,6 +52,7 @@ jobs:
             .github/workflows/verify-design-center.yml \
             .github/workflows/verify-carrier.yml \
             .github/workflows/runtime-release-v2.yml \
+            .github/workflows/runtime-release-v3.yml \
             .github/workflows/android-release-v2.yml \
             .github/workflows/repair-smt-p01-lockfile.yml
 
