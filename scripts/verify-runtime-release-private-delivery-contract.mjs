@@ -18,8 +18,8 @@ const required = [
   'name: Runtime Release V2',
   'SOURCE_REPO: Pantonyeung/morefunos-v1',
   "MIN_CARRIER_VERSION_CODE: '21'",
-  'uses: ./.github/workflows/verify-v1.yml',
-  'needs: verify-v1',
+  'uses: ./.github/workflows/verify-smt-p01-d103.yml',
+  'needs: verify-smt-p01-d103',
   'Checkout exact verified MoreFunOS V1 source',
   'npm --prefix source/apps/smt-web ci --no-audit --no-fund',
   'npm --prefix source/apps/smt-web run build',
@@ -46,6 +46,8 @@ for (const needle of required) {
 }
 
 for (const forbidden of [
+  'uses: ./.github/workflows/verify-v1.yml',
+  'needs: verify-v1',
   'verify-ui-mother.yml',
   'test:g5',
   'test:g6',
