@@ -34,7 +34,6 @@ jobs:
     outputs:
       failure_stage: ${{ steps.verify.outputs.failed_stage }}
     env:
-      SOURCE_REPO: Pantonyeung/morefunos-v1
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - name: Validate immutable verification request
@@ -112,17 +111,8 @@ jobs:
           fi
 
           run_stage "v1-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
-          run_stage "v1-runtime-contracts" node --experimental-strip-types --test \
-            packages/contracts/*.test.ts packages/customer/*.test.ts packages/loyalty/*.test.ts \
-            packages/order/*.test.ts packages/pricing/*.test.ts packages/payment/*.test.ts \
-            packages/fulfillment/*.test.ts packages/printing/*.test.ts packages/durability/*.test.ts \
-            packages/admin/*.test.ts packages/staff/*.test.ts packages/store-settings/*.test.ts \
-            packages/catalog/*.test.ts packages/availability/*.test.ts packages/inventory/*.test.ts \
-            packages/procurement/*.test.ts packages/table/*.test.ts packages/channels/*.test.ts \
-            packages/facts/*.test.ts packages/runtime/*.test.ts packages/business-day/*.test.ts \
-            packages/reporting/*.test.ts packages/ui/module-contract.test.ts || exit 1
-          run_stage "v1-ui-authority" node --test packages/ui/ui-authority-boundary.test.mjs packages/ui/sdk-passthrough.test.mjs || exit 1
-          run_stage "v1-typecheck" tsc --noEmit -p tsconfig.json || exit 1
+          run_stage "v1-contracts" npm run test:v1 || exit 1
+          run_stage "v1-typecheck" npm run typecheck:v1 || exit 1
           run_stage "v1-smt-functional" npm --prefix apps/smt-web test || exit 1
           run_stage "v1-smt-build" npm --prefix apps/smt-web run build || exit 1
           echo "Current V1 verification: PASS"
