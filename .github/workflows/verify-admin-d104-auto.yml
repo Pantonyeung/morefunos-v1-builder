@@ -108,9 +108,12 @@ jobs:
           const context = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
           const page = await context.newPage();
           const base = 'http://127.0.0.1:4173';
-          await page.goto(`${base}/admin/overview`, {waitUntil:'networkidle'});
-          await page.getByRole('link', {name:'Catalog'}).click();
-          await page.getByRole('heading', {name:'Product', level:1}).waitFor();
+          const open = async (route, heading) => {
+            await page.goto(`${base}${route}`, {waitUntil:'networkidle'});
+            await page.getByRole('heading', {name:heading, level:1}).waitFor();
+          };
+
+          await open('/admin/catalog/products/PRC-001', 'Product');
           const firstSwitch = page.locator('.fake-toggle').first();
           const switchBefore = await firstSwitch.getAttribute('aria-checked');
           await firstSwitch.click();
@@ -120,26 +123,32 @@ jobs:
           const capBefore = await optionsCapability.getAttribute('aria-pressed');
           await optionsCapability.click();
           if (capBefore === await optionsCapability.getAttribute('aria-pressed')) throw new Error('Capability did not change');
-          await page.goto(`${base}/admin/operations/pickup-queue`, {waitUntil:'networkidle'});
+
+          await open('/admin/operations/pickup-queue', 'Pickup & Queue');
           const timing = page.getByText('10 min', {exact:true}).first();
           await timing.click();
           if (!(await timing.evaluate(el=>el.classList.contains('is-selected')))) throw new Error('Timing not selected');
-          await page.goto(`${base}/admin/storefront`, {waitUntil:'networkidle'});
+
+          await open('/admin/storefront', 'Storefront');
           await page.getByRole('button', {name:'Apply Changes'}).click();
           await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await page.goto(`${base}/admin/settings/port-exposure`, {waitUntil:'networkidle'});
+
+          await open('/admin/settings/port-exposure', 'Port Exposure');
           const ex = page.locator('.exposure-table .fake-toggle').first();
           const exBefore = await ex.getAttribute('aria-checked');
           await ex.click();
           if(exBefore===await ex.getAttribute('aria-checked')) throw new Error('Exposure toggle did not change');
-          await page.goto(`${base}/admin/print-kitchen`, {waitUntil:'networkidle'});
+
+          await open('/admin/print-kitchen', 'Print & Kitchen');
           await page.getByRole('button', {name:'Open Print Center'}).click();
           await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await page.goto(`${base}/admin/publish`, {waitUntil:'networkidle'});
+
+          await open('/admin/publish', 'Publish');
           await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
           await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await page.getByRole('button', {name:/Prepare Rollback/i}).click();
+          await page.getByRole('button', {name:/Rollback to v1\.8\.4/i}).click();
           await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
           await browser.close();
           console.log('D-105 browser interactions PASS');
           EOF
