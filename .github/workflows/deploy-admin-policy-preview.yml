@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: c4ed2345676abdfe554a14e15d41b846ea1da13e
+  SOURCE_SHA: e4323ee034cc2d073e4df385e7e932bfc49af39b
 
 jobs:
   deploy-admin-policy-preview:
@@ -26,6 +26,7 @@ jobs:
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
+          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
         shell: bash
         run: |
           set -euo pipefail
@@ -36,6 +37,7 @@ jobs:
           [ -n "$GOOGLE_CLIENT_EMAIL" ] || missing+=(GOOGLE_CLIENT_EMAIL)
           [ -n "$GOOGLE_PRIVATE_KEY" ] || missing+=(GOOGLE_PRIVATE_KEY)
           [ -n "$STAFF_SESSIONS_JSON" ] || missing+=(STAFF_SESSIONS_JSON)
+          [ -n "$ADMIN_STAFF_BOOTSTRAP_JSON" ] || missing+=(ADMIN_STAFF_BOOTSTRAP_JSON)
           if [ ${#missing[@]} -gt 0 ]; then
             message="MISSING:$(IFS=,; echo "${missing[*]}")"
           else
@@ -83,15 +85,18 @@ jobs:
             GOOGLE_CLIENT_EMAIL
             GOOGLE_PRIVATE_KEY
             STAFF_SESSIONS_JSON
+            ADMIN_STAFF_BOOTSTRAP_JSON
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
+          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
 
-      - name: Verify preview health
+      - name: Verify preview health and authenticated canonical publish
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
         shell: bash
         run: |
           set -euo pipefail
@@ -99,11 +104,105 @@ jobs:
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
           grep -q '"ok":true' admin-preview-health.json
 
+          STAFF_TOKEN="$(node -e 'const x=JSON.parse(process.env.STAFF_SESSIONS_JSON); const k=Object.keys(x)[0]; if(!k) process.exit(2); process.stdout.write(k)')"
+          test -n "$STAFF_TOKEN"
+
+          curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
+            "$DEPLOYMENT_URL/api/v1/admin/policy/active" | tee admin-preview-active.json
+
+          SHORT_SHA="${GITHUB_SHA:0:12}"
+          DRAFT_ID="cf-preview-${SHORT_SHA}"
+          POLICY_VERSION="cf-preview-policy-${SHORT_SHA}"
+          IDEMPOTENCY_KEY="cf-preview-publish-${SHORT_SHA}"
+
+          node - <<'NODE' > /tmp/admin-preview-draft.json
+          const draftId = process.env.DRAFT_ID;
+          const payload = {
+            schema_version: '1.0',
+            projection_version: '1.0',
+            minimum_port_contract_version: '1.0',
+            template_type: 'admin.policy',
+            namespace_generation: 'morefunos-v1',
+            revision_version: `rev-${draftId}`,
+            draft_id: draftId,
+            store_scope: ['morefun-store'],
+            channel_scope: ['admin'],
+            impact_preview_ref: `impact-${draftId}`,
+            delivery_apply_state_ref: `apply-${draftId}`,
+            owner_decision_ref: 'owner-cloudflare-preview',
+            fields: [{
+              field_id: 'store.pickup.auto_complete_minutes',
+              capability_id: 'store.pickup',
+              type: 'number',
+              default_policy: {kind: 'value', value: 30},
+              visibility_when: {kind: 'always'},
+              required_when: {kind: 'core'},
+              enabled_when: {kind: 'authorized'},
+              dependency_refs: [],
+              scope: {store: 'morefun-store'},
+              permission_refs: ['store.settings.publish'],
+              validation_refs: [],
+              runtime_authority_ref: 'order',
+              projection_targets: ['smt', 'smm'],
+              contract_version: '1.0',
+              fallback_behavior: {kind: 'last_published'},
+              audit_ref: `audit-${draftId}`,
+              value: 30,
+            }],
+          };
+          process.stdout.write(JSON.stringify({draftId, payload}));
+          NODE
+
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $STAFF_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/admin-preview-draft.json \
+            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts" | tee admin-preview-create.json
+
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $STAFF_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data '{}' \
+            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts/$DRAFT_ID/validate" | tee admin-preview-validate.json
+          grep -q '"ok":true' admin-preview-validate.json
+
+          ACTIVE_VERSION="$(node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("admin-preview-active.json","utf8")); process.stdout.write(x.active?.policyVersion ?? "")')"
+          export POLICY_VERSION IDEMPOTENCY_KEY ACTIVE_VERSION
+          node - <<'NODE' > /tmp/admin-preview-publish.json
+          process.stdout.write(JSON.stringify({
+            policyVersion: process.env.POLICY_VERSION,
+            expectedActivePolicyVersion: process.env.ACTIVE_VERSION || null,
+            idempotencyKey: process.env.IDEMPOTENCY_KEY,
+          }));
+          NODE
+
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $STAFF_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/admin-preview-publish.json \
+            "$DEPLOYMENT_URL/api/v1/admin/policy/drafts/$DRAFT_ID/publish" | tee admin-preview-publish.json
+          grep -q "$POLICY_VERSION" admin-preview-publish.json
+
+          curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
+            "$DEPLOYMENT_URL/api/v1/admin/policy/audit" | tee admin-preview-audit.json
+          grep -q "$POLICY_VERSION" admin-preview-audit.json
+        env:
+          DRAFT_ID: ${{ format('cf-preview-{0}', github.sha) }}
+
       - name: Record preview URL
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: printf '%s\n' "$DEPLOYMENT_URL" > admin-policy-preview-url.txt
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$DEPLOYMENT_URL" > admin-policy-preview-url.txt
+          path='diagnostics/admin-policy-preview-url-latest.txt'
+          content="$(base64 -w0 admin-policy-preview-url.txt)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Policy Preview URL' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
 
       - name: Upload deployment evidence
         if: always()
@@ -113,6 +212,11 @@ jobs:
           path: |
             admin-policy-preview-url.txt
             admin-preview-health.json
+            admin-preview-active.json
+            admin-preview-create.json
+            admin-preview-validate.json
+            admin-preview-publish.json
+            admin-preview-audit.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -124,7 +228,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Admin policy Cloudflare Preview deployed and health checked' >/dev/null
+            -f description='Admin policy Cloudflare Preview deployed and canonical publish verified' >/dev/null
 
       - name: Report deployment failure
         if: failure()
