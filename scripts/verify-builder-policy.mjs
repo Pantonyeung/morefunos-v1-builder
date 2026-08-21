@@ -2,6 +2,7 @@ import './verify-android-release-ota-endpoint-contract.mjs';
 import './verify-runtime-release-private-delivery-contract.mjs';
 import './verify-runtime-release-trigger-contract.mjs';
 import './verify-owner-control-runtime-release-retired.mjs';
+import './verify-runtime-release-v3-clean-contract.mjs';
 import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
@@ -55,7 +56,7 @@ requireAll(carrier, [
   'carrier-web-compat',
   'npm --prefix apps/smt-web run test:carrier',
   'carrier-static',
-  'apps/smt-android/carrier-static.test.mjs',
+  'apps/smt-android/g6-carrier-static.test.mjs',
   ':app:compileDebugJavaWithJavac',
   ':app:lintDebug',
   ':app:assembleDebug',
