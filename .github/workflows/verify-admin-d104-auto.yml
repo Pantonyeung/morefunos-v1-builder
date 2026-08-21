@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: 392ed82990b20fc9032ea9df4ea7f5190256916e
+      SOURCE_SHA: 5d673381f76250f02062e1fe631f89716b27d17a
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
