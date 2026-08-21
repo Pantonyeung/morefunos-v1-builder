@@ -114,6 +114,7 @@ jobs:
           DRAFT_ID="cf-preview-${SHORT_SHA}"
           POLICY_VERSION="cf-preview-policy-${SHORT_SHA}"
           IDEMPOTENCY_KEY="cf-preview-publish-${SHORT_SHA}"
+          export DRAFT_ID POLICY_VERSION IDEMPOTENCY_KEY
 
           node - <<'NODE' > /tmp/admin-preview-draft.json
           const draftId = process.env.DRAFT_ID;
@@ -167,7 +168,7 @@ jobs:
           grep -q '"ok":true' admin-preview-validate.json
 
           ACTIVE_VERSION="$(node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("admin-preview-active.json","utf8")); process.stdout.write(x.active?.policyVersion ?? "")')"
-          export POLICY_VERSION IDEMPOTENCY_KEY ACTIVE_VERSION
+          export ACTIVE_VERSION
           node - <<'NODE' > /tmp/admin-preview-publish.json
           process.stdout.write(JSON.stringify({
             policyVersion: process.env.POLICY_VERSION,
@@ -186,8 +187,6 @@ jobs:
           curl -fsS -H "Authorization: Bearer $STAFF_TOKEN" \
             "$DEPLOYMENT_URL/api/v1/admin/policy/audit" | tee admin-preview-audit.json
           grep -q "$POLICY_VERSION" admin-preview-audit.json
-        env:
-          DRAFT_ID: ${{ format('cf-preview-{0}', github.sha) }}
 
       - name: Record preview URL
         env:
