@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
+  SOURCE_SHA: 8f5d443633e69355e398447d73f0dbc91b9c5dd8
   PAGES_PROJECT: morefunos-v1-admin-preview
 
 jobs:
@@ -71,6 +71,7 @@ jobs:
             npm test
             npm run build
             test -f dist/_redirects
+            test -f dist/runtime-config.js
           } 2>&1 | tee "$RUNNER_TEMP/admin-web-preview-build.log"
           echo 'build=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
 
