@@ -52,6 +52,7 @@ jobs:
           DISPATCH_CHANNEL: ${{ inputs.release_channel }}
         run: |
           set -euo pipefail
+          echo 'request' > "$RUNNER_TEMP/runtime-v3-stage"
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
             SOURCE_SHA="$DISPATCH_SOURCE_SHA"
             RELEASE_CHANNEL="$DISPATCH_CHANNEL"
@@ -91,12 +92,17 @@ jobs:
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
         run: |
           set -euo pipefail
-          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=accepted channel=$RELEASE_CHANNEL" >/dev/null
+          echo 'accepted' > "$RUNNER_TEMP/runtime-v3-stage"
+          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=accepted channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID" >/dev/null
 
       - name: Setup Node 22.12
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.12.0'
+
+      - name: Mark source checkout stage
+        shell: bash
+        run: echo 'source-checkout' > "$RUNNER_TEMP/runtime-v3-stage"
 
       - name: Checkout exact MoreFunOS V1 source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,20 +119,26 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
+          echo 'source-identity' > "$RUNNER_TEMP/runtime-v3-stage"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
       - name: Install SMT Runtime dependencies
         shell: bash
-        run: npm --prefix source/apps/smt-web ci --no-audit --no-fund
+        run: |
+          echo 'install' > "$RUNNER_TEMP/runtime-v3-stage"
+          npm --prefix source/apps/smt-web ci --no-audit --no-fund
 
       - name: Verify SMT Runtime
         shell: bash
-        run: npm --prefix source/apps/smt-web test
+        run: |
+          echo 'test' > "$RUNNER_TEMP/runtime-v3-stage"
+          npm --prefix source/apps/smt-web test
 
       - name: Build SMT Runtime
         shell: bash
         run: |
           set -euo pipefail
+          echo 'build' > "$RUNNER_TEMP/runtime-v3-stage"
           npm --prefix source/apps/smt-web run build
           test -s source/apps/smt-web/dist/index.html
           find source/apps/smt-web/dist -maxdepth 2 -type f -size +0c | grep -q .
@@ -149,6 +161,7 @@ jobs:
           V1_ANDROID_KEY_PASSWORD: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          echo 'sign' > "$RUNNER_TEMP/runtime-v3-stage"
           KEYSTORE="$RUNNER_TEMP/morefunos-v1-app-signing.p12"
           CERT_DER="$RUNNER_TEMP/morefunos-v1-app-signing.der"
           MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
@@ -203,6 +216,7 @@ jobs:
           CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
         run: |
           set -euo pipefail
+          echo 'metadata' > "$RUNNER_TEMP/runtime-v3-stage"
           export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL RELEASE_ID RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
           node <<'NODE'
           const fs=require('node:fs');
@@ -241,6 +255,7 @@ jobs:
           RELEASE_ID: ${{ steps.signing.outputs.release_id }}
         run: |
           set -euo pipefail
+          echo 'package-contract' > "$RUNNER_TEMP/runtime-v3-stage"
           test -f "$RUNTIME_BUNDLE"
           test "$(sha256sum "$RUNTIME_BUNDLE" | awk '{print $1}')" = "$RUNTIME_SHA256"
           EXTRACT_DIR="$RUNNER_TEMP/runtime-v3-contract"
@@ -261,6 +276,7 @@ jobs:
           RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
         run: |
           set -euo pipefail
+          echo 'evidence' > "$RUNNER_TEMP/runtime-v3-stage"
           TAG="builder-v3-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
           gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Runtime Release V3. Source ${SOURCE_SHA}. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
 
@@ -268,6 +284,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo 'wrangler' > "$RUNNER_TEMP/runtime-v3-stage"
           npm install --global --silent "wrangler@${WRANGLER_VERSION}"
           wrangler --version | grep -F "$WRANGLER_VERSION" >/dev/null
 
@@ -280,7 +297,9 @@ jobs:
           RUNTIME_MANIFEST: ${{ github.workspace }}/runtime-update.json
           RUNTIME_METADATA: ${{ github.workspace }}/runtime-build-metadata.json
           OTA_WORKER_DIR: ${{ github.workspace }}/source/infra/cloudflare/ota-worker
-        run: node scripts/publish-runtime-online.mjs
+        run: |
+          echo 'publish' > "$RUNNER_TEMP/runtime-v3-stage"
+          node scripts/publish-runtime-online.mjs
 
       - name: Runtime Release V3 final result
         if: always()
@@ -295,6 +314,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${SOURCE_SHA:-}" || -z "${REQUEST_ID:-}" ]]; then exit 0; fi
-          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL"
+          STAGE='unknown'
+          if [[ -s "$RUNNER_TEMP/runtime-v3-stage" ]]; then STAGE="$(cat "$RUNNER_TEMP/runtime-v3-stage")"; fi
+          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE"
           if [[ -n "${RELEASE_ID:-}" ]]; then BODY="$BODY release_id=$RELEASE_ID"; fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
