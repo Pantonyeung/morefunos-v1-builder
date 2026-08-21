@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
-      failure_stage: ${{ steps.verify.outputs.failed_stage }}
+      failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
@@ -46,20 +46,24 @@ jobs:
           echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Builder definition
+        id: builder_checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup Node 22
+        id: node_setup
         uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Verify current Builder policy
+        id: policy
         shell: bash
         run: node scripts/verify-builder-policy.mjs
 
       - name: Checkout exact MoreFunOS V1 source
+        id: source_checkout
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -69,6 +73,7 @@ jobs:
           persist-credentials: false
 
       - name: Verify exact source identity
+        id: identity
         shell: bash
         env:
           EXPECTED: ${{ steps.request.outputs.source_sha }}
@@ -77,6 +82,7 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
 
       - name: Setup pinned TypeScript
+        id: toolchain
         shell: bash
         run: |
           set -euo pipefail
@@ -116,3 +122,32 @@ jobs:
           run_stage "v1-smt-functional" npm --prefix apps/smt-web test || exit 1
           run_stage "v1-smt-build" npm --prefix apps/smt-web run build || exit 1
           echo "Current V1 verification: PASS"
+
+      - name: Derive sanitized V1 failure stage
+        id: stage
+        if: always()
+        shell: bash
+        env:
+          REQUEST: ${{ steps.request.outcome }}
+          BUILDER_CHECKOUT: ${{ steps.builder_checkout.outcome }}
+          NODE_SETUP: ${{ steps.node_setup.outcome }}
+          POLICY: ${{ steps.policy.outcome }}
+          SOURCE_CHECKOUT: ${{ steps.source_checkout.outcome }}
+          IDENTITY: ${{ steps.identity.outcome }}
+          TOOLCHAIN: ${{ steps.toolchain.outcome }}
+          VERIFY: ${{ steps.verify.outcome }}
+          VERIFY_STAGE: ${{ steps.verify.outputs.failed_stage }}
+        run: |
+          set -euo pipefail
+          STAGE=none
+          if [[ "$REQUEST" == failure ]]; then STAGE=request;
+          elif [[ "$BUILDER_CHECKOUT" == failure ]]; then STAGE=builder-checkout;
+          elif [[ "$NODE_SETUP" == failure ]]; then STAGE=node-setup;
+          elif [[ "$POLICY" == failure ]]; then STAGE=builder-policy;
+          elif [[ "$SOURCE_CHECKOUT" == failure ]]; then STAGE=source-checkout;
+          elif [[ "$IDENTITY" == failure ]]; then STAGE=source-identity;
+          elif [[ "$TOOLCHAIN" == failure ]]; then STAGE=toolchain;
+          elif [[ "$VERIFY" == failure ]]; then STAGE="${VERIFY_STAGE:-v1-verification}";
+          fi
+          echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "verify-v1-stage=$STAGE"
