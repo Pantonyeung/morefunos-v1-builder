@@ -54,15 +54,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify-v1:
-    uses: ./.github/workflows/verify-v1.yml
+  verify-smt-p01-d103:
+    uses: ./.github/workflows/verify-smt-p01-d103.yml
     with:
       source_sha: ${{ inputs.source_sha }}
     secrets:
       V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
 
   release:
-    needs: verify-v1
+    needs: verify-smt-p01-d103
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
