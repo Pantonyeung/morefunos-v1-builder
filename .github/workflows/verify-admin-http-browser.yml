@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 12fb28a36643bcac6cf04567a7ae54c134112ec0
+  SOURCE_SHA: fe6a38f58dbeb8a8a3be259f906858e60ea728a7
 
 jobs:
   verify-admin-http-browser:
