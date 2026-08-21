@@ -22,6 +22,8 @@ for (const needle of [
   'release_channel:',
   'group: runtime-release-v3-${{',
   'cancel-in-progress:',
+  'Setup Node 22.22.2',
+  "node-version: '22.22.2'",
   'Checkout exact MoreFunOS V1 source',
   'Verify exact source identity',
   'npm --prefix source/apps/smt-web ci --no-audit --no-fund',
@@ -45,6 +47,7 @@ const forbidden = [
   /issue_comment:/,
   /\/release-runtime/,
   /group:\s*runtime-release-v3-.*source_sha/,
+  /node-version:\s*'22\.12\.0'/,
 ];
 for (const pattern of forbidden) {
   if (pattern.test(workflow)) throw new Error(`RUNTIME_RELEASE_V3_FORBIDDEN:${pattern}`);
