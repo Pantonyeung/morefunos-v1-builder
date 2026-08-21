@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: f719e7d5547ae3a830dfd3456c7c3de0f3b6a532
+  SOURCE_SHA: aaffcd57a62f26ce3ec1e595bd48318cb29adeb2
 
 jobs:
   verify-admin-l9-phase-d:
@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
-      - name: Verify credential adapters
+      - name: Verify production composition contracts
         working-directory: source
         shell: bash
         run: |
@@ -46,6 +46,8 @@ jobs:
           node --experimental-strip-types --test \
             packages/durability/google-service-account-token-provider.test.ts \
             packages/runtime/json-admin-staff-token-verifier.test.ts \
+            packages/admin/admin-policy-validator.test.ts \
+            infra/cloudflare/admin-policy-worker/entry.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-l9-phase-d.log"
 
       - name: Upload evidence
@@ -65,7 +67,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-l9-phase-d \
-            -f description='Exact-SHA Staff and Firebase credential adapters passed' >/dev/null
+            -f description='Exact-SHA production composition contracts passed' >/dev/null
 
       - name: Report Phase D failure
         if: failure()
@@ -75,4 +77,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-l9-phase-d \
-            -f description='Exact-SHA Staff or Firebase credential adapter failed' >/dev/null
+            -f description='Exact-SHA production composition contract failed' >/dev/null
