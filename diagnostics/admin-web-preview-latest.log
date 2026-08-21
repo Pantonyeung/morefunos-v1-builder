@@ -1,4 +1,4 @@
-SOURCE_SHA=403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
+SOURCE_SHA=8f5d443633e69355e398447d73f0dbc91b9c5dd8
 PAGES_PROJECT=morefunos-v1-admin-preview
 
 ===== STAGES =====
@@ -8,10 +8,13 @@ exact_source=PASS
 build=PASS
 wrangler_cli=STARTED
 pages_project_check=STARTED
-pages_project_check_rc=1
+pages_project_check_rc=0
 pages_deploy=STARTED
-pages_deploy_rc=1
-pages_deploy=FAIL
+pages_deploy_rc=0
+pages_deploy=PASS
+deployment_url=https://preview.morefunos-v1-admin-preview.pages.dev
+route_smoke=STARTED
+checking=/admin/overview
 
 ===== BUILD =====
 v22.23.2
@@ -26,14 +29,14 @@ added 121 packages in 12s
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
  [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1013[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes [33m 420[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1103[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1096[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 470[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1143[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 22:40:50
-[2m   Duration [22m 3.25s[2m (transform 484ms, setup 0ms, import 2.17s, tests 2.13s, environment 2.96s)[22m
+[2m   Start at [22m 23:58:11
+[2m   Duration [22m 2.91s[2m (transform 479ms, setup 0ms, import 1.76s, tests 2.25s, environment 2.40s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -43,59 +46,34 @@ added 121 packages in 12s
 [2Ktransforming...✓ 3144 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                   0.45 kB │ gzip:   0.29 kB
+dist/index.html                   0.50 kB │ gzip:   0.31 kB
 dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
-dist/assets/index-64B7kndp.js   356.13 kB │ gzip: 106.82 kB
+dist/assets/index-76JUqn9c.js   356.90 kB │ gzip: 107.01 kB
 
-[32m✓ built in 378ms[39m
+[32m✓ built in 329ms[39m
 
 ===== WRANGLER =====
 4.125.0
 
  ⛅️ wrangler 4.125.0
 ────────────────────
-
-[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/690765acf1b9b85b9c09e12879ad9786/pages/projects) failed.[0m
-
-  Authentication error [code: 10000]
-  To learn more about this error, visit: [4mhttps://developers.cloudflare.com/api/resources/pages[0m
-
-
-📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
-Please ensure it has the correct permissions for this operation.
-
-Getting User settings...
-👋 You are logged in with an Account API Token, associated with the account Pantonyeung@gmail.com's Account.
-ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
-┌─────────────────────────────────┬──────────────────────────────────┐
-│ Account Name                    │ Account ID                       │
-├─────────────────────────────────┼──────────────────────────────────┤
-│ Pantonyeung@gmail.com's Account │ 690765acf1b9b85b9c09e12879ad9786 │
-└─────────────────────────────────┴──────────────────────────────────┘
-🔓 To see token permissions visit https://dash.cloudflare.com/690765acf1b9b85b9c09e12879ad9786/api-tokens
-🎢 Unable to get membership roles. Make sure you have permissions to read the account. Are you missing the `User->Memberships->Read` permission?
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_22-41-06_328.log"
+✨ Successfully created the 'morefunos-v1-admin-preview' project. It will be available at https://morefunos-v1-admin-preview.pages.dev/ once you create your first deployment.
+To deploy a folder of assets, run 'wrangler pages deploy [directory]'.
 
  ⛅️ wrangler 4.125.0
 ────────────────────
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mWarning: Your working directory is a git repo and has uncommitted changes[0m
 
-[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/690765acf1b9b85b9c09e12879ad9786/pages/projects/morefunos-v1-admin-preview) failed.[0m
-
-  Authentication error [code: 10000]
-  To learn more about this error, visit: [4mhttps://developers.cloudflare.com/api/resources/pages[0m
+  To silence this warning, pass in --commit-dirty=true
 
 
-📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
-Please ensure it has the correct permissions for this operation.
+Uploading... (0/4)
+Uploading... (1/4)
+Uploading... (2/4)
+Uploading... (4/4)
+✨ Success! Uploaded 4 files (2.63 sec)
 
-Getting User settings...
-👋 You are logged in with an Account API Token, associated with the account Pantonyeung@gmail.com's Account.
-ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
-┌─────────────────────────────────┬──────────────────────────────────┐
-│ Account Name                    │ Account ID                       │
-├─────────────────────────────────┼──────────────────────────────────┤
-│ Pantonyeung@gmail.com's Account │ 690765acf1b9b85b9c09e12879ad9786 │
-└─────────────────────────────────┴──────────────────────────────────┘
-🔓 To see token permissions visit https://dash.cloudflare.com/690765acf1b9b85b9c09e12879ad9786/api-tokens
-🎢 Unable to get membership roles. Make sure you have permissions to read the account. Are you missing the `User->Memberships->Read` permission?
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-21_22-41-09_083.log"
+✨ Uploading _redirects
+🌎 Deploying...
+✨ Deployment complete! Take a peek over at https://1882c9e4.morefunos-v1-admin-preview.pages.dev
+✨ Deployment alias URL: https://preview.morefunos-v1-admin-preview.pages.dev
