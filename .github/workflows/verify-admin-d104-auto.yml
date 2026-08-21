@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: db5d907eaef991aa40ab1ce2ba41c6bc7a80e984
+      SOURCE_SHA: 83380391bd86462dd31a9bc60cd40278b6e66682
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -51,6 +51,13 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
+      - name: Run canonical Admin Authority and runtime adapter tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test packages/admin/policy-publish.test.ts packages/runtime/admin-policy-runtime.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-runtime-test.log"
+
       - name: Install Admin dependencies and generate lockfile
         working-directory: source/apps/admin-web
         shell: bash
@@ -59,7 +66,7 @@ jobs:
           npm install --no-audit --no-fund
           test -f package-lock.json
 
-      - name: Run Admin tests
+      - name: Run Admin Web tests
         working-directory: source/apps/admin-web
         shell: bash
         run: |
@@ -180,6 +187,7 @@ jobs:
         run: |
           mkdir -p evidence
           cp source/apps/admin-web/package-lock.json evidence/package-lock.json 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-runtime-test.log" evidence/admin-runtime-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-test.log" evidence/admin-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-build.log" evidence/admin-build.log 2>/dev/null || true
           cp "$RUNNER_TEMP/admin-preview.log" evidence/admin-preview.log 2>/dev/null || true
