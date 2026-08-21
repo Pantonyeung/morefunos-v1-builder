@@ -52,6 +52,13 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Pin npm 11 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --no-audit --no-fund npm@11.19.0
+          test "$(npm --version)" = "11.19.0"
+
       - name: Checkout exact MoreFunOS V1 source
         uses: actions/checkout@v7
         with:
@@ -84,6 +91,21 @@ jobs:
       - name: Build Design Center
         working-directory: source/apps/design-center
         run: npm run build
+
+      - name: Capture npm debug logs
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p npm-debug-logs
+          cp -R "$HOME/.npm/_logs/." npm-debug-logs/ 2>/dev/null || true
+
+      - name: Upload npm debug logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-center-npm-debug-${{ steps.request.outputs.source_sha }}
+          path: npm-debug-logs
+          if-no-files-found: ignore
 
       - name: Upload generated lockfile
         if: always()
