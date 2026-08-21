@@ -22,10 +22,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: smt-p01-d103-verification-${{ inputs.source_sha }}
-  cancel-in-progress: false
-
 jobs:
   verify:
     if: github.actor == 'Pantonyeung'
