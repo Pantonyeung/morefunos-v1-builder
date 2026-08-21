@@ -1,0 +1,101 @@
+name: Design Center Exact SHA Verification
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-design-center.yml'
+      - 'targets/design-center-source-sha.txt'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/verify-design-center.yml'
+      - 'targets/design-center-source-sha.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Optional exact MoreFunOS V1 source SHA override
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact Design Center source SHA
+        id: request
+        shell: bash
+        env:
+          OVERRIDE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          SHA="${OVERRIDE_SHA:-}"
+          if [[ -z "$SHA" ]]; then
+            SHA="$(tr -d '[:space:]' < targets/design-center-source-sha.txt)"
+          fi
+          SHA="$(printf '%s' "$SHA" | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Install Design Center dependencies
+        working-directory: source/apps/design-center
+        run: npm install --no-audit --no-fund
+
+      - name: Test Design Center
+        working-directory: source/apps/design-center
+        run: npm test
+
+      - name: Typecheck Design Center
+        working-directory: source/apps/design-center
+        run: npm run typecheck
+
+      - name: Build Design Center
+        working-directory: source/apps/design-center
+        run: npm run build
+
+      - name: Upload generated lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-center-package-lock-${{ steps.request.outputs.source_sha }}
+          path: source/apps/design-center/package-lock.json
+          if-no-files-found: ignore
+
+      - name: Upload Design Center build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-center-dist-${{ steps.request.outputs.source_sha }}
+          path: source/apps/design-center/dist
