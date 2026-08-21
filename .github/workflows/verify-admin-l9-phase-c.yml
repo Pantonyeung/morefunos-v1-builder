@@ -1,0 +1,66 @@
+name: Verify Admin L9 Phase C
+
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-admin-l9-phase-c.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: aec6b3ff8a41746cd27773ebe4f4ea1865a86f70
+
+jobs:
+  verify-admin-l9-phase-c:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Run canonical Admin durability tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test \
+            packages/admin/policy-publish.test.ts \
+            packages/admin/policy-durable-authority.test.ts \
+            packages/durability/durability.test.ts \
+            packages/durability/firebase-rtdb-durability.test.ts \
+            packages/runtime/admin-policy-runtime.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/admin-l9-phase-c.log"
+
+      - name: Prepare evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          cp "$RUNNER_TEMP/admin-l9-phase-c.log" evidence/admin-l9-phase-c.log
+          printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-l9-phase-c-evidence-${{ env.SOURCE_SHA }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
