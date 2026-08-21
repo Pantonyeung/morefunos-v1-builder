@@ -110,7 +110,7 @@ jobs:
           fi
           echo 'pages_deploy=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
 
-          DEPLOYMENT_URL="$(grep -Eo 'https://[^[:space:]]+\.pages\.dev' "$RUNNER_TEMP/admin-web-preview-wrangler.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          DEPLOYMENT_URL="$(grep -Eo 'https://[a-f0-9]+\.[^[:space:]]+\.pages\.dev' "$RUNNER_TEMP/admin-web-preview-wrangler.log" | head -n1 | sed 's/[),.;]*$//' || true)"
           if [ -z "$DEPLOYMENT_URL" ]; then
             echo 'deployment_url_parse=FAIL' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
             exit 1
@@ -125,6 +125,19 @@ jobs:
           echo 'route_smoke=STARTED' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
           DEPLOYMENT_URL="$(cat admin-web-preview-url.txt)"
           test -n "$DEPLOYMENT_URL"
+
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "$DEPLOYMENT_URL/admin/overview" >/dev/null; then
+              echo 'immutable_deployment_ready=PASS' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+              break
+            fi
+            if [ "$i" -eq 6 ]; then
+              echo 'immutable_deployment_ready=FAIL' >> "$RUNNER_TEMP/admin-web-preview-stages.log"
+              exit 1
+            fi
+            sleep 5
+          done
+
           for route in \
             /admin/overview \
             /admin/catalog/products/PRC-001 \
