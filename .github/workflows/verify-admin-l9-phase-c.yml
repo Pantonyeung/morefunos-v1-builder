@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 4c16bcfe9381fe1be7fee7eb4a2f00a7064cc5b7
+  SOURCE_SHA: ae6002f78e981c40ddd6b4102e2621430b91ec6e
 
 jobs:
   verify-admin-l9-phase-c:
@@ -64,6 +64,10 @@ jobs:
           run_case phase-c-durability packages/durability/durability.test.ts
           run_case phase-c-firebase packages/durability/firebase-rtdb-durability.test.ts
           run_case phase-c-runtime packages/runtime/admin-policy-runtime.test.ts
+          run_case phase-c-staff packages/staff/staff-authority.test.ts
+          run_case phase-c-staff-durable packages/staff/staff-durable-authority.test.ts
+          run_case phase-c-session packages/runtime/json-admin-staff-token-verifier.test.ts
+          run_case phase-c-staff-policy-map packages/runtime/admin-policy-staff-authorizer.test.ts
           run_case phase-c-http packages/runtime/admin-policy-http.test.ts
           run_case phase-c-http-client packages/runtime/admin-policy-http-client.test.ts
           run_case phase-c-worker infra/cloudflare/admin-policy-worker/worker.test.ts
@@ -109,7 +113,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-l9-phase-c \
-            -f description='Exact-SHA durability and transport gate passed' >/dev/null
+            -f description='Exact-SHA durability, Staff auth and transport gate passed' >/dev/null
 
       - name: Report Phase C failure
         if: failure()
@@ -119,4 +123,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-l9-phase-c \
-            -f description='Exact-SHA durability or transport gate failed' >/dev/null
+            -f description='Exact-SHA L9 Staff auth or transport gate failed' >/dev/null
