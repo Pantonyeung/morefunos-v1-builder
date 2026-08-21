@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: ae6002f78e981c40ddd6b4102e2621430b91ec6e
+  SOURCE_SHA: 008a28587d929efc0bbe8f62b4a23fa8dcc3f1fe
 
 jobs:
   verify-admin-l9-phase-c:
@@ -60,9 +60,11 @@ jobs:
             printf '\n' >> "$RUNNER_TEMP/admin-l9-phase-c.log"
           }
           run_case phase-c-policy packages/admin/policy-publish.test.ts
+          run_case phase-c-policy-validator packages/admin/admin-policy-validator.test.ts
           run_case phase-c-durable-authority packages/admin/policy-durable-authority.test.ts
           run_case phase-c-durability packages/durability/durability.test.ts
           run_case phase-c-firebase packages/durability/firebase-rtdb-durability.test.ts
+          run_case phase-c-google-token packages/durability/google-service-account-token-provider.test.ts
           run_case phase-c-runtime packages/runtime/admin-policy-runtime.test.ts
           run_case phase-c-staff packages/staff/staff-authority.test.ts
           run_case phase-c-staff-durable packages/staff/staff-durable-authority.test.ts
@@ -71,6 +73,7 @@ jobs:
           run_case phase-c-http packages/runtime/admin-policy-http.test.ts
           run_case phase-c-http-client packages/runtime/admin-policy-http-client.test.ts
           run_case phase-c-worker infra/cloudflare/admin-policy-worker/worker.test.ts
+          run_case phase-c-entry infra/cloudflare/admin-policy-worker/entry.test.ts
           exit "$failed"
 
       - name: Prepare evidence
@@ -113,7 +116,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-l9-phase-c \
-            -f description='Exact-SHA durability, Staff auth and transport gate passed' >/dev/null
+            -f description='Exact-SHA full Admin production composition source passed' >/dev/null
 
       - name: Report Phase C failure
         if: failure()
@@ -123,4 +126,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-l9-phase-c \
-            -f description='Exact-SHA L9 Staff auth or transport gate failed' >/dev/null
+            -f description='Exact-SHA Admin production composition source failed' >/dev/null
