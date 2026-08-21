@@ -1,0 +1,83 @@
+name: Admin D-104 Auto Verify
+
+on:
+  push:
+    branches:
+      - verify/admin-d104-20260821
+    paths:
+      - .github/workflows/verify-admin-d104-auto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-admin:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: a97b64499903b9df1723d87b3b6cc6a14d643576
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Install Admin dependencies and generate lockfile
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          test -f package-lock.json
+
+      - name: Run Admin tests
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/admin-test.log"
+
+      - name: Run Admin typecheck and build
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/admin-build.log"
+          test -f dist/index.html
+
+      - name: Prepare evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          cp source/apps/admin-web/package-lock.json evidence/package-lock.json 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-test.log" evidence/admin-test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-build.log" evidence/admin-build.log 2>/dev/null || true
+          printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+          if [ -d source/apps/admin-web/dist ]; then cp -R source/apps/admin-web/dist evidence/dist; fi
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-d104-evidence-${{ env.SOURCE_SHA }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
