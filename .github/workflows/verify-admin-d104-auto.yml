@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      SOURCE_SHA: 702aad4855803090a14adbec10fe4d03167377bb
+      SOURCE_SHA: db5d907eaef991aa40ab1ce2ba41c6bc7a80e984
     steps:
       - name: Setup Node 22
         uses: actions/setup-node@v7
@@ -94,7 +94,7 @@ jobs:
           cat "$RUNNER_TEMP/admin-preview.log"
           exit 1
 
-      - name: Run D-105 browser interaction acceptance
+      - name: Run D-105 and L9 browser interaction acceptance
         shell: bash
         run: |
           set -euo pipefail
@@ -105,9 +105,10 @@ jobs:
           cat > interaction-admin.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({headless:true});
+          const base = 'http://127.0.0.1:4173';
+
           const context = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
           const page = await context.newPage();
-          const base = 'http://127.0.0.1:4173';
           const open = async (route, heading) => {
             await page.goto(`${base}${route}`, {waitUntil:'networkidle'});
             await page.getByRole('heading', {name:heading, level:1}).waitFor();
@@ -146,11 +147,30 @@ jobs:
           await open('/admin/publish', 'Publish');
           await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
           await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
-          await page.getByRole('button', {name:/Rollback to v1\.8\.4/i}).click();
-          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await context.close();
+
+          const connectedContext = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
+          await connectedContext.addInitScript(() => {
+            window.__MORE_FUN_OS_ADMIN_RUNTIME__ = {
+              getSnapshot: () => ({connected:true, activePolicyVersion:'v1.8.4', draftStatus:'validated', draftId:'draft-185', proposedPolicyVersion:'v1.8.5', rollbackTargetPolicyVersion:'v1.8.4'}),
+              subscribe: () => () => undefined,
+              publishCurrentPolicy: async () => ({kind:'accepted', action:'policy.publish', policyVersion:'v1.8.5', activePolicyVersion:'v1.8.4', message:'Policy published; activation still required.'}),
+              rollbackCurrentPolicy: async () => ({kind:'rejected', action:'policy.rollback', code:'POLICY_ACTIVE_VERSION_CONFLICT', message:'Active policy changed before rollback.'}),
+            };
+          });
+          const connectedPage = await connectedContext.newPage();
+          await connectedPage.goto(`${base}/admin/publish`, {waitUntil:'networkidle'});
+          await connectedPage.getByRole('heading', {name:'Publish', level:1}).waitFor();
+          await connectedPage.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
+          await connectedPage.getByRole('status').filter({hasText:'Canonical Runtime accepted policy.publish'}).waitFor();
+          await connectedPage.getByRole('status').filter({hasText:'active=v1.8.4'}).waitFor();
+          await connectedPage.getByRole('button', {name:/Rollback to v1\.8\.4/i}).click();
+          await connectedPage.getByRole('status').filter({hasText:'Canonical Runtime rejected policy.rollback'}).waitFor();
+          await connectedPage.getByRole('status').filter({hasText:'POLICY_ACTIVE_VERSION_CONFLICT'}).waitFor();
+          await connectedContext.close();
 
           await browser.close();
-          console.log('D-105 browser interactions PASS');
+          console.log('D-105 + L9 injected runtime browser interactions PASS');
           EOF
           node interaction-admin.mjs 2>&1 | tee "$RUNNER_TEMP/admin-interaction.log"
 
@@ -171,7 +191,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: admin-d105-evidence-${{ env.SOURCE_SHA }}
+          name: admin-d105-l9-evidence-${{ env.SOURCE_SHA }}
           path: evidence
           if-no-files-found: error
           retention-days: 30
