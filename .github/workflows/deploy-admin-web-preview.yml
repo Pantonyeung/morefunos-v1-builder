@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: e2fc86123a285ce45f2279411e4fd9e202a333d9
+  SOURCE_SHA: e4323ee034cc2d073e4df385e7e932bfc49af39b
   PAGES_PROJECT: morefunos-v1-admin-preview
 
 jobs:
@@ -21,8 +21,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Use npm 11
-        run: npm install -g npm@11 --no-audit --no-fund
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -35,8 +33,12 @@ jobs:
         run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
       - name: Install and build Admin Web
         working-directory: source/apps/admin-web
+        shell: bash
         run: |
-          npm install --no-audit --no-fund
+          set -euo pipefail
+          node --version
+          npm --version
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           npm test
           npm run build
           test -f dist/_redirects
@@ -54,7 +56,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: source/apps/admin-web
-          command: pages deploy ./dist --project-name=${{ env.PAGES_PROJECT }} --branch=preview
+          command: pages deploy ./dist --project-name=${{ env.PAGES_PROJECT }} --branch=preview --commit-hash=${{ env.SOURCE_SHA }}
       - name: Verify deployed routes
         env:
           DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
@@ -66,8 +68,8 @@ jobs:
           for route in \
             /admin/overview \
             /admin/catalog/products/PRC-001 \
-            /admin/catalog/options \
-            /admin/catalog/combo \
+            /admin/catalog/options/OPT-001 \
+            /admin/catalog/combos/COM-001 \
             /admin/storefront \
             /admin/operations/pickup-queue \
             /admin/settings/port-exposure \
@@ -75,26 +77,41 @@ jobs:
             /admin/publish; do
             curl -fsS "$DEPLOYMENT_URL$route" >/dev/null
           done
-      - name: Persist Preview URL
+          STABLE_ALIAS="https://preview.${PAGES_PROJECT}.pages.dev"
+          printf '%s\n' "$STABLE_ALIAS" > admin-web-preview-stable-url.txt
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "$STABLE_ALIAS/admin/publish" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'ADMIN_WEB_PREVIEW_STABLE_ALIAS_UNAVAILABLE'
+          exit 1
+      - name: Persist Preview URLs
         env:
           GH_TOKEN: ${{ github.token }}
-          DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
         shell: bash
         run: |
           set -euo pipefail
           path='diagnostics/admin-web-preview-url-latest.txt'
-          printf '%s\n' "$DEPLOYMENT_URL" > /tmp/admin-web-preview-url.txt
+          {
+            cat admin-web-preview-url.txt
+            cat admin-web-preview-stable-url.txt
+          } > /tmp/admin-web-preview-url.txt
           content="$(base64 -w0 /tmp/admin-web-preview-url.txt)"
           current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
           args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Web Preview URL' -f content="$content" -f branch="$GITHUB_REF_NAME")
           if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
           gh api "${args[@]}" >/dev/null
       - name: Upload Preview evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: admin-web-preview-${{ env.SOURCE_SHA }}
-          path: admin-web-preview-url.txt
-          if-no-files-found: error
+          path: |
+            admin-web-preview-url.txt
+            admin-web-preview-stable-url.txt
+          if-no-files-found: warn
           retention-days: 30
       - name: Report success
         if: success()
@@ -103,7 +120,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-web-preview-deploy \
-            -f description='Admin Web Cloudflare Pages Preview deployed and routes checked' >/dev/null
+            -f description='Admin Web Cloudflare Pages Preview deployed and canonical routes checked' >/dev/null
       - name: Report failure
         if: failure()
         env:
