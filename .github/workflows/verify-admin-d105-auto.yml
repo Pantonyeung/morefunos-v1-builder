@@ -1,0 +1,111 @@
+name: Admin D-105 Interaction Verify
+
+on:
+  push:
+    branches:
+      - verify/admin-d104-20260821
+    paths:
+      - .github/workflows/verify-admin-d105-auto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  interaction:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 85d323c5ff31f3a315d7fb9e642836b0b50f95bf
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Use npm 11
+        run: npm install -g npm@11 --no-audit --no-fund
+      - name: Checkout exact source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify source identity
+        run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Install
+        working-directory: source/apps/admin-web
+        run: npm install --no-audit --no-fund
+      - name: Test
+        working-directory: source/apps/admin-web
+        run: npm test 2>&1 | tee "$RUNNER_TEMP/d105-test.log"
+      - name: Build
+        working-directory: source/apps/admin-web
+        run: npm run build 2>&1 | tee "$RUNNER_TEMP/d105-build.log"
+      - name: Install Chromium
+        run: npx -y playwright@1.61.0 install --with-deps chromium
+      - name: Start preview
+        working-directory: source/apps/admin-web
+        run: |
+          nohup npm exec vite -- preview --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/d105-preview.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4173/admin/overview >/dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Browser interaction acceptance
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.61.0 --no-audit --no-fund >/dev/null
+          cat > interaction.mjs <<'EOF'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1024,height:900},reducedMotion:'reduce'});
+          const page=await context.newPage();
+          const base='http://127.0.0.1:4173';
+          await page.goto(base+'/admin/overview',{waitUntil:'networkidle'});
+          await page.getByRole('link',{name:'Catalog'}).click();
+          await page.getByRole('heading',{name:'Product',level:1}).waitFor();
+          const sw=page.locator('.fake-toggle').first();
+          const before=await sw.getAttribute('aria-checked'); await sw.click();
+          if(before===await sw.getAttribute('aria-checked')) throw new Error('toggle unchanged');
+          await page.getByRole('status').filter({hasText:'not published'}).waitFor();
+          const cap=page.getByRole('button',{name:'Options'}); const cb=await cap.getAttribute('aria-pressed'); await cap.click();
+          if(cb===await cap.getAttribute('aria-pressed')) throw new Error('capability unchanged');
+          await page.goto(base+'/admin/operations/pickup-queue',{waitUntil:'networkidle'});
+          const timing=page.getByText('10 min',{exact:true}).first(); await timing.click();
+          if(!(await timing.evaluate(el=>el.classList.contains('is-selected')))) throw new Error('timing unchanged');
+          await page.goto(base+'/admin/storefront',{waitUntil:'networkidle'});
+          await page.getByRole('button',{name:'Apply Changes'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.goto(base+'/admin/settings/port-exposure',{waitUntil:'networkidle'});
+          const ex=page.locator('.exposure-table .fake-toggle').first(); const eb=await ex.getAttribute('aria-checked'); await ex.click();
+          if(eb===await ex.getAttribute('aria-checked')) throw new Error('exposure unchanged');
+          await page.goto(base+'/admin/print-kitchen',{waitUntil:'networkidle'});
+          await page.getByRole('button',{name:'Open Print Center'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.goto(base+'/admin/publish',{waitUntil:'networkidle'});
+          await page.getByRole('button',{name:/Publish v1\.8\.5/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await page.getByRole('button',{name:/Prepare Rollback/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await browser.close();
+          console.log('D-105 browser interactions PASS');
+          EOF
+          node interaction.mjs 2>&1 | tee "$RUNNER_TEMP/d105-interaction.log"
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          cp "$RUNNER_TEMP"/d105-*.log evidence/ 2>/dev/null || true
+          printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-d105-evidence-${{ env.SOURCE_SHA }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
