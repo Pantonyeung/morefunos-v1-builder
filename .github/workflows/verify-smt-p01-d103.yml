@@ -31,7 +31,7 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     outputs:
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
@@ -115,6 +115,39 @@ jobs:
         shell: bash
         run: npm --prefix source/apps/smt-web run build
 
+      - name: Capture deterministic D-103 screenshots
+        id: screenshot
+        if: steps.build.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/apps/smt-web/dist/d103-visual.html
+          mkdir -p "$RUNNER_TEMP/d103-screenshots"
+          npx --yes playwright@1.58.2 install chromium --with-deps
+          npm --prefix source/apps/smt-web exec -- vite preview --host 127.0.0.1 --port 4173 >"$RUNNER_TEMP/d103-vite-preview.log" 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 60); do
+            if curl --fail --silent --show-error 'http://127.0.0.1:4173/d103-visual.html?state=ordering' >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent --show-error 'http://127.0.0.1:4173/d103-visual.html?state=ordering' >/dev/null
+          npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1920,1080' --wait-for-selector 'html[data-d103-visual-ready="ordering"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=ordering' "$RUNNER_TEMP/d103-screenshots/SMT_ORDERING_MAIN_actual_1920x1080.png"
+          npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1280,800' --wait-for-selector 'html[data-d103-visual-ready="ordering"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=ordering' "$RUNNER_TEMP/d103-screenshots/SMT_ORDERING_MAIN_actual_1280x800.png"
+          npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1920,1080' --wait-for-selector 'html[data-d103-visual-ready="organize"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=organize' "$RUNNER_TEMP/d103-screenshots/SMT_ORGANIZE_WORKBENCH_actual_1920x1080.png"
+          npx --yes playwright@1.58.2 screenshot --browser chromium --color-scheme light --lang zh-HK --viewport-size '1280,800' --wait-for-selector 'html[data-d103-visual-ready="organize"]' --wait-for-timeout 200 'http://127.0.0.1:4173/d103-visual.html?state=organize' "$RUNNER_TEMP/d103-screenshots/SMT_ORGANIZE_WORKBENCH_actual_1280x800.png"
+          sha256sum "$RUNNER_TEMP"/d103-screenshots/*.png | sort > "$RUNNER_TEMP/d103-screenshots/SHA256SUMS.txt"
+
+      - name: Upload D-103 screenshot evidence
+        id: screenshot_artifact
+        if: steps.screenshot.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smt-p01-d103-screenshots-${{ steps.request.outputs.source_sha }}
+          path: ${{ runner.temp }}/d103-screenshots
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Derive failure stage
         id: stage
         if: always()
@@ -127,6 +160,8 @@ jobs:
           TEST: ${{ steps.d103_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           BUILD: ${{ steps.build.outcome }}
+          SCREENSHOT: ${{ steps.screenshot.outcome }}
+          SCREENSHOT_ARTIFACT: ${{ steps.screenshot_artifact.outcome }}
         run: |
           set -euo pipefail
           STAGE=none
@@ -137,6 +172,8 @@ jobs:
           elif [[ "$TEST" == failure ]]; then STAGE=d103-test;
           elif [[ "$TYPECHECK" == failure ]]; then STAGE=typecheck;
           elif [[ "$BUILD" == failure ]]; then STAGE=build;
+          elif [[ "$SCREENSHOT" == failure ]]; then STAGE=screenshot;
+          elif [[ "$SCREENSHOT_ARTIFACT" == failure ]]; then STAGE=screenshot-artifact;
           fi
           echo "failure_stage=$STAGE" >> "$GITHUB_OUTPUT"
           echo "smt-p01-d103-stage=$STAGE"
