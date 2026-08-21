@@ -1,4 +1,4 @@
-SOURCE_SHA=12fb28a36643bcac6cf04567a7ae54c134112ec0
+SOURCE_SHA=fe6a38f58dbeb8a8a3be259f906858e60ea728a7
 
 ===== INSTALL =====
 ===== toolchain =====
@@ -6,7 +6,7 @@ v22.23.2
 10.9.8
 ===== npm install app (legacy peer deps: verifier-only Arborist workaround) =====
 
-added 121 packages in 14s
+added 121 packages in 15s
 ===== npm install playwright =====
 
 added 4 packages in 2s
@@ -14,15 +14,15 @@ added 4 packages in 2s
 Installing dependencies...
 Switching to root user to install dependencies...
 Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
-Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
 Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
 Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
 Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
 Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
-Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [350 kB]
-Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [397 kB]
+Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [397 kB]
+Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [350 kB]
 Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1227 kB]
 Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [286 kB]
 Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
@@ -43,8 +43,8 @@ Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translatio
 Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.2 kB]
 Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
 Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
-Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1409 B]
-Fetched 11.5 MB in 1s (8344 kB/s)
+Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
+Fetched 11.5 MB in 1s (8308 kB/s)
 Reading package lists...
 Reading package lists...
 Building dependency tree...
@@ -120,7 +120,7 @@ Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings a
 Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
 Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
 Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
-Fetched 21.1 MB in 1s (33.7 MB/s)
+Fetched 21.1 MB in 0s (50.2 MB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203124 files and directories currently installed.)
 Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -221,15 +221,15 @@ Chrome Headless Shell 149.0.7827.55 (playwright chromium-headless-shell v1228) d
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
  [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1049[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes [33m 456[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1200[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 329[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1058[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 439[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1194[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 322[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 16:43:57
-[2m   Duration [22m 3.48s[2m (transform 396ms, setup 0ms, import 2.15s, tests 2.26s, environment 3.22s)[22m
+[2m   Start at [22m 16:48:21
+[2m   Duration [22m 3.51s[2m (transform 429ms, setup 0ms, import 2.19s, tests 2.27s, environment 3.24s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -243,22 +243,7 @@ dist/index.html                   0.45 kB │ gzip:   0.29 kB
 dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
 dist/assets/index-64B7kndp.js   356.13 kB │ gzip: 106.82 kB
 
-[32m✓ built in 384ms[39m
+[32m✓ built in 393ms[39m
 
 ===== BROWSER ACCEPTANCE =====
-node:internal/modules/run_main:123
-    triggerUncaughtException(
-    ^
-
-locator.waitFor: Timeout 30000ms exceeded.
-Call log:
-  - waiting for getByRole('button', { name: /publish v/i }).first() to be visible
-
-    at /home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/scripts/http-browser-acceptance.mjs:220:23 {
-  log: [
-    "  - waiting for getByRole('button', { name: /publish v/i }).first() to be visible"
-  ],
-  name: 'TimeoutError'
-}
-
-Node.js v22.23.2
+ADMIN_HTTP_BROWSER_ACCEPTANCE=PASS
