@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 env:
@@ -38,7 +38,17 @@ jobs:
           [ -n "$STAFF_SESSIONS_JSON" ] || missing+=(STAFF_SESSIONS_JSON)
           if [ ${#missing[@]} -gt 0 ]; then
             message="MISSING:$(IFS=,; echo "${missing[*]}")"
-            printf 'ADMIN_PREVIEW_DEPLOY_CONFIG_%s\n' "$message"
+          else
+            message='READY'
+          fi
+          printf '%s\n' "$message" > /tmp/admin-preview-config.txt
+          path='diagnostics/admin-policy-preview-config-latest.txt'
+          content="$(base64 -w0 /tmp/admin-preview-config.txt)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Preview config diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
+          if [ ${#missing[@]} -gt 0 ]; then
             gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
               -f state=failure -f context=admin-policy-preview-config \
               -f description="${message:0:130}" >/dev/null
@@ -93,8 +103,7 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         shell: bash
-        run: |
-          printf '%s\n' "$DEPLOYMENT_URL" > admin-policy-preview-url.txt
+        run: printf '%s\n' "$DEPLOYMENT_URL" > admin-policy-preview-url.txt
 
       - name: Upload deployment evidence
         if: always()
