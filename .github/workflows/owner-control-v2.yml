@@ -33,6 +33,7 @@ jobs:
           [[ -z "${EXTRA:-}" ]]
           case "$VERB" in
             /verify-v1) COMMAND=verify-v1 ;;
+            /verify-smt-p01-d103) COMMAND=verify-smt-p01-d103 ;;
             /verify-carrier) COMMAND=verify-carrier ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
             /release-runtime) COMMAND=release-runtime ;;
@@ -58,6 +59,15 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.command == 'verify-v1'
     uses: ./.github/workflows/verify-v1.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+
+  verify-smt-p01-d103:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-smt-p01-d103'
+    uses: ./.github/workflows/verify-smt-p01-d103.yml
     with:
       source_sha: ${{ needs.prepare.outputs.source_sha }}
     secrets:
@@ -121,7 +131,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-v1, verify-carrier, repair-smt-p01-lockfile, release-runtime, release-android, runtime-status]
+    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-carrier, repair-smt-p01-lockfile, release-runtime, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -133,6 +143,8 @@ jobs:
           CHANNEL: ${{ needs.prepare.outputs.channel }}
           V1: ${{ needs.verify-v1.result }}
           V1_STAGE: ${{ needs.verify-v1.outputs.failure_stage }}
+          D103: ${{ needs.verify-smt-p01-d103.result }}
+          D103_STAGE: ${{ needs.verify-smt-p01-d103.outputs.failure_stage }}
           CARRIER: ${{ needs.verify-carrier.result }}
           CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
@@ -144,6 +156,7 @@ jobs:
           STAGE=''
           case "$COMMAND" in
             verify-v1) RESULT="$V1"; STAGE="$V1_STAGE" ;;
+            verify-smt-p01-d103) RESULT="$D103"; STAGE="$D103_STAGE" ;;
             verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
             release-runtime) RESULT="$RUNTIME_RELEASE" ;;
