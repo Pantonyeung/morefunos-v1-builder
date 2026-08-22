@@ -8,19 +8,32 @@ exact_source=PASS
 build=PASS
 wrangler_cli=STARTED
 pages_project_check=STARTED
-pages_project_check_rc=0
+pages_project_check_rc=1
 pages_deploy=STARTED
 pages_deploy_rc=0
 pages_deploy=PASS
-deployment_url=https://preview.morefunos-v1-admin-preview.pages.dev
+deployment_url=https://92078314.morefunos-v1-admin-preview.pages.dev
 route_smoke=STARTED
+immutable_deployment_ready=PASS
 checking=/admin/overview
+checking=/admin/catalog/products/PRC-001
+checking=/admin/catalog/options/OPT-001
+checking=/admin/catalog/combos/COM-001
+checking=/admin/storefront
+checking=/admin/operations/pickup-queue
+checking=/admin/settings/port-exposure
+checking=/admin/print-kitchen
+checking=/admin/publish
+route_smoke=PASS
+stable_alias_url=https://preview.morefunos-v1-admin-preview.pages.dev
+stable_alias=STARTED
+stable_alias=PASS
 
 ===== BUILD =====
 v22.23.2
 10.9.8
 
-added 121 packages in 12s
+added 121 packages in 13s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -28,15 +41,16 @@ added 121 packages in 12s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
  [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1096[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes [33m 470[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1143[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 447[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1207[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 317[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 23:58:11
-[2m   Duration [22m 2.91s[2m (transform 479ms, setup 0ms, import 1.76s, tests 2.25s, environment 2.40s)[22m
+[2m   Start at [22m 00:00:12
+[2m   Duration [22m 3.46s[2m (transform 472ms, setup 0ms, import 2.28s, tests 2.31s, environment 2.99s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -50,15 +64,22 @@ dist/index.html                   0.50 kB │ gzip:   0.31 kB
 dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
 dist/assets/index-76JUqn9c.js   356.90 kB │ gzip: 107.01 kB
 
-[32m✓ built in 329ms[39m
+[32m✓ built in 382ms[39m
 
 ===== WRANGLER =====
 4.125.0
 
  ⛅️ wrangler 4.125.0
 ────────────────────
-✨ Successfully created the 'morefunos-v1-admin-preview' project. It will be available at https://morefunos-v1-admin-preview.pages.dev/ once you create your first deployment.
-To deploy a folder of assets, run 'wrangler pages deploy [directory]'.
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/690765acf1b9b85b9c09e12879ad9786/pages/projects) failed.[0m
+
+  A project with this name already exists. Choose a different project name. [code: 8000002]
+  
+  If you think this is a bug, please open an issue at: [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
+
+
+🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-22_00-00-28_192.log"
 
  ⛅️ wrangler 4.125.0
 ────────────────────
@@ -67,13 +88,10 @@ To deploy a folder of assets, run 'wrangler pages deploy [directory]'.
   To silence this warning, pass in --commit-dirty=true
 
 
-Uploading... (0/4)
-Uploading... (1/4)
-Uploading... (2/4)
 Uploading... (4/4)
-✨ Success! Uploaded 4 files (2.63 sec)
+✨ Success! Uploaded 0 files (4 already uploaded) (0.30 sec)
 
 ✨ Uploading _redirects
 🌎 Deploying...
-✨ Deployment complete! Take a peek over at https://1882c9e4.morefunos-v1-admin-preview.pages.dev
+✨ Deployment complete! Take a peek over at https://92078314.morefunos-v1-admin-preview.pages.dev
 ✨ Deployment alias URL: https://preview.morefunos-v1-admin-preview.pages.dev
