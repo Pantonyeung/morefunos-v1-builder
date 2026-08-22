@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 1653635e394324fb7d68bf1cc9bb1e1130bd0b38
+  SOURCE_SHA: 5adbcb576ebffd9cf934de2a55ec9b3f828ecd93
 
 jobs:
   functional-reality:
@@ -104,7 +104,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Durable Business Policy + Store Settings + Availability + Admin Web PASS' >/dev/null
+            -f description='Firebase Availability resolver + durable policy/settings chain PASS' >/dev/null
 
       - name: Report failure
         if: failure()
