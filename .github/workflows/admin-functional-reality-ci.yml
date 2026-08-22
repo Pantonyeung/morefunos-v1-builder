@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 029b6475a8f23bc07242954a64fb6fca44db13e0
+  SOURCE_SHA: 1653635e394324fb7d68bf1cc9bb1e1130bd0b38
 
 jobs:
   functional-reality:
@@ -44,7 +44,7 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
 
-      - name: Verify Catalog, Availability and Admin Worker contracts
+      - name: Verify Catalog, Business Policy, Store Settings, Availability and Admin Worker contracts
         working-directory: source
         shell: bash
         run: |
@@ -53,6 +53,9 @@ jobs:
             echo 'admin_domain_tests=STARTED'
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+            node --experimental-strip-types --test packages/policy/business-policy-durable-authority.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
             node --experimental-strip-types --test packages/runtime/admin-availability-http.test.ts
@@ -101,7 +104,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Catalog + durable Availability + Admin Web functional reality PASS' >/dev/null
+            -f description='Durable Business Policy + Store Settings + Availability + Admin Web PASS' >/dev/null
 
       - name: Report failure
         if: failure()
