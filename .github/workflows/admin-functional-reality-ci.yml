@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: cc2e358379f6d36f21512c98930439eedf801897
+  SOURCE_SHA: a8d6156f3fcad78c2d41321de0c64eb2f2424121
 
 jobs:
   functional-reality:
@@ -51,6 +51,7 @@ jobs:
             node --experimental-strip-types --test test-data/cross-port/v1/phase-a2-availability-printing.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst06-smt-cash-overview.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst08-table-merge-lifecycle.test.ts
             node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
@@ -121,7 +122,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='Cross-port TST-01-07 PASS' >/dev/null
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='Cross-port TST-01-08 PASS' >/dev/null
       - name: Report failure
         if: failure()
         env:
