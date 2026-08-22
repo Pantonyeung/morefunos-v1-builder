@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: efe519d30c1601de620eecf1f9bf67feaf512f3b
+  SOURCE_SHA: 0b3ae63a500f6b84f5462dde2e0872ed6358b8c8
 
 jobs:
   functional-reality:
@@ -62,6 +62,7 @@ jobs:
             node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
             node --experimental-strip-types --test packages/runtime/store-settings-payment-channel-projection.test.ts
+            node --experimental-strip-types --test packages/runtime/store-settings-dine-in-bootstrap.test.ts
             node --experimental-strip-types --test packages/runtime/smt-runtime-device-gate-provider.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
@@ -113,7 +114,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Payment/channel Store Settings to SMT projection + Admin closure PASS' >/dev/null
+            -f description='Payment/channel + dine-in Store Settings runtime projection PASS' >/dev/null
 
       - name: Report failure
         if: failure()
