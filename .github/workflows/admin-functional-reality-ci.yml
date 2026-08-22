@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 0f8c2e7eb991171c635093a97815a36b515e9304
+  SOURCE_SHA: 8e0c286d3ec830df0990da47cb8623d38954b572
 
 jobs:
   functional-reality:
@@ -106,7 +106,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Business Policy + Store Settings + Availability Admin full control chain PASS' >/dev/null
+            -f description='Availability + Business Policy Pricing Admin control chain PASS' >/dev/null
 
       - name: Report failure
         if: failure()
