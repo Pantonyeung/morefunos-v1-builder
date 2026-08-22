@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: b60f4b52dc4bdc82e4caafae6317f1173e46c1fd
+  SOURCE_SHA: 5fe680e78d37af23bcf3cc35c77a053fe9fc7e90
 
 jobs:
   functional-reality:
@@ -64,6 +64,7 @@ jobs:
             node --experimental-strip-types --test packages/reporting/admin-live-operational-projection.test.ts
             node --experimental-strip-types --test packages/reporting/business-date-financial-progress.test.ts
             node --experimental-strip-types --test packages/facts/operational-facts-durable-journal.test.ts
+            node --experimental-strip-types --test packages/runtime/operational-fact-durable-flush.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
@@ -128,7 +129,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Durable Overview financial readback PASS' >/dev/null
+            -f description='Explicit operational fact flush seam PASS' >/dev/null
 
       - name: Report failure
         if: failure()
