@@ -1,0 +1,47 @@
+name: Staff Auth Exact CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/staff-auth-exact-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_SHA: b34dffa88800b7681f64b43d89513e757cb82bda
+
+jobs:
+  staff-auth:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact source
+        run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Verify Staff Authority and HTTP
+        working-directory: source
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test packages/staff/staff-authentication-service.test.ts
+          node --experimental-strip-types --test packages/runtime/staff-auth-http.test.ts
+          node --experimental-strip-types --test packages/staff/staff-durable-authority.test.ts
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
+      - name: Verify Admin Web build
+        working-directory: source/apps/admin-web
+        run: |
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
