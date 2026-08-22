@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: fc445737fc904f8544f9c22b4c72b92240371394
+  SOURCE_SHA: 795c87b88fb3e14c2b3317f8740ff1686e72dbc5
 
 jobs:
   functional-reality:
@@ -23,11 +23,9 @@ jobs:
           set -euo pipefail
           : > "$RUNNER_TEMP/admin-functional-reality.log"
           echo 'workflow=STARTED' >> "$RUNNER_TEMP/admin-functional-reality.log"
-
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -36,14 +34,12 @@ jobs:
           path: source
           persist-credentials: false
           fetch-depth: 1
-
       - name: Verify exact V1 source
         shell: bash
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
-
       - name: Verify Admin domain and cross-runtime contracts
         working-directory: source
         shell: bash
@@ -54,6 +50,7 @@ jobs:
             node --experimental-strip-types --test test-data/cross-port/v1/phase-a-admin-to-smt.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-a2-availability-printing.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst06-smt-cash-overview.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts
             node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
@@ -92,7 +89,6 @@ jobs:
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
             echo 'admin_domain_tests=PASS'
           } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
-
       - name: Verify Admin Web interaction and build
         working-directory: source/apps/admin-web
         shell: bash
@@ -105,7 +101,6 @@ jobs:
             npm run build
             echo 'admin_web=PASS'
           } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
-
       - name: Persist diagnostics
         if: always()
         env:
@@ -114,32 +109,23 @@ jobs:
         run: |
           set -euo pipefail
           path='diagnostics/admin-functional-reality-latest.log'
-          {
-            printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
-            cat "$RUNNER_TEMP/admin-functional-reality.log" 2>/dev/null || true
-          } > /tmp/admin-functional-reality-latest.log
+          { printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"; cat "$RUNNER_TEMP/admin-functional-reality.log" 2>/dev/null || true; } > /tmp/admin-functional-reality-latest.log
           content="$(base64 -w0 /tmp/admin-functional-reality-latest.log)"
           current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
           args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Functional Reality diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
           if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
           gh api "${args[@]}" >/dev/null
-
       - name: Report success
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=success -f context=admin-functional-reality \
-            -f description='Cross-port TST-01-06 PASS' >/dev/null
-
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='Cross-port TST-01-07 PASS' >/dev/null
       - name: Report failure
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=failure -f context=admin-functional-reality \
-            -f description='Cross-port dataset exact-SHA gate failed' >/dev/null
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=failure -f context=admin-functional-reality -f description='Cross-port dataset exact-SHA gate failed' >/dev/null
