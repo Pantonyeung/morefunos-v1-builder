@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 0b3ae63a500f6b84f5462dde2e0872ed6358b8c8
+  SOURCE_SHA: 96aed7a380ffa3ac631d373fbbb925f20d662756
 
 jobs:
   functional-reality:
@@ -114,7 +114,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Payment/channel + dine-in Store Settings runtime projection PASS' >/dev/null
+            -f description='Operations timing + payment/channel + dine-in Admin closure PASS' >/dev/null
 
       - name: Report failure
         if: failure()
