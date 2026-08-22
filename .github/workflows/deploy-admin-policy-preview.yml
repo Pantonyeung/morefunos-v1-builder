@@ -208,3 +208,5 @@ jobs:
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-policy-preview-deploy \
             -f description='Worker test/deploy, runtime secrets, capabilities, credential material, or health failed' >/dev/null
+
+# manual reverify after GOOGLE_PRIVATE_KEY refresh: 2026-08-22
