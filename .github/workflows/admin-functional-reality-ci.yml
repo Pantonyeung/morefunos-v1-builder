@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: a2c58fe9e73be9dcb67a0df52a3a6615b2fdecc1
+  SOURCE_SHA: efe519d30c1601de620eecf1f9bf67feaf512f3b
 
 jobs:
   functional-reality:
@@ -44,7 +44,7 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
 
-      - name: Verify Admin domain and internal infrastructure contracts
+      - name: Verify Admin domain and cross-runtime contracts
         working-directory: source
         shell: bash
         run: |
@@ -61,6 +61,8 @@ jobs:
             node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
+            node --experimental-strip-types --test packages/runtime/store-settings-payment-channel-projection.test.ts
+            node --experimental-strip-types --test packages/runtime/smt-runtime-device-gate-provider.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
             node --experimental-strip-types --test packages/runtime/admin-policy-http.test.ts
@@ -111,7 +113,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Availability + Pricing + Channels + Dine-in + Payment + Capacity PASS' >/dev/null
+            -f description='Payment/channel Store Settings to SMT projection + Admin closure PASS' >/dev/null
 
       - name: Report failure
         if: failure()
