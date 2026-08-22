@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: c4aedcef35b8c00a61cbd52ac8496ff35eb300e7
+  SOURCE_SHA: ce72c3a52519a337b2fe4f93cea8437b867f8947
 
 jobs:
   functional-reality:
@@ -52,6 +52,7 @@ jobs:
           {
             echo 'admin_domain_tests=STARTED'
             node --experimental-strip-types --test test-data/cross-port/v1/phase-a-admin-to-smt.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-a2-availability-printing.test.ts
             node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
@@ -130,7 +131,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Cross-port dataset Phase A PASS' >/dev/null
+            -f description='Cross-port dataset Phase A 01-05 PASS' >/dev/null
 
       - name: Report failure
         if: failure()
