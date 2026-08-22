@@ -1,4 +1,4 @@
-SOURCE_SHA=d4436be1664f8d2e1112460721d811007cd8c402
+SOURCE_SHA=4d870b243ad2a7c311e37b8f2a9a2570188f4848
 PAGES_PROJECT=morefunos-v1-admin-preview
 
 ===== STAGES =====
@@ -12,7 +12,7 @@ pages_project_check_rc=1
 pages_deploy=STARTED
 pages_deploy_rc=0
 pages_deploy=PASS
-deployment_url=https://bc2640c6.morefunos-v1-admin-preview.pages.dev
+deployment_url=https://4391d2ab.morefunos-v1-admin-preview.pages.dev
 route_smoke=STARTED
 immutable_deployment_ready=PASS
 checking=/admin/overview
@@ -33,7 +33,7 @@ stable_alias=PASS
 v22.23.2
 10.9.8
 
-added 121 packages in 19s
+added 121 packages in 12s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -41,19 +41,19 @@ added 121 packages in 19s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 30[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1670[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 442[2mms[22m[39m
- [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 833[2mms[22m[39m
-     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 831[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 2136[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 806[2mms[22m[39m
-     [33m[2m✓[22m[39m does not fake Runtime success when publish is unbound [33m 302[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1583[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 368[2mms[22m[39m
+ [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 584[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 582[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1915[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 662[2mms[22m[39m
+     [33m[2m✓[22m[39m search, notifications, and profile controls open usable panels [33m 325[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
-[2m      Tests [22m [1m[32m26 passed[39m[22m[90m (26)[39m
-[2m   Start at [22m 00:17:16
-[2m   Duration [22m 4.93s[2m (transform 622ms, setup 0ms, import 4.45s, tests 4.67s, environment 3.95s)[22m
+[2m      Tests [22m [1m[32m28 passed[39m[22m[90m (28)[39m
+[2m   Start at [22m 00:26:19
+[2m   Duration [22m 4.51s[2m (transform 636ms, setup 0ms, import 3.66s, tests 4.10s, environment 4.02s)[22m
 
 
 > @morefunos/admin-web@0.1.0-d104 build
@@ -64,10 +64,10 @@ added 121 packages in 19s
 rendering chunks...
 computing gzip size...
 dist/index.html                   0.50 kB │ gzip:   0.31 kB
-dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
-dist/assets/index-UqxdZwuT.js   370.91 kB │ gzip: 112.58 kB
+dist/assets/index-atssvqqc.css   67.78 kB │ gzip:  12.60 kB
+dist/assets/index-D753Ikjz.js   374.12 kB │ gzip: 113.36 kB
 
-[32m✓ built in 386ms[39m
+[32m✓ built in 381ms[39m
 
 ===== WRANGLER =====
 4.125.0
@@ -82,7 +82,7 @@ dist/assets/index-UqxdZwuT.js   370.91 kB │ gzip: 112.58 kB
   If you think this is a bug, please open an issue at: [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
 
 
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-22_00-17-37_091.log"
+🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-22_00-26-36_325.log"
 
  ⛅️ wrangler 4.125.0
 ────────────────────
@@ -91,12 +91,13 @@ dist/assets/index-UqxdZwuT.js   370.91 kB │ gzip: 112.58 kB
   To silence this warning, pass in --commit-dirty=true
 
 
+Uploading... (1/4)
 Uploading... (2/4)
 Uploading... (3/4)
 Uploading... (4/4)
-✨ Success! Uploaded 2 files (2 already uploaded) (1.48 sec)
+✨ Success! Uploaded 3 files (1 already uploaded) (1.53 sec)
 
 ✨ Uploading _redirects
 🌎 Deploying...
-✨ Deployment complete! Take a peek over at https://bc2640c6.morefunos-v1-admin-preview.pages.dev
+✨ Deployment complete! Take a peek over at https://4391d2ab.morefunos-v1-admin-preview.pages.dev
 ✨ Deployment alias URL: https://preview.morefunos-v1-admin-preview.pages.dev
