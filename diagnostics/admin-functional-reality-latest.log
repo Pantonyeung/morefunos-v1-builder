@@ -1,4 +1,4 @@
-SOURCE_SHA=795c87b88fb3e14c2b3317f8740ff1686e72dbc5
+SOURCE_SHA=6380b3120a8954305f8e24d4cb93e6f5cba4f63a
 workflow=STARTED
 exact_source=PASS
 admin_domain_tests=STARTED
@@ -6,19 +6,19 @@ TAP version 13
 # Subtest: TST-01 Admin付款設定真係投影到SMT可用付款方法
 ok 1 - TST-01 Admin付款設定真係投影到SMT可用付款方法
   ---
-  duration_ms: 1.61653
+  duration_ms: 1.777249
   type: 'test'
   ...
 # Subtest: TST-02 pending外賣connector唔可以誤投影成live source
 ok 2 - TST-02 pending外賣connector唔可以誤投影成live source
   ---
-  duration_ms: 0.207272
+  duration_ms: 0.212176
   type: 'test'
   ...
 # Subtest: TST-03 堂食枱數、合枱同排隊規則由Admin設定投影到Table bootstrap
 ok 3 - TST-03 堂食枱數、合枱同排隊規則由Admin設定投影到Table bootstrap
   ---
-  duration_ms: 0.271769
+  duration_ms: 0.287226
   type: 'test'
   ...
 1..3
@@ -29,18 +29,18 @@ ok 3 - TST-03 堂食枱數、合枱同排隊規則由Admin設定投影到Table b
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 243.234219
+# duration_ms 291.648231
 TAP version 13
 # Subtest: TST-04 Admin售罄經同一Availability Authority後SMT讀到同一revision
 ok 1 - TST-04 Admin售罄經同一Availability Authority後SMT讀到同一revision
   ---
-  duration_ms: 373.908006
+  duration_ms: 519.208465
   type: 'test'
   ...
 # Subtest: TST-05 Admin打印routing投影保持semantic-only並符合固定份數
 ok 2 - TST-05 Admin打印routing投影保持semantic-only並符合固定份數
   ---
-  duration_ms: 0.984269
+  duration_ms: 0.996932
   type: 'test'
   ...
 1..2
@@ -51,12 +51,12 @@ ok 2 - TST-05 Admin打印routing投影保持semantic-only並符合固定份數
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 494.299462
+# duration_ms 636.976578
 TAP version 13
 # Subtest: TST-06 SMT $42現金單由落單、收$50找$8、Facts、Durable Journal去到Admin Overview
 ok 1 - TST-06 SMT $42現金單由落單、收$50找$8、Facts、Durable Journal去到Admin Overview
   ---
-  duration_ms: 38.912407
+  duration_ms: 46.074396
   type: 'test'
   ...
 1..1
@@ -67,34 +67,34 @@ ok 1 - TST-06 SMT $42現金單由落單、收$50找$8、Facts、Durable Journal�
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 260.549174
+# duration_ms 271.091455
 TAP version 13
-# Subtest: TST-07 堂食T01落單PayMe後同一Order必須綁到Table Session，而且付款唔會自動關枱
-not ok 1 - TST-07 堂食T01落單PayMe後同一Order必須綁到Table Session，而且付款唔會自動關枱
+# node:internal/modules/package_json_reader:314
+#   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+#         ^
+# Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'react' imported from /home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/smt-web/src/runtime-port.ts
+#     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+#     at packageResolve (node:internal/modules/esm/resolve:768:81)
+#     at moduleResolve (node:internal/modules/esm/resolve:855:18)
+#     at defaultResolve (node:internal/modules/esm/resolve:985:11)
+#     at \#cachedDefaultResolve (node:internal/modules/esm/loader:747:20)
+#     at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+#     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+#     at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+#   code: 'ERR_MODULE_NOT_FOUND'
+# }
+# Node.js v22.23.2
+# Subtest: test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts
+not ok 1 - test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts
   ---
-  duration_ms: 34.380504
+  duration_ms: 206.332282
   type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts:24:1'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts:1:1'
   failureType: 'testCodeFailure'
-  error: |-
-    dine-in Order must be attached to the opened T01 session
-    + actual - expected
-    
-    + []
-    - [
-    -   'TST-ORDER-1'
-    - ]
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected:
-    0: 'TST-ORDER-1'
-  actual:
-  operator: 'deepStrictEqual'
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts:46:10)
-    async Test.run (node:internal/test_runner/test:1054:7)
-    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
   ...
 1..1
 # tests 1
@@ -104,4 +104,4 @@ not ok 1 - TST-07 堂食T01落單PayMe後同一Order必須綁到Table Session，
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 259.143171
+# duration_ms 215.08184
