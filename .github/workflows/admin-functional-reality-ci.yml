@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 8245942b4d43c20e2ae09d3e24efad3659da6fb0
+  SOURCE_SHA: a213b9ac8b72a8564fb60a4ee0c11b970035674d
 
 jobs:
   functional-reality:
