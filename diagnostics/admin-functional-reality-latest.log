@@ -1,30 +1,232 @@
-SOURCE_SHA=bf7d951d493bebf110f220350edff52b621f33c9
+SOURCE_SHA=7db5c89194572acd8e7b66f3fa1b2a9e46a50ba1
 workflow=STARTED
 exact_source=PASS
 catalog_worker_tests=STARTED
 TAP version 13
-# Subtest: required configurator input rejects direct_add so SMT cannot bypass Admin rules
-ok 1 - required configurator input rejects direct_add so SMT cannot bypass Admin rules
+# Subtest: required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
+ok 1 - required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
   ---
-  duration_ms: 2.127302
+  duration_ms: 2.178976
   type: 'test'
   ...
 # Subtest: open_configurator accepts required single-select input
 ok 2 - open_configurator accepts required single-select input
   ---
-  duration_ms: 1.093356
+  duration_ms: 1.31724
   type: 'test'
   ...
 # Subtest: portion control accepts canonical none/less/normal/more levels
 ok 3 - portion control accepts canonical none/less/normal/more levels
   ---
-  duration_ms: 0.41135
+  duration_ms: 0.297889
   type: 'test'
   ...
 # Subtest: portion control rejects a preset without normal level
 ok 4 - portion control rejects a preset without normal level
   ---
-  duration_ms: 0.398466
+  duration_ms: 0.513734
+  type: 'test'
+  ...
+# Subtest: legacy required options resolve centrally to open_configurator without local SMT inference
+ok 5 - legacy required options resolve centrally to open_configurator without local SMT inference
+  ---
+  duration_ms: 0.401733
+  type: 'test'
+  ...
+# Subtest: legacy products with no required input resolve centrally to direct_add
+ok 6 - legacy products with no required input resolve centrally to direct_add
+  ---
+  duration_ms: 0.500278
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 338.067211
+TAP version 13
+# Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
+ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
+  ---
+  duration_ms: 3.28525
+  type: 'test'
+  ...
+# Subtest: category and product identities must be unique and stable inside a revision
+ok 2 - category and product identities must be unique and stable inside a revision
+  ---
+  duration_ms: 0.43705
+  type: 'test'
+  ...
+# Subtest: product category reference and active lifecycle combinations are validated
+ok 3 - product category reference and active lifecycle combinations are validated
+  ---
+  duration_ms: 0.326181
+  type: 'test'
+  ...
+# Subtest: active products require at least one canonical eligible OrderChannel
+ok 4 - active products require at least one canonical eligible OrderChannel
+  ---
+  duration_ms: 1.730004
+  type: 'test'
+  ...
+# Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
+ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
+  ---
+  duration_ms: 0.495458
+  type: 'test'
+  ...
+# Subtest: inactive products may remain archived without sale-channel eligibility
+ok 6 - inactive products may remain archived without sale-channel eligibility
+  ---
+  duration_ms: 0.302647
+  type: 'test'
+  ...
+# Subtest: catalog editor may draft and validate but cannot publish
+ok 7 - catalog editor may draft and validate but cannot publish
+  ---
+  duration_ms: 160.477592
+  type: 'test'
+  ...
+# Subtest: catalog publish is immutable and activation stays explicit
+ok 8 - catalog publish is immutable and activation stays explicit
+  ---
+  duration_ms: 1.406327
+  type: 'test'
+  ...
+# Subtest: catalog rollback restores an older immutable published revision
+ok 9 - catalog rollback restores an older immutable published revision
+  ---
+  duration_ms: 1.750743
+  type: 'test'
+  ...
+# Subtest: normal forward activation rejects destructive product removal
+ok 10 - normal forward activation rejects destructive product removal
+  ---
+  duration_ms: 1.213114
+  type: 'test'
+  ...
+# Subtest: normal forward activation rejects category removal and store identity drift
+ok 11 - normal forward activation rejects category removal and store identity drift
+  ---
+  duration_ms: 2.22383
+  type: 'test'
+  ...
+# Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
+ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
+  ---
+  duration_ms: 1.004785
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 307.497454
+TAP version 13
+# Subtest: service-account provider signs JWT, exchanges token, and caches until expiry window
+ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
+  ---
+  duration_ms: 150.11633
+  type: 'test'
+  ...
+# Subtest: service-account provider accepts escaped PEM and full service-account JSON secrets
+ok 2 - service-account provider accepts escaped PEM and full service-account JSON secrets
+  ---
+  duration_ms: 84.72383
+  type: 'test'
+  ...
+# Subtest: service-account provider fails closed on malformed private key and bad OAuth response
+ok 3 - service-account provider fails closed on malformed private key and bad OAuth response
+  ---
+  duration_ms: 85.209069
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 417.762768
+TAP version 13
+# Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+  ---
+  duration_ms: 46.238102
+  type: 'test'
+  ...
+# Subtest: Worker health advertises Policy and Catalog capabilities and method gate fails closed
+ok 2 - Worker health advertises Policy and Catalog capabilities and method gate fails closed
+  ---
+  duration_ms: 2.333001
+  type: 'test'
+  ...
+# Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+ok 3 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+  ---
+  duration_ms: 5.768688
+  type: 'test'
+  ...
+# Subtest: Worker mounts authenticated durable Catalog routes beside Policy routes
+ok 4 - Worker mounts authenticated durable Catalog routes beside Policy routes
+  ---
+  duration_ms: 4.07762
+  type: 'test'
+  ...
+# Subtest: Worker cannot publish merely because the session actor is authenticated
+ok 5 - Worker cannot publish merely because the session actor is authenticated
+  ---
+  duration_ms: 3.521408
+  type: 'test'
+  ...
+# Subtest: Worker requires at least one HTTPS allowed Origin
+ok 6 - Worker requires at least one HTTPS allowed Origin
+  ---
+  duration_ms: 0.513732
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 205.278443
+TAP version 13
+# Subtest: single-owner production composition routes authenticated durable publish through real adapters
+ok 1 - single-owner production composition routes authenticated durable publish through real adapters
+  ---
+  duration_ms: 81.217727
+  type: 'test'
+  ...
+# Subtest: single-owner production composition rejects an unknown bearer token
+ok 2 - single-owner production composition rejects an unknown bearer token
+  ---
+  duration_ms: 9.45211
+  type: 'test'
+  ...
+# Subtest: production composition rejects malformed policy envelope before publish
+ok 3 - production composition rejects malformed policy envelope before publish
+  ---
+  duration_ms: 14.927398
+  type: 'test'
+  ...
+# Subtest: production composition validates repo identity, environment, origins and owner token
+ok 4 - production composition validates repo identity, environment, origins and owner token
+  ---
+  duration_ms: 13.875207
   type: 'test'
   ...
 1..4
@@ -35,232 +237,252 @@ ok 4 - portion control rejects a preset without normal level
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 658.490792
-TAP version 13
-# Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
-not ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
-  ---
-  duration_ms: 4.751102
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:92:1'
-  failureType: 'testCodeFailure'
-  error: |-
-    Expected values to be strictly deep-equal:
-    + actual - expected
-    
-      {
-    +   issues: [
-    +     'CATALOG_PRODUCT_TAP_BEHAVIOR_REQUIRED:prod_f4'
-    +   ],
-    +   ok: false
-    -   issues: [],
-    -   ok: true
-      }
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected:
-    ok: true
-    issues:
-  actual:
-    ok: false
-    issues:
-      0: 'CATALOG_PRODUCT_TAP_BEHAVIOR_REQUIRED:prod_f4'
-  operator: 'deepStrictEqual'
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:93:10)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.start (node:internal/test_runner/test:944:17)
-    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
-  ...
-# Subtest: category and product identities must be unique and stable inside a revision
-ok 2 - category and product identities must be unique and stable inside a revision
-  ---
-  duration_ms: 0.466523
-  type: 'test'
-  ...
-# Subtest: product category reference and active lifecycle combinations are validated
-ok 3 - product category reference and active lifecycle combinations are validated
-  ---
-  duration_ms: 1.234791
-  type: 'test'
-  ...
-# Subtest: active products require at least one canonical eligible OrderChannel
-ok 4 - active products require at least one canonical eligible OrderChannel
-  ---
-  duration_ms: 0.572511
-  type: 'test'
-  ...
-# Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
-ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
-  ---
-  duration_ms: 0.449591
-  type: 'test'
-  ...
-# Subtest: inactive products may remain archived without sale-channel eligibility
-not ok 6 - inactive products may remain archived without sale-channel eligibility
-  ---
-  duration_ms: 0.563214
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:172:1'
-  failureType: 'testCodeFailure'
-  error: |-
-    Expected values to be strictly equal:
-    
-    false !== true
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected: true
-  actual: false
-  operator: 'strictEqual'
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:182:10)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-    Test.run (node:internal/test_runner/test:1101:12)
-    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
-  ...
-# Subtest: catalog editor may draft and validate but cannot publish
-not ok 7 - catalog editor may draft and validate but cannot publish
-  ---
-  duration_ms: 256.990443
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:185:1'
-  failureType: 'testCodeFailure'
-  error: |-
-    Expected values to be strictly equal:
-    
-    false !== true
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected: true
-  actual: false
-  operator: 'strictEqual'
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:188:10)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-    Test.run (node:internal/test_runner/test:1101:12)
-    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
-  ...
-# Subtest: catalog publish is immutable and activation stays explicit
-not ok 8 - catalog publish is immutable and activation stays explicit
-  ---
-  duration_ms: 0.839642
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:197:1'
-  failureType: 'testCodeFailure'
-  error: 'POLICY_DRAFT_NOT_VALIDATED'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
-    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:201:29)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-    Test.run (node:internal/test_runner/test:1101:12)
-  ...
-# Subtest: catalog rollback restores an older immutable published revision
-not ok 9 - catalog rollback restores an older immutable published revision
-  ---
-  duration_ms: 0.877024
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:220:1'
-  failureType: 'testCodeFailure'
-  error: 'POLICY_DRAFT_NOT_VALIDATED'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
-    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:225:22)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-    Test.run (node:internal/test_runner/test:1101:12)
-  ...
-# Subtest: normal forward activation rejects destructive product removal
-not ok 10 - normal forward activation rejects destructive product removal
-  ---
-  duration_ms: 0.817865
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:257:1'
-  failureType: 'testCodeFailure'
-  error: 'POLICY_DRAFT_NOT_VALIDATED'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
-    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
-    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:259:3)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-  ...
-# Subtest: normal forward activation rejects category removal and store identity drift
-not ok 11 - normal forward activation rejects category removal and store identity drift
-  ---
-  duration_ms: 0.674782
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:275:1'
-  failureType: 'testCodeFailure'
-  error: 'POLICY_DRAFT_NOT_VALIDATED'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
-    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
-    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:287:3)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-  ...
-# Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
-not ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
-  ---
-  duration_ms: 0.423825
-  type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:310:1'
-  failureType: 'testCodeFailure'
-  error: 'POLICY_DRAFT_NOT_VALIDATED'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
-    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
-    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
-    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:313:3)
-    Test.runInAsyncScope (node:async_hooks:214:14)
-    Test.run (node:internal/test_runner/test:1047:25)
-    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
-    Test.postRun (node:internal/test_runner/test:1173:19)
-  ...
-1..12
-# tests 12
-# suites 0
-# pass 4
-# fail 8
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 407.757218
+# duration_ms 247.762002
+catalog_worker_tests=PASS
+admin_web=STARTED
+
+added 121 packages in 15s
+
+> @morefunos/admin-web@0.1.0-d104 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
+
+ [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1354[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 637[2mms[22m[39m
+     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 389[2mms[22m[39m
+     [33m[2m✓[22m[39m does not fake formal save when Catalog HTTP fails [33m 325[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1897[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 532[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [31m❯[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 3984[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 912[2mms[22m[39m
+     [32m✓[39m marks legacy mobile buttons as compatibility navigation only[32m 152[2mms[22m[39m
+     [33m[2m✓[22m[39m search, notifications, and profile controls open compatibility panels [33m 413[2mms[22m[39m
+     [32m✓[39m turns non-fidelity visual toggles into accessible local draft switches[32m 98[2mms[22m[39m
+     [32m✓[39m supports progressive capability selection as local draft state[32m 181[2mms[22m[39m
+     [32m✓[39m selects pickup auto-complete timing without mutating Order Authority[32m 141[2mms[22m[39m
+     [32m✓[39m does not fake Runtime success when publish is unbound[32m 194[2mms[22m[39m
+     [32m✓[39m translated publish button still invokes canonical Runtime by data-action instead of visible copy[32m 255[2mms[22m[39m
+     [32m✓[39m projects canonical rejection instead of declaring publish success[32m 180[2mms[22m[39m
+     [32m✓[39m gives every rendered Publish button an explicit action or intent contract[32m 128[2mms[22m[39m
+[31m     [31m×[31m disables fidelity-only actions instead of faking functional responses[39m[33m 1234[2mms[22m[39m
+     [32m✓[39m supports keyboard activation for non-fidelity switch semantics[32m 94[2mms[22m[39m
+ [31m❯[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 918[2mms[22m[39m
+     [33m[2m✓[22m[39m uses real anchor destinations for all five mobile navigation entries [33m 341[2mms[22m[39m
+     [32m✓[39m opens a native search panel with real page destinations[32m 277[2mms[22m[39m
+     [32m✓[39m does not masquerade Preview notifications as a live notification Authority[32m 145[2mms[22m[39m
+[31m     [31m×[31m shows the locked Single Owner identity instead of fixture staff names[39m[32m 154[2mms[22m[39m
+ [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 405[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 403[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/functional-shell.vitest.test.tsx[2m > [22mAdmin functional shell[2m > [22mshows the locked Single Owner identity instead of fixture staff names
+[31m[1mAssertionError[22m: expected <strong></strong> to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+<strong>
+  Alex Morgan
+</strong>
+
+[36m [2m❯[22m src/functional-shell.vitest.test.tsx:[2m55:47[22m[39m
+    [90m 53|[39m     fireEvent[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByRole[39m([32m'button'[39m[33m,[39m {name[33m:[39m [32m'Owner資料'[39m}))[33m;[39m
+    [90m 54|[39m     [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'MoreFunOS 單一 Owner模式'[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m 55|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByText[39m([32m'Alex Morgan'[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                                               [31m^[39m
+    [90m 56|[39m   })[33m;[39m
+    [90m 57|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/interaction-controller.vitest.test.tsx[2m > [22mD-105 / L9 Admin interaction contract[2m > [22mdisables fidelity-only actions instead of faking functional responses
+[31m[1mAssertionError[22m[39m: expected false to be true // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mlang[39m=[32m"zh-HK"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"admin-shell"[39m
+      [36m>[39m
+        [36m<aside[39m
+          [33mclass[39m=[32m"admin-sidebar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"brand"[39m
+          [36m>[39m
+            [0mMoreFunOS[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Admin navigation"[39m
+            [33mclass[39m=[32m"admin-nav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/overview"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"9"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"5"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"14"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"9"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"14"[39m
+                  [33my[39m=[32m"12"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"5"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"16"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m總覽[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-package-open"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 22v-9"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m產品目錄[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/storefront"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-store"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m客戶前台[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-gauge"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m...
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m src/interaction-controller.vitest.test.tsx:[2m164:73[22m[39m
+    [90m162|[39m     [34mrenderRoute[39m([32m'/admin/publish'[39m)[33m;[39m
+    [90m163|[39m     [35mconst[39m prepare [33m=[39m [35mawait[39m screen[33m.[39m[34mfindByRole[39m([32m'button'[39m[33m,[39m {name[33m:[39m [32m'準備回復'[39m})[33m;[39m
+    [90m164|[39m     await waitFor(() => expect((prepare as HTMLButtonElement).disabled…
+    [90m   |[39m                                                                         [31m^[39m
+    [90m165|[39m     [34mexpect[39m(prepare[33m.[39m[34mgetAttribute[39m([32m'aria-disabled'[39m))[33m.[39m[34mtoBe[39m([32m'true'[39m)[33m;[39m
+    [90m166|[39m     [34mexpect[39m(prepare[33m.[39m[34mgetAttribute[39m([32m'title'[39m))[33m.[39m[34mtoBe[39m([32m'尚未接通正式 Authority'[39m)[33m;[39m
+[90m [2m❯[22m runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:[2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m124:77[22m[39m
+[90m [2m❯[22m Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m118:16[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m33 passed[39m[22m[90m (35)[39m
+[2m   Start at [22m 00:58:49
+[2m   Duration [22m 8.64s[2m (transform 763ms, setup 0ms, import 6.39s, tests 8.57s, environment 6.64s)[22m
+
+
+::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/functional-shell.vitest.test.tsx,title=src/functional-shell.vitest.test.tsx > Admin functional shell > shows the locked Single Owner identity instead of fixture staff names,line=55,column=47::AssertionError: expected <strong></strong> to be null%0A%0A- Expected:%0Anull%0A%0A+ Received:%0A<strong>%0A  Alex Morgan%0A</strong>%0A%0A ❯ src/functional-shell.vitest.test.tsx:55:47%0A%0A
+
+::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/interaction-controller.vitest.test.tsx,title=src/interaction-controller.vitest.test.tsx > D-105 / L9 Admin interaction contract > disables fidelity-only actions instead of faking functional responses,line=164,column=73::AssertionError: expected false to be true // Object.is equality%0A%0AIgnored nodes: comments, script, style%0A<html%0A  lang="zh-HK"%0A>%0A  <head />%0A  <body>%0A    <div>%0A      <div%0A        class="admin-shell"%0A      >%0A        <aside%0A          class="admin-sidebar"%0A        >%0A          <div%0A            class="brand"%0A          >%0A            MoreFunOS%0A          </div>%0A          <nav%0A            aria-label="Admin navigation"%0A            class="admin-nav"%0A          >%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/overview"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-layout-dashboard"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="3"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="3"%0A                />%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="12"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="16"%0A                />%0A              </svg>%0A              <span>%0A                總覽%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/catalog/products/PRC-001"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-package-open"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M12 22v-9"%0A                />%0A                <path%0A                  d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A                />%0A                <path%0A                  d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A                />%0A                <path%0A                  d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A                />%0A              </svg>%0A              <span>%0A                產品目錄%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/storefront"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-store"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A                />%0A                <path%0A                  d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A                />%0A                <path%0A                  d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A                />%0A              </svg>%0A              <span>%0A                客戶前台%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/operations/pickup-queue"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-gauge"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin...%0A%0A- Expected%0A+ Received%0A%0A- true%0A+ false%0A%0A ❯ src/interaction-controller.vitest.test.tsx:164:73%0A ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12%0A ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77%0A ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16%0A%0A
