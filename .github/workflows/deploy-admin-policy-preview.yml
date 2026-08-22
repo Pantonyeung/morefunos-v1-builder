@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 9832f836e90a0e64f887907f114d8ff911c1ed58
+  SOURCE_SHA: e737790f0ac88d022836aca91f2c94be5e488a55
   WORKER_NAME: morefunos-v1-admin-policy-preview
 
 jobs:
@@ -95,7 +95,12 @@ jobs:
           test -n "$DEPLOYMENT_URL"
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
           grep -q '"ok":true' admin-preview-health.json
-          curl -fsS "$DEPLOYMENT_URL/health/credentials" | tee admin-preview-credential-health.json
+          set +e
+          curl -sS "$DEPLOYMENT_URL/health/credentials" -o admin-preview-credential-health.json
+          credential_rc=$?
+          set -e
+          cat admin-preview-credential-health.json
+          test "$credential_rc" -eq 0
           grep -q '"ok":true' admin-preview-credential-health.json
           grep -q '"code":"PASS"' admin-preview-credential-health.json
           echo 'ADMIN_POLICY_PREVIEW_HEALTH=PASS'
@@ -109,6 +114,11 @@ jobs:
         run: |
           set -euo pipefail
           test -f /tmp/admin-preview-config.txt || printf 'DEPLOY_OR_REMOTE_SECRET_CHECK_FAILED\n' > /tmp/admin-preview-config.txt
+          if [ -f admin-preview-credential-health.json ]; then
+            printf '\nCREDENTIAL_HEALTH=' >> /tmp/admin-preview-config.txt
+            tr -d '\n' < admin-preview-credential-health.json >> /tmp/admin-preview-config.txt
+            printf '\n' >> /tmp/admin-preview-config.txt
+          fi
           path='diagnostics/admin-policy-preview-config-latest.txt'
           content="$(base64 -w0 /tmp/admin-preview-config.txt)"
           current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
@@ -152,7 +162,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Worker deployed; remote credential material validated; health PASS' >/dev/null
+            -f description='Worker deployed; real Cloudflare credential material validated; health PASS' >/dev/null
 
       - name: Report deployment failure
         if: failure()
