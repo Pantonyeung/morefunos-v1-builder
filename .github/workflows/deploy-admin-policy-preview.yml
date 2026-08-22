@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: e737790f0ac88d022836aca91f2c94be5e488a55
+  SOURCE_SHA: b8745b2346dc233f22bc1e7dd374c6dd6932e879
   WORKER_NAME: morefunos-v1-admin-policy-preview
 
 jobs:
@@ -54,7 +54,9 @@ jobs:
         run: |
           set -euo pipefail
           node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
-          echo 'GOOGLE_SERVICE_ACCOUNT_KEY_NORMALIZATION=PASS'
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
+          echo 'ADMIN_WORKER_EXACT_SOURCE_TESTS=PASS'
 
       - name: Deploy preview Worker code only
         id: deploy
@@ -86,7 +88,7 @@ jobs:
           if (missing.length) process.exit(2);
           NODE
 
-      - name: Verify preview health and credential material
+      - name: Verify preview health, capabilities and credential material
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         shell: bash
@@ -94,7 +96,18 @@ jobs:
           set -euo pipefail
           test -n "$DEPLOYMENT_URL"
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
-          grep -q '"ok":true' admin-preview-health.json
+          node <<'NODE'
+          const fs = require('fs');
+          const health = JSON.parse(fs.readFileSync('admin-preview-health.json', 'utf8'));
+          const required = ['policy','catalog','business-policy','store-settings','availability'];
+          const capabilities = Array.isArray(health.capabilities) ? health.capabilities : [];
+          const missing = required.filter(x => !capabilities.includes(x));
+          if (health.ok !== true || missing.length) {
+            console.error(JSON.stringify({healthOk: health.ok === true, capabilities, missing}, null, 2));
+            process.exit(2);
+          }
+          console.log(JSON.stringify({healthOk:true,capabilities}, null, 2));
+          NODE
           set +e
           curl -sS "$DEPLOYMENT_URL/health/credentials" -o admin-preview-credential-health.json
           credential_rc=$?
@@ -104,6 +117,7 @@ jobs:
           grep -q '"ok":true' admin-preview-credential-health.json
           grep -q '"code":"PASS"' admin-preview-credential-health.json
           echo 'ADMIN_POLICY_PREVIEW_HEALTH=PASS'
+          echo 'ADMIN_POLICY_PREVIEW_CAPABILITIES=PASS'
           echo 'ADMIN_POLICY_CREDENTIAL_MATERIAL=PASS'
 
       - name: Persist Preview config diagnostic
@@ -114,6 +128,11 @@ jobs:
         run: |
           set -euo pipefail
           test -f /tmp/admin-preview-config.txt || printf 'DEPLOY_OR_REMOTE_SECRET_CHECK_FAILED\n' > /tmp/admin-preview-config.txt
+          if [ -f admin-preview-health.json ]; then
+            printf '\nHEALTH=' >> /tmp/admin-preview-config.txt
+            tr -d '\n' < admin-preview-health.json >> /tmp/admin-preview-config.txt
+            printf '\n' >> /tmp/admin-preview-config.txt
+          fi
           if [ -f admin-preview-credential-health.json ]; then
             printf '\nCREDENTIAL_HEALTH=' >> /tmp/admin-preview-config.txt
             tr -d '\n' < admin-preview-credential-health.json >> /tmp/admin-preview-config.txt
@@ -162,7 +181,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Worker deployed; real Cloudflare credential material validated; health PASS' >/dev/null
+            -f description='Worker live with Policy/Catalog/BusinessPolicy/StoreSettings/Availability; secrets + health PASS' >/dev/null
 
       - name: Report deployment failure
         if: failure()
@@ -172,4 +191,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-policy-preview-deploy \
-            -f description='Worker test/deploy, remote secret binding, credential material, or health verification failed' >/dev/null
+            -f description='Worker test/deploy, runtime secrets, capabilities, credential material, or health failed' >/dev/null
