@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 7cf096aca4caba016c28d3e7ce23656e32727f84
+  SOURCE_SHA: 20add20f1a165155ab2a36d50bb7cf0e5d6d53c2
 
 jobs:
   functional-reality:
@@ -54,6 +54,8 @@ jobs:
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst08-table-merge-lifecycle.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst09-smm-intake-overview.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst10-customer-web-intake.test.ts
+            node --experimental-strip-types --test packages/staff/staff-authentication-service.test.ts
+            node --experimental-strip-types --test packages/runtime/staff-auth-http.test.ts
             node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
@@ -124,11 +126,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='Cross-port TST-01-10 PASS' >/dev/null
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='TST-01-10 + Staff AUTH-01 backend PASS' >/dev/null
       - name: Report failure
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=failure -f context=admin-functional-reality -f description='Cross-port dataset exact-SHA gate failed' >/dev/null
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=failure -f context=admin-functional-reality -f description='Cross-port or Staff AUTH exact-SHA gate failed' >/dev/null
