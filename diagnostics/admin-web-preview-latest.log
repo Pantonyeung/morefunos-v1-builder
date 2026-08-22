@@ -1,39 +1,16 @@
-SOURCE_SHA=8f5d443633e69355e398447d73f0dbc91b9c5dd8
+SOURCE_SHA=a33b0e3289586ab79db2c0587aafeb758bd921dc
 PAGES_PROJECT=morefunos-v1-admin-preview
 
 ===== STAGES =====
 workflow_started=PASS
 cloudflare_credentials=PASS
 exact_source=PASS
-build=PASS
-wrangler_cli=STARTED
-pages_project_check=STARTED
-pages_project_check_rc=1
-pages_deploy=STARTED
-pages_deploy_rc=0
-pages_deploy=PASS
-deployment_url=https://92078314.morefunos-v1-admin-preview.pages.dev
-route_smoke=STARTED
-immutable_deployment_ready=PASS
-checking=/admin/overview
-checking=/admin/catalog/products/PRC-001
-checking=/admin/catalog/options/OPT-001
-checking=/admin/catalog/combos/COM-001
-checking=/admin/storefront
-checking=/admin/operations/pickup-queue
-checking=/admin/settings/port-exposure
-checking=/admin/print-kitchen
-checking=/admin/publish
-route_smoke=PASS
-stable_alias_url=https://preview.morefunos-v1-admin-preview.pages.dev
-stable_alias=STARTED
-stable_alias=PASS
 
 ===== BUILD =====
 v22.23.2
 10.9.8
 
-added 121 packages in 13s
+added 121 packages in 15s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -41,57 +18,363 @@ added 121 packages in 13s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1096[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes [33m 447[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1207[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 317[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1513[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes [33m 579[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1800[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 533[2mms[22m[39m
+ [31m❯[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1160[2mms[22m[39m
+[31m     [31m×[31m renders the Publish screen in Traditional Chinese instead of the English draft copy[39m[33m 1158[2mms[22m[39m
 
-[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
-[2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m   Start at [22m 00:00:12
-[2m   Duration [22m 3.46s[2m (transform 472ms, setup 0ms, import 2.28s, tests 2.31s, environment 2.99s)[22m
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/zh-hk-localization.vitest.test.tsx[2m > [22mzh-HK Admin language gate[2m > [22mrenders the Publish screen in Traditional Chinese instead of the English draft copy
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: 驗證
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<strong>[39m
+  [0m驗證[0m
+[36m</strong>[39m
+
+Ignored nodes: comments, script, style
+[36m<span>[39m
+  [0m驗證[0m
+[36m</span>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"admin-shell"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"admin-sidebar"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"brand"[39m
+        [36m>[39m
+          [0mMoreFunOS[0m
+        [36m</div>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Admin navigation"[39m
+          [33mclass[39m=[32m"admin-nav"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"nav-item "[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/admin/overview"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.8"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<rect[39m
+                [33mheight[39m=[32m"9"[39m
+                [33mrx[39m=[32m"1"[39m
+                [33mwidth[39m=[32m"7"[39m
+                [33mx[39m=[32m"3"[39m
+                [33my[39m=[32m"3"[39m
+              [36m/>[39m
+              [36m<rect[39m
+                [33mheight[39m=[32m"5"[39m
+                [33mrx[39m=[32m"1"[39m
+                [33mwidth[39m=[32m"7"[39m
+                [33mx[39m=[32m"14"[39m
+                [33my[39m=[32m"3"[39m
+              [36m/>[39m
+              [36m<rect[39m
+                [33mheight[39m=[32m"9"[39m
+                [33mrx[39m=[32m"1"[39m
+                [33mwidth[39m=[32m"7"[39m
+                [33mx[39m=[32m"14"[39m
+                [33my[39m=[32m"12"[39m
+              [36m/>[39m
+              [36m<rect[39m
+                [33mheight[39m=[32m"5"[39m
+                [33mrx[39m=[32m"1"[39m
+                [33mwidth[39m=[32m"7"[39m
+                [33mx[39m=[32m"3"[39m
+                [33my[39m=[32m"16"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span>[39m
+              [0m總覽[0m
+            [36m</span>[39m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"nav-item "[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-package-open"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.8"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 22v-9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span>[39m
+              [0m產品目錄[0m
+            [36m</span>[39m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"nav-item "[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/admin/storefront"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-store"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.8"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span>[39m
+              [0m客戶前台[0m
+            [36m</span>[39m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"nav-item "[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-gauge"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"1.8"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m12 14 4-4"[39m
+              [36m/>[39m
+        ...
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mlang[39m=[32m"zh-HK"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"admin-shell"[39m
+      [36m>[39m
+        [36m<aside[39m
+          [33mclass[39m=[32m"admin-sidebar"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"brand"[39m
+          [36m>[39m
+            [0mMoreFunOS[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Admin navigation"[39m
+            [33mclass[39m=[32m"admin-nav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/overview"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"9"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"5"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"14"[39m
+                  [33my[39m=[32m"3"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"9"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"14"[39m
+                  [33my[39m=[32m"12"[39m
+                [36m/>[39m
+                [36m<rect[39m
+                  [33mheight[39m=[32m"5"[39m
+                  [33mrx[39m=[32m"1"[39m
+                  [33mwidth[39m=[32m"7"[39m
+                  [33mx[39m=[32m"3"[39m
+                  [33my[39m=[32m"16"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m總覽[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-package-open"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 22v-9"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m產品目錄[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/storefront"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-store"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.8"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span>[39m
+                [0m客戶前台[0m
+              [36m</span>[39m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"nav-item "[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"lucide lucide-gauge"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m...
+[90m [2m❯[22m waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[36m [2m❯[22m src/zh-hk-localization.vitest.test.tsx:[2m17:11[22m[39m
+    [90m 15|[39m     )[33m;[39m
+    [90m 16|[39m
+    [90m 17|[39m     [35mawait[39m [34mwaitFor[39m(() [33m=>[39m {
+    [90m   |[39m           [31m^[39m
+    [90m 18|[39m       [34mexpect[39m(screen[33m.[39m[34mgetByRole[39m([32m'heading'[39m[33m,[39m {name[33m:[39m [32m'發佈管理'[39m}))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m 19|[39m       [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'草稿變更'[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
 
 
-> @morefunos/admin-web@0.1.0-d104 build
-> tsc -b && vite build
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m23 passed[39m[22m[90m (24)[39m
+[2m   Start at [22m 00:08:12
+[2m   Duration [22m 5.91s[2m (transform 572ms, setup 0ms, import 4.32s, tests 4.48s, environment 5.29s)[22m
 
-[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
-[2Ktransforming...✓ 3144 modules transformed.
-rendering chunks...
-computing gzip size...
-dist/index.html                   0.50 kB │ gzip:   0.31 kB
-dist/assets/index-CKeAsPBi.css   66.72 kB │ gzip:  12.35 kB
-dist/assets/index-76JUqn9c.js   356.90 kB │ gzip: 107.01 kB
 
-[32m✓ built in 382ms[39m
+::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/zh-hk-localization.vitest.test.tsx,title=src/zh-hk-localization.vitest.test.tsx > zh-HK Admin language gate > renders the Publish screen in Traditional Chinese instead of the English draft copy,line=17,column=11::TestingLibraryElementError: Found multiple elements with the text: 驗證%0A%0AHere are the matching elements:%0A%0AIgnored nodes: comments, script, style%0A<strong>%0A  驗證%0A</strong>%0A%0AIgnored nodes: comments, script, style%0A<span>%0A  驗證%0A</span>%0A%0A(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              總覽%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              產品目錄%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              客戶前台%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="m12 14 4-4"%0A              />%0A        ...%0A%0AIgnored nodes: comments, script, style%0A<html%0A  lang="zh-HK"%0A>%0A  <head />%0A  <body>%0A    <div>%0A      <div%0A        class="admin-shell"%0A      >%0A        <aside%0A          class="admin-sidebar"%0A        >%0A          <div%0A            class="brand"%0A          >%0A            MoreFunOS%0A          </div>%0A          <nav%0A            aria-label="Admin navigation"%0A            class="admin-nav"%0A          >%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/overview"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-layout-dashboard"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="3"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="3"%0A                />%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="12"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="16"%0A                />%0A              </svg>%0A              <span>%0A                總覽%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/catalog/products/PRC-001"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-package-open"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M12 22v-9"%0A                />%0A                <path%0A                  d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A                />%0A                <path%0A                  d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A                />%0A                <path%0A                  d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A                />%0A              </svg>%0A              <span>%0A                產品目錄%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/storefront"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-store"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A                />%0A                <path%0A                  d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A                />%0A                <path%0A                  d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A                />%0A              </svg>%0A              <span>%0A                客戶前台%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/operations/pickup-queue"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-gauge"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin...%0A ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27%0A ❯ src/zh-hk-localization.vitest.test.tsx:17:11%0A%0A
 
 ===== WRANGLER =====
-4.125.0
-
- ⛅️ wrangler 4.125.0
-────────────────────
-
-[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/690765acf1b9b85b9c09e12879ad9786/pages/projects) failed.[0m
-
-  A project with this name already exists. Choose a different project name. [code: 8000002]
-  
-  If you think this is a bug, please open an issue at: [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
-
-
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-08-22_00-00-28_192.log"
-
- ⛅️ wrangler 4.125.0
-────────────────────
-[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mWarning: Your working directory is a git repo and has uncommitted changes[0m
-
-  To silence this warning, pass in --commit-dirty=true
-
-
-Uploading... (4/4)
-✨ Success! Uploaded 0 files (4 already uploaded) (0.30 sec)
-
-✨ Uploading _redirects
-🌎 Deploying...
-✨ Deployment complete! Take a peek over at https://92078314.morefunos-v1-admin-preview.pages.dev
-✨ Deployment alias URL: https://preview.morefunos-v1-admin-preview.pages.dev
