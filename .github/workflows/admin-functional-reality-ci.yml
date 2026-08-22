@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 5adbcb576ebffd9cf934de2a55ec9b3f828ecd93
+  SOURCE_SHA: b8745b2346dc233f22bc1e7dd374c6dd6932e879
 
 jobs:
   functional-reality:
@@ -58,6 +58,8 @@ jobs:
             node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-policy-http.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-policy-http-prefix.test.ts
             node --experimental-strip-types --test packages/runtime/admin-availability-http.test.ts
             node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
@@ -104,7 +106,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Firebase Availability resolver + durable policy/settings chain PASS' >/dev/null
+            -f description='Business Policy + Store Settings -> Availability Firebase chain PASS' >/dev/null
 
       - name: Report failure
         if: failure()
