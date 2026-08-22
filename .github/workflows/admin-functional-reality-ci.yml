@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 8e0c286d3ec830df0990da47cb8623d38954b572
+  SOURCE_SHA: 1f281f98d779027d340e1fbc1b6350a3b5da12ad
 
 jobs:
   functional-reality:
@@ -44,13 +44,14 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
 
-      - name: Verify Catalog, Business Policy, Store Settings, Availability and Admin Worker contracts
+      - name: Verify Admin domain and internal infrastructure contracts
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
           {
             echo 'admin_domain_tests=STARTED'
+            node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
             node --experimental-strip-types --test packages/policy/business-policy-durable-authority.test.ts
@@ -106,7 +107,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Availability + Business Policy Pricing Admin control chain PASS' >/dev/null
+            -f description='Pricing + Availability + internal capacity contract PASS' >/dev/null
 
       - name: Report failure
         if: failure()
