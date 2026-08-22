@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: d5be096b28eec423a31097fb1c6b69b6c7c9d3f9
+  SOURCE_SHA: dd5d91ae23eca77d76b75f2388d1fd4abbd9c534
 
 jobs:
   functional-reality:
@@ -61,6 +61,7 @@ jobs:
             node --experimental-strip-types --test packages/native/hardware-route-configuration.test.ts
             node --experimental-strip-types --test packages/admin/port-exposure-projection.test.ts
             node --experimental-strip-types --test packages/admin/admin-overview-projection.test.ts
+            node --experimental-strip-types --test packages/reporting/admin-live-operational-projection.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
@@ -124,7 +125,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Overview + Port Exposure + Native routing closure PASS' >/dev/null
+            -f description='Overview + canonical live operational projection PASS' >/dev/null
 
       - name: Report failure
         if: failure()
