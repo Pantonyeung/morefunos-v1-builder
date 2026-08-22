@@ -1,0 +1,74 @@
+name: Admin Functional Reality CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/admin-functional-reality-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_SHA: effad566183f3d02e5890192573a55503aa5e44c
+
+jobs:
+  functional-reality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact V1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify Catalog interaction contracts
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
+          node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+
+      - name: Verify Admin Web interaction and build
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success -f context=admin-functional-reality \
+            -f description='Catalog contracts + Admin functional interaction/build PASS' >/dev/null
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=failure -f context=admin-functional-reality \
+            -f description='Catalog or Admin functional reality gate failed' >/dev/null
