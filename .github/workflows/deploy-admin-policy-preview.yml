@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 4d870b243ad2a7c311e37b8f2a9a2570188f4848
+  SOURCE_SHA: 9832f836e90a0e64f887907f114d8ff911c1ed58
   WORKER_NAME: morefunos-v1-admin-policy-preview
 
 jobs:
@@ -86,7 +86,7 @@ jobs:
           if (missing.length) process.exit(2);
           NODE
 
-      - name: Verify preview health
+      - name: Verify preview health and credential material
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         shell: bash
@@ -95,7 +95,11 @@ jobs:
           test -n "$DEPLOYMENT_URL"
           curl -fsS "$DEPLOYMENT_URL/health" | tee admin-preview-health.json
           grep -q '"ok":true' admin-preview-health.json
+          curl -fsS "$DEPLOYMENT_URL/health/credentials" | tee admin-preview-credential-health.json
+          grep -q '"ok":true' admin-preview-credential-health.json
+          grep -q '"code":"PASS"' admin-preview-credential-health.json
           echo 'ADMIN_POLICY_PREVIEW_HEALTH=PASS'
+          echo 'ADMIN_POLICY_CREDENTIAL_MATERIAL=PASS'
 
       - name: Persist Preview config diagnostic
         if: always()
@@ -136,6 +140,7 @@ jobs:
           path: |
             admin-policy-preview-url.txt
             admin-preview-health.json
+            admin-preview-credential-health.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -147,7 +152,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Worker code deployed; key normalization tested; runtime secrets present; health PASS' >/dev/null
+            -f description='Worker deployed; remote credential material validated; health PASS' >/dev/null
 
       - name: Report deployment failure
         if: failure()
@@ -157,4 +162,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-policy-preview-deploy \
-            -f description='Worker test/deploy, remote secret binding, or health verification failed' >/dev/null
+            -f description='Worker test/deploy, remote secret binding, credential material, or health verification failed' >/dev/null
