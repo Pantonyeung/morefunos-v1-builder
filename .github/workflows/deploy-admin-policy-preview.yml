@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
+  SOURCE_SHA: 4d870b243ad2a7c311e37b8f2a9a2570188f4848
   WORKER_NAME: morefunos-v1-admin-policy-preview
 
 jobs:
@@ -32,6 +32,10 @@ jobs:
           echo 'BUILDER_DEPLOY_CREDENTIALS=PASS'
           echo 'RUNTIME_SECRETS=Cloudflare Worker only'
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -43,6 +47,14 @@ jobs:
 
       - name: Verify exact source
         run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify Google service-account key normalization
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
+          echo 'GOOGLE_SERVICE_ACCOUNT_KEY_NORMALIZATION=PASS'
 
       - name: Deploy preview Worker code only
         id: deploy
@@ -135,7 +147,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-policy-preview-deploy \
-            -f description='Worker code deployed; Cloudflare runtime secrets present; health PASS' >/dev/null
+            -f description='Worker code deployed; key normalization tested; runtime secrets present; health PASS' >/dev/null
 
       - name: Report deployment failure
         if: failure()
@@ -145,4 +157,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-policy-preview-deploy \
-            -f description='Worker deploy, remote secret binding, or health verification failed' >/dev/null
+            -f description='Worker test/deploy, remote secret binding, or health verification failed' >/dev/null
