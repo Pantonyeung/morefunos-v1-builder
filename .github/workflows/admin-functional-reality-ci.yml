@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: b73ee58a31ed5a92689cb453dc092db3dff63f22
+  SOURCE_SHA: ec7e6fb8b6531f1e4fd7ad4038be0c634608098b
 
 jobs:
   functional-reality:
@@ -60,6 +60,7 @@ jobs:
             node --experimental-strip-types --test packages/printing/print-routing.test.ts
             node --experimental-strip-types --test packages/native/hardware-route-configuration.test.ts
             node --experimental-strip-types --test packages/admin/port-exposure-projection.test.ts
+            node --experimental-strip-types --test packages/admin/admin-overview-projection.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
@@ -77,6 +78,7 @@ jobs:
             node --experimental-strip-types --test packages/runtime/admin-policy-http-prefix.test.ts
             node --experimental-strip-types --test packages/runtime/admin-availability-http.test.ts
             node --experimental-strip-types --test packages/runtime/admin-port-exposure-http.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-overview-http.test.ts
             node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
@@ -122,7 +124,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Port Exposure + Native routing + Printing closure PASS' >/dev/null
+            -f description='Overview + Port Exposure + Native routing closure PASS' >/dev/null
 
       - name: Report failure
         if: failure()
