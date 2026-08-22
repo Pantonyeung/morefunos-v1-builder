@@ -1,1 +1,5 @@
-MISSING:FIREBASE_DATABASE_URL,GOOGLE_CLIENT_EMAIL,GOOGLE_PRIVATE_KEY,STAFF_SESSIONS_JSON,ADMIN_STAFF_BOOTSTRAP_JSON
+CLOUDFLARE_RUNTIME_SECRETS=PASS
+
+HEALTH={"ok":true,"status":"ready","component":"admin-policy-worker","capabilities":["policy","catalog","business-policy","store-settings","availability"]}
+
+CREDENTIAL_HEALTH={"ok":true,"component":"admin-policy-worker-credentials","googleClientEmailConfigured":true,"googlePrivateKey":{"ok":true,"format":"json-string","code":"PASS"}}

@@ -11,23 +11,18 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: fe6a38f58dbeb8a8a3be259f906858e60ea728a7
-  PREFLIGHT_REVISION: '2'
+  SOURCE_SHA: 403b297b4e3e9bcafb6f4a40a606dc5eb8086bfc
+  PREFLIGHT_REVISION: '4'
 
 jobs:
   preflight:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check required secrets without exposing values
+      - name: Check Builder-only credentials without exposing values
         id: check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
-          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
           V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
         shell: bash
         run: |
@@ -35,11 +30,6 @@ jobs:
           required=(
             CLOUDFLARE_API_TOKEN
             CLOUDFLARE_ACCOUNT_ID
-            FIREBASE_DATABASE_URL
-            GOOGLE_CLIENT_EMAIL
-            GOOGLE_PRIVATE_KEY
-            STAFF_SESSIONS_JSON
-            ADMIN_STAFF_BOOTSTRAP_JSON
             V1_SOURCE_READ_TOKEN
           )
           missing=()
@@ -48,11 +38,12 @@ jobs:
           done
           if [ "${#missing[@]}" -gt 0 ]; then
             printf 'missing=%s\n' "$(IFS=,; echo "${missing[*]}")" >> "$GITHUB_OUTPUT"
-            printf 'MISSING_REQUIRED_SECRETS=%s\n' "$(IFS=,; echo "${missing[*]}")"
+            printf 'MISSING_BUILDER_CREDENTIALS=%s\n' "$(IFS=,; echo "${missing[*]}")"
             exit 1
           fi
           echo 'missing=' >> "$GITHUB_OUTPUT"
           echo 'ADMIN_CLOUDFLARE_PREVIEW_PREFLIGHT=PASS'
+          echo 'RUNTIME_SECRET_POLICY=Cloudflare Worker only'
 
       - name: Report success
         if: success()
@@ -62,7 +53,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-cloudflare-preview-preflight \
-            -f description='Cloudflare Preview required secrets are present' >/dev/null
+            -f description='Builder credentials present; runtime secrets stay in Cloudflare' >/dev/null
 
       - name: Report failure
         if: failure()
@@ -71,7 +62,7 @@ jobs:
           MISSING: ${{ steps.check.outputs.missing }}
         shell: bash
         run: |
-          desc='Cloudflare Preview secrets missing'
+          desc='Builder credentials missing'
           if [ -n "$MISSING" ]; then desc="$desc: $MISSING"; fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-cloudflare-preview-preflight \
