@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: d4436be1664f8d2e1112460721d811007cd8c402
+  SOURCE_SHA: 4d870b243ad2a7c311e37b8f2a9a2570188f4848
   PAGES_PROJECT: morefunos-v1-admin-preview
 
 jobs:
