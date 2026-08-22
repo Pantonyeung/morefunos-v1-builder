@@ -1,4 +1,4 @@
-SOURCE_SHA=d156e8bc6cc53c6aaf795b3cabc951de9aa4c841
+SOURCE_SHA=3fbc3ec692aff483051de4f7294e41fc74035c7f
 workflow=STARTED
 exact_source=PASS
 admin_domain_tests=STARTED
@@ -6,37 +6,37 @@ TAP version 13
 # Subtest: required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
 ok 1 - required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
   ---
-  duration_ms: 2.021513
+  duration_ms: 2.217957
   type: 'test'
   ...
 # Subtest: open_configurator accepts required single-select input
 ok 2 - open_configurator accepts required single-select input
   ---
-  duration_ms: 1.118107
+  duration_ms: 1.082354
   type: 'test'
   ...
 # Subtest: portion control accepts canonical none/less/normal/more levels
 ok 3 - portion control accepts canonical none/less/normal/more levels
   ---
-  duration_ms: 0.2786
+  duration_ms: 0.295663
   type: 'test'
   ...
 # Subtest: portion control rejects a preset without normal level
 ok 4 - portion control rejects a preset without normal level
   ---
-  duration_ms: 0.492613
+  duration_ms: 0.508161
   type: 'test'
   ...
 # Subtest: legacy required options resolve centrally to open_configurator without local SMT inference
 ok 5 - legacy required options resolve centrally to open_configurator without local SMT inference
   ---
-  duration_ms: 0.382668
+  duration_ms: 0.409075
   type: 'test'
   ...
 # Subtest: legacy products with no required input resolve centrally to direct_add
 ok 6 - legacy products with no required input resolve centrally to direct_add
   ---
-  duration_ms: 0.483458
+  duration_ms: 0.516405
   type: 'test'
   ...
 1..6
@@ -47,78 +47,78 @@ ok 6 - legacy products with no required input resolve centrally to direct_add
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 303.670694
+# duration_ms 305.287827
 TAP version 13
 # Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
 ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
   ---
-  duration_ms: 2.503978
+  duration_ms: 4.091757
   type: 'test'
   ...
 # Subtest: category and product identities must be unique and stable inside a revision
 ok 2 - category and product identities must be unique and stable inside a revision
   ---
-  duration_ms: 0.400251
+  duration_ms: 0.416439
   type: 'test'
   ...
 # Subtest: product category reference and active lifecycle combinations are validated
 ok 3 - product category reference and active lifecycle combinations are validated
   ---
-  duration_ms: 0.307217
+  duration_ms: 0.334776
   type: 'test'
   ...
 # Subtest: active products require at least one canonical eligible OrderChannel
 ok 4 - active products require at least one canonical eligible OrderChannel
   ---
-  duration_ms: 1.45811
+  duration_ms: 2.051797
   type: 'test'
   ...
 # Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
 ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
   ---
-  duration_ms: 0.509284
+  duration_ms: 0.503802
   type: 'test'
   ...
 # Subtest: inactive products may remain archived without sale-channel eligibility
 ok 6 - inactive products may remain archived without sale-channel eligibility
   ---
-  duration_ms: 0.269646
+  duration_ms: 0.302115
   type: 'test'
   ...
 # Subtest: catalog editor may draft and validate but cannot publish
 ok 7 - catalog editor may draft and validate but cannot publish
   ---
-  duration_ms: 108.247441
+  duration_ms: 140.255597
   type: 'test'
   ...
 # Subtest: catalog publish is immutable and activation stays explicit
 ok 8 - catalog publish is immutable and activation stays explicit
   ---
-  duration_ms: 2.115114
+  duration_ms: 1.380551
   type: 'test'
   ...
 # Subtest: catalog rollback restores an older immutable published revision
 ok 9 - catalog rollback restores an older immutable published revision
   ---
-  duration_ms: 1.634718
+  duration_ms: 1.674692
   type: 'test'
   ...
 # Subtest: normal forward activation rejects destructive product removal
 ok 10 - normal forward activation rejects destructive product removal
   ---
-  duration_ms: 1.124904
+  duration_ms: 1.200475
   type: 'test'
   ...
 # Subtest: normal forward activation rejects category removal and store identity drift
 ok 11 - normal forward activation rejects category removal and store identity drift
   ---
-  duration_ms: 2.056865
+  duration_ms: 2.283169
   type: 'test'
   ...
 # Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
 ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
   ---
-  duration_ms: 0.915759
+  duration_ms: 0.983168
   type: 'test'
   ...
 1..12
@@ -129,18 +129,18 @@ ok 12 - archive keeps stable product identity and explicit rollback may restore 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 247.986356
+# duration_ms 307.582889
 TAP version 13
 # Subtest: durable Business Policy returns active canonical snapshot with control-plane version injected
 ok 1 - durable Business Policy returns active canonical snapshot with control-plane version injected
   ---
-  duration_ms: 20.047495
+  duration_ms: 20.922722
   type: 'test'
   ...
 # Subtest: durable Business Policy survives a new authority instance on the same DurabilityPort
 ok 2 - durable Business Policy survives a new authority instance on the same DurabilityPort
   ---
-  duration_ms: 2.087967
+  duration_ms: 2.409255
   type: 'test'
   ...
 1..2
@@ -151,48 +151,48 @@ ok 2 - durable Business Policy survives a new authority instance on the same Dur
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 128.38985
+# duration_ms 150.057936
 TAP version 13
 # Subtest: valid MoreFun Hong Kong store settings pass validation
 ok 1 - valid MoreFun Hong Kong store settings pass validation
   ---
-  duration_ms: 2.375188
+  duration_ms: 2.611293
   type: 'test'
   ...
 # Subtest: Hong Kong timezone currency and locale are fixed for V1
 ok 2 - Hong Kong timezone currency and locale are fixed for V1
   ---
-  duration_ms: 0.350276
+  duration_ms: 0.344455
   type: 'test'
   ...
 # Subtest: business hours require each weekday exactly once
 ok 3 - business hours require each weekday exactly once
   ---
-  duration_ms: 0.244999
+  duration_ms: 0.278721
   type: 'test'
   ...
 # Subtest: open-day times must be valid ordered HH:mm and closed day carries no times
 ok 4 - open-day times must be valid ordered HH:mm and closed day carries no times
   ---
-  duration_ms: 0.327481
+  duration_ms: 0.338994
   type: 'test'
   ...
 # Subtest: enabled dine-in and takeaway require matching service modes
 ok 5 - enabled dine-in and takeaway require matching service modes
   ---
-  duration_ms: 0.359714
+  duration_ms: 0.392514
   type: 'test'
   ...
 # Subtest: draft validate publish stays inactive until explicit activation and rollback restores immutable version
 ok 6 - draft validate publish stays inactive until explicit activation and rollback restores immutable version
   ---
-  duration_ms: 17.208044
+  duration_ms: 12.470879
   type: 'test'
   ...
 # Subtest: Staff RBAC is authoritative for Store Settings lifecycle
 ok 7 - Staff RBAC is authoritative for Store Settings lifecycle
   ---
-  duration_ms: 2.545175
+  duration_ms: 1.851001
   type: 'test'
   ...
 1..7
@@ -203,18 +203,18 @@ ok 7 - Staff RBAC is authoritative for Store Settings lifecycle
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 199.708941
+# duration_ms 167.903567
 TAP version 13
 # Subtest: durable Store Settings survives restart and returns typed active payload
 ok 1 - durable Store Settings survives restart and returns typed active payload
   ---
-  duration_ms: 20.668383
+  duration_ms: 22.184181
   type: 'test'
   ...
 # Subtest: durable Store Settings preserves domain Staff permission mapping
 ok 2 - durable Store Settings preserves domain Staff permission mapping
   ---
-  duration_ms: 2.706176
+  duration_ms: 2.510534
   type: 'test'
   ...
 1..2
@@ -225,54 +225,54 @@ ok 2 - durable Store Settings preserves domain Staff permission mapping
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 151.214117
+# duration_ms 207.893093
 TAP version 13
 # Subtest: SMT soldout and SMM manual restore share one Availability revision
 ok 1 - SMT soldout and SMM manual restore share one Availability revision
   ---
-  duration_ms: 219.183212
+  duration_ms: 335.886152
   type: 'test'
   ...
 # Subtest: Admin multi-target soldout is atomic and increments revision once
 ok 2 - Admin multi-target soldout is atomic and increments revision once
   ---
-  duration_ms: 1.240316
+  duration_ms: 1.286646
   type: 'test'
   ...
 # Subtest: actor without availability.change is rejected on SMT SMM and Admin
 ok 3 - actor without availability.change is rejected on SMT SMM and Admin
   ---
-  duration_ms: 1.164017
+  duration_ms: 1.291515
   type: 'test'
   ...
 # Subtest: stale cross-surface command cannot overwrite newer revision
 ok 4 - stale cross-surface command cannot overwrite newer revision
   ---
-  duration_ms: 0.685897
+  duration_ms: 0.737709
   type: 'test'
   ...
 # Subtest: idempotent exact replay returns original result and conflicting replay fails
 ok 5 - idempotent exact replay returns original result and conflicting replay fails
   ---
-  duration_ms: 0.890262
+  duration_ms: 0.945038
   type: 'test'
   ...
 # Subtest: unknown duplicate and empty targets fail without partial mutation or Facts
 ok 6 - unknown duplicate and empty targets fail without partial mutation or Facts
   ---
-  duration_ms: 0.772568
+  duration_ms: 0.841343
   type: 'test'
   ...
 # Subtest: accepted mutation emits one immutable Availability Fact with HK business date
 ok 7 - accepted mutation emits one immutable Availability Fact with HK business date
   ---
-  duration_ms: 1.182171
+  duration_ms: 1.197489
   type: 'test'
   ...
 # Subtest: untouched nodes project the current BusinessPolicy baseline without creating an override
 ok 8 - untouched nodes project the current BusinessPolicy baseline without creating an override
   ---
-  duration_ms: 0.297938
+  duration_ms: 0.28355
   type: 'test'
   ...
 1..8
@@ -283,24 +283,24 @@ ok 8 - untouched nodes project the current BusinessPolicy baseline without creat
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 345.960515
+# duration_ms 464.151759
 TAP version 13
 # Subtest: availability mutation survives authority restart with atomic durable facts and one canonical revision
 ok 1 - availability mutation survives authority restart with atomic durable facts and one canonical revision
   ---
-  duration_ms: 38.24015
+  duration_ms: 33.317479
   type: 'test'
   ...
 # Subtest: idempotent replay after restart does not grow durable journal revision or duplicate facts
 ok 2 - idempotent replay after restart does not grow durable journal revision or duplicate facts
   ---
-  duration_ms: 3.543739
+  duration_ms: 3.001763
   type: 'test'
   ...
 # Subtest: stale Admin availability revision fails closed after another writer committed
 ok 3 - stale Admin availability revision fails closed after another writer committed
   ---
-  duration_ms: 2.883212
+  duration_ms: 2.395609
   type: 'test'
   ...
 1..3
@@ -311,36 +311,36 @@ ok 3 - stale Admin availability revision fails closed after another writer commi
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 180.163762
+# duration_ms 156.454431
 TAP version 13
 # Subtest: Admin policy HTTP transport rejects missing and invalid staff session
 ok 1 - Admin policy HTTP transport rejects missing and invalid staff session
   ---
-  duration_ms: 78.147451
+  duration_ms: 93.749146
   type: 'test'
   ...
 # Subtest: canonical Staff Authority remains permission authority behind HTTP
 ok 2 - canonical Staff Authority remains permission authority behind HTTP
   ---
-  duration_ms: 3.969568
+  duration_ms: 3.670764
   type: 'test'
   ...
 # Subtest: HTTP lifecycle persists through durable Policy Authority and active read is canonical
 ok 3 - HTTP lifecycle persists through durable Policy Authority and active read is canonical
   ---
-  duration_ms: 5.238297
+  duration_ms: 5.503361
   type: 'test'
   ...
 # Subtest: stale active-version command is projected as HTTP 409, never success
 ok 4 - stale active-version command is projected as HTTP 409, never success
   ---
-  duration_ms: 5.036952
+  duration_ms: 5.566608
   type: 'test'
   ...
 # Subtest: invalid JSON fails closed with 400 after authorization
 ok 5 - invalid JSON fails closed with 400 after authorization
   ---
-  duration_ms: 0.595964
+  duration_ms: 0.637993
   type: 'test'
   ...
 1..5
@@ -351,12 +351,12 @@ ok 5 - invalid JSON fails closed with 400 after authorization
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 207.597806
+# duration_ms 232.475438
 TAP version 13
 # Subtest: Admin Policy HTTP router can mount the same canonical lifecycle at a domain-specific prefix
 ok 1 - Admin Policy HTTP router can mount the same canonical lifecycle at a domain-specific prefix
   ---
-  duration_ms: 49.610408
+  duration_ms: 53.114256
   type: 'test'
   ...
 1..1
@@ -367,36 +367,36 @@ ok 1 - Admin Policy HTTP router can mount the same canonical lifecycle at a doma
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 171.062909
+# duration_ms 168.340873
 TAP version 13
 # Subtest: Admin availability GET returns canonical projection
 ok 1 - Admin availability GET returns canonical projection
   ---
-  duration_ms: 36.74288
+  duration_ms: 39.311537
   type: 'test'
   ...
 # Subtest: Admin soldout mutation writes canonical Availability as owner/admin source
 ok 2 - Admin soldout mutation writes canonical Availability as owner/admin source
   ---
-  duration_ms: 28.278988
+  duration_ms: 24.580842
   type: 'test'
   ...
 # Subtest: Admin restore maps available status to manual_restore and stale revision returns 409
 ok 3 - Admin restore maps available status to manual_restore and stale revision returns 409
   ---
-  duration_ms: 4.82932
+  duration_ms: 5.204401
   type: 'test'
   ...
 # Subtest: Admin availability rejects missing or invalid Owner token
 ok 4 - Admin availability rejects missing or invalid Owner token
   ---
-  duration_ms: 0.579861
+  duration_ms: 0.669622
   type: 'test'
   ...
 # Subtest: Admin availability can resolve current durable authority per request and fails 503 when prerequisites are not active
 ok 5 - Admin availability can resolve current durable authority per request and fails 503 when prerequisites are not active
   ---
-  duration_ms: 1.453679
+  duration_ms: 1.60411
   type: 'test'
   ...
 1..5
@@ -407,60 +407,167 @@ ok 5 - Admin availability can resolve current durable authority per request and 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 194.527591
+# duration_ms 201.829534
 TAP version 13
 # Subtest: service-account provider signs JWT, exchanges token, and caches until expiry window
-not ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
+ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
   ---
-  duration_ms: 111.67234
+  duration_ms: 73.358871
   type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.test.ts:20:1'
-  failureType: 'testCodeFailure'
-  error: |-
-    Expected values to be strictly equal:
-    + actual - expected
-    
-    + 'urn:ietf:params:oauth:grant-type:jwt-bearer'
-    - 'urn:ietf:params:oauth-grant-type:jwt-bearer'
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected: 'urn:ietf:params:oauth-grant-type:jwt-bearer'
-  actual: 'urn:ietf:params:oauth:grant-type:jwt-bearer'
-  operator: 'strictEqual'
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.test.ts:44:10)
-    async Test.run (node:internal/test_runner/test:1054:7)
-    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
   ...
 # Subtest: service-account provider accepts escaped PEM and common secret wrappers
-not ok 2 - service-account provider accepts escaped PEM and common secret wrappers
+ok 2 - service-account provider accepts escaped PEM and common secret wrappers
   ---
-  duration_ms: 34.071675
+  duration_ms: 87.536452
   type: 'test'
-  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.test.ts:61:1'
-  failureType: 'testCodeFailure'
-  error: 'GOOGLE_PRIVATE_KEY_INVALID_BASE64'
-  code: 'ERR_TEST_FAILURE'
-  stack: |-
-    pemToDer (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.ts:89:29)
-    GoogleServiceAccountTokenProvider.getToken (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.ts:124:7)
-    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/durability/google-service-account-token-provider.test.ts:76:33)
-    async Test.run (node:internal/test_runner/test:1054:7)
-    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
   ...
 # Subtest: service-account provider fails closed on malformed private key and bad OAuth response
 ok 3 - service-account provider fails closed on malformed private key and bad OAuth response
   ---
-  duration_ms: 33.901377
+  duration_ms: 32.51027
   type: 'test'
   ...
 1..3
 # tests 3
 # suites 0
-# pass 1
-# fail 2
+# pass 3
+# fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 269.430727
+# duration_ms 290.506088
+TAP version 13
+# Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+  ---
+  duration_ms: 44.911225
+  type: 'test'
+  ...
+# Subtest: Worker health advertises Policy, Catalog and Availability capabilities and method gate fails closed
+ok 2 - Worker health advertises Policy, Catalog and Availability capabilities and method gate fails closed
+  ---
+  duration_ms: 2.562862
+  type: 'test'
+  ...
+# Subtest: Worker mounts canonical Availability route beside Policy and Catalog
+ok 3 - Worker mounts canonical Availability route beside Policy and Catalog
+  ---
+  duration_ms: 1.410939
+  type: 'test'
+  ...
+# Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+ok 4 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+  ---
+  duration_ms: 7.117769
+  type: 'test'
+  ...
+# Subtest: Worker mounts authenticated durable Catalog routes beside Policy routes
+ok 5 - Worker mounts authenticated durable Catalog routes beside Policy routes
+  ---
+  duration_ms: 3.68985
+  type: 'test'
+  ...
+# Subtest: Worker cannot publish merely because the session actor is authenticated
+ok 6 - Worker cannot publish merely because the session actor is authenticated
+  ---
+  duration_ms: 2.495997
+  type: 'test'
+  ...
+# Subtest: Worker requires at least one HTTPS allowed Origin
+ok 7 - Worker requires at least one HTTPS allowed Origin
+  ---
+  duration_ms: 0.55105
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 211.102664
+TAP version 13
+# Subtest: single-owner production composition routes authenticated durable publish through real adapters
+ok 1 - single-owner production composition routes authenticated durable publish through real adapters
+  ---
+  duration_ms: 92.724633
+  type: 'test'
+  ...
+# Subtest: single-owner production composition rejects an unknown bearer token
+ok 2 - single-owner production composition rejects an unknown bearer token
+  ---
+  duration_ms: 11.235369
+  type: 'test'
+  ...
+# Subtest: production composition rejects malformed policy envelope before publish
+ok 3 - production composition rejects malformed policy envelope before publish
+  ---
+  duration_ms: 11.760541
+  type: 'test'
+  ...
+# Subtest: production composition validates repo identity, environment, origins and owner token
+ok 4 - production composition validates repo identity, environment, origins and owner token
+  ---
+  duration_ms: 10.362677
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 282.707701
+admin_domain_tests=PASS
+admin_web=STARTED
+
+added 121 packages in 14s
+
+> @morefunos/admin-web@0.1.0-d104 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
+
+ [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1366[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 619[2mms[22m[39m
+     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 438[2mms[22m[39m
+     [33m[2m✓[22m[39m does not fake formal save when Catalog HTTP fails [33m 308[2mms[22m[39m
+ [32m✓[39m src/functional-options-editor.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1589[2mms[22m[39m
+     [33m[2m✓[22m[39m supports real option CRUD instead of visual-only rows [33m 759[2mms[22m[39m
+     [33m[2m✓[22m[39m portion mode is real state and requires the normal level [33m 336[2mms[22m[39m
+ [32m✓[39m src/availability-http-client.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 2542[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 777[2mms[22m[39m
+     [33m[2m✓[22m[39m search, notifications, and profile controls open compatibility panels [33m 391[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1120[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a native search panel with real page destinations [33m 372[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1495[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 413[2mms[22m[39m
+ [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 377[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 375[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[32m42 passed[39m[22m[90m (42)[39m
+[2m   Start at [22m 04:21:38
+[2m   Duration [22m 8.91s[2m (transform 739ms, setup 0ms, import 6.68s, tests 8.55s, environment 7.68s)[22m
+
+
+> @morefunos/admin-web@0.1.0-d104 build
+> tsc -b && vite build
+
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 3154 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.50 kB │ gzip:   0.31 kB
+dist/assets/index-DEMbDZRy.css   76.31 kB │ gzip:  13.96 kB
+dist/assets/index-Dlh4SbpO.js   396.82 kB │ gzip: 119.07 kB
+
+[32m✓ built in 398ms[39m
+admin_web=PASS
