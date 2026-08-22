@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 20ce042c2ccd71e8306585414b54214ab8d53821
+  SOURCE_SHA: d7739d82623663e407bb19b171bad8f55066a0a0
 
 jobs:
   functional-reality:
@@ -36,13 +36,16 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
-      - name: Verify Catalog interaction contracts
+      - name: Verify Catalog interaction contracts and Admin Worker routes
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
           node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
           node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+          node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
+          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
 
       - name: Verify Admin Web interaction and build
         working-directory: source/apps/admin-web
@@ -61,7 +64,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Catalog contracts + Admin functional interaction/build PASS' >/dev/null
+            -f description='Catalog contracts/durability routes + Admin functional interaction/build PASS' >/dev/null
 
       - name: Report failure
         if: failure()
@@ -71,4 +74,4 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-functional-reality \
-            -f description='Catalog or Admin functional reality gate failed' >/dev/null
+            -f description='Admin functional reality exact-SHA gate failed' >/dev/null
