@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 405ce59066b1b55cc803ebfa4f596fd83edc5951
+  SOURCE_SHA: 9c0a78437dfe575258150550ef402b0a068fa59d
 
 jobs:
   functional-reality:
@@ -55,6 +55,7 @@ jobs:
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst09-smm-intake-overview.test.ts
             node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst10-customer-web-intake.test.ts
             node --experimental-strip-types --test packages/staff/staff-authentication-service.test.ts
+            node --experimental-strip-types --test packages/staff/staff-status-toggle-regression.test.ts
             node --experimental-strip-types --test packages/runtime/staff-auth-http.test.ts
             node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
