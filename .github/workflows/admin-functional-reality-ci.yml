@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 2674acc2071c026f319e70bbd2d8b630535fa8b1
+  SOURCE_SHA: ad70b5cbb4f488ecf240c49dd435342ffdefe049
 
 jobs:
   functional-reality:
@@ -44,19 +44,22 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
 
-      - name: Verify Catalog interaction contracts and Admin Worker routes
+      - name: Verify Catalog, Availability and Admin Worker contracts
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
           {
-            echo 'catalog_worker_tests=STARTED'
+            echo 'admin_domain_tests=STARTED'
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+            node --experimental-strip-types --test packages/availability/availability-authority.test.ts
+            node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-availability-http.test.ts
             node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
             node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
-            echo 'catalog_worker_tests=PASS'
+            echo 'admin_domain_tests=PASS'
           } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
 
       - name: Verify Admin Web interaction and build
@@ -98,7 +101,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Catalog contracts/durability routes + Admin functional interaction/build PASS' >/dev/null
+            -f description='Catalog + durable Availability + Admin Web functional reality PASS' >/dev/null
 
       - name: Report failure
         if: failure()
