@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 58e7683962a288ac8426709f386c8c23a40e08f8
+  SOURCE_SHA: 5c73cbdd285e5e71022bfeb8dcbff55c558217d2
 
 jobs:
   staff-auth:
