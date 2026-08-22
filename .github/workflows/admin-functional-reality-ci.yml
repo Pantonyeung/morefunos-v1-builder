@@ -7,16 +7,23 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 env:
-  SOURCE_SHA: 5e052bfe90d59531a71bca85c891ab5d74f8728b
+  SOURCE_SHA: 4f32cd8208397df7038798d887c33fd9ac590910
 
 jobs:
   functional-reality:
     runs-on: ubuntu-24.04
     steps:
+      - name: Initialize diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/admin-functional-reality.log"
+          echo 'workflow=STARTED' >> "$RUNNER_TEMP/admin-functional-reality.log"
+
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
@@ -35,26 +42,53 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
 
       - name: Verify Catalog interaction contracts and Admin Worker routes
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
-          node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
-          node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
-          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
-          node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
+          {
+            echo 'catalog_worker_tests=STARTED'
+            node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
+            node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+            node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
+            node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
+            node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
+            echo 'catalog_worker_tests=PASS'
+          } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
 
       - name: Verify Admin Web interaction and build
         working-directory: source/apps/admin-web
         shell: bash
         run: |
           set -euo pipefail
-          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
-          npm test
-          npm run build
+          {
+            echo 'admin_web=STARTED'
+            npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+            npm test
+            npm run build
+            echo 'admin_web=PASS'
+          } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
+
+      - name: Persist diagnostics
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-functional-reality-latest.log'
+          {
+            printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+            cat "$RUNNER_TEMP/admin-functional-reality.log" 2>/dev/null || true
+          } > /tmp/admin-functional-reality-latest.log
+          content="$(base64 -w0 /tmp/admin-functional-reality-latest.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Functional Reality diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
 
       - name: Report success
         if: success()
