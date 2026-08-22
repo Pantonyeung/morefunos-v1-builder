@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: a4fd46747b83e93c17b2f66cfe8249af1aec9b74
+  SOURCE_SHA: 622bc3cdea83cc702ef6dd3d3c0b1f9eceb00697
 
 jobs:
   functional-reality:
@@ -55,7 +55,9 @@ jobs:
             node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
             node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
             node --experimental-strip-types --test packages/policy/business-policy-durable-authority.test.ts
+            node --experimental-strip-types --test packages/table/dine-in-configuration.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
@@ -107,7 +109,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Availability + Pricing + Channel Visibility + Capacity PASS' >/dev/null
+            -f description='Availability + Pricing + Channels + Dine-in + Capacity PASS' >/dev/null
 
       - name: Report failure
         if: failure()
