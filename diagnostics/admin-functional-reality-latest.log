@@ -1,0 +1,266 @@
+SOURCE_SHA=4f32cd8208397df7038798d887c33fd9ac590910
+workflow=STARTED
+exact_source=PASS
+catalog_worker_tests=STARTED
+TAP version 13
+# Subtest: required configurator input rejects direct_add so SMT cannot bypass Admin rules
+ok 1 - required configurator input rejects direct_add so SMT cannot bypass Admin rules
+  ---
+  duration_ms: 2.084871
+  type: 'test'
+  ...
+# Subtest: open_configurator accepts required single-select input
+ok 2 - open_configurator accepts required single-select input
+  ---
+  duration_ms: 1.193421
+  type: 'test'
+  ...
+# Subtest: portion control accepts canonical none/less/normal/more levels
+ok 3 - portion control accepts canonical none/less/normal/more levels
+  ---
+  duration_ms: 0.386016
+  type: 'test'
+  ...
+# Subtest: portion control rejects a preset without normal level
+ok 4 - portion control rejects a preset without normal level
+  ---
+  duration_ms: 0.36858
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 299.385903
+TAP version 13
+# Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
+not ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
+  ---
+  duration_ms: 5.712943
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:92:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   issues: [
+    +     'CATALOG_PRODUCT_TAP_BEHAVIOR_REQUIRED:prod_f4'
+    +   ],
+    +   ok: false
+    -   issues: [],
+    -   ok: true
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    ok: true
+    issues:
+  actual:
+    ok: false
+    issues:
+      0: 'CATALOG_PRODUCT_TAP_BEHAVIOR_REQUIRED:prod_f4'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:93:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: category and product identities must be unique and stable inside a revision
+ok 2 - category and product identities must be unique and stable inside a revision
+  ---
+  duration_ms: 0.508789
+  type: 'test'
+  ...
+# Subtest: product category reference and active lifecycle combinations are validated
+ok 3 - product category reference and active lifecycle combinations are validated
+  ---
+  duration_ms: 0.364404
+  type: 'test'
+  ...
+# Subtest: active products require at least one canonical eligible OrderChannel
+ok 4 - active products require at least one canonical eligible OrderChannel
+  ---
+  duration_ms: 0.530251
+  type: 'test'
+  ...
+# Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
+ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
+  ---
+  duration_ms: 0.4893
+  type: 'test'
+  ...
+# Subtest: inactive products may remain archived without sale-channel eligibility
+not ok 6 - inactive products may remain archived without sale-channel eligibility
+  ---
+  duration_ms: 0.597591
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:172:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:182:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: catalog editor may draft and validate but cannot publish
+not ok 7 - catalog editor may draft and validate but cannot publish
+  ---
+  duration_ms: 178.402869
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:185:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:188:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: catalog publish is immutable and activation stays explicit
+not ok 8 - catalog publish is immutable and activation stays explicit
+  ---
+  duration_ms: 0.798652
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:197:1'
+  failureType: 'testCodeFailure'
+  error: 'POLICY_DRAFT_NOT_VALIDATED'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
+    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:201:29)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: catalog rollback restores an older immutable published revision
+not ok 9 - catalog rollback restores an older immutable published revision
+  ---
+  duration_ms: 0.81788
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:220:1'
+  failureType: 'testCodeFailure'
+  error: 'POLICY_DRAFT_NOT_VALIDATED'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
+    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:225:22)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: normal forward activation rejects destructive product removal
+not ok 10 - normal forward activation rejects destructive product removal
+  ---
+  duration_ms: 0.743319
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:257:1'
+  failureType: 'testCodeFailure'
+  error: 'POLICY_DRAFT_NOT_VALIDATED'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
+    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
+    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:259:3)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+  ...
+# Subtest: normal forward activation rejects category removal and store identity drift
+not ok 11 - normal forward activation rejects category removal and store identity drift
+  ---
+  duration_ms: 0.692413
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:275:1'
+  failureType: 'testCodeFailure'
+  error: 'POLICY_DRAFT_NOT_VALIDATED'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
+    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
+    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:287:3)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+  ...
+# Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
+not ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
+  ---
+  duration_ms: 0.42887
+  type: 'test'
+  location: '/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:310:1'
+  failureType: 'testCodeFailure'
+  error: 'POLICY_DRAFT_NOT_VALIDATED'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:253:82
+    replayOrRun (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:199:20)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/admin/policy-publish.ts:250:14)
+    Object.publish (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.ts:372:47)
+    activateFirstRevision (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:84:11)
+    TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/catalog/product-catalog.test.ts:313:3)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 4
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 350.078909
