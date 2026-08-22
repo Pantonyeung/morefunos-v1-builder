@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: df676e2a02305645bbb2e1ad3f615c68583ca0cd
+  SOURCE_SHA: b60f4b52dc4bdc82e4caafae6317f1173e46c1fd
 
 jobs:
   functional-reality:
@@ -62,6 +62,7 @@ jobs:
             node --experimental-strip-types --test packages/admin/port-exposure-projection.test.ts
             node --experimental-strip-types --test packages/admin/admin-overview-projection.test.ts
             node --experimental-strip-types --test packages/reporting/admin-live-operational-projection.test.ts
+            node --experimental-strip-types --test packages/reporting/business-date-financial-progress.test.ts
             node --experimental-strip-types --test packages/facts/operational-facts-durable-journal.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
             node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
@@ -73,6 +74,7 @@ jobs:
             node --experimental-strip-types --test packages/runtime/store-settings-dine-in-bootstrap.test.ts
             node --experimental-strip-types --test packages/runtime/store-settings-printing-projection.test.ts
             node --experimental-strip-types --test packages/runtime/smt-runtime-device-gate-provider.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-overview-durable-operations.test.ts
             node --experimental-strip-types --test packages/availability/availability-authority.test.ts
             node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
             node --experimental-strip-types --test packages/business-day/admin-business-day-durable-control.test.ts
@@ -126,7 +128,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-functional-reality \
-            -f description='Durable operational facts + live reporting foundation PASS' >/dev/null
+            -f description='Durable Overview financial readback PASS' >/dev/null
 
       - name: Report failure
         if: failure()
