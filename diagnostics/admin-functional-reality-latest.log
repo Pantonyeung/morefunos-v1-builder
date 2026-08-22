@@ -1,4 +1,4 @@
-SOURCE_SHA=f8a10d09dea26535e48d3252e6165f00a65dbe8b
+SOURCE_SHA=9a6c0e50c92c077c2991ad3e667d105d70b04c09
 workflow=STARTED
 exact_source=PASS
 admin_domain_tests=STARTED
@@ -6,37 +6,37 @@ TAP version 13
 # Subtest: required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
 ok 1 - required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
   ---
-  duration_ms: 2.482546
+  duration_ms: 2.221283
   type: 'test'
   ...
 # Subtest: open_configurator accepts required single-select input
 ok 2 - open_configurator accepts required single-select input
   ---
-  duration_ms: 1.157045
+  duration_ms: 1.078727
   type: 'test'
   ...
 # Subtest: portion control accepts canonical none/less/normal/more levels
 ok 3 - portion control accepts canonical none/less/normal/more levels
   ---
-  duration_ms: 0.275776
+  duration_ms: 0.283841
   type: 'test'
   ...
 # Subtest: portion control rejects a preset without normal level
 ok 4 - portion control rejects a preset without normal level
   ---
-  duration_ms: 0.476471
+  duration_ms: 0.473255
   type: 'test'
   ...
 # Subtest: legacy required options resolve centrally to open_configurator without local SMT inference
 ok 5 - legacy required options resolve centrally to open_configurator without local SMT inference
   ---
-  duration_ms: 0.412893
+  duration_ms: 0.396682
   type: 'test'
   ...
 # Subtest: legacy products with no required input resolve centrally to direct_add
 ok 6 - legacy products with no required input resolve centrally to direct_add
   ---
-  duration_ms: 0.445093
+  duration_ms: 0.478074
   type: 'test'
   ...
 1..6
@@ -47,78 +47,78 @@ ok 6 - legacy products with no required input resolve centrally to direct_add
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 148.892199
+# duration_ms 264.986836
 TAP version 13
 # Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
 ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
   ---
-  duration_ms: 3.29126
+  duration_ms: 3.184154
   type: 'test'
   ...
 # Subtest: category and product identities must be unique and stable inside a revision
 ok 2 - category and product identities must be unique and stable inside a revision
   ---
-  duration_ms: 0.379842
+  duration_ms: 0.428351
   type: 'test'
   ...
 # Subtest: product category reference and active lifecycle combinations are validated
 ok 3 - product category reference and active lifecycle combinations are validated
   ---
-  duration_ms: 0.353993
+  duration_ms: 0.324477
   type: 'test'
   ...
 # Subtest: active products require at least one canonical eligible OrderChannel
 ok 4 - active products require at least one canonical eligible OrderChannel
   ---
-  duration_ms: 1.494507
+  duration_ms: 1.592418
   type: 'test'
   ...
 # Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
 ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
   ---
-  duration_ms: 0.531886
+  duration_ms: 0.508771
   type: 'test'
   ...
 # Subtest: inactive products may remain archived without sale-channel eligibility
 ok 6 - inactive products may remain archived without sale-channel eligibility
   ---
-  duration_ms: 0.294701
+  duration_ms: 0.311202
   type: 'test'
   ...
 # Subtest: catalog editor may draft and validate but cannot publish
 ok 7 - catalog editor may draft and validate but cannot publish
   ---
-  duration_ms: 25.085206
+  duration_ms: 114.710805
   type: 'test'
   ...
 # Subtest: catalog publish is immutable and activation stays explicit
 ok 8 - catalog publish is immutable and activation stays explicit
   ---
-  duration_ms: 1.664986
+  duration_ms: 2.293519
   type: 'test'
   ...
 # Subtest: catalog rollback restores an older immutable published revision
 ok 9 - catalog rollback restores an older immutable published revision
   ---
-  duration_ms: 1.741519
+  duration_ms: 2.734794
   type: 'test'
   ...
 # Subtest: normal forward activation rejects destructive product removal
 ok 10 - normal forward activation rejects destructive product removal
   ---
-  duration_ms: 1.250901
+  duration_ms: 2.02723
   type: 'test'
   ...
 # Subtest: normal forward activation rejects category removal and store identity drift
 ok 11 - normal forward activation rejects category removal and store identity drift
   ---
-  duration_ms: 2.368824
+  duration_ms: 3.63122
   type: 'test'
   ...
 # Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
 ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
   ---
-  duration_ms: 1.280958
+  duration_ms: 1.022252
   type: 'test'
   ...
 1..12
@@ -129,18 +129,18 @@ ok 12 - archive keeps stable product identity and explicit rollback may restore 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 182.062371
+# duration_ms 272.241775
 TAP version 13
 # Subtest: durable Business Policy returns active canonical snapshot with control-plane version injected
 ok 1 - durable Business Policy returns active canonical snapshot with control-plane version injected
   ---
-  duration_ms: 21.231734
+  duration_ms: 20.424982
   type: 'test'
   ...
 # Subtest: durable Business Policy survives a new authority instance on the same DurabilityPort
 ok 2 - durable Business Policy survives a new authority instance on the same DurabilityPort
   ---
-  duration_ms: 2.104889
+  duration_ms: 2.459549
   type: 'test'
   ...
 1..2
@@ -151,48 +151,48 @@ ok 2 - durable Business Policy survives a new authority instance on the same Dur
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 140.590471
+# duration_ms 173.192667
 TAP version 13
 # Subtest: valid MoreFun Hong Kong store settings pass validation
 ok 1 - valid MoreFun Hong Kong store settings pass validation
   ---
-  duration_ms: 2.630904
+  duration_ms: 2.650876
   type: 'test'
   ...
 # Subtest: Hong Kong timezone currency and locale are fixed for V1
 ok 2 - Hong Kong timezone currency and locale are fixed for V1
   ---
-  duration_ms: 0.334415
+  duration_ms: 0.334515
   type: 'test'
   ...
 # Subtest: business hours require each weekday exactly once
 ok 3 - business hours require each weekday exactly once
   ---
-  duration_ms: 0.275455
+  duration_ms: 0.253023
   type: 'test'
   ...
 # Subtest: open-day times must be valid ordered HH:mm and closed day carries no times
 ok 4 - open-day times must be valid ordered HH:mm and closed day carries no times
   ---
-  duration_ms: 0.366866
+  duration_ms: 0.332973
   type: 'test'
   ...
 # Subtest: enabled dine-in and takeaway require matching service modes
 ok 5 - enabled dine-in and takeaway require matching service modes
   ---
-  duration_ms: 0.412322
+  duration_ms: 0.42262
   type: 'test'
   ...
 # Subtest: draft validate publish stays inactive until explicit activation and rollback restores immutable version
 ok 6 - draft validate publish stays inactive until explicit activation and rollback restores immutable version
   ---
-  duration_ms: 20.70429
+  duration_ms: 18.312702
   type: 'test'
   ...
 # Subtest: Staff RBAC is authoritative for Store Settings lifecycle
 ok 7 - Staff RBAC is authoritative for Store Settings lifecycle
   ---
-  duration_ms: 3.466457
+  duration_ms: 5.42275
   type: 'test'
   ...
 1..7
@@ -203,18 +203,18 @@ ok 7 - Staff RBAC is authoritative for Store Settings lifecycle
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 184.908143
+# duration_ms 184.997601
 TAP version 13
 # Subtest: durable Store Settings survives restart and returns typed active payload
 ok 1 - durable Store Settings survives restart and returns typed active payload
   ---
-  duration_ms: 21.449833
+  duration_ms: 22.295349
   type: 'test'
   ...
 # Subtest: durable Store Settings preserves domain Staff permission mapping
 ok 2 - durable Store Settings preserves domain Staff permission mapping
   ---
-  duration_ms: 1.978873
+  duration_ms: 2.821686
   type: 'test'
   ...
 1..2
@@ -225,54 +225,54 @@ ok 2 - durable Store Settings preserves domain Staff permission mapping
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 162.426291
+# duration_ms 168.698509
 TAP version 13
 # Subtest: SMT soldout and SMM manual restore share one Availability revision
 ok 1 - SMT soldout and SMM manual restore share one Availability revision
   ---
-  duration_ms: 52.024752
+  duration_ms: 258.247192
   type: 'test'
   ...
 # Subtest: Admin multi-target soldout is atomic and increments revision once
 ok 2 - Admin multi-target soldout is atomic and increments revision once
   ---
-  duration_ms: 1.370104
+  duration_ms: 1.303697
   type: 'test'
   ...
 # Subtest: actor without availability.change is rejected on SMT SMM and Admin
 ok 3 - actor without availability.change is rejected on SMT SMM and Admin
   ---
-  duration_ms: 1.464811
+  duration_ms: 1.262941
   type: 'test'
   ...
 # Subtest: stale cross-surface command cannot overwrite newer revision
 ok 4 - stale cross-surface command cannot overwrite newer revision
   ---
-  duration_ms: 0.776002
+  duration_ms: 0.757376
   type: 'test'
   ...
 # Subtest: idempotent exact replay returns original result and conflicting replay fails
 ok 5 - idempotent exact replay returns original result and conflicting replay fails
   ---
-  duration_ms: 0.971077
+  duration_ms: 0.944025
   type: 'test'
   ...
 # Subtest: unknown duplicate and empty targets fail without partial mutation or Facts
 ok 6 - unknown duplicate and empty targets fail without partial mutation or Facts
   ---
-  duration_ms: 0.890306
+  duration_ms: 0.868124
   type: 'test'
   ...
 # Subtest: accepted mutation emits one immutable Availability Fact with HK business date
 ok 7 - accepted mutation emits one immutable Availability Fact with HK business date
   ---
-  duration_ms: 1.214753
+  duration_ms: 1.157605
   type: 'test'
   ...
 # Subtest: untouched nodes project the current BusinessPolicy baseline without creating an override
 ok 8 - untouched nodes project the current BusinessPolicy baseline without creating an override
   ---
-  duration_ms: 0.274073
+  duration_ms: 0.357738
   type: 'test'
   ...
 1..8
@@ -283,24 +283,24 @@ ok 8 - untouched nodes project the current BusinessPolicy baseline without creat
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 193.096381
+# duration_ms 395.661093
 TAP version 13
 # Subtest: availability mutation survives authority restart with atomic durable facts and one canonical revision
 ok 1 - availability mutation survives authority restart with atomic durable facts and one canonical revision
   ---
-  duration_ms: 30.964729
+  duration_ms: 23.075318
   type: 'test'
   ...
 # Subtest: idempotent replay after restart does not grow durable journal revision or duplicate facts
 ok 2 - idempotent replay after restart does not grow durable journal revision or duplicate facts
   ---
-  duration_ms: 2.471005
+  duration_ms: 2.429142
   type: 'test'
   ...
 # Subtest: stale Admin availability revision fails closed after another writer committed
 ok 3 - stale Admin availability revision fails closed after another writer committed
   ---
-  duration_ms: 2.574438
+  duration_ms: 2.116037
   type: 'test'
   ...
 1..3
@@ -311,36 +311,36 @@ ok 3 - stale Admin availability revision fails closed after another writer commi
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 165.182468
+# duration_ms 149.188808
 TAP version 13
 # Subtest: Admin policy HTTP transport rejects missing and invalid staff session
 ok 1 - Admin policy HTTP transport rejects missing and invalid staff session
   ---
-  duration_ms: 48.389971
+  duration_ms: 84.966886
   type: 'test'
   ...
 # Subtest: canonical Staff Authority remains permission authority behind HTTP
 ok 2 - canonical Staff Authority remains permission authority behind HTTP
   ---
-  duration_ms: 4.031725
+  duration_ms: 3.76483
   type: 'test'
   ...
 # Subtest: HTTP lifecycle persists through durable Policy Authority and active read is canonical
 ok 3 - HTTP lifecycle persists through durable Policy Authority and active read is canonical
   ---
-  duration_ms: 5.859396
+  duration_ms: 5.475428
   type: 'test'
   ...
 # Subtest: stale active-version command is projected as HTTP 409, never success
 ok 4 - stale active-version command is projected as HTTP 409, never success
   ---
-  duration_ms: 6.117939
+  duration_ms: 5.648161
   type: 'test'
   ...
 # Subtest: invalid JSON fails closed with 400 after authorization
 ok 5 - invalid JSON fails closed with 400 after authorization
   ---
-  duration_ms: 0.703105
+  duration_ms: 0.678028
   type: 'test'
   ...
 1..5
@@ -351,12 +351,12 @@ ok 5 - invalid JSON fails closed with 400 after authorization
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 210.605359
+# duration_ms 229.393963
 TAP version 13
 # Subtest: Admin Policy HTTP router can mount the same canonical lifecycle at a domain-specific prefix
 ok 1 - Admin Policy HTTP router can mount the same canonical lifecycle at a domain-specific prefix
   ---
-  duration_ms: 45.642379
+  duration_ms: 45.903976
   type: 'test'
   ...
 1..1
@@ -367,48 +367,48 @@ ok 1 - Admin Policy HTTP router can mount the same canonical lifecycle at a doma
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 172.424594
+# duration_ms 163.394887
 TAP version 13
 # Subtest: Admin availability GET returns canonical projection
 ok 1 - Admin availability GET returns canonical projection
   ---
-  duration_ms: 41.638502
+  duration_ms: 34.757663
   type: 'test'
   ...
 # Subtest: Admin soldout mutation writes canonical Availability as owner/admin source
 ok 2 - Admin soldout mutation writes canonical Availability as owner/admin source
   ---
-  duration_ms: 16.950863
+  duration_ms: 17.718101
   type: 'test'
   ...
 # Subtest: Admin restore maps available status to manual_restore and stale revision returns 409
 ok 3 - Admin restore maps available status to manual_restore and stale revision returns 409
   ---
-  duration_ms: 4.890042
+  duration_ms: 4.729233
   type: 'test'
   ...
 # Subtest: Admin can configure the canonical daily soldout restore policy
 ok 4 - Admin can configure the canonical daily soldout restore policy
   ---
-  duration_ms: 2.832811
+  duration_ms: 2.050575
   type: 'test'
   ...
 # Subtest: Admin can create and cancel a one-off restore schedule using the same revision stream
 ok 5 - Admin can create and cancel a one-off restore schedule using the same revision stream
   ---
-  duration_ms: 4.938132
+  duration_ms: 3.806407
   type: 'test'
   ...
 # Subtest: Admin availability rejects missing or invalid Owner token
 ok 6 - Admin availability rejects missing or invalid Owner token
   ---
-  duration_ms: 1.09539
+  duration_ms: 0.871399
   type: 'test'
   ...
 # Subtest: Admin availability can resolve current durable authority per request and fails 503 when prerequisites are not active
 ok 7 - Admin availability can resolve current durable authority per request and fails 503 when prerequisites are not active
   ---
-  duration_ms: 1.931515
+  duration_ms: 1.67407
   type: 'test'
   ...
 1..7
@@ -419,24 +419,24 @@ ok 7 - Admin availability can resolve current durable authority per request and 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 216.323342
+# duration_ms 192.952295
 TAP version 13
 # Subtest: service-account provider signs JWT, exchanges token, and caches until expiry window
 ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
   ---
-  duration_ms: 73.338683
+  duration_ms: 77.386563
   type: 'test'
   ...
 # Subtest: service-account provider accepts escaped PEM and common secret wrappers
 ok 2 - service-account provider accepts escaped PEM and common secret wrappers
   ---
-  duration_ms: 138.642785
+  duration_ms: 56.941573
   type: 'test'
   ...
 # Subtest: service-account provider fails closed on malformed private key and bad OAuth response
 ok 3 - service-account provider fails closed on malformed private key and bad OAuth response
   ---
-  duration_ms: 40.31065
+  duration_ms: 76.573372
   type: 'test'
   ...
 1..3
@@ -447,48 +447,48 @@ ok 3 - service-account provider fails closed on malformed private key and bad OA
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 353.219126
+# duration_ms 313.424782
 TAP version 13
 # Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
 ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
   ---
-  duration_ms: 38.601722
+  duration_ms: 42.277162
   type: 'test'
   ...
 # Subtest: Worker health advertises Policy, Catalog and Availability capabilities and method gate fails closed
 ok 2 - Worker health advertises Policy, Catalog and Availability capabilities and method gate fails closed
   ---
-  duration_ms: 2.209856
+  duration_ms: 2.599801
   type: 'test'
   ...
 # Subtest: Worker mounts canonical Availability route beside Policy and Catalog
 ok 3 - Worker mounts canonical Availability route beside Policy and Catalog
   ---
-  duration_ms: 1.240061
+  duration_ms: 1.427199
   type: 'test'
   ...
 # Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
 ok 4 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
   ---
-  duration_ms: 7.944759
+  duration_ms: 8.445463
   type: 'test'
   ...
 # Subtest: Worker mounts authenticated durable Catalog routes beside Policy routes
 ok 5 - Worker mounts authenticated durable Catalog routes beside Policy routes
   ---
-  duration_ms: 4.016838
+  duration_ms: 4.616132
   type: 'test'
   ...
 # Subtest: Worker cannot publish merely because the session actor is authenticated
 ok 6 - Worker cannot publish merely because the session actor is authenticated
   ---
-  duration_ms: 2.110871
+  duration_ms: 2.514041
   type: 'test'
   ...
 # Subtest: Worker requires at least one HTTPS allowed Origin
 ok 7 - Worker requires at least one HTTPS allowed Origin
   ---
-  duration_ms: 0.59844
+  duration_ms: 0.725578
   type: 'test'
   ...
 1..7
@@ -499,30 +499,30 @@ ok 7 - Worker requires at least one HTTPS allowed Origin
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 222.913388
+# duration_ms 219.408545
 TAP version 13
 # Subtest: single-owner production composition routes authenticated durable publish through real adapters
 ok 1 - single-owner production composition routes authenticated durable publish through real adapters
   ---
-  duration_ms: 100.583666
+  duration_ms: 98.65105
   type: 'test'
   ...
 # Subtest: single-owner production composition rejects an unknown bearer token
 ok 2 - single-owner production composition rejects an unknown bearer token
   ---
-  duration_ms: 11.291442
+  duration_ms: 12.876067
   type: 'test'
   ...
 # Subtest: production composition rejects malformed policy envelope before publish
 ok 3 - production composition rejects malformed policy envelope before publish
   ---
-  duration_ms: 13.284832
+  duration_ms: 21.160833
   type: 'test'
   ...
 # Subtest: production composition validates repo identity, environment, origins and owner token
 ok 4 - production composition validates repo identity, environment, origins and owner token
   ---
-  duration_ms: 11.276093
+  duration_ms: 10.6318
   type: 'test'
   ...
 1..4
@@ -533,7 +533,7 @@ ok 4 - production composition validates repo identity, environment, origins and 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 284.883821
+# duration_ms 298.847001
 admin_domain_tests=PASS
 admin_web=STARTED
 
@@ -545,736 +545,45 @@ added 121 packages in 13s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/availability-http-client.vitest.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 81[2mms[22m[39m
- [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1548[2mms[22m[39m
-     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 875[2mms[22m[39m
-     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 374[2mms[22m[39m
- [32m✓[39m src/functional-options-editor.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1916[2mms[22m[39m
-     [33m[2m✓[22m[39m supports real option CRUD instead of visual-only rows [33m 931[2mms[22m[39m
-     [33m[2m✓[22m[39m portion mode is real state and requires the normal level [33m 317[2mms[22m[39m
-     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated products/groups, then creates and validates a formal draft [33m 353[2mms[22m[39m
-     [33m[2m✓[22m[39m never reports formal save when Catalog HTTP fails [33m 311[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 2741[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 980[2mms[22m[39m
-     [33m[2m✓[22m[39m search, notifications, and profile controls open compatibility panels [33m 407[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1476[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 412[2mms[22m[39m
- [32m✓[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 978[2mms[22m[39m
-     [33m[2m✓[22m[39m uses real anchor destinations for all five mobile navigation entries [33m 341[2mms[22m[39m
-     [33m[2m✓[22m[39m opens a native search panel with real page destinations [33m 337[2mms[22m[39m
- [31m❯[39m src/functional-availability-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 2738[2mms[22m[39m
-[31m     [31m×[31m loads real canonical nodes and marks a selected node sold out with revision protection[39m[33m 1298[2mms[22m[39m
-     [33m[2m✓[22m[39m saves daily 05:00 soldout restore as canonical policy instead of local state [33m 335[2mms[22m[39m
-[31m     [31m×[31m never shows a fake success when canonical Runtime is unavailable[39m[33m 1104[2mms[22m[39m
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
- [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 367[2mms[22m[39m
-     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 365[2mms[22m[39m
+ [32m✓[39m src/availability-http-client.vitest.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1353[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 648[2mms[22m[39m
+     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 414[2mms[22m[39m
+ [32m✓[39m src/functional-options-editor.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1516[2mms[22m[39m
+     [33m[2m✓[22m[39m supports real option CRUD instead of visual-only rows [33m 639[2mms[22m[39m
+     [33m[2m✓[22m[39m portion mode is real state and requires the normal level [33m 334[2mms[22m[39m
+     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated products/groups, then creates and validates a formal draft [33m 313[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 2639[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 893[2mms[22m[39m
+     [33m[2m✓[22m[39m search, notifications, and profile controls open compatibility panels [33m 425[2mms[22m[39m
+ [32m✓[39m src/functional-availability-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1291[2mms[22m[39m
+     [33m[2m✓[22m[39m loads real canonical nodes and marks a selected node sold out with revision protection [33m 897[2mms[22m[39m
+     [33m[2m✓[22m[39m saves daily 05:00 soldout restore as canonical policy instead of local state [33m 307[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1767[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 488[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1113[2mms[22m[39m
+     [33m[2m✓[22m[39m uses real anchor destinations for all five mobile navigation entries [33m 367[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a native search panel with real page destinations [33m 407[2mms[22m[39m
+ [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 350[2mms[22m[39m
 
-[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
-
-[41m[1m FAIL [22m[49m src/functional-availability-editor.vitest.test.tsx[2m > [22mFunctional Availability Editor[2m > [22mloads real canonical nodes and marks a selected node sold out with revision protection
-[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: product:prod_f4
-
-Here are the matching elements:
-
-Ignored nodes: comments, script, style
-[36m<b>[39m
-  [0mproduct:prod_f4[0m
-[36m</b>[39m
-
-Ignored nodes: comments, script, style
-[36m<option[39m
-  [33mvalue[39m=[32m"product:prod_f4"[39m
-[36m>[39m
-  [0mproduct:prod_f4[0m
-[36m</option>[39m
-
-(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
-
-Ignored nodes: comments, script, style
-[36m<body>[39m
-  [36m<div>[39m
-    [36m<div[39m
-      [33mclass[39m=[32m"admin-shell"[39m
-    [36m>[39m
-      [36m<aside[39m
-        [33mclass[39m=[32m"admin-sidebar"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"brand"[39m
-        [36m>[39m
-          [0mMoreFunOS[0m
-        [36m</div>[39m
-        [36m<nav[39m
-          [33maria-label[39m=[32m"Admin navigation"[39m
-          [33mclass[39m=[32m"admin-nav"[39m
-        [36m>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/overview"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"12"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"16"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mOverview[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33maria-current[39m=[32m"page"[39m
-            [33mclass[39m=[32m"nav-item is-active"[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-package-open"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M12 22v-9"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mCatalog[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/storefront"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-store"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mStorefront[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-gauge"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-          ...
-
-Ignored nodes: comments, script, style
-[36m<body>[39m
-  [36m<div>[39m
-    [36m<div[39m
-      [33mclass[39m=[32m"admin-shell"[39m
-    [36m>[39m
-      [36m<aside[39m
-        [33mclass[39m=[32m"admin-sidebar"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"brand"[39m
-        [36m>[39m
-          [0mMoreFunOS[0m
-        [36m</div>[39m
-        [36m<nav[39m
-          [33maria-label[39m=[32m"Admin navigation"[39m
-          [33mclass[39m=[32m"admin-nav"[39m
-        [36m>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/overview"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"12"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"16"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mOverview[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33maria-current[39m=[32m"page"[39m
-            [33mclass[39m=[32m"nav-item is-active"[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-package-open"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M12 22v-9"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mCatalog[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/storefront"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-store"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mStorefront[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-gauge"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-          ...
-[90m [2m❯[22m waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
-[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
-[36m [2m❯[22m src/functional-availability-editor.vitest.test.tsx:[2m67:25[22m[39m
-    [90m 65|[39m     [34mrenderAvailability[39m(fetcher)[33m;[39m
-    [90m 66|[39m     expect(await screen.findByRole('region', {name: '供應狀態實際控制'})).toBe…
-    [90m 67|[39m     [34mexpect[39m([35mawait[39m screen[33m.[39m[34mfindByText[39m([32m'product:prod_f4'[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
-    [90m   |[39m                         [31m^[39m
-    [90m 68|[39m     [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'可供應'[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
-    [90m 69|[39m
-
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
-
-[41m[1m FAIL [22m[49m src/functional-availability-editor.vitest.test.tsx[2m > [22mFunctional Availability Editor[2m > [22mnever shows a fake success when canonical Runtime is unavailable
-[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: Canonical Runtime尚未連接
-
-Here are the matching elements:
-
-Ignored nodes: comments, script, style
-[36m<div[39m
-  [33mclass[39m=[32m"functional-availability-editor__error"[39m
-  [33mrole[39m=[32m"status"[39m
-[36m>[39m
-  [0mCanonical Runtime尚未連接[0m
-[36m</div>[39m
-
-Ignored nodes: comments, script, style
-[36m<div[39m
-  [33mclass[39m=[32m"functional-availability-editor__message is-error"[39m
-  [33mrole[39m=[32m"status"[39m
-[36m>[39m
-  [0mCanonical Runtime尚未連接[0m
-[36m</div>[39m
-
-(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
-
-Ignored nodes: comments, script, style
-[36m<body>[39m
-  [36m<div>[39m
-    [36m<div[39m
-      [33mclass[39m=[32m"admin-shell"[39m
-    [36m>[39m
-      [36m<aside[39m
-        [33mclass[39m=[32m"admin-sidebar"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"brand"[39m
-        [36m>[39m
-          [0mMoreFunOS[0m
-        [36m</div>[39m
-        [36m<nav[39m
-          [33maria-label[39m=[32m"Admin navigation"[39m
-          [33mclass[39m=[32m"admin-nav"[39m
-        [36m>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/overview"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"12"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"16"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mOverview[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33maria-current[39m=[32m"page"[39m
-            [33mclass[39m=[32m"nav-item is-active"[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-package-open"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M12 22v-9"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mCatalog[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/storefront"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-store"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mStorefront[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-gauge"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-          ...
-
-Ignored nodes: comments, script, style
-[36m<body>[39m
-  [36m<div>[39m
-    [36m<div[39m
-      [33mclass[39m=[32m"admin-shell"[39m
-    [36m>[39m
-      [36m<aside[39m
-        [33mclass[39m=[32m"admin-sidebar"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"brand"[39m
-        [36m>[39m
-          [0mMoreFunOS[0m
-        [36m</div>[39m
-        [36m<nav[39m
-          [33maria-label[39m=[32m"Admin navigation"[39m
-          [33mclass[39m=[32m"admin-nav"[39m
-        [36m>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/overview"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-layout-dashboard"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"3"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"9"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"14"[39m
-                [33my[39m=[32m"12"[39m
-              [36m/>[39m
-              [36m<rect[39m
-                [33mheight[39m=[32m"5"[39m
-                [33mrx[39m=[32m"1"[39m
-                [33mwidth[39m=[32m"7"[39m
-                [33mx[39m=[32m"3"[39m
-                [33my[39m=[32m"16"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mOverview[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33maria-current[39m=[32m"page"[39m
-            [33mclass[39m=[32m"nav-item is-active"[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/catalog/products/PRC-001"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-package-open"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M12 22v-9"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mCatalog[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/storefront"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-store"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [36m<span>[39m
-              [0mStorefront[0m
-            [36m</span>[39m
-          [36m</a>[39m
-          [36m<a[39m
-            [33mclass[39m=[32m"nav-item "[39m
-            [33mdata-discover[39m=[32m"true"[39m
-            [33mhref[39m=[32m"/admin/operations/pickup-queue"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-gauge"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"19"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"1.8"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"19"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-          ...
-[90m [2m❯[22m waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
-[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
-[36m [2m❯[22m src/functional-availability-editor.vitest.test.tsx:[2m114:25[22m[39m
-    [90m112|[39m       [33m<[39m[33m/[39m[33mMemoryRouter[39m[33m>[39m[33m,[39m
-    [90m113|[39m     )[33m;[39m
-    [90m114|[39m     expect(await screen.findByText('Canonical Runtime尚未連接')).toBeTruth…
-    [90m   |[39m                         [31m^[39m
-    [90m115|[39m     [34mexpect[39m(screen[33m.[39m[34mqueryByText[39m([32m'供應狀態已更新'[39m))[33m.[39m[34mtoBeNull[39m()[33m;[39m
-    [90m116|[39m   })[33m;[39m
-
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+[2m Test Files [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m      Tests [22m [1m[32m47 passed[39m[22m[90m (47)[39m
+[2m   Start at [22m 04:29:33
+[2m   Duration [22m 10.28s[2m (transform 710ms, setup 0ms, import 7.67s, tests 10.10s, environment 8.51s)[22m
 
 
-[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m8 passed[39m[22m[90m (9)[39m
-[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m45 passed[39m[22m[90m (47)[39m
-[2m   Start at [22m 04:26:19
-[2m   Duration [22m 11.24s[2m (transform 839ms, setup 0ms, import 8.12s, tests 11.85s, environment 8.85s)[22m
+> @morefunos/admin-web@0.1.0-d104 build
+> tsc -b && vite build
 
+[36mvite v8.1.5 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 3157 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.50 kB │ gzip:   0.31 kB
+dist/assets/index-VAzEqv-n.css   79.70 kB │ gzip:  14.39 kB
+dist/assets/index-D-fQZKFy.js   407.13 kB │ gzip: 121.06 kB
 
-::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/functional-availability-editor.vitest.test.tsx,title=src/functional-availability-editor.vitest.test.tsx > Functional Availability Editor > loads real canonical nodes and marks a selected node sold out with revision protection,line=67,column=25::TestingLibraryElementError: Found multiple elements with the text: product:prod_f4%0A%0AHere are the matching elements:%0A%0AIgnored nodes: comments, script, style%0A<b>%0A  product:prod_f4%0A</b>%0A%0AIgnored nodes: comments, script, style%0A<option%0A  value="product:prod_f4"%0A>%0A  product:prod_f4%0A</option>%0A%0A(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              Overview%0A            </span>%0A          </a>%0A          <a%0A            aria-current="page"%0A            class="nav-item is-active"%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              Catalog%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              Storefront%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A          ...%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              Overview%0A            </span>%0A          </a>%0A          <a%0A            aria-current="page"%0A            class="nav-item is-active"%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              Catalog%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              Storefront%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A          ...%0A ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33%0A ❯ src/functional-availability-editor.vitest.test.tsx:67:25%0A%0A
-
-::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/functional-availability-editor.vitest.test.tsx,title=src/functional-availability-editor.vitest.test.tsx > Functional Availability Editor > never shows a fake success when canonical Runtime is unavailable,line=114,column=25::TestingLibraryElementError: Found multiple elements with the text: Canonical Runtime尚未連接%0A%0AHere are the matching elements:%0A%0AIgnored nodes: comments, script, style%0A<div%0A  class="functional-availability-editor__error"%0A  role="status"%0A>%0A  Canonical Runtime尚未連接%0A</div>%0A%0AIgnored nodes: comments, script, style%0A<div%0A  class="functional-availability-editor__message is-error"%0A  role="status"%0A>%0A  Canonical Runtime尚未連接%0A</div>%0A%0A(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              Overview%0A            </span>%0A          </a>%0A          <a%0A            aria-current="page"%0A            class="nav-item is-active"%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              Catalog%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              Storefront%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A          ...%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              Overview%0A            </span>%0A          </a>%0A          <a%0A            aria-current="page"%0A            class="nav-item is-active"%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              Catalog%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              Storefront%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A          ...%0A ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33%0A ❯ src/functional-availability-editor.vitest.test.tsx:114:25%0A%0A
+[32m✓ built in 404ms[39m
+admin_web=PASS
