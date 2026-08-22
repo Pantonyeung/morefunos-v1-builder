@@ -1,42 +1,42 @@
-SOURCE_SHA=2674acc2071c026f319e70bbd2d8b630535fa8b1
+SOURCE_SHA=ad70b5cbb4f488ecf240c49dd435342ffdefe049
 workflow=STARTED
 exact_source=PASS
-catalog_worker_tests=STARTED
+admin_domain_tests=STARTED
 TAP version 13
 # Subtest: required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
 ok 1 - required configurator input rejects explicit direct_add so SMT cannot bypass Admin rules
   ---
-  duration_ms: 1.662246
+  duration_ms: 1.90415
   type: 'test'
   ...
 # Subtest: open_configurator accepts required single-select input
 ok 2 - open_configurator accepts required single-select input
   ---
-  duration_ms: 1.299868
+  duration_ms: 1.048846
   type: 'test'
   ...
 # Subtest: portion control accepts canonical none/less/normal/more levels
 ok 3 - portion control accepts canonical none/less/normal/more levels
   ---
-  duration_ms: 0.215916
+  duration_ms: 0.272998
   type: 'test'
   ...
 # Subtest: portion control rejects a preset without normal level
 ok 4 - portion control rejects a preset without normal level
   ---
-  duration_ms: 0.364221
+  duration_ms: 0.467551
   type: 'test'
   ...
 # Subtest: legacy required options resolve centrally to open_configurator without local SMT inference
 ok 5 - legacy required options resolve centrally to open_configurator without local SMT inference
   ---
-  duration_ms: 0.308347
+  duration_ms: 0.369324
   type: 'test'
   ...
 # Subtest: legacy products with no required input resolve centrally to direct_add
 ok 6 - legacy products with no required input resolve centrally to direct_add
   ---
-  duration_ms: 0.35013
+  duration_ms: 0.457776
   type: 'test'
   ...
 1..6
@@ -47,78 +47,78 @@ ok 6 - legacy products with no required input resolve centrally to direct_add
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 262.210175
+# duration_ms 140.45852
 TAP version 13
 # Subtest: valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
 ok 1 - valid MoreFun catalog reuses CanonicalProduct and canonical OrderChannel values
   ---
-  duration_ms: 2.179529
+  duration_ms: 2.762619
   type: 'test'
   ...
 # Subtest: category and product identities must be unique and stable inside a revision
 ok 2 - category and product identities must be unique and stable inside a revision
   ---
-  duration_ms: 0.282998
+  duration_ms: 1.382713
   type: 'test'
   ...
 # Subtest: product category reference and active lifecycle combinations are validated
 ok 3 - product category reference and active lifecycle combinations are validated
   ---
-  duration_ms: 0.257971
+  duration_ms: 0.319213
   type: 'test'
   ...
 # Subtest: active products require at least one canonical eligible OrderChannel
 ok 4 - active products require at least one canonical eligible OrderChannel
   ---
-  duration_ms: 1.589946
+  duration_ms: 0.52896
   type: 'test'
   ...
 # Subtest: selector keys, option-group identity and cardinality are validated without creating pricing truth
 ok 5 - selector keys, option-group identity and cardinality are validated without creating pricing truth
   ---
-  duration_ms: 0.399185
+  duration_ms: 0.414326
   type: 'test'
   ...
 # Subtest: inactive products may remain archived without sale-channel eligibility
 ok 6 - inactive products may remain archived without sale-channel eligibility
   ---
-  duration_ms: 0.239994
+  duration_ms: 0.189404
   type: 'test'
   ...
 # Subtest: catalog editor may draft and validate but cannot publish
 ok 7 - catalog editor may draft and validate but cannot publish
   ---
-  duration_ms: 142.185474
+  duration_ms: 22.667905
   type: 'test'
   ...
 # Subtest: catalog publish is immutable and activation stays explicit
 ok 8 - catalog publish is immutable and activation stays explicit
   ---
-  duration_ms: 1.028006
+  duration_ms: 1.767328
   type: 'test'
   ...
 # Subtest: catalog rollback restores an older immutable published revision
 ok 9 - catalog rollback restores an older immutable published revision
   ---
-  duration_ms: 1.230212
+  duration_ms: 2.13037
   type: 'test'
   ...
 # Subtest: normal forward activation rejects destructive product removal
 ok 10 - normal forward activation rejects destructive product removal
   ---
-  duration_ms: 0.885299
+  duration_ms: 1.560289
   type: 'test'
   ...
 # Subtest: normal forward activation rejects category removal and store identity drift
 ok 11 - normal forward activation rejects category removal and store identity drift
   ---
-  duration_ms: 1.661686
+  duration_ms: 3.988413
   type: 'test'
   ...
 # Subtest: archive keeps stable product identity and explicit rollback may restore the old revision
 ok 12 - archive keeps stable product identity and explicit rollback may restore the old revision
   ---
-  duration_ms: 0.712849
+  duration_ms: 0.946262
   type: 'test'
   ...
 1..12
@@ -129,24 +129,82 @@ ok 12 - archive keeps stable product identity and explicit rollback may restore 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 245.563938
+# duration_ms 163.305969
 TAP version 13
-# Subtest: service-account provider signs JWT, exchanges token, and caches until expiry window
-ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
+# Subtest: SMT soldout and SMM manual restore share one Availability revision
+ok 1 - SMT soldout and SMM manual restore share one Availability revision
   ---
-  duration_ms: 163.304092
+  duration_ms: 44.920811
   type: 'test'
   ...
-# Subtest: service-account provider accepts escaped PEM and full service-account JSON secrets
-ok 2 - service-account provider accepts escaped PEM and full service-account JSON secrets
+# Subtest: Admin multi-target soldout is atomic and increments revision once
+ok 2 - Admin multi-target soldout is atomic and increments revision once
   ---
-  duration_ms: 36.92783
+  duration_ms: 1.639748
   type: 'test'
   ...
-# Subtest: service-account provider fails closed on malformed private key and bad OAuth response
-ok 3 - service-account provider fails closed on malformed private key and bad OAuth response
+# Subtest: actor without availability.change is rejected on SMT SMM and Admin
+ok 3 - actor without availability.change is rejected on SMT SMM and Admin
   ---
-  duration_ms: 44.80886
+  duration_ms: 1.536363
+  type: 'test'
+  ...
+# Subtest: stale cross-surface command cannot overwrite newer revision
+ok 4 - stale cross-surface command cannot overwrite newer revision
+  ---
+  duration_ms: 0.975536
+  type: 'test'
+  ...
+# Subtest: idempotent exact replay returns original result and conflicting replay fails
+ok 5 - idempotent exact replay returns original result and conflicting replay fails
+  ---
+  duration_ms: 1.255384
+  type: 'test'
+  ...
+# Subtest: unknown duplicate and empty targets fail without partial mutation or Facts
+ok 6 - unknown duplicate and empty targets fail without partial mutation or Facts
+  ---
+  duration_ms: 1.084559
+  type: 'test'
+  ...
+# Subtest: accepted mutation emits one immutable Availability Fact with HK business date
+ok 7 - accepted mutation emits one immutable Availability Fact with HK business date
+  ---
+  duration_ms: 1.980085
+  type: 'test'
+  ...
+# Subtest: untouched nodes project the current BusinessPolicy baseline without creating an override
+ok 8 - untouched nodes project the current BusinessPolicy baseline without creating an override
+  ---
+  duration_ms: 0.387198
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 204.002563
+TAP version 13
+# Subtest: availability mutation survives authority restart and keeps one canonical revision
+ok 1 - availability mutation survives authority restart and keeps one canonical revision
+  ---
+  duration_ms: 26.198835
+  type: 'test'
+  ...
+# Subtest: idempotent replay after restart does not grow durable journal revision
+ok 2 - idempotent replay after restart does not grow durable journal revision
+  ---
+  duration_ms: 2.452661
+  type: 'test'
+  ...
+# Subtest: stale Admin availability revision fails closed after another writer committed
+ok 3 - stale Admin availability revision fails closed after another writer committed
+  ---
+  duration_ms: 2.531158
   type: 'test'
   ...
 1..3
@@ -157,76 +215,30 @@ ok 3 - service-account provider fails closed on malformed private key and bad OA
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 333.394469
+# duration_ms 145.670538
 TAP version 13
-# Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
-ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+# Subtest: Admin availability GET returns canonical projection
+ok 1 - Admin availability GET returns canonical projection
   ---
-  duration_ms: 35.109203
+  duration_ms: 53.783519
   type: 'test'
   ...
-# Subtest: Worker health advertises Policy and Catalog capabilities and method gate fails closed
-ok 2 - Worker health advertises Policy and Catalog capabilities and method gate fails closed
+# Subtest: Admin soldout mutation writes canonical Availability as owner/admin source
+ok 2 - Admin soldout mutation writes canonical Availability as owner/admin source
   ---
-  duration_ms: 2.229617
+  duration_ms: 17.103459
   type: 'test'
   ...
-# Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
-ok 3 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+# Subtest: Admin restore maps available status to manual_restore and stale revision returns 409
+ok 3 - Admin restore maps available status to manual_restore and stale revision returns 409
   ---
-  duration_ms: 5.609811
+  duration_ms: 4.20025
   type: 'test'
   ...
-# Subtest: Worker mounts authenticated durable Catalog routes beside Policy routes
-ok 4 - Worker mounts authenticated durable Catalog routes beside Policy routes
+# Subtest: Admin availability rejects missing or invalid Owner token
+ok 4 - Admin availability rejects missing or invalid Owner token
   ---
-  duration_ms: 3.446545
-  type: 'test'
-  ...
-# Subtest: Worker cannot publish merely because the session actor is authenticated
-ok 5 - Worker cannot publish merely because the session actor is authenticated
-  ---
-  duration_ms: 3.097788
-  type: 'test'
-  ...
-# Subtest: Worker requires at least one HTTPS allowed Origin
-ok 6 - Worker requires at least one HTTPS allowed Origin
-  ---
-  duration_ms: 0.428677
-  type: 'test'
-  ...
-1..6
-# tests 6
-# suites 0
-# pass 6
-# fail 0
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 150.429924
-TAP version 13
-# Subtest: single-owner production composition routes authenticated durable publish through real adapters
-ok 1 - single-owner production composition routes authenticated durable publish through real adapters
-  ---
-  duration_ms: 52.02078
-  type: 'test'
-  ...
-# Subtest: single-owner production composition rejects an unknown bearer token
-ok 2 - single-owner production composition rejects an unknown bearer token
-  ---
-  duration_ms: 6.91407
-  type: 'test'
-  ...
-# Subtest: production composition rejects malformed policy envelope before publish
-ok 3 - production composition rejects malformed policy envelope before publish
-  ---
-  duration_ms: 14.031066
-  type: 'test'
-  ...
-# Subtest: production composition validates repo identity, environment, origins and owner token
-ok 4 - production composition validates repo identity, environment, origins and owner token
-  ---
-  duration_ms: 6.839608
+  duration_ms: 0.585885
   type: 'test'
   ...
 1..4
@@ -237,11 +249,119 @@ ok 4 - production composition validates repo identity, environment, origins and 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 192.18374
-catalog_worker_tests=PASS
+# duration_ms 212.712113
+TAP version 13
+# Subtest: service-account provider signs JWT, exchanges token, and caches until expiry window
+ok 1 - service-account provider signs JWT, exchanges token, and caches until expiry window
+  ---
+  duration_ms: 74.926363
+  type: 'test'
+  ...
+# Subtest: service-account provider accepts escaped PEM and full service-account JSON secrets
+ok 2 - service-account provider accepts escaped PEM and full service-account JSON secrets
+  ---
+  duration_ms: 79.652853
+  type: 'test'
+  ...
+# Subtest: service-account provider fails closed on malformed private key and bad OAuth response
+ok 3 - service-account provider fails closed on malformed private key and bad OAuth response
+  ---
+  duration_ms: 91.523582
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 344.188155
+TAP version 13
+# Subtest: Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+ok 1 - Worker handles trusted CORS preflight and rejects untrusted Origin before routing
+  ---
+  duration_ms: 42.391004
+  type: 'test'
+  ...
+# Subtest: Worker health advertises Policy and Catalog capabilities and method gate fails closed
+ok 2 - Worker health advertises Policy and Catalog capabilities and method gate fails closed
+  ---
+  duration_ms: 2.502776
+  type: 'test'
+  ...
+# Subtest: Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+ok 3 - Worker routes authenticated and Staff-authorized mutation into durable Canonical Policy Authority
+  ---
+  duration_ms: 5.309274
+  type: 'test'
+  ...
+# Subtest: Worker mounts authenticated durable Catalog routes beside Policy routes
+ok 4 - Worker mounts authenticated durable Catalog routes beside Policy routes
+  ---
+  duration_ms: 3.510971
+  type: 'test'
+  ...
+# Subtest: Worker cannot publish merely because the session actor is authenticated
+ok 5 - Worker cannot publish merely because the session actor is authenticated
+  ---
+  duration_ms: 3.541737
+  type: 'test'
+  ...
+# Subtest: Worker requires at least one HTTPS allowed Origin
+ok 6 - Worker requires at least one HTTPS allowed Origin
+  ---
+  duration_ms: 0.534327
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 190.556287
+TAP version 13
+# Subtest: single-owner production composition routes authenticated durable publish through real adapters
+ok 1 - single-owner production composition routes authenticated durable publish through real adapters
+  ---
+  duration_ms: 70.045703
+  type: 'test'
+  ...
+# Subtest: single-owner production composition rejects an unknown bearer token
+ok 2 - single-owner production composition rejects an unknown bearer token
+  ---
+  duration_ms: 11.585063
+  type: 'test'
+  ...
+# Subtest: production composition rejects malformed policy envelope before publish
+ok 3 - production composition rejects malformed policy envelope before publish
+  ---
+  duration_ms: 18.149931
+  type: 'test'
+  ...
+# Subtest: production composition validates repo identity, environment, origins and owner token
+ok 4 - production composition validates repo identity, environment, origins and owner token
+  ---
+  duration_ms: 8.784392
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 238.923947
+admin_domain_tests=PASS
 admin_web=STARTED
 
-added 121 packages in 13s
+added 121 packages in 11s
 
 > @morefunos/admin-web@0.1.0-d104 test
 > vitest run
@@ -249,23 +369,24 @@ added 121 packages in 13s
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1030[2mms[22m[39m
-     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 482[2mms[22m[39m
-     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 321[2mms[22m[39m
- [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1858[2mms[22m[39m
-     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 609[2mms[22m[39m
- [31m❯[39m src/functional-options-editor.vitest.test.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 2085[2mms[22m[39m
-     [33m[2m✓[22m[39m supports real option CRUD instead of visual-only rows [33m 502[2mms[22m[39m
-     [32m✓[39m portion mode is real state and requires the normal level[32m 225[2mms[22m[39m
-     [32m✓[39m reads active Catalog, preserves unrelated products/groups, then creates and validates a formal draft[32m 209[2mms[22m[39m
-[31m     [31m×[31m never reports formal save when Catalog HTTP fails[39m[33m 1147[2mms[22m[39m
- [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
- [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1474[2mms[22m[39m
-     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 491[2mms[22m[39m
- [32m✓[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 887[2mms[22m[39m
-     [33m[2m✓[22m[39m uses real anchor destinations for all five mobile navigation entries [33m 317[2mms[22m[39m
-     [33m[2m✓[22m[39m opens a native search panel with real page destinations [33m 331[2mms[22m[39m
- [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 283[2mms[22m[39m
+ [32m✓[39m src/functional-product-editor.vitest.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1222[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks direct_add when a required configurator rule exists [33m 598[2mms[22m[39m
+     [33m[2m✓[22m[39m reads active Catalog, preserves unrelated entries, then creates + validates a formal draft [33m 350[2mms[22m[39m
+ [31m❯[39m src/functional-options-editor.vitest.test.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 2336[2mms[22m[39m
+     [33m[2m✓[22m[39m supports real option CRUD instead of visual-only rows [33m 621[2mms[22m[39m
+     [32m✓[39m portion mode is real state and requires the normal level[32m 285[2mms[22m[39m
+     [32m✓[39m reads active Catalog, preserves unrelated products/groups, then creates and validates a formal draft[32m 218[2mms[22m[39m
+[31m     [31m×[31m never reports formal save when Catalog HTTP fails[39m[33m 1211[2mms[22m[39m
+ [32m✓[39m src/interaction-controller.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 2294[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates between Admin routes after zh-HK localization [33m 766[2mms[22m[39m
+     [33m[2m✓[22m[39m search, notifications, and profile controls open compatibility panels [33m 332[2mms[22m[39m
+ [32m✓[39m src/runtime-port.vitest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/App.vitest.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1641[2mms[22m[39m
+     [33m[2m✓[22m[39m renders /admin/overview as Overview with its reference anchor [33m 512[2mms[22m[39m
+ [32m✓[39m src/functional-shell.vitest.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 906[2mms[22m[39m
+     [33m[2m✓[22m[39m uses real anchor destinations for all five mobile navigation entries [33m 319[2mms[22m[39m
+ [32m✓[39m src/zh-hk-localization.vitest.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the Publish screen in Traditional Chinese instead of the English draft copy [33m 317[2mms[22m[39m
 
 [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
 
@@ -596,8 +717,8 @@ Ignored nodes: comments, script, style
 
 [2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (7)[39m
 [2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m38 passed[39m[22m[90m (39)[39m
-[2m   Start at [22m 01:06:11
-[2m   Duration [22m 7.44s[2m (transform 617ms, setup 0ms, import 6.20s, tests 7.62s, environment 6.02s)[22m
+[2m   Start at [22m 02:43:55
+[2m   Duration [22m 8.50s[2m (transform 697ms, setup 0ms, import 6.39s, tests 8.73s, environment 6.96s)[22m
 
 
 ::error file=/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web/src/functional-options-editor.vitest.test.tsx,title=src/functional-options-editor.vitest.test.tsx > Functional Options Editor > never reports formal save when Catalog HTTP fails,line=123,column=11::TestingLibraryElementError: Unable to find an element with the text: 保存失敗. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="admin-shell"%0A    >%0A      <aside%0A        class="admin-sidebar"%0A      >%0A        <div%0A          class="brand"%0A        >%0A          MoreFunOS%0A        </div>%0A        <nav%0A          aria-label="Admin navigation"%0A          class="admin-nav"%0A        >%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/overview"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-layout-dashboard"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="3"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="3"%0A              />%0A              <rect%0A                height="9"%0A                rx="1"%0A                width="7"%0A                x="14"%0A                y="12"%0A              />%0A              <rect%0A                height="5"%0A                rx="1"%0A                width="7"%0A                x="3"%0A                y="16"%0A              />%0A            </svg>%0A            <span>%0A              Overview%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/catalog/products/PRC-001"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-package-open"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M12 22v-9"%0A              />%0A              <path%0A                d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A              />%0A              <path%0A                d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A              />%0A              <path%0A                d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A              />%0A            </svg>%0A            <span>%0A              Catalog%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/storefront"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-store"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A              />%0A              <path%0A                d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A              />%0A              <path%0A                d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A              />%0A            </svg>%0A            <span>%0A              Storefront%0A            </span>%0A          </a>%0A          <a%0A            class="nav-item "%0A            data-discover="true"%0A            href="/admin/operations/pickup-queue"%0A          >%0A            <svg%0A              aria-hidden="true"%0A              class="lucide lucide-gauge"%0A              fill="none"%0A              height="19"%0A              stroke="currentColor"%0A              stroke-linecap="round"%0A              stroke-linejoin="round"%0A              stroke-width="1.8"%0A              viewBox="0 0 24 24"%0A              width="19"%0A              xmlns="http://www.w3.org/2000/svg"%0A            >%0A              <path%0A                d="m12 14 4-4"%0A              /...%0A%0AIgnored nodes: comments, script, style%0A<html>%0A  <head />%0A  <body>%0A    <div>%0A      <div%0A        class="admin-shell"%0A      >%0A        <aside%0A          class="admin-sidebar"%0A        >%0A          <div%0A            class="brand"%0A          >%0A            MoreFunOS%0A          </div>%0A          <nav%0A            aria-label="Admin navigation"%0A            class="admin-nav"%0A          >%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/overview"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-layout-dashboard"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="3"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="3"%0A                />%0A                <rect%0A                  height="9"%0A                  rx="1"%0A                  width="7"%0A                  x="14"%0A                  y="12"%0A                />%0A                <rect%0A                  height="5"%0A                  rx="1"%0A                  width="7"%0A                  x="3"%0A                  y="16"%0A                />%0A              </svg>%0A              <span>%0A                Overview%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/catalog/products/PRC-001"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-package-open"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M12 22v-9"%0A                />%0A                <path%0A                  d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"%0A                />%0A                <path%0A                  d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"%0A                />%0A                <path%0A                  d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z"%0A                />%0A              </svg>%0A              <span>%0A                Catalog%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/storefront"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-store"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A                stroke-width="1.8"%0A                viewBox="0 0 24 24"%0A                width="19"%0A                xmlns="http://www.w3.org/2000/svg"%0A              >%0A                <path%0A                  d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"%0A                />%0A                <path%0A                  d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"%0A                />%0A                <path%0A                  d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"%0A                />%0A              </svg>%0A              <span>%0A                Storefront%0A              </span>%0A            </a>%0A            <a%0A              class="nav-item "%0A              data-discover="true"%0A              href="/admin/operations/pickup-queue"%0A            >%0A              <svg%0A                aria-hidden="true"%0A                class="lucide lucide-gauge"%0A                fill="none"%0A                height="19"%0A                stroke="currentColor"%0A                stroke-linecap="round"%0A                stroke-linejoin="round"%0A            ...%0A ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27%0A ❯ src/functional-options-editor.vitest.test.tsx:123:11%0A%0A
