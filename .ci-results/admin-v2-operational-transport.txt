@@ -1,8 +1,8 @@
-source_sha=d14685497f99795902f077887601ce32fc797f70
-builder_sha=768b3f91b4a431305563d1f1052286995702fc2a
-run_id=32671360053
+source_sha=9091dc6d08cc94875077b54518969de06d1ea7db
+builder_sha=04c59820e630a8892bb5369b4072696af7706329
+run_id=32671478342
 transport_test=success
-daily_reset_test=success
+daily_reset_test=failure
 admin_port_test=success
 typecheck=success
-conclusion=success
+conclusion=failure
