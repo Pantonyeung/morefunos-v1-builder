@@ -1,0 +1,108 @@
+name: Admin V2 Operational Transport Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character morefunos-v1 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Validate exact source request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Checkout exact MoreFunOS source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED"
+          printf 'source_sha=%s\n' "$ACTUAL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run Admin V2 operational transport test
+        id: transport_test
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test packages/integration-v2/admin-transport-adapter.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-v2-operational-transport-test.log"
+
+      - name: Run V2 strict typecheck
+        id: typecheck
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log"
+
+      - name: Record exact-SHA evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/admin-v2-operational-transport-summary.txt
+          printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/admin-v2-operational-transport-summary.txt
+          printf 'transport_test=%s\ntypecheck=%s\n' "$TRANSPORT_TEST" "$TYPECHECK" >> evidence/admin-v2-operational-transport-summary.txt
+          test -f "$RUNNER_TEMP/admin-v2-operational-transport-test.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-test.log" evidence/transport-test.log || true
+          test -f "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" evidence/typecheck.log || true
+          cat evidence/admin-v2-operational-transport-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-v2-operational-transport-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          [[ "$TRANSPORT_TEST" == success ]]
+          [[ "$TYPECHECK" == success ]]
