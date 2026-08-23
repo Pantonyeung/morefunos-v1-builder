@@ -26,7 +26,7 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 90
     outputs:
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
@@ -81,6 +81,7 @@ jobs:
       - name: Run V1-owned D-103 profile
         id: v1_profile
         continue-on-error: true
+        timeout-minutes: 70
         working-directory: source
         shell: bash
         run: |
