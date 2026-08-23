@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload npm debug logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: design-center-npm-debug-${{ steps.request.outputs.source_sha }}
           path: npm-debug-logs
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload generated lockfile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: design-center-package-lock-${{ steps.request.outputs.source_sha }}
           path: source/apps/design-center/package-lock.json
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload Design Center build
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: design-center-dist-${{ steps.request.outputs.source_sha }}
           path: source/apps/design-center/dist

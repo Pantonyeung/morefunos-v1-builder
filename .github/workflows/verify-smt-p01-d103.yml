@@ -91,7 +91,7 @@ jobs:
       - name: Upload V1-produced D-103 evidence
         id: evidence_artifact
         if: steps.v1_profile.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smt-p01-d103-evidence-${{ steps.request.outputs.source_sha }}
           path: source/artifacts/smt-p01-d103
