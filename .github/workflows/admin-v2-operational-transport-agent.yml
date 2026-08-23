@@ -73,7 +73,7 @@ jobs:
             packages/integration-v2/admin-production-edge.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-v2-operational-transport-test.log"
 
-      - name: Run daily availability reset runtime test
+      - name: Run Operational runtime tests
         id: daily_reset_test
         continue-on-error: true
         working-directory: source
@@ -82,6 +82,7 @@ jobs:
           set -o pipefail
           node --experimental-strip-types --test \
             packages/runtime-v2/daily-availability-reset-service.test.ts \
+            packages/runtime-v2/operational-state-durable-authority.test.ts \
             2>&1 | tee "$RUNNER_TEMP/daily-availability-reset-test.log"
 
       - name: Install Admin Web dependencies
