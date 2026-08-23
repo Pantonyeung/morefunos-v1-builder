@@ -1,6 +1,14 @@
 name: Verify Staff Durability V2
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
   push:
     branches: [main]
     paths:
@@ -10,7 +18,7 @@ on:
       source_sha:
         description: Exact MoreFunOS V1 source SHA
         required: true
-        default: 69af2c100964703c7bc5c6c6cea3eedbdb2ba74d
+        default: 2b251c416f3e980428853f16ceb5478ad7f9bc62
         type: string
 
 permissions:
@@ -21,7 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || '69af2c100964703c7bc5c6c6cea3eedbdb2ba74d' }}
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha || '2b251c416f3e980428853f16ceb5478ad7f9bc62' }}
     steps:
       - name: Validate exact source request
         id: request
