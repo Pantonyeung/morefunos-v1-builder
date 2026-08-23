@@ -49,6 +49,7 @@ jobs:
             .github/workflows/builder-self-check.yml \
             .github/workflows/owner-control-v2.yml \
             .github/workflows/verify-v1.yml \
+            .github/workflows/verify-smt-p01-d103.yml \
             .github/workflows/verify-design-center.yml \
             .github/workflows/verify-carrier.yml \
             .github/workflows/runtime-release-v2.yml \
