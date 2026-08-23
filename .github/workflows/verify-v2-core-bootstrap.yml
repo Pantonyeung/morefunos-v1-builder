@@ -1,4 +1,5 @@
 name: V2 Core Bootstrap Verification
+# Evidence trigger for MoreFunOS V1 exact source d4003299e88ec6e502576ae4d0ca50e066475e1a
 
 on:
   push:
