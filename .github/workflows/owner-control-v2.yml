@@ -153,6 +153,9 @@ jobs:
             runtime-status) RESULT="$STATUS" ;;
             *) RESULT=unknown ;;
           esac
+          if [[ "$RESULT" == cancelled && -z "$STAGE" ]]; then
+            STAGE=job-level-cancel
+          fi
           BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
           if [[ -n "$STAGE" ]]; then BODY="$BODY stage=$STAGE"; fi
           if [[ "$CHANNEL" != none ]]; then BODY="$BODY channel=$CHANNEL"; fi
