@@ -31,6 +31,7 @@ jobs:
       failure_stage: ${{ steps.stage.outputs.failure_stage }}
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+      MOREFUNOS_SHARED_UI_FIXTURES_DIR: ${{ github.workspace }}/fixture-registry
     steps:
       - name: Validate exact request
         id: request
@@ -56,7 +57,17 @@ jobs:
           path: source
           persist-credentials: false
 
-      - name: Verify exact source identity
+      - name: Checkout shared UI fixture registry
+        id: fixture_checkout
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: test-v2/shared-ui-fixtures
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: fixture-registry
+          persist-credentials: false
+
+      - name: Verify exact source identity and fixture registry
         id: identity
         shell: bash
         env:
@@ -64,6 +75,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          test -f "$MOREFUNOS_SHARED_UI_FIXTURES_DIR/test-data/ui-shared-v2/manifest.json"
+          grep -q 'TEST_ONLY_NON_PRODUCTION' "$MOREFUNOS_SHARED_UI_FIXTURES_DIR/test-data/ui-shared-v2/manifest.json"
 
       - name: Run V1-owned D-103 profile
         id: v1_profile
@@ -91,6 +104,7 @@ jobs:
         env:
           REQUEST: ${{ steps.request.outcome }}
           SOURCE: ${{ steps.source_checkout.outcome }}
+          FIXTURE: ${{ steps.fixture_checkout.outcome }}
           IDENTITY: ${{ steps.identity.outcome }}
           PROFILE: ${{ steps.v1_profile.outcome }}
           ARTIFACT: ${{ steps.evidence_artifact.outcome }}
@@ -101,6 +115,8 @@ jobs:
             STAGE=request
           elif [[ "$SOURCE" == failure ]]; then
             STAGE=source-checkout
+          elif [[ "$FIXTURE" == failure ]]; then
+            STAGE=fixture-checkout
           elif [[ "$IDENTITY" == failure ]]; then
             STAGE=identity
           elif [[ "$PROFILE" == failure ]]; then
