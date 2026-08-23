@@ -100,7 +100,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node --experimental-strip-types --test src/index.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-worker-test.log"
+          node --experimental-strip-types --test \
+            src/index.test.ts \
+            src/provision-operational-state-operator.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/admin-worker-test.log"
 
       - name: Run Admin Worker Wrangler dry-run
         id: worker_dry_run
