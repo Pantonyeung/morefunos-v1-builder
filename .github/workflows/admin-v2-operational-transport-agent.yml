@@ -7,7 +7,7 @@ on:
       - '.ci-requests/admin-v2-operational-transport.sha'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: builder
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Read and validate exact source SHA
         id: request
@@ -97,6 +97,38 @@ jobs:
           path: evidence
           if-no-files-found: error
           retention-days: 30
+
+      - name: Persist bounded result marker
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$TRANSPORT_TEST" == success && "$TYPECHECK" == success ]]; then
+            CONCLUSION=success
+          else
+            CONCLUSION=failure
+          fi
+          mkdir -p builder/.ci-results
+          {
+            printf 'source_sha=%s\n' "$SOURCE_SHA"
+            printf 'builder_sha=%s\n' "$GITHUB_SHA"
+            printf 'run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'transport_test=%s\n' "$TRANSPORT_TEST"
+            printf 'typecheck=%s\n' "$TYPECHECK"
+            printf 'conclusion=%s\n' "$CONCLUSION"
+          } > builder/.ci-results/admin-v2-operational-transport.txt
+          git -C builder config user.name 'morefunos-builder-bot'
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/admin-v2-operational-transport.txt
+          if git -C builder diff --cached --quiet; then
+            exit 0
+          fi
+          git -C builder commit -m "ci(result): Admin V2 operational transport $SOURCE_SHA"
+          git -C builder push origin HEAD:main
 
       - name: Enforce verification result
         if: always()
