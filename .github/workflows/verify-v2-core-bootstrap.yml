@@ -14,7 +14,7 @@ on:
       source_sha:
         description: Exact MoreFunOS V1 source SHA
         required: true
-        default: d4003299e88ec6e502576ae4d0ca50e066475e1a
+        default: c9be8284e03be377a68d8bc6671dffbf4840f3ce
         type: string
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || 'd4003299e88ec6e502576ae4d0ca50e066475e1a' }}
+      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || 'c9be8284e03be377a68d8bc6671dffbf4840f3ce' }}
     steps:
       - name: Validate exact source request
         id: request
