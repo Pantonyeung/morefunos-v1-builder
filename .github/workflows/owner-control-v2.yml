@@ -34,6 +34,7 @@ jobs:
           case "$VERB" in
             /verify-v1) COMMAND=verify-v1 ;;
             /verify-smt-p01-d103) COMMAND=verify-smt-p01-d103 ;;
+            /verify-staff-durability) COMMAND=verify-staff-durability ;;
             /verify-carrier) COMMAND=verify-carrier ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
             /release-android) COMMAND=release-android ;;
@@ -55,16 +56,17 @@ jobs:
             echo "channel=$CHANNEL"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Publish D-103 accepted run identity
-        if: steps.parse.outputs.command == 'verify-smt-p01-d103'
+      - name: Publish accepted run identity
+        if: steps.parse.outputs.command == 'verify-smt-p01-d103' || steps.parse.outputs.command == 'verify-staff-durability'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
+          COMMAND: ${{ steps.parse.outputs.command }}
           SOURCE_SHA: ${{ steps.parse.outputs.source_sha }}
         run: |
           set -euo pipefail
-          BODY="owner-control-v2 accepted run_id=$RUN_ID command=verify-smt-p01-d103 source_sha=$SOURCE_SHA"
+          BODY="owner-control-v2 accepted run_id=$RUN_ID command=$COMMAND source_sha=$SOURCE_SHA"
           echo "$BODY"
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
 
@@ -81,6 +83,15 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.command == 'verify-smt-p01-d103'
     uses: ./.github/workflows/verify-smt-p01-d103.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+
+  verify-staff-durability:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-staff-durability'
+    uses: ./.github/workflows/verify-staff-durability-v2.yml
     with:
       source_sha: ${{ needs.prepare.outputs.source_sha }}
     secrets:
@@ -135,7 +146,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
+    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-staff-durability, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -150,6 +161,7 @@ jobs:
           V1_STAGE: ${{ needs.verify-v1.outputs.failure_stage }}
           D103: ${{ needs.verify-smt-p01-d103.result }}
           D103_STAGE: ${{ needs.verify-smt-p01-d103.outputs.failure_stage }}
+          STAFF_DURABILITY: ${{ needs.verify-staff-durability.result }}
           CARRIER: ${{ needs.verify-carrier.result }}
           CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
@@ -161,6 +173,7 @@ jobs:
           case "$COMMAND" in
             verify-v1) RESULT="$V1"; STAGE="$V1_STAGE" ;;
             verify-smt-p01-d103) RESULT="$D103"; STAGE="$D103_STAGE" ;;
+            verify-staff-durability) RESULT="$STAFF_DURABILITY" ;;
             verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
             release-android) RESULT="$ANDROID_RELEASE" ;;
