@@ -129,6 +129,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
           COMMAND: ${{ needs.prepare.outputs.command }}
           SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
           CHANNEL: ${{ needs.prepare.outputs.channel }}
@@ -156,7 +157,7 @@ jobs:
           if [[ "$RESULT" == cancelled && ( -z "$STAGE" || "$STAGE" == none ) ]]; then
             STAGE=job-level-cancel
           fi
-          BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
+          BODY="owner-control-v2 run_id=$RUN_ID command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
           if [[ -n "$STAGE" ]]; then BODY="$BODY stage=$STAGE"; fi
           if [[ "$CHANNEL" != none ]]; then BODY="$BODY channel=$CHANNEL"; fi
           echo "$BODY"
