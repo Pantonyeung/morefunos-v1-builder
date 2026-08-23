@@ -1,7 +1,7 @@
 # D-103 Builder `cancelled stage=none` Incident
 
 Date: 2026-08-23 HKT
-Status: ROOT-CAUSE HYPOTHESIS NARROWED TO D-103 HEAVY EXECUTION PATH / POST-REPAIR RUN PENDING
+Status: ROOT-CAUSE INVESTIGATION ACTIVE / FAILURE BOUNDARY NARROWED TO V1-OWNED D-103 PROFILE STEP
 Scope: `Pantonyeung/morefunos-v1-builder` execution plane only
 Product source authority: `Pantonyeung/morefunos-v1`
 
@@ -17,7 +17,7 @@ Observed on multiple different MoreFunOS V1 source SHAs, including:
 - `d8a3c415bedc318b9bc42e02ba1624ce1dbe46cc`
 - `a76f89b4038243e0bad5ef36ba5d2c87faf0d5e3`
 
-This is not evidence of an SMT regression stage because no application stage was reported.
+This is Builder execution evidence, not an SMT regression stage, because no application stage was reported.
 
 ## Evidence reviewed
 
@@ -49,16 +49,28 @@ Current `scripts/verify-smt-p01-d103.mjs` performs:
 
 This is materially heavier than the original D-103 relay, which began as install + one D-103 test + typecheck + build with a 20-minute timeout.
 
+Current script implementation also runs the heavyweight child commands through `spawnSync` without per-stage child-process timeout. Therefore a hung install/test/typecheck/build/browser-install process can keep the outer profile step alive until its enclosing workflow timeout. This is a confirmed observability weakness, but not yet proof that any specific child stage caused the historical cancellations.
+
 ### Working control workflow
 Current `verify-v1.yml` has a 30-minute job timeout but performs locked install + contracts + typecheck + SMT functional tests + SMT build only. It does not install Chromium, start preview, capture geometry or copy fidelity evidence.
 
-This comparison reinforces that the former D-103 35-minute ceiling was disproportionately tight after browser/fidelity work moved into the V1-owned profile.
+This comparison shows that the former D-103 35-minute ceiling was disproportionately tight after browser/fidelity work moved into the V1-owned profile. It does not by itself prove that timeout was the historical cancellation cause.
 
-## GitHub official behavior
+## GitHub official behavior / corrected interpretation
 
-GitHub Actions `jobs.<job_id>.timeout-minutes` automatically cancels the job after the configured maximum. Step-level `timeout-minutes` kills the step rather than the whole job, allowing later diagnostic steps to run when the workflow is structured correctly.
+Context7 was queried against official GitHub Actions documentation.
 
-This behavior matches the observed caller result `cancelled stage=none` when a job-level timeout kills the reusable job before `Derive failure stage` can publish an output.
+Confirmed:
+- `jobs.<job_id>.timeout-minutes` imposes a job execution ceiling;
+- `steps[*].timeout-minutes` imposes a step ceiling;
+- cancellation semantics and `if: always()` mean it is NOT valid to state that a job timeout necessarily prevents every later diagnostic step from running.
+
+Therefore the previous stronger statement — “35-minute timeout definitely caused `stage=none` because Derive Failure Stage could not run” — is withdrawn.
+
+Current classification:
+- stale timeout = plausible contributing factor;
+- exact historical root cause = not proven from old sanitized comments alone;
+- direct workflow run/job evidence is required.
 
 ## Control experiment — Owner Control bus health
 
@@ -86,20 +98,39 @@ Interpretation:
 
 Therefore the incident is not a general Owner Control / runner / issue-write outage. It is narrowed to the D-103 reusable/heavy execution path.
 
-## Current root-cause hypothesis
+## Direct run instrumentation
 
-`35-minute D-103 job timeout became stale after the V1-owned D-103 profile expanded into full browser/fidelity verification.`
+Owner Control was instrumented to publish `github.run_id` immediately after a D-103 command is accepted, before entering the reusable D-103 job.
 
-Confidence: HIGH.
+Current instrumented exact-SHA run:
+- source SHA: `58b8dcc88fcadd83ef8994c4b362477ee6e7baaf`
+- command comment: `5384677917`
+- accepted comment: `5384678529`
+- Actions run ID: `32623683123`
+- D-103 job ID: `97155653957`
 
-The control experiment materially strengthens this hypothesis by proving the common Owner Control execution bus is healthy.
+Direct Actions job evidence for run `32623683123`:
+- `prepare` = PASS
+- exact request validation = PASS
+- Node 22 setup = PASS
+- exact V1 source checkout = PASS
+- Shared Fixture Registry checkout = PASS
+- exact source identity + fixture verification = PASS
+- `Run V1-owned D-103 profile` = IN_PROGRESS at last inspection
+- subsequent artifact/stage/enforcement steps = pending
 
-## Repairs applied
+This is the narrowest verified failure/latency boundary so far:
+
+`Owner Control / checkout / fixture / identity PASS -> V1-owned D-103 profile step -> unresolved internal stage`
+
+No SMT source change is authorized from this evidence alone.
+
+## Repairs / diagnostics applied
 
 ### `448dd83838508added54c5ad23e74a2ffeb25342`
 - D-103 job timeout: 35 -> 90 minutes
 - heavy V1-owned profile receives a separate 70-minute step timeout
-- `continue-on-error: true` retained so Derive Failure Stage can execute after step failure
+- `continue-on-error: true` retained so later stage derivation can run after an ordinary step failure
 
 ### `dac682411a41ca0bc43ee1a4b00a7b857646a6a2`
 - Owner Control cancellation fallback added
@@ -113,26 +144,34 @@ The control experiment materially strengthens this hypothesis by proving the com
 ### `59d836a6d89bf6701e84776d704d179384ade100`
 - Builder Self Check now runs on direct `main` workflow/script changes as well as PR/manual dispatch
 
-## Verification experiment
+### `6b3372d2227388640a18ba22241909e60df9c697`
+- final sanitized result includes `github.run_id`
 
-Current exact MoreFunOS V1 source under test:
+### `e30fe97b13afa6439b120aa14e8de74cda89c393`
+- D-103 accepted event publishes `github.run_id` before entering the reusable workflow, enabling in-progress job inspection
 
-`58b8dcc88fcadd83ef8994c4b362477ee6e7baaf`
+## Next diagnostic action
 
-Fresh Owner Control D-103 comment created after the complete repair chain:
+Do not post repeated blind retries.
 
-`5384626777`
+For run `32623683123`:
+1. inspect workflow jobs until the profile step reaches a terminal state;
+2. once the job log blob is available, inspect job `97155653957` logs;
+3. identify the last emitted `[D-103] stage=...` line;
+4. classify the first failing/hanging child stage;
+5. correct only that smallest responsible layer;
+6. add per-stage timeout/heartbeat only where evidence justifies it.
+
+If the profile reaches success, fetch the D-103 evidence artifact and continue to browser/geometry/Golden evaluation instead of treating the historical cancellation as current application failure.
 
 ## PASS condition for this incident
 
-The fresh run must do one of the following:
+The incident is closed only when a fresh exact-SHA run does one of the following:
 
-1. return an actual D-103 application stage (`test-*`, `typecheck-*`, `build`, `browser-install`, `preview`, `geometry`, `evidence-artifact`), proving the execution/diagnostic path is restored; or
-2. return D-103 PASS with evidence artifact.
+1. returns a real D-103 stage and direct job/log evidence identifies the responsible layer; or
+2. returns D-103 PASS with expected evidence artifacts.
 
-A new `cancelled stage=none` is NOT acceptable. With the updated Owner Control fallback, a true outer cancellation must at minimum classify as `job-level-cancel`.
-
-If cancellation remains after the increased job timeout, the next classification is D-103 runner/platform execution and must be investigated from workflow run/job metadata rather than by changing SMT source.
+A new opaque `cancelled stage=none` is not acceptable.
 
 ## Rejected approaches
 
@@ -140,9 +179,10 @@ If cancellation remains after the increased job timeout, the next classification
 - treating `cancelled stage=none` as an SMT application failure;
 - reintroducing D-103 concurrency locks;
 - changing SMT product code to address Builder cancellation;
+- claiming timeout as proven root cause without run/job evidence;
 - claiming PASS before exact-SHA Builder evidence;
 - assuming the Owner Control bus is broken without a control experiment.
 
 ## Self-Invention Audit
 
-No Product/Business/Runtime/Native authority was introduced or changed. Repairs are confined to the Builder execution/diagnostic plane and follow GitHub Actions timeout/reusable-workflow behavior.
+No Product/Business/Runtime/Native authority was introduced or changed. Changes are confined to Builder observability/execution diagnostics and follow Context7 + official GitHub Actions behavior.
