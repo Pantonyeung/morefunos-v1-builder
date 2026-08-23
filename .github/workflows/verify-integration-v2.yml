@@ -69,6 +69,22 @@ jobs:
           set -o pipefail
           npm test 2>&1 | tee "$RUNNER_TEMP/integration-v2-test.log"
 
+      - name: Verify Admin production Worker when present
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          WORKER_DIR="infra/cloudflare/admin-v2-worker"
+          if [ ! -f "$WORKER_DIR/package.json" ]; then
+            echo "admin_v2_worker=not_present_skip" | tee "$RUNNER_TEMP/admin-v2-worker.log"
+            exit 0
+          fi
+          (
+            cd "$WORKER_DIR"
+            npm install --no-audit --no-fund
+            npm run check
+          ) 2>&1 | tee "$RUNNER_TEMP/admin-v2-worker.log"
+
       - name: Run Runtime V2 regression
         working-directory: source
         shell: bash
@@ -100,6 +116,7 @@ jobs:
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/integration-v2-summary.txt
           cp "$RUNNER_TEMP/integration-v2-test.log" evidence/test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-v2-worker.log" evidence/admin-v2-worker.log 2>/dev/null || true
           cp "$RUNNER_TEMP/runtime-v2-test.log" evidence/runtime-v2-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/staff-test.log" evidence/staff-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/integration-v2-typecheck.log" evidence/typecheck.log 2>/dev/null || true
