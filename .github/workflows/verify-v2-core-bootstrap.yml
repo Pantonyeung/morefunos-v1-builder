@@ -21,6 +21,8 @@ on:
 
 permissions:
   contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   verify:
@@ -67,6 +69,8 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
 
       - name: Run V2 Core contract and runtime tests
+        id: v2_core_test
+        continue-on-error: true
         working-directory: source
         shell: bash
         run: |
@@ -74,6 +78,8 @@ jobs:
           npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core-test.log"
 
       - name: Run V2 Core strict typecheck
+        id: v2_core_typecheck
+        continue-on-error: true
         working-directory: source
         shell: bash
         run: |
@@ -81,6 +87,8 @@ jobs:
           npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core-typecheck.log"
 
       - name: Run full current regression suite
+        id: current_test
+        continue-on-error: true
         working-directory: source
         shell: bash
         run: |
@@ -88,22 +96,54 @@ jobs:
           npm run test:current 2>&1 | tee "$RUNNER_TEMP/current-test.log"
 
       - name: Record verification identity
+        if: always()
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
+          TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
+          TEST_CURRENT: ${{ steps.current_test.outcome }}
         run: |
           set -euo pipefail
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/v2-core-summary.txt
-          printf 'test_v2_core=PASS\ntypecheck_v2_core=PASS\ntest_current=PASS\n' >> evidence/v2-core-summary.txt
-          cp "$RUNNER_TEMP/v2-core-test.log" evidence/v2-core-test.log
-          cp "$RUNNER_TEMP/v2-core-typecheck.log" evidence/v2-core-typecheck.log
-          cp "$RUNNER_TEMP/current-test.log" evidence/current-test.log
+          printf 'test_v2_core=%s\ntypecheck_v2_core=%s\ntest_current=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" >> evidence/v2-core-summary.txt
+          test -f "$RUNNER_TEMP/v2-core-test.log" && cp "$RUNNER_TEMP/v2-core-test.log" evidence/v2-core-test.log || true
+          test -f "$RUNNER_TEMP/v2-core-typecheck.log" && cp "$RUNNER_TEMP/v2-core-typecheck.log" evidence/v2-core-typecheck.log || true
+          test -f "$RUNNER_TEMP/current-test.log" && cp "$RUNNER_TEMP/current-test.log" evidence/current-test.log || true
+
+      - name: Report result to verification PR
+        if: always() && github.event_name == 'issue_comment'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
+          TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
+          TEST_CURRENT: ${{ steps.current_test.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$TEST_V2_CORE" == success && "$TYPECHECK_V2_CORE" == success && "$TEST_CURRENT" == success ]]; then OVERALL=PASS; else OVERALL=FAIL; fi
+          BODY=$(printf 'V2_CORE_VERIFY_RESULT\nsource_sha=%s\ntest:v2-core=%s\ntypecheck:v2-core=%s\ntest:current=%s\noverall=%s\nrun_id=%s' "$SOURCE_SHA" "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" "$OVERALL" "$GITHUB_RUN_ID")
+          gh api "repos/$GITHUB_REPOSITORY/issues/83/comments" -f body="$BODY" >/dev/null
 
       - name: Upload V2 Core verification evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v2-core-evidence-${{ steps.request.outputs.source_sha }}
           path: evidence
           if-no-files-found: error
           retention-days: 30
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
+          TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
+          TEST_CURRENT: ${{ steps.current_test.outcome }}
+        run: |
+          [[ "$TEST_V2_CORE" == success ]]
+          [[ "$TYPECHECK_V2_CORE" == success ]]
+          [[ "$TEST_CURRENT" == success ]]
