@@ -1,7 +1,7 @@
 # D-103 Builder `cancelled stage=none` Incident
 
 Date: 2026-08-23 HKT
-Status: ROOT-CAUSE HYPOTHESIS UNDER VERIFICATION
+Status: ROOT-CAUSE HYPOTHESIS NARROWED TO D-103 HEAVY EXECUTION PATH / POST-REPAIR RUN PENDING
 Scope: `Pantonyeung/morefunos-v1-builder` execution plane only
 Product source authority: `Pantonyeung/morefunos-v1`
 
@@ -49,17 +49,50 @@ Current `scripts/verify-smt-p01-d103.mjs` performs:
 
 This is materially heavier than the original D-103 relay, which began as install + one D-103 test + typecheck + build with a 20-minute timeout.
 
+### Working control workflow
+Current `verify-v1.yml` has a 30-minute job timeout but performs locked install + contracts + typecheck + SMT functional tests + SMT build only. It does not install Chromium, start preview, capture geometry or copy fidelity evidence.
+
+This comparison reinforces that the former D-103 35-minute ceiling was disproportionately tight after browser/fidelity work moved into the V1-owned profile.
+
 ## GitHub official behavior
 
-GitHub Actions `jobs.<job_id>.timeout-minutes` automatically cancels the job after the configured maximum. A job-level cancellation can prevent later `if: always()` diagnostic steps in that job from running, leaving the reusable-workflow output unavailable to the caller.
+GitHub Actions `jobs.<job_id>.timeout-minutes` automatically cancels the job after the configured maximum. Step-level `timeout-minutes` kills the step rather than the whole job, allowing later diagnostic steps to run when the workflow is structured correctly.
 
-This behavior matches the observed caller result `cancelled stage=none`.
+This behavior matches the observed caller result `cancelled stage=none` when a job-level timeout kills the reusable job before `Derive failure stage` can publish an output.
+
+## Control experiment — Owner Control bus health
+
+A lightweight read-only command was posted through the exact same Owner Control bus:
+
+`/runtime-status 58b8dcc88fcadd83ef8994c4b362477ee6e7baaf candidate`
+
+Fresh comment ID:
+`5384642717`
+
+Bot result:
+
+`owner-control-v2 command=runtime-status source_sha=58b8dcc88fcadd83ef8994c4b362477ee6e7baaf result=failure channel=candidate`
+
+Bot result comment ID:
+`5384643928`
+
+Interpretation:
+- `issue_comment.created` trigger works;
+- Owner Control `prepare` works;
+- GitHub-hosted runner can be provisioned;
+- Owner Control `report` works;
+- issue write permission works;
+- a failure result can be returned normally.
+
+Therefore the incident is not a general Owner Control / runner / issue-write outage. It is narrowed to the D-103 reusable/heavy execution path.
 
 ## Current root-cause hypothesis
 
 `35-minute D-103 job timeout became stale after the V1-owned D-103 profile expanded into full browser/fidelity verification.`
 
-Confidence: HIGH, pending one post-repair exact-SHA run.
+Confidence: HIGH.
+
+The control experiment materially strengthens this hypothesis by proving the common Owner Control execution bus is healthy.
 
 ## Repairs applied
 
@@ -86,7 +119,7 @@ Current exact MoreFunOS V1 source under test:
 
 `58b8dcc88fcadd83ef8994c4b362477ee6e7baaf`
 
-Fresh Owner Control comment created after the complete repair chain:
+Fresh Owner Control D-103 comment created after the complete repair chain:
 
 `5384626777`
 
@@ -97,7 +130,9 @@ The fresh run must do one of the following:
 1. return an actual D-103 application stage (`test-*`, `typecheck-*`, `build`, `browser-install`, `preview`, `geometry`, `evidence-artifact`), proving the execution/diagnostic path is restored; or
 2. return D-103 PASS with evidence artifact.
 
-A new `cancelled stage=none` is NOT acceptable. If cancellation remains, the next classification is runner/platform execution and must be investigated from the workflow run/job metadata rather than by changing SMT source.
+A new `cancelled stage=none` is NOT acceptable. With the updated Owner Control fallback, a true outer cancellation must at minimum classify as `job-level-cancel`.
+
+If cancellation remains after the increased job timeout, the next classification is D-103 runner/platform execution and must be investigated from workflow run/job metadata rather than by changing SMT source.
 
 ## Rejected approaches
 
@@ -105,7 +140,8 @@ A new `cancelled stage=none` is NOT acceptable. If cancellation remains, the nex
 - treating `cancelled stage=none` as an SMT application failure;
 - reintroducing D-103 concurrency locks;
 - changing SMT product code to address Builder cancellation;
-- claiming PASS before exact-SHA Builder evidence.
+- claiming PASS before exact-SHA Builder evidence;
+- assuming the Owner Control bus is broken without a control experiment.
 
 ## Self-Invention Audit
 
