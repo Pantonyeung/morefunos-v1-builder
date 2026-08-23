@@ -1,68 +1,60 @@
 # MoreFunOS V1 Builder
 
-Public **verification/build/release execution relay only** for the private MoreFunOS V1 authority repository.
+Public **verification / build / release execution relay only** for the private MoreFunOS V1 authority repository.
 
 ## Authority boundary
+- `Pantonyeung/morefunos-v1` = sole Source / Runtime / Business / UI / Native / Product / Development Authority.
+- `Pantonyeung/morefunos-v1-builder` = sole current CI / Workflow / Build / Verify / Release executor under Owner Decision D-105.
+- Builder never becomes Product or Business authority and must never contain private MoreFun source, menu/pricing/order/payment/fulfillment truth, production UI source, private fixtures, signing keys or a parallel runtime.
 
-- `Pantonyeung/morefunos-v1` (private) is the **sole** Source / Runtime / Business / UI / Native / Product / Development Authority.
-- `Pantonyeung/morefunos-v1-builder` (public) is an execution plane only.
-- This repository must never contain MoreFun business source, menu/pricing/order/payment/fulfillment truth, production UI source, private fixtures, signing keys, secrets or a parallel runtime.
+## Why Builder is mandatory
+`morefunos-v1` GitHub Actions budget is exhausted. Current MoreFunOS development does **not** use or probe V1 Actions.
 
-## Why this repository exists
+Canonical execution chain:
+`V1 exact source SHA -> Builder workflow_dispatch -> exact private checkout -> HEAD identity proof -> V1-owned commands -> Builder run/log/artifact evidence`.
 
-MoreFunOS uses two equivalent verification execution planes:
+If Builder execution is unavailable, the Gate remains pending/blocked. Do not fall back to V1 Actions and do not reinterpret missing execution as Product PASS or Product FAIL.
 
-1. **Private V1 Actions** when private Actions budget/minutes are available.
-2. **This public Builder** when private Actions is blocked by budget/minutes/billing/quota.
-
-The executor may change; the verification standard does not. Every accepted result must bind to an exact immutable V1 source SHA and V1-owned verification/build commands.
-
-Canonical policy lives in the private source repository:
+Canonical private policy:
+- `docs/authority/OWNER_DIRECTIVE_2026-08-23_D105_BUILDER_ONLY_EXECUTION_AUTHORITY.md`
 - `docs/authority/VERIFICATION_EXECUTION_AUTHORITY.md`
 - `docs/authority/BUILDER_TOKEN_AND_SECRET_SETUP.md`
 
+## Trigger policy
+Builder execution is Owner/manual `workflow_dispatch` only unless the Owner explicitly changes this later.
+
+Automatic `push`, `pull_request`, `issue_comment`, `schedule`, `workflow_run` and `repository_dispatch` execution are not the canonical verification path.
+
 ## Security model
+- exact 40-character private V1 source SHA required;
+- private checkout uses `V1_SOURCE_READ_TOKEN` restricted to `Pantonyeung/morefunos-v1` with Contents read-only;
+- actual checkout SHA must equal requested SHA before evidence is accepted;
+- normal verification is read-only toward V1 source;
+- release/delivery/signing credentials are separate from source-read credentials;
+- public logs contain sanitized identity/result metadata only;
+- Builder source must not mutate private V1 source except through separately Owner-approved bounded release/writeback procedures.
 
-- Owner/manual `workflow_dispatch` only.
-- Exact 40-character private source SHA required and normalized before checkout/use.
-- Private source checkout uses `V1_SOURCE_READ_TOKEN` restricted to `Pantonyeung/morefunos-v1` with **Contents: read-only**.
-- Normal verification remains read-only toward private V1 and has no release/delivery/signing credential.
-- Android Release delivery uses separate `V1_ARTIFACT_DELIVERY_TOKEN` plus separate stable-signing secrets.
-- Public logs contain only sanitized stage/result/identity information.
-- APKs are never uploaded to this public Builder's Actions artifacts or Releases.
-- Approved Android APK delivery goes directly to a **private `Pantonyeung/morefunos-v1` prerelease** together with `build-metadata.json` and `SHA256SUMS`.
-- Builder source is not allowed to modify the private V1 source branch.
+## V2 Core verification
+Workflow:
+`.github/workflows/verify-v2-core-bootstrap.yml`
 
-## Manual workflows
+Manual input:
+- `source_sha`: exact 40-character `morefunos-v1` verification SHA.
 
-### `Owner Manual V1 Verify`
-`.github/workflows/manual-verify.yml`
+Execution:
+1. validate exact SHA;
+2. checkout exact private V1 source;
+3. prove checked-out HEAD identity;
+4. run `npm run test:v2-core`;
+5. run `npm run typecheck:v2-core`;
+6. run `npm run test:current`;
+7. record Builder repository/SHA/run ID + V1 source SHA + outcomes;
+8. upload evidence artifact;
+9. fail the workflow if any required command fails.
 
-Read-only verification profiles:
-- `g4`
-- `g5`
-- `current`
-- `smt-lock`
-- `smt-lock-audit`
-- `smt-web`
-- `android`
+## Evidence boundary
+Builder PASS can establish only the evidence rung actually executed for the exact V1 SHA. It does not automatically establish Runtime / Install / Device / Hardware / Operational / Production / Owner acceptance.
 
-The `android` profile verifies G6 static/typecheck, locked SMT Web build, Android SDK readiness, strict Lint, `assembleDebug`, and sanitized APK identity. It does **not** deliver/sign a release APK.
-
-### `Owner Manual V1 Android Release`
-`.github/workflows/manual-android-release.yml`
-
-Purpose after APK Build PASS:
-1. checkout exact private V1 SHA;
-2. rerun G6 static/typecheck/Web build/Lint/assemble gates;
-3. stable-sign the APK with the locked MoreFunOS SMT app-signing certificate;
-4. verify signer certificate SHA-256;
-5. verify package/versionCode continuity;
-6. generate immutable build metadata and `SHA256SUMS`;
-7. create a prerelease directly in private `morefunos-v1` with the APK attached.
-
-This workflow is artifact delivery evidence only. A successful Release does not imply Install, Device, Hardware, Operational or Production PASS.
-
-## Current budget policy
-
-When private Actions is known blocked, do not repeatedly probe it. Use this Builder. At the next expected billing-cycle reset or explicit budget increase, one lightweight private verification probe may be attempted. If it executes, private Actions becomes preferred again; when its budget is exhausted, switch back here.
+## Native / OTA
+The accepted Android Carrier remains governed by D-090 and is not rebuilt for ordinary UI/Business Runtime changes.
+Approved Runtime `.mfos` verification/release/OTA publication workflows also execute from Builder while Product/Runtime authority remains in V1.
