@@ -1,6 +1,14 @@
 name: Verify Integration V2
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      V1_SOURCE_READ_TOKEN:
+        required: true
   push:
     branches: [main]
     paths:
@@ -10,7 +18,6 @@ on:
       source_sha:
         description: Exact MoreFunOS V1 source SHA
         required: true
-        default: 66fc7aa995fbc266555596cd5abb0d29917d01a2
         type: string
 
 permissions:
@@ -21,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || '66fc7aa995fbc266555596cd5abb0d29917d01a2' }}
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - name: Validate exact source request
         id: request
@@ -62,6 +69,20 @@ jobs:
           set -o pipefail
           npm test 2>&1 | tee "$RUNNER_TEMP/integration-v2-test.log"
 
+      - name: Run Runtime V2 regression
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test --experimental-strip-types packages/runtime-v2/*.test.ts 2>&1 | tee "$RUNNER_TEMP/runtime-v2-test.log"
+
+      - name: Run Staff regression
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test --experimental-strip-types packages/staff/*.test.ts 2>&1 | tee "$RUNNER_TEMP/staff-test.log"
+
       - name: Typecheck exact source
         working-directory: source
         shell: bash
@@ -79,6 +100,8 @@ jobs:
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/integration-v2-summary.txt
           cp "$RUNNER_TEMP/integration-v2-test.log" evidence/test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/runtime-v2-test.log" evidence/runtime-v2-test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/staff-test.log" evidence/staff-test.log 2>/dev/null || true
           cp "$RUNNER_TEMP/integration-v2-typecheck.log" evidence/typecheck.log 2>/dev/null || true
 
       - name: Upload Integration V2 verification evidence
