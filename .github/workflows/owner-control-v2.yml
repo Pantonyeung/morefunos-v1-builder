@@ -55,6 +55,19 @@ jobs:
             echo "channel=$CHANNEL"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Publish D-103 accepted run identity
+        if: steps.parse.outputs.command == 'verify-smt-p01-d103'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ steps.parse.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          BODY="owner-control-v2 accepted run_id=$RUN_ID command=verify-smt-p01-d103 source_sha=$SOURCE_SHA"
+          echo "$BODY"
+          gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
+
   verify-v1:
     needs: prepare
     if: needs.prepare.outputs.command == 'verify-v1'
