@@ -36,6 +36,7 @@ jobs:
             /verify-smt-p01-d103) COMMAND=verify-smt-p01-d103 ;;
             /verify-staff-durability) COMMAND=verify-staff-durability ;;
             /verify-integration-v2) COMMAND=verify-integration-v2 ;;
+            /verify-admin-http-browser) COMMAND=verify-admin-http-browser ;;
             /verify-carrier) COMMAND=verify-carrier ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
             /release-android) COMMAND=release-android ;;
@@ -58,7 +59,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish accepted run identity
-        if: steps.parse.outputs.command == 'verify-smt-p01-d103' || steps.parse.outputs.command == 'verify-staff-durability' || steps.parse.outputs.command == 'verify-integration-v2'
+        if: steps.parse.outputs.command == 'verify-smt-p01-d103' || steps.parse.outputs.command == 'verify-staff-durability' || steps.parse.outputs.command == 'verify-integration-v2' || steps.parse.outputs.command == 'verify-admin-http-browser'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,6 +103,15 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.command == 'verify-integration-v2'
     uses: ./.github/workflows/verify-integration-v2.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+
+  verify-admin-http-browser:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-admin-http-browser'
+    uses: ./.github/workflows/verify-admin-http-browser.yml
     with:
       source_sha: ${{ needs.prepare.outputs.source_sha }}
     secrets:
@@ -156,7 +166,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-staff-durability, verify-integration-v2, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
+    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-staff-durability, verify-integration-v2, verify-admin-http-browser, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -173,6 +183,7 @@ jobs:
           D103_STAGE: ${{ needs.verify-smt-p01-d103.outputs.failure_stage }}
           STAFF_DURABILITY: ${{ needs.verify-staff-durability.result }}
           INTEGRATION_V2: ${{ needs.verify-integration-v2.result }}
+          ADMIN_HTTP_BROWSER: ${{ needs.verify-admin-http-browser.result }}
           CARRIER: ${{ needs.verify-carrier.result }}
           CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
           REPAIR: ${{ needs.repair-smt-p01-lockfile.result }}
@@ -186,6 +197,7 @@ jobs:
             verify-smt-p01-d103) RESULT="$D103"; STAGE="$D103_STAGE" ;;
             verify-staff-durability) RESULT="$STAFF_DURABILITY" ;;
             verify-integration-v2) RESULT="$INTEGRATION_V2" ;;
+            verify-admin-http-browser) RESULT="$ADMIN_HTTP_BROWSER" ;;
             verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
             release-android) RESULT="$ANDROID_RELEASE" ;;
