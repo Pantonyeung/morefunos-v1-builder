@@ -1,6 +1,12 @@
 name: Builder Workflow Self Check
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+      - 'scripts/**'
   pull_request:
     paths:
       - '.github/workflows/**'
