@@ -35,6 +35,13 @@ jobs:
           node-version: '22'
           package-manager-cache: false
 
+      - name: Pin npm CLI for Admin verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund
+          test "$(npm --version)" = "11.19.0"
+
       - name: Checkout exact MoreFunOS source
         uses: actions/checkout@v7
         with:
@@ -71,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --ignore-scripts --no-audit --no-fund
+          npm install --ignore-scripts --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/admin-install.log"
 
       - name: Run Admin Web V2 port test
         id: admin_port_test
@@ -105,6 +112,7 @@ jobs:
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/admin-v2-operational-transport-summary.txt
           printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/admin-v2-operational-transport-summary.txt
           printf 'transport_test=%s\nadmin_port_test=%s\ntypecheck=%s\n' "$TRANSPORT_TEST" "$ADMIN_PORT_TEST" "$TYPECHECK" >> evidence/admin-v2-operational-transport-summary.txt
+          test -f "$RUNNER_TEMP/admin-install.log" && cp "$RUNNER_TEMP/admin-install.log" evidence/admin-install.log || true
           test -f "$RUNNER_TEMP/admin-v2-operational-transport-test.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-test.log" evidence/transport-test.log || true
           test -f "$RUNNER_TEMP/admin-v2-port-test.log" && cp "$RUNNER_TEMP/admin-v2-port-test.log" evidence/admin-port-test.log || true
           test -f "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" evidence/typecheck.log || true
