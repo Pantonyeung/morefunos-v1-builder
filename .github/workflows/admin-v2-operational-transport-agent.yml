@@ -85,6 +85,31 @@ jobs:
             packages/runtime-v2/operational-state-durable-authority.test.ts \
             2>&1 | tee "$RUNNER_TEMP/daily-availability-reset-test.log"
 
+      - name: Install Admin Worker dependencies
+        working-directory: source/infra/cloudflare/admin-v2-worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/admin-worker-install.log"
+
+      - name: Run Admin Worker production composition test
+        id: worker_test
+        continue-on-error: true
+        working-directory: source/infra/cloudflare/admin-v2-worker
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test src/index.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-worker-test.log"
+
+      - name: Run Admin Worker Wrangler dry-run
+        id: worker_dry_run
+        continue-on-error: true
+        working-directory: source/infra/cloudflare/admin-v2-worker
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee "$RUNNER_TEMP/admin-worker-dry-run.log"
+
       - name: Install Admin Web dependencies
         working-directory: source/apps/admin-web
         shell: bash
@@ -117,6 +142,8 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
           DAILY_RESET_TEST: ${{ steps.daily_reset_test.outcome }}
+          WORKER_TEST: ${{ steps.worker_test.outcome }}
+          WORKER_DRY_RUN: ${{ steps.worker_dry_run.outcome }}
           ADMIN_PORT_TEST: ${{ steps.admin_port_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
@@ -124,10 +151,13 @@ jobs:
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/admin-v2-operational-transport-summary.txt
           printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/admin-v2-operational-transport-summary.txt
-          printf 'transport_test=%s\ndaily_reset_test=%s\nadmin_port_test=%s\ntypecheck=%s\n' "$TRANSPORT_TEST" "$DAILY_RESET_TEST" "$ADMIN_PORT_TEST" "$TYPECHECK" >> evidence/admin-v2-operational-transport-summary.txt
+          printf 'transport_test=%s\ndaily_reset_test=%s\nworker_test=%s\nworker_dry_run=%s\nadmin_port_test=%s\ntypecheck=%s\n' "$TRANSPORT_TEST" "$DAILY_RESET_TEST" "$WORKER_TEST" "$WORKER_DRY_RUN" "$ADMIN_PORT_TEST" "$TYPECHECK" >> evidence/admin-v2-operational-transport-summary.txt
           test -f "$RUNNER_TEMP/admin-install.log" && cp "$RUNNER_TEMP/admin-install.log" evidence/admin-install.log || true
+          test -f "$RUNNER_TEMP/admin-worker-install.log" && cp "$RUNNER_TEMP/admin-worker-install.log" evidence/admin-worker-install.log || true
           test -f "$RUNNER_TEMP/admin-v2-operational-transport-test.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-test.log" evidence/transport-test.log || true
           test -f "$RUNNER_TEMP/daily-availability-reset-test.log" && cp "$RUNNER_TEMP/daily-availability-reset-test.log" evidence/daily-reset-test.log || true
+          test -f "$RUNNER_TEMP/admin-worker-test.log" && cp "$RUNNER_TEMP/admin-worker-test.log" evidence/admin-worker-test.log || true
+          test -f "$RUNNER_TEMP/admin-worker-dry-run.log" && cp "$RUNNER_TEMP/admin-worker-dry-run.log" evidence/admin-worker-dry-run.log || true
           test -f "$RUNNER_TEMP/admin-v2-port-test.log" && cp "$RUNNER_TEMP/admin-v2-port-test.log" evidence/admin-port-test.log || true
           test -f "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" && cp "$RUNNER_TEMP/admin-v2-operational-transport-typecheck.log" evidence/typecheck.log || true
           cat evidence/admin-v2-operational-transport-summary.txt >> "$GITHUB_STEP_SUMMARY"
@@ -148,11 +178,13 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
           DAILY_RESET_TEST: ${{ steps.daily_reset_test.outcome }}
+          WORKER_TEST: ${{ steps.worker_test.outcome }}
+          WORKER_DRY_RUN: ${{ steps.worker_dry_run.outcome }}
           ADMIN_PORT_TEST: ${{ steps.admin_port_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$TRANSPORT_TEST" == success && "$DAILY_RESET_TEST" == success && "$ADMIN_PORT_TEST" == success && "$TYPECHECK" == success ]]; then
+          if [[ "$TRANSPORT_TEST" == success && "$DAILY_RESET_TEST" == success && "$WORKER_TEST" == success && "$WORKER_DRY_RUN" == success && "$ADMIN_PORT_TEST" == success && "$TYPECHECK" == success ]]; then
             CONCLUSION=success
           else
             CONCLUSION=failure
@@ -164,6 +196,8 @@ jobs:
             printf 'run_id=%s\n' "$GITHUB_RUN_ID"
             printf 'transport_test=%s\n' "$TRANSPORT_TEST"
             printf 'daily_reset_test=%s\n' "$DAILY_RESET_TEST"
+            printf 'worker_test=%s\n' "$WORKER_TEST"
+            printf 'worker_dry_run=%s\n' "$WORKER_DRY_RUN"
             printf 'admin_port_test=%s\n' "$ADMIN_PORT_TEST"
             printf 'typecheck=%s\n' "$TYPECHECK"
             printf 'conclusion=%s\n' "$CONCLUSION"
@@ -183,10 +217,14 @@ jobs:
         env:
           TRANSPORT_TEST: ${{ steps.transport_test.outcome }}
           DAILY_RESET_TEST: ${{ steps.daily_reset_test.outcome }}
+          WORKER_TEST: ${{ steps.worker_test.outcome }}
+          WORKER_DRY_RUN: ${{ steps.worker_dry_run.outcome }}
           ADMIN_PORT_TEST: ${{ steps.admin_port_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$TRANSPORT_TEST" == success ]]
           [[ "$DAILY_RESET_TEST" == success ]]
+          [[ "$WORKER_TEST" == success ]]
+          [[ "$WORKER_DRY_RUN" == success ]]
           [[ "$ADMIN_PORT_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
