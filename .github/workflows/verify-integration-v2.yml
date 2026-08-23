@@ -1,0 +1,91 @@
+name: Verify Integration V2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-integration-v2.yml'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact MoreFunOS V1 source SHA
+        required: true
+        default: 66fc7aa995fbc266555596cd5abb0d29917d01a2
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-integration-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || '66fc7aa995fbc266555596cd5abb0d29917d01a2' }}
+    steps:
+      - name: Validate exact source request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Run Integration V2 tests
+        working-directory: source/packages/integration-v2
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/integration-v2-test.log"
+
+      - name: Typecheck exact source
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npx --yes -p typescript@5.8.3 tsc --noEmit -p tsconfig.json 2>&1 | tee "$RUNNER_TEMP/integration-v2-typecheck.log"
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/integration-v2-summary.txt
+          cp "$RUNNER_TEMP/integration-v2-test.log" evidence/test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/integration-v2-typecheck.log" evidence/typecheck.log 2>/dev/null || true
+
+      - name: Upload Integration V2 verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-v2-evidence-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
