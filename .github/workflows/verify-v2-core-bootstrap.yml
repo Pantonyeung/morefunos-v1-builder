@@ -1,40 +1,23 @@
 name: V2 Core Bootstrap Verification
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/verify-v2-core-bootstrap.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/verify-v2-core-bootstrap.yml'
-  issue_comment:
-    types: [created]
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact MoreFunOS V1 source SHA
+        description: Exact 40-character MoreFunOS V1 source SHA
         required: true
-        default: c9be8284e03be377a68d8bc6671dffbf4840f3ce
         type: string
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 jobs:
   verify:
-    if: >-
-      github.event_name != 'issue_comment' ||
-      (github.event.issue.pull_request &&
-       github.event.issue.number == 83 &&
-       github.event.comment.body == '/verify-v2-core')
+    if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      REQUESTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || 'c9be8284e03be377a68d8bc6671dffbf4840f3ce' }}
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - name: Validate exact source request
         id: request
@@ -66,7 +49,9 @@ jobs:
           EXPECTED: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
-          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          ACTUAL="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED"
+          printf 'source_sha=%s\n' "$ACTUAL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run V2 Core contract and runtime tests
         id: v2_core_test
@@ -95,7 +80,7 @@ jobs:
           set -o pipefail
           npm run test:current 2>&1 | tee "$RUNNER_TEMP/current-test.log"
 
-      - name: Record verification identity
+      - name: Record verification evidence
         if: always()
         shell: bash
         env:
@@ -107,25 +92,12 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/v2-core-summary.txt
+          printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/v2-core-summary.txt
           printf 'test_v2_core=%s\ntypecheck_v2_core=%s\ntest_current=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" >> evidence/v2-core-summary.txt
           test -f "$RUNNER_TEMP/v2-core-test.log" && cp "$RUNNER_TEMP/v2-core-test.log" evidence/v2-core-test.log || true
           test -f "$RUNNER_TEMP/v2-core-typecheck.log" && cp "$RUNNER_TEMP/v2-core-typecheck.log" evidence/v2-core-typecheck.log || true
           test -f "$RUNNER_TEMP/current-test.log" && cp "$RUNNER_TEMP/current-test.log" evidence/current-test.log || true
-
-      - name: Report result to verification PR
-        if: always() && github.event_name == 'issue_comment'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-          TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
-          TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
-          TEST_CURRENT: ${{ steps.current_test.outcome }}
-        run: |
-          set -euo pipefail
-          if [[ "$TEST_V2_CORE" == success && "$TYPECHECK_V2_CORE" == success && "$TEST_CURRENT" == success ]]; then OVERALL=PASS; else OVERALL=FAIL; fi
-          BODY=$(printf 'V2_CORE_VERIFY_RESULT\nsource_sha=%s\ntest:v2-core=%s\ntypecheck:v2-core=%s\ntest:current=%s\noverall=%s\nrun_id=%s' "$SOURCE_SHA" "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" "$OVERALL" "$GITHUB_RUN_ID")
-          gh api "repos/$GITHUB_REPOSITORY/issues/83/comments" -f body="$BODY" >/dev/null
+          cat evidence/v2-core-summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload V2 Core verification evidence
         if: always()
