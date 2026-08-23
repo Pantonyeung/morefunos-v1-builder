@@ -153,7 +153,7 @@ jobs:
             runtime-status) RESULT="$STATUS" ;;
             *) RESULT=unknown ;;
           esac
-          if [[ "$RESULT" == cancelled && -z "$STAGE" ]]; then
+          if [[ "$RESULT" == cancelled && ( -z "$STAGE" || "$STAGE" == none ) ]]; then
             STAGE=job-level-cancel
           fi
           BODY="owner-control-v2 command=$COMMAND source_sha=$SOURCE_SHA result=$RESULT"
