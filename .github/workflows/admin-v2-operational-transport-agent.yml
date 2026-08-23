@@ -80,14 +80,14 @@ jobs:
           set -euo pipefail
           npm install --ignore-scripts --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/admin-install.log"
 
-      - name: Run Admin Web V2 port test
+      - name: Run Admin Web V2 port and Availability UI tests
         id: admin_port_test
         continue-on-error: true
         working-directory: source/apps/admin-web
         shell: bash
         run: |
           set -o pipefail
-          npm test -- admin-v2-port.vitest.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
+          npm test -- admin-v2-port.vitest.test.ts availability.vitest.test.tsx 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
 
       - name: Run V2 strict typecheck
         id: typecheck
