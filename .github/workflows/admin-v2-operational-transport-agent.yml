@@ -83,6 +83,7 @@ jobs:
           node --experimental-strip-types --test \
             packages/runtime-v2/daily-availability-reset-service.test.ts \
             packages/runtime-v2/operational-state-durable-authority.test.ts \
+            packages/runtime-v2/operational-state-provisioning-service.test.ts \
             2>&1 | tee "$RUNNER_TEMP/daily-availability-reset-test.log"
 
       - name: Install Admin Worker dependencies
