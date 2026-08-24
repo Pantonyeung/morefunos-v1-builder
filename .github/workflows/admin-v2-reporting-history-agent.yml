@@ -29,6 +29,12 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
+      - name: Pin npm CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund
+          test "$(npm --version)" = "11.19.0"
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
@@ -41,6 +47,17 @@ jobs:
         continue-on-error: true
         working-directory: source
         run: node --experimental-strip-types --test packages/integration-v2/admin-reporting-history-transport.test.ts
+      - name: Install Admin Web
+        id: install_admin
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run Historical Reporting Web Port test
+        id: reporting_web_test
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- reporting-history-port.vitest.test.ts
       - name: Typecheck
         id: typecheck
         if: ${{ always() }}
@@ -53,12 +70,14 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           REPORTING_TEST: ${{ steps.reporting_test.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
+          REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$REPORTING_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/admin-v2-reporting-history.txt
@@ -70,7 +89,11 @@ jobs:
         shell: bash
         env:
           REPORTING_TEST: ${{ steps.reporting_test.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
+          REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$REPORTING_TEST" == success ]]
+          [[ "$INSTALL_ADMIN" == success ]]
+          [[ "$REPORTING_WEB_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
