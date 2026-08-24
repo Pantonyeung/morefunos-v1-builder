@@ -1,8 +1,9 @@
-core_sha=86b4c03ccb61191b7eb1e2a49df2de1b9b37e956
+core_sha=6c290fde935f7175e1ffb0c909ee87e49cb31859
 customer_sha=5a2a3da1a46b9d12b2c1cdcb0c6022ea1606c02b
-builder_sha=f2b4195943ce70b0f3d420084052d8723683fb67
-run_id=32740182311
+builder_sha=f3614a7ad8752b112f6dd20db5e46852c0f9554c
+run_id=32740665458
 preview_url=https://q-live-02-v2-staging.morefunos-v1.pages.dev
+read_only=true
 isolation=success
 install=success
 focused=success
