@@ -1,0 +1,125 @@
+name: SMM UI Shell Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character MoreFunOS V1 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Validate exact source request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Checkout exact V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED"
+          printf 'source_sha=%s\n' "$ACTUAL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install SMM dependencies
+        id: install
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm install --prefix apps/smm-web --no-audit --no-fund 2>&1 | tee "$RUNNER_TEMP/smm-install.log"
+
+      - name: Run SMM tests
+        id: test
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test --prefix apps/smm-web 2>&1 | tee "$RUNNER_TEMP/smm-test.log"
+
+      - name: Run SMM build
+        id: build
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build --prefix apps/smm-web 2>&1 | tee "$RUNNER_TEMP/smm-build.log"
+
+      - name: Record SMM verification evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/smm-ui-shell-summary.txt
+          printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/smm-ui-shell-summary.txt
+          printf 'install=%s\ntest=%s\nbuild=%s\n' "$INSTALL_OUTCOME" "$TEST_OUTCOME" "$BUILD_OUTCOME" >> evidence/smm-ui-shell-summary.txt
+          node --version >> evidence/smm-ui-shell-summary.txt
+          npm --version >> evidence/smm-ui-shell-summary.txt
+          test -f "$RUNNER_TEMP/smm-install.log" && cp "$RUNNER_TEMP/smm-install.log" evidence/smm-install.log || true
+          test -f "$RUNNER_TEMP/smm-test.log" && cp "$RUNNER_TEMP/smm-test.log" evidence/smm-test.log || true
+          test -f "$RUNNER_TEMP/smm-build.log" && cp "$RUNNER_TEMP/smm-build.log" evidence/smm-build.log || true
+          cat evidence/smm-ui-shell-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SMM verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smm-ui-shell-evidence-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          [[ "$INSTALL_OUTCOME" == success ]]
+          [[ "$TEST_OUTCOME" == success ]]
+          [[ "$BUILD_OUTCOME" == success ]]
