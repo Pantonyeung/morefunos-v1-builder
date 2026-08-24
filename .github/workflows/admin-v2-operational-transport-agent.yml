@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm test -- admin-v2-port.vitest.test.ts staff-port.vitest.test.ts staff.vitest.test.tsx business-day-port.vitest.test.ts business-day.vitest.test.tsx business-day-close.vitest.test.tsx catalog-editor-model.vitest.test.ts App.vitest.test.tsx availability.vitest.test.tsx 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
+          npm test -- admin-v2-port.vitest.test.ts staff-port.vitest.test.ts staff.vitest.test.tsx staff-management.vitest.test.tsx business-day-port.vitest.test.ts business-day.vitest.test.tsx business-day-close.vitest.test.tsx catalog-editor-model.vitest.test.ts App.vitest.test.tsx availability.vitest.test.tsx 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
 
       - name: Run V2 strict typecheck
         id: typecheck
@@ -200,8 +200,7 @@ jobs:
           mkdir -p builder/.ci-results
           {
             printf 'source_sha=%s\n' "$SOURCE_SHA"
-            printf 'builder_sha=%s\n' "$GITHUB_SHA"
-            printf 'run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
             printf 'transport_test=%s\ndaily_reset_test=%s\nworker_test=%s\nworker_dry_run=%s\nadmin_port_test=%s\ntypecheck=%s\n' "$TRANSPORT_TEST" "$DAILY_RESET_TEST" "$WORKER_TEST" "$WORKER_DRY_RUN" "$ADMIN_PORT_TEST" "$TYPECHECK"
             printf 'conclusion=%s\n' "$CONCLUSION"
           } > builder/.ci-results/admin-v2-operational-transport.txt
