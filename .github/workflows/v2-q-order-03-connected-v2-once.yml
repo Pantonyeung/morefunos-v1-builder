@@ -84,7 +84,8 @@ jobs:
           ! grep -R --line-number -E 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY|GOOGLE_SERVICE_ACCOUNT_EMAIL|FIREBASE_DATABASE_URL' customer/apps/customer-web
           grep -q 'authorization: `Bearer ${token}`' customer/apps/customer-web/customer-runtime-bridge.js
           grep -q "crypto.subtle.digest('SHA-256'" core/packages/integration-v2/customer-order-lifecycle-access.ts
-          node --experimental-strip-types --test core/packages/integration-v2/smt-channel-decision-reconciliation.test.ts | grep -q 'fail 0'
+          node --experimental-strip-types --test core/packages/integration-v2/smt-channel-decision-reconciliation.test.ts > "$RUNNER_TEMP/q-order-03-v2-ordering-check.log" 2>&1
+          grep -q '# fail 0' "$RUNNER_TEMP/q-order-03-v2-ordering-check.log"
 
       - name: Persist qualification result
         shell: bash
@@ -100,6 +101,7 @@ jobs:
           cp "$RUNNER_TEMP/q-order-03-v2-integration.log" evidence/integration.log
           cp "$RUNNER_TEMP/q-order-03-v2-customer.log" evidence/customer.log
           cp "$RUNNER_TEMP/q-order-03-v2-functions.log" evidence/functions.log
+          cp "$RUNNER_TEMP/q-order-03-v2-ordering-check.log" evidence/order-durability-ordering.log
           git -C builder config user.name morefunos-builder-bot
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/v2-q-order-03-connected-v2.txt
