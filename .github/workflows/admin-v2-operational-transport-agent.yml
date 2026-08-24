@@ -71,6 +71,7 @@ jobs:
           node --experimental-strip-types --test \
             packages/integration-v2/admin-transport-adapter.test.ts \
             packages/integration-v2/admin-business-day-transport.test.ts \
+            packages/integration-v2/admin-business-day-production-edge.test.ts \
             packages/integration-v2/admin-pricing-policy-transport.test.ts \
             packages/integration-v2/admin-production-edge.test.ts \
             2>&1 | tee "$RUNNER_TEMP/admin-v2-operational-transport-test.log"
