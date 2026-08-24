@@ -1,5 +1,5 @@
 name: V2 Q-LIVE-02A V2 Staging One-Shot
-# trigger: 2026-08-24T22:33+08:00
+# trigger: latest isolated V2 staging 2026-08-24
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      CORE_SHA: b90625251a8bb03a9a66c178675283ae5e105c5d
+      CORE_SHA: 86b4c03ccb61191b7eb1e2a49df2de1b9b37e956
       CUSTOMER_SHA: 5a2a3da1a46b9d12b2c1cdcb0c6022ea1606c02b
       PREVIEW_BRANCH: q-live-02-v2-staging
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -65,6 +65,7 @@ jobs:
           test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
           test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
           grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          grep -q '"V2_STAGING_BOOTSTRAP": "enabled"' core/wrangler.jsonc
           ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
 
       - name: Install Pages dependencies
