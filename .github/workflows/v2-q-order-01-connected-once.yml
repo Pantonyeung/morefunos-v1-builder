@@ -1,0 +1,181 @@
+name: V2 Q-ORDER-01 Connected One-Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-q-order-01-connected-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CORE_SHA: dea5cf8c321c8e52c454740d1aa69ae629d336e2
+      CUSTOMER_SHA: d44b03de913c667b6c43837e8f98a9d07542d1de
+      SMT_SHA: beead70a709cc4d3d0d52f686f713134baf55a4a
+    steps:
+      - name: Checkout Builder result plane
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact integration source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+
+      - name: Checkout exact Customer source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+
+      - name: Checkout exact SMT accepted source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SMT_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: smt
+          persist-credentials: false
+
+      - name: Verify exact identities and D-111 isolation
+        id: identity
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          test "$(git -C smt rev-parse HEAD)" = "$SMT_SHA"
+          grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
+          grep -q 'pendingChannelSubmissions' smt/apps/smt-web/src/smt-runtime-adapter.ts
+          grep -q 'readOrders' smt/apps/smt-web/src/contracts.ts
+          grep -q 'device-gate' smt/packages/runtime/smt-runtime-device-gate-provider.ts
+
+      - name: Install Pages dependencies
+        id: install
+        continue-on-error: true
+        working-directory: core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run Q-ORDER-01 integration tests
+        id: integration
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test \
+            packages/integration-v2/durable-channel-transport.test.ts \
+            packages/integration-v2/customer-order-submit-adapter.test.ts \
+            packages/integration-v2/smt-durable-channel-hydrator.test.ts \
+            packages/channels/channel-intake.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/integration.log"
+
+      - name: Run Customer canonical transport tests
+        id: customer
+        continue-on-error: true
+        working-directory: customer
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test apps/customer-web/customer-runtime-bridge.test.mjs 2>&1 | tee "$RUNNER_TEMP/customer.log"
+          grep -q '/api/customer/orders' apps/customer-web/customer-runtime-bridge.js
+          grep -q 'submitCustomerOrderRuntime' apps/customer-web/customer-runtime-bridge.js
+
+      - name: Build Pages Functions bundle
+        id: functions_build
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf "$RUNNER_TEMP/functions-bundle"
+          npx wrangler pages functions build --outdir="$RUNNER_TEMP/functions-bundle" 2>&1 | tee "$RUNNER_TEMP/functions-build.log"
+
+      - name: Assert endpoint and no browser secret path
+        id: boundary
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f core/functions/api/customer/orders.ts
+          grep -q "createCustomerOrderSubmitProductionEdgeV1" core/functions/api/customer/orders.ts
+          ! grep -R --line-number -E 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY|FIREBASE_DATABASE_URL' customer/apps/customer-web
+          ! grep -R --line-number -E 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY' smt/apps/smt-web smt/apps/smt-clean
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-order-01-connected-${{ env.CORE_SHA }}
+          path: |
+            ${{ runner.temp }}/integration.log
+            ${{ runner.temp }}/customer.log
+            ${{ runner.temp }}/functions-build.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Persist bounded result marker
+        if: always()
+        shell: bash
+        env:
+          IDENTITY: ${{ steps.identity.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          CUSTOMER: ${{ steps.customer.outcome }}
+          FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$IDENTITY" == success && "$INSTALL" == success && "$INTEGRATION" == success && "$CUSTOMER" == success && "$FUNCTIONS_BUILD" == success && "$BOUNDARY" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          mkdir -p builder/.ci-results
+          {
+            printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'identity=%s\ninstall=%s\nintegration=%s\ncustomer=%s\nfunctions_build=%s\nboundary=%s\n' "$IDENTITY" "$INSTALL" "$INTEGRATION" "$CUSTOMER" "$FUNCTIONS_BUILD" "$BOUNDARY"
+            printf 'conclusion=%s\n' "$CONCLUSION"
+          } > builder/.ci-results/v2-q-order-01-connected.txt
+          git -C builder config user.name 'morefunos-builder-bot'
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-order-01-connected.txt
+          if ! git -C builder diff --cached --quiet; then
+            git -C builder commit -m "ci(result): V2 Q-ORDER-01 connected $CORE_SHA"
+            git -C builder push origin HEAD:main
+          fi
+
+      - name: Enforce result
+        if: always()
+        shell: bash
+        env:
+          IDENTITY: ${{ steps.identity.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          CUSTOMER: ${{ steps.customer.outcome }}
+          FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+        run: |
+          [[ "$IDENTITY" == success ]]
+          [[ "$INSTALL" == success ]]
+          [[ "$INTEGRATION" == success ]]
+          [[ "$CUSTOMER" == success ]]
+          [[ "$FUNCTIONS_BUILD" == success ]]
+          [[ "$BOUNDARY" == success ]]
