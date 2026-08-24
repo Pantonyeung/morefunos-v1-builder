@@ -11,7 +11,7 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: e2851c53738fe2d9ea6f89f56ecb93027c953baf
+  SOURCE_SHA: dbe8139f54490bc29b87544bffddbc0865b17d02
 
 jobs:
   category-management:
