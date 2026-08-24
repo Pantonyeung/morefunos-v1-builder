@@ -1,0 +1,89 @@
+name: Admin V2 Staff Worker Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/admin-v2-staff-worker.sha'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          path: builder
+          persist-credentials: true
+      - name: Read exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < builder/.ci-requests/admin-v2-staff-worker.sha | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Checkout exact MoreFunOS source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Install Worker dependencies
+        working-directory: source/infra/cloudflare/admin-v2-worker
+        shell: bash
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run Staff production Worker test
+        id: staff_worker
+        continue-on-error: true
+        working-directory: source/infra/cloudflare/admin-v2-worker
+        shell: bash
+        run: node --experimental-strip-types --test src/staff-production-worker.test.ts
+      - name: Run V2 strict typecheck
+        id: typecheck
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: npm run typecheck:v2-core
+      - name: Persist result
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          STAFF_WORKER: ${{ steps.staff_worker.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$STAFF_WORKER" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          mkdir -p builder/.ci-results
+          {
+            printf 'source_sha=%s\n' "$SOURCE_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'staff_worker_test=%s\ntypecheck=%s\nconclusion=%s\n' "$STAFF_WORKER" "$TYPECHECK" "$CONCLUSION"
+          } > builder/.ci-results/admin-v2-staff-worker.txt
+          git -C builder config user.name 'morefunos-builder-bot'
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/admin-v2-staff-worker.txt
+          if git -C builder diff --cached --quiet; then exit 0; fi
+          git -C builder commit -m "ci(result): Admin V2 Staff Worker $SOURCE_SHA"
+          git -C builder push origin HEAD:main
+      - name: Enforce result
+        if: always()
+        shell: bash
+        env:
+          STAFF_WORKER: ${{ steps.staff_worker.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          [[ "$STAFF_WORKER" == success ]]
+          [[ "$TYPECHECK" == success ]]
