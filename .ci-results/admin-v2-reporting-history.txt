@@ -1,0 +1,6 @@
+source_sha=c5cbd085c6d6d37150f38d5007a44cdf9dd36506
+builder_sha=5e8314f3dd8f903e5112f90f58341afdee8c944c
+run_id=32696516021
+reporting_test=failure
+typecheck=success
+conclusion=failure
