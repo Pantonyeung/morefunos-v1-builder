@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   SOURCE_SHA: 342d7bc527894dc606ec3074e811ac2e481113c9
@@ -38,3 +38,16 @@ jobs:
       - name: Admin Web typecheck and build
         working-directory: source/apps/admin-web
         run: npm run build
+      - name: Persist diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          path='diagnostics/admin-v2-consolidation-latest.log'
+          printf 'SOURCE_SHA=%s\nJOB_STATUS=%s\nWORKFLOW_RUN_ID=%s\nWORKFLOW_RUN_ATTEMPT=%s\n' "$SOURCE_SHA" "$JOB_STATUS" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > /tmp/result.log
+          content="$(base64 -w0 /tmp/result.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin consolidation diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
