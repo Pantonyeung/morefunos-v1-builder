@@ -1,5 +1,5 @@
 name: V2 Q-ORDER-01 Connected One-Shot
-# trigger: 2026-08-24T23:12+08:00
+# trigger: corrected SMT exact SHA 2026-08-24T23:15+08:00
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
     env:
       CORE_SHA: dea5cf8c321c8e52c454740d1aa69ae629d336e2
       CUSTOMER_SHA: d44b03de913c667b6c43837e8f98a9d07542d1de
-      SMT_SHA: beead70a709cc4d3d0d52f686f713134baf55a4a
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
     steps:
       - name: Checkout Builder result plane
         uses: actions/checkout@v4
