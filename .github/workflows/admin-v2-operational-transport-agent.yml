@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm test -- admin-v2-port.vitest.test.ts business-day-port.vitest.test.ts business-day.vitest.test.tsx business-day-close.vitest.test.tsx catalog-editor-model.vitest.test.ts App.vitest.test.tsx availability.vitest.test.tsx 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
+          npm test -- admin-v2-port.vitest.test.ts staff-port.vitest.test.ts business-day-port.vitest.test.ts business-day.vitest.test.tsx business-day-close.vitest.test.tsx catalog-editor-model.vitest.test.ts App.vitest.test.tsx availability.vitest.test.tsx 2>&1 | tee "$RUNNER_TEMP/admin-v2-port-test.log"
 
       - name: Run V2 strict typecheck
         id: typecheck
