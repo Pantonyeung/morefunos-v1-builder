@@ -1,10 +1,10 @@
-source_sha=0280df5973abd28e5240913ec7cde54f30add8c7
-builder_sha=e7e522a2ae10a3bc086fb3551e1e675a55658d2b
-run_id=32685251474
-transport_test=failure
+source_sha=4083ad5f055de09548dd1465f87114984ad75ef8
+builder_sha=94fed44758bd403081cb2703a4c448c55ca8b3a0
+run_id=32685500763
+transport_test=success
 daily_reset_test=success
 worker_test=success
 worker_dry_run=success
 admin_port_test=success
-typecheck=success
+typecheck=failure
 conclusion=failure
