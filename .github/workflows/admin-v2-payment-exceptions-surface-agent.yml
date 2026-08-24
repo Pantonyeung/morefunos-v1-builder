@@ -1,0 +1,56 @@
+name: Admin V2 Payment Exceptions Surface Agent
+
+on:
+  push:
+    paths:
+      - '.github/workflows/admin-v2-payment-exceptions-surface-agent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_SHA: dc3a585c7e8ef28893d73e6eb130a08fdda5eeec
+
+jobs:
+  payment-exceptions-surface:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact source
+        run: test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Install Admin Web dependencies
+        working-directory: source/apps/admin-web
+        run: npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Payment exceptions tests
+        working-directory: source/apps/admin-web
+        run: npx vitest run src/payment-exceptions.vitest.test.tsx
+      - name: Full Admin Web tests
+        working-directory: source/apps/admin-web
+        run: npm test
+      - name: Admin Web typecheck and build
+        working-directory: source/apps/admin-web
+        run: npm run build
+      - name: Persist diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          path='diagnostics/admin-v2-payment-exceptions-surface-latest.log'
+          printf 'SOURCE_SHA=%s\nJOB_STATUS=%s\nWORKFLOW_RUN_ID=%s\n' "$SOURCE_SHA" "$JOB_STATUS" "$GITHUB_RUN_ID" > /tmp/result.log
+          content="$(base64 -w0 /tmp/result.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin payment exceptions surface diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
