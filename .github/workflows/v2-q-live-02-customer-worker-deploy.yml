@@ -1,0 +1,174 @@
+name: V2 Q-LIVE-02 Customer Worker Production Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_source_sha:
+        description: 'Exact MoreFunOS Core/Edge source SHA'
+        required: true
+        type: string
+      customer_route_pattern:
+        description: 'Exact accepted Customer Worker route pattern, e.g. order.example.com/api/customer/*'
+        required: true
+        type: string
+      customer_zone_name:
+        description: 'Cloudflare zone name, e.g. example.com'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate inputs
+        id: req
+        shell: bash
+        env:
+          CORE_SHA: ${{ inputs.core_source_sha }}
+          ROUTE: ${{ inputs.customer_route_pattern }}
+          ZONE: ${{ inputs.customer_zone_name }}
+        run: |
+          set -euo pipefail
+          CORE="$(printf '%s' "$CORE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          ROUTE="$(printf '%s' "$ROUTE" | tr -d '\r\n')"
+          ZONE="$(printf '%s' "$ZONE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$CORE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ROUTE" == */api/customer/* ]]
+          [[ "$ZONE" =~ ^[a-z0-9.-]+\.[a-z]{2,}$ ]]
+          echo "core_sha=$CORE" >> "$GITHUB_OUTPUT"
+          echo "route=$ROUTE" >> "$GITHUB_OUTPUT"
+          echo "zone=$ZONE" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact Core/Edge source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.req.outputs.core_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: test "$(git -C core rev-parse HEAD)" = "${{ steps.req.outputs.core_sha }}"
+
+      - name: Install Customer Worker dependencies
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Generate deployment config from accepted route
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        shell: bash
+        env:
+          ROUTE: ${{ steps.req.outputs.route }}
+          ZONE: ${{ steps.req.outputs.zone }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const raw = fs.readFileSync('wrangler.jsonc', 'utf8');
+          const config = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ''));
+          config.workers_dev = false;
+          config.routes = [{ pattern: process.env.ROUTE, zone_name: process.env.ZONE }];
+          fs.writeFileSync('wrangler.live.json', JSON.stringify(config, null, 2));
+          NODE
+
+      - name: Validate required deployment secrets are present
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.CUSTOMER_FIREBASE_DATABASE_URL }}
+          FIREBASE_NAMESPACE: ${{ secrets.CUSTOMER_FIREBASE_NAMESPACE }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.CUSTOMER_GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CUSTOMER_GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$FIREBASE_DATABASE_URL"
+          test -n "$FIREBASE_NAMESPACE"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+
+      - name: Upload runtime secrets to Worker
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.CUSTOMER_FIREBASE_DATABASE_URL }}
+          FIREBASE_NAMESPACE: ${{ secrets.CUSTOMER_FIREBASE_NAMESPACE }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.CUSTOMER_GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CUSTOMER_GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$FIREBASE_DATABASE_URL" | npx wrangler secret put FIREBASE_DATABASE_URL --config wrangler.live.json
+          printf '%s' "$FIREBASE_NAMESPACE" | npx wrangler secret put FIREBASE_NAMESPACE --config wrangler.live.json
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_EMAIL" | npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL --config wrangler.live.json
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY" | npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY --config wrangler.live.json
+
+      - name: Deploy exact Customer Worker
+        id: deploy
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          npx wrangler deploy --config wrangler.live.json 2>&1 | tee "$RUNNER_TEMP/q-live-02-deploy.log"
+
+      - name: Live HTTP smoke
+        id: smoke
+        shell: bash
+        env:
+          ROUTE: ${{ steps.req.outputs.route }}
+        run: |
+          set -euo pipefail
+          BASE="${ROUTE%/api/customer/*}"
+          URL="https://${BASE}/api/customer/ordering"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          STATUS="$(curl --silent --show-error --output "$RUNNER_TEMP/q-live-02-body.json" --write-out '%{http_code}' --max-time 20 "$URL")"
+          printf 'status=%s\n' "$STATUS"
+          cat "$RUNNER_TEMP/q-live-02-body.json"
+          test "$STATUS" = "200" -o "$STATUS" = "503"
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        env:
+          CORE_SHA: ${{ steps.req.outputs.core_sha }}
+          ROUTE: ${{ steps.req.outputs.route }}
+          ZONE: ${{ steps.req.outputs.zone }}
+          LIVE_URL: ${{ steps.smoke.outputs.url }}
+          DEPLOY_RESULT: ${{ steps.deploy.outcome }}
+          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'core_source_sha=%s\n' "$CORE_SHA"
+            printf 'route=%s\nzone=%s\nlive_url=%s\n' "$ROUTE" "$ZONE" "$LIVE_URL"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'deploy=%s\nsmoke=%s\n' "$DEPLOY_RESULT" "$SMOKE_RESULT"
+          } > evidence/q-live-02-summary.txt
+          test -f "$RUNNER_TEMP/q-live-02-deploy.log" && cp "$RUNNER_TEMP/q-live-02-deploy.log" evidence/deploy.log || true
+          test -f "$RUNNER_TEMP/q-live-02-body.json" && cp "$RUNNER_TEMP/q-live-02-body.json" evidence/live-body.json || true
+          cat evidence/q-live-02-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-live-02-${{ steps.req.outputs.core_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
