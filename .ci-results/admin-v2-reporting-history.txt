@@ -1,10 +1,11 @@
-source_sha=ba656165ce63d9b4c485fe6a1a4fbf06e1b9de08
-builder_sha=c1c00d43240679a91488690c74e8bed39604c035
-run_id=32697668155
+source_sha=43ea6abdf034b09c22dd0671cc0bc00d9c2fdb64
+builder_sha=01bc24b88b345538ebcfa3323640f14bd4261987
+run_id=32698104855
 reporting_test=success
+reporting_export_test=failure
 install_admin=success
 reporting_web_test=success
 reporting_ui_test=success
 reporting_routing_test=success
 typecheck=success
-conclusion=success
+conclusion=failure
