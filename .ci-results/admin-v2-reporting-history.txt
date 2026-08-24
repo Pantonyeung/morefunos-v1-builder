@@ -1,6 +1,8 @@
-source_sha=4c469f8d91b782b93e97833e0b804ab5774b668a
-builder_sha=26121022ffb6b9e6179479dbdb16bd6a95eb7539
-run_id=32696593039
+source_sha=b368f520bd5f690289a6202807d8a30a70245789
+builder_sha=ac4d4d693b2e85f003c42c5130e5384d082fbbeb
+run_id=32696692356
 reporting_test=success
+install_admin=success
+reporting_web_test=failure
 typecheck=success
-conclusion=success
+conclusion=failure
