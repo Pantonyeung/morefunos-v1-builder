@@ -1,4 +1,5 @@
 name: V2 Q-ORDER-01 Connected One-Shot
+# trigger: 2026-08-24T23:12+08:00
 
 on:
   push:
