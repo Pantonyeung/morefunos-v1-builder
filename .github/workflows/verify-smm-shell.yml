@@ -1,0 +1,99 @@
+name: SMM Shell Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact MoreFunOS V1 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Validate exact request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(printf '%s' "$REQUESTED_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Checkout exact V1 source
+        id: source_checkout
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        id: identity
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED"
+          echo "source-identity=PASS"
+          echo "source_sha=$ACTUAL"
+
+      - name: Install SMM dependencies
+        id: install
+        working-directory: source
+        shell: bash
+        run: npm install --prefix apps/smm-web --no-audit --no-fund
+
+      - name: SMM Test + Governance
+        id: tests
+        working-directory: source
+        shell: bash
+        run: npm test --prefix apps/smm-web
+
+      - name: SMM Typecheck + Build
+        id: build
+        working-directory: source
+        shell: bash
+        run: npm run build --prefix apps/smm-web
+
+      - name: Evidence summary
+        if: always()
+        shell: bash
+        env:
+          REQUEST: ${{ steps.request.outcome }}
+          SOURCE: ${{ steps.source_checkout.outcome }}
+          IDENTITY: ${{ steps.identity.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          V1_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          echo "executor=Pantonyeung/morefunos-v1-builder"
+          echo "builder_sha=$GITHUB_SHA"
+          echo "builder_run_id=$GITHUB_RUN_ID"
+          echo "v1_source_sha=$V1_SHA"
+          echo "request=$REQUEST"
+          echo "source_checkout=$SOURCE"
+          echo "identity=$IDENTITY"
+          echo "install=$INSTALL"
+          echo "tests=$TESTS"
+          echo "build=$BUILD"
