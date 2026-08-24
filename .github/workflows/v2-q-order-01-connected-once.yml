@@ -1,5 +1,5 @@
 name: V2 Q-ORDER-01 Connected One-Shot
-# trigger: corrected SMT exact SHA 2026-08-24T23:15+08:00
+# trigger: canonical customer channel fix 2026-08-24T23:18+08:00
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      CORE_SHA: dea5cf8c321c8e52c454740d1aa69ae629d336e2
+      CORE_SHA: 88b8f493d3b5f383280610af194257fdb0a1de56
       CUSTOMER_SHA: d44b03de913c667b6c43837e8f98a9d07542d1de
       SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
     steps:
@@ -120,6 +120,7 @@ jobs:
           set -euo pipefail
           test -f core/functions/api/customer/orders.ts
           grep -q "createCustomerOrderSubmitProductionEdgeV1" core/functions/api/customer/orders.ts
+          grep -q "canonicalOrderChannelForSource" core/packages/integration-v2/customer-order-submit-adapter.ts
           ! grep -R --line-number -E 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY|FIREBASE_DATABASE_URL' customer/apps/customer-web
           ! grep -R --line-number -E 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY' smt/apps/smt-web smt/apps/smt-clean
 
