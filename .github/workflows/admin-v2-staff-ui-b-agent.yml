@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.ci-requests/admin-v2-staff-ui-b.sha'
+      - '.ci-requests/admin-v2-staff-ui-b.retrigger'
 
 permissions:
   contents: write
@@ -14,51 +15,87 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout Builder request
+        id: builder_checkout
+        continue-on-error: true
+        uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - id: request
+
+      - name: Read source request
+        id: request
+        if: ${{ always() && steps.builder_checkout.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           SHA="$(tr -d '[:space:]' < builder/.ci-requests/admin-v2-staff-ui-b.sha | tr '[:upper:]' '[:lower:]')"
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
+
+      - name: Setup Node 22
+        id: setup_node
+        if: ${{ always() && steps.request.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           package-manager-cache: false
+
       - name: Pin npm CLI
+        id: pin_npm
+        if: ${{ always() && steps.setup_node.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund
           test "$(npm --version)" = "11.19.0"
-      - uses: actions/checkout@v7
+
+      - name: Checkout exact MoreFunOS source
+        id: source_checkout
+        if: ${{ always() && steps.pin_npm.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ steps.request.outputs.source_sha }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+
       - name: Install Admin Web
+        id: install_admin
+        if: ${{ always() && steps.source_checkout.outcome == 'success' }}
+        continue-on-error: true
         working-directory: source/apps/admin-web
         run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run Staff UI-B test
         id: staff_ui
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
         continue-on-error: true
         working-directory: source/apps/admin-web
         run: npm test -- staff-management.vitest.test.tsx staff.vitest.test.tsx staff-port.vitest.test.ts
+
       - name: Typecheck
         id: typecheck
+        if: ${{ always() && steps.source_checkout.outcome == 'success' }}
         continue-on-error: true
         working-directory: source
         run: npm run typecheck:v2-core
+
       - name: Persist result
         if: always()
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BUILDER_CHECKOUT: ${{ steps.builder_checkout.outcome }}
+          REQUEST: ${{ steps.request.outcome }}
+          SETUP_NODE: ${{ steps.setup_node.outcome }}
+          PIN_NPM: ${{ steps.pin_npm.outcome }}
+          SOURCE_CHECKOUT: ${{ steps.source_checkout.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           STAFF_UI: ${{ steps.staff_ui.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         shell: bash
@@ -66,18 +103,33 @@ jobs:
           set -euo pipefail
           if [[ "$STAFF_UI" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nstaff_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$STAFF_UI" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-staff-ui-b.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nbuilder_checkout=%s\nrequest=%s\nsetup_node=%s\npin_npm=%s\nsource_checkout=%s\ninstall_admin=%s\nstaff_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' \
+            "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$BUILDER_CHECKOUT" "$REQUEST" "$SETUP_NODE" "$PIN_NPM" "$SOURCE_CHECKOUT" "$INSTALL_ADMIN" "$STAFF_UI" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-staff-ui-b.txt
+          if [[ "$BUILDER_CHECKOUT" != success ]]; then exit 1; fi
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/admin-v2-staff-ui-b.txt
           if git -C builder diff --cached --quiet; then exit 0; fi
           git -C builder commit -m "ci(result): Admin V2 Staff UI-B $SOURCE_SHA"
           git -C builder push origin HEAD:main
+
       - name: Enforce
         if: always()
         env:
+          BUILDER_CHECKOUT: ${{ steps.builder_checkout.outcome }}
+          REQUEST: ${{ steps.request.outcome }}
+          SETUP_NODE: ${{ steps.setup_node.outcome }}
+          PIN_NPM: ${{ steps.pin_npm.outcome }}
+          SOURCE_CHECKOUT: ${{ steps.source_checkout.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           STAFF_UI: ${{ steps.staff_ui.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
+          [[ "$BUILDER_CHECKOUT" == success ]]
+          [[ "$REQUEST" == success ]]
+          [[ "$SETUP_NODE" == success ]]
+          [[ "$PIN_NPM" == success ]]
+          [[ "$SOURCE_CHECKOUT" == success ]]
+          [[ "$INSTALL_ADMIN" == success ]]
           [[ "$STAFF_UI" == success ]]
           [[ "$TYPECHECK" == success ]]
