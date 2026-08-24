@@ -1,0 +1,175 @@
+name: V2 Q-LIVE-02A V2 Staging One-Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-q-live-02a-v2-staging-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CORE_SHA: b90625251a8bb03a9a66c178675283ae5e105c5d
+      CUSTOMER_SHA: 5a2a3da1a46b9d12b2c1cdcb0c6022ea1606c02b
+      PREVIEW_BRANCH: q-live-02-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Builder secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact V2 Core/Pages source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+
+      - name: Checkout exact Customer source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+
+      - name: Verify exact source identity and D-111 isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
+
+      - name: Install Pages dependencies
+        working-directory: core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run V2 staging and Customer focused tests
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test \
+            functions/api/customer/ordering.test.ts \
+            packages/integration-v2/customer-production-edge.test.ts \
+            packages/integration-v2/customer-public-read-adapter.test.ts \
+            packages/runtime-v2/q-read-01-connected.test.ts \
+            packages/runtime-v2/operational-state-reader.test.ts
+
+      - name: Run full V2 Core regression
+        working-directory: core
+        run: npm run test:v2-core
+
+      - name: Run strict V2 Core typecheck
+        working-directory: core
+        run: npm run typecheck:v2-core
+
+      - name: Run Customer browser regression
+        working-directory: customer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            apps/customer-web/customer-runtime-bridge.test.mjs \
+            apps/customer-web/customer-closure-static.test.mjs
+          grep -q '/api/customer/ordering' apps/customer-web/customer-runtime-bridge.js
+
+      - name: Compose exact Customer static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in \
+            index.html \
+            customer-shell.css \
+            customer-shell.js \
+            customer-closure.css \
+            customer-closure.js \
+            customer-closure-v2.js \
+            customer-closure-v3.css \
+            customer-closure-v3.js \
+            customer-runtime-bridge.js; do
+            test -f "customer/apps/customer-web/$file"
+            cp "customer/apps/customer-web/$file" "deploy/customer/$file"
+          done
+          printf '%s\n' '<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>MoreFunOS V2 staging</title><body><a href="/customer/">Customer</a></body></html>' > deploy/index.html
+
+      - name: Build Pages Functions bundle
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler pages functions build --outdir=../deploy
+          test -f ../deploy/_worker.js
+
+      - name: Deploy exact V2 staging preview
+        id: deploy
+        working-directory: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler pages deploy ../deploy \
+            --project-name=morefunos-v1 \
+            --branch="$PREVIEW_BRANCH" \
+            --commit-hash="$CORE_SHA" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n 1 || true)"
+          test -n "$URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Live Customer static smoke
+        shell: bash
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 2 "$URL/customer/" -o "$RUNNER_TEMP/customer.html"
+
+      - name: Live canonical API smoke
+        shell: bash
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          CODE="$(curl --silent --show-error --location --retry 4 --retry-delay 2 --output "$RUNNER_TEMP/customer-api.json" --write-out '%{http_code}' "$URL/api/customer/ordering")"
+          cat "$RUNNER_TEMP/customer-api.json"
+          test "$CODE" = 200
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/customer-api.json', 'utf8'));
+          if (p.port !== 'customer') process.exit(11);
+          if (p.catalogVersion !== 'catalog-qread01-v1') process.exit(12);
+          if (p.presentationRevision !== 'customer-qread01-r1') process.exit(13);
+          if (typeof p.operationalRevision !== 'number') process.exit(14);
+          if (!Array.isArray(p.products) || p.products.length < 1) process.exit(15);
+          NODE
+
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-live-02a-v2-staging-${{ env.CORE_SHA }}
+          path: |
+            ${{ runner.temp }}/deploy.log
+            ${{ runner.temp }}/customer.html
+            ${{ runner.temp }}/customer-api.json
+          if-no-files-found: warn
+          retention-days: 30
