@@ -1,4 +1,5 @@
 name: V2 Q-LIVE-02A V2 Staging One-Shot
+# trigger: 2026-08-24T22:25+08:00
 
 on:
   push:
