@@ -1,0 +1,17 @@
+core_sha=b90625251a8bb03a9a66c178675283ae5e105c5d
+customer_sha=5a2a3da1a46b9d12b2c1cdcb0c6022ea1606c02b
+builder_sha=cb94b47dd46758add8456c17683dfe7f259c8ab5
+run_id=32739492827
+preview_url=https://q-live-02-v2-staging.morefunos-v1.pages.dev
+isolation=success
+install=success
+focused=failure
+core_regression=failure
+typecheck=failure
+customer=success
+compose=success
+functions_build=failure
+deploy=success
+live_customer=success
+live_api=failure
+conclusion=failure
