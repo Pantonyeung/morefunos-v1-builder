@@ -74,10 +74,7 @@ jobs:
         if: ${{ always() && steps.install_admin.outcome == 'success' }}
         continue-on-error: true
         working-directory: source/apps/admin-web
-        shell: bash
-        run: |
-          set -o pipefail
-          npm test -- reporting-history.vitest.test.tsx 2>&1 | tee "$GITHUB_WORKSPACE/reporting-ui.log"
+        run: npm test -- reporting-history.vitest.test.tsx
       - name: Run Historical Report Export UI test
         id: reporting_export_ui_test
         if: ${{ always() && steps.install_admin.outcome == 'success' }}
@@ -90,6 +87,12 @@ jobs:
         continue-on-error: true
         working-directory: source/apps/admin-web
         run: npm test -- reporting-history-routing.vitest.test.tsx
+      - name: Run Historical Report Export route injection test
+        id: reporting_export_routing_test
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- reporting-export-routing.vitest.test.tsx
       - name: Typecheck
         id: typecheck
         if: ${{ always() }}
@@ -109,16 +112,16 @@ jobs:
           REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
           REPORTING_EXPORT_UI_TEST: ${{ steps.reporting_export_ui_test.outcome }}
           REPORTING_ROUTING_TEST: ${{ steps.reporting_routing_test.outcome }}
+          REPORTING_EXPORT_ROUTING_TEST: ${{ steps.reporting_export_routing_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$REPORTING_TEST" == success && "$REPORTING_EXPORT_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_EXPORT_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$REPORTING_EXPORT_UI_TEST" == success && "$REPORTING_ROUTING_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          if [[ "$REPORTING_TEST" == success && "$REPORTING_EXPORT_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_EXPORT_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$REPORTING_EXPORT_UI_TEST" == success && "$REPORTING_ROUTING_TEST" == success && "$REPORTING_EXPORT_ROUTING_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\nreporting_export_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_export_web_test=%s\nreporting_ui_test=%s\nreporting_export_ui_test=%s\nreporting_routing_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$REPORTING_EXPORT_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_EXPORT_WEB_TEST" "$REPORTING_UI_TEST" "$REPORTING_EXPORT_UI_TEST" "$REPORTING_ROUTING_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
-          if [[ -f "$GITHUB_WORKSPACE/reporting-ui.log" ]]; then tail -n 120 "$GITHUB_WORKSPACE/reporting-ui.log" > builder/.ci-results/admin-v2-reporting-history-ui.log; fi
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\nreporting_export_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_export_web_test=%s\nreporting_ui_test=%s\nreporting_export_ui_test=%s\nreporting_routing_test=%s\nreporting_export_routing_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$REPORTING_EXPORT_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_EXPORT_WEB_TEST" "$REPORTING_UI_TEST" "$REPORTING_EXPORT_UI_TEST" "$REPORTING_ROUTING_TEST" "$REPORTING_EXPORT_ROUTING_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
-          git -C builder add .ci-results/admin-v2-reporting-history.txt .ci-results/admin-v2-reporting-history-ui.log 2>/dev/null || git -C builder add .ci-results/admin-v2-reporting-history.txt
+          git -C builder add .ci-results/admin-v2-reporting-history.txt
           if git -C builder diff --cached --quiet; then exit 0; fi
           git -C builder commit -m "ci(result): Admin V2 historical reporting $SOURCE_SHA"
           git -C builder push origin HEAD:main
@@ -134,6 +137,7 @@ jobs:
           REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
           REPORTING_EXPORT_UI_TEST: ${{ steps.reporting_export_ui_test.outcome }}
           REPORTING_ROUTING_TEST: ${{ steps.reporting_routing_test.outcome }}
+          REPORTING_EXPORT_ROUTING_TEST: ${{ steps.reporting_export_routing_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$REPORTING_TEST" == success ]]
@@ -144,4 +148,5 @@ jobs:
           [[ "$REPORTING_UI_TEST" == success ]]
           [[ "$REPORTING_EXPORT_UI_TEST" == success ]]
           [[ "$REPORTING_ROUTING_TEST" == success ]]
+          [[ "$REPORTING_EXPORT_ROUTING_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
