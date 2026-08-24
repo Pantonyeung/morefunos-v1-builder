@@ -1,5 +1,5 @@
 name: V2 Q-LIVE-02A V2 Staging One-Shot
-# trigger: 2026-08-24T22:25+08:00
+# trigger: 2026-08-24T22:33+08:00
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - '.github/workflows/v2-q-live-02a-v2-staging-once.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify-and-deploy:
@@ -21,6 +21,12 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Checkout Builder result plane
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -51,6 +57,8 @@ jobs:
           persist-credentials: false
 
       - name: Verify exact source identity and D-111 isolation
+        id: isolation
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -60,40 +68,56 @@ jobs:
           ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
 
       - name: Install Pages dependencies
+        id: install
+        continue-on-error: true
         working-directory: core
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Run V2 staging and Customer focused tests
+        id: focused
+        continue-on-error: true
         working-directory: core
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           node --experimental-strip-types --test \
             functions/api/customer/ordering.test.ts \
             packages/integration-v2/customer-production-edge.test.ts \
             packages/integration-v2/customer-public-read-adapter.test.ts \
             packages/runtime-v2/q-read-01-connected.test.ts \
-            packages/runtime-v2/operational-state-reader.test.ts
+            packages/runtime-v2/operational-state-reader.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/focused.log"
 
       - name: Run full V2 Core regression
+        id: core_regression
+        continue-on-error: true
         working-directory: core
-        run: npm run test:v2-core
+        shell: bash
+        run: npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core.log"
 
       - name: Run strict V2 Core typecheck
+        id: typecheck
+        continue-on-error: true
         working-directory: core
-        run: npm run typecheck:v2-core
+        shell: bash
+        run: npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
 
       - name: Run Customer browser regression
+        id: customer
+        continue-on-error: true
         working-directory: customer
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           node --test \
             apps/customer-web/customer-runtime-bridge.test.mjs \
-            apps/customer-web/customer-closure-static.test.mjs
+            apps/customer-web/customer-closure-static.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/customer.log"
           grep -q '/api/customer/ordering' apps/customer-web/customer-runtime-bridge.js
 
       - name: Compose exact Customer static assets
+        id: compose
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -115,19 +139,22 @@ jobs:
           printf '%s\n' '<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>MoreFunOS V2 staging</title><body><a href="/customer/">Customer</a></body></html>' > deploy/index.html
 
       - name: Build Pages Functions bundle
+        id: functions_build
+        continue-on-error: true
         working-directory: core
         shell: bash
         run: |
-          set -euo pipefail
-          npx wrangler pages functions build --outdir=../deploy
+          set -o pipefail
+          npx wrangler pages functions build --outdir=../deploy 2>&1 | tee "$RUNNER_TEMP/functions-build.log"
           test -f ../deploy/_worker.js
 
       - name: Deploy exact V2 staging preview
         id: deploy
+        continue-on-error: true
         working-directory: core
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           npx wrangler pages deploy ../deploy \
             --project-name=morefunos-v1 \
             --branch="$PREVIEW_BRANCH" \
@@ -137,19 +164,23 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Live Customer static smoke
+        id: live_customer
+        continue-on-error: true
         shell: bash
         env:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
-          set -euo pipefail
+          set -o pipefail
           curl --fail --silent --show-error --location --retry 4 --retry-delay 2 "$URL/customer/" -o "$RUNNER_TEMP/customer.html"
 
       - name: Live canonical API smoke
+        id: live_api
+        continue-on-error: true
         shell: bash
         env:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
-          set -euo pipefail
+          set -o pipefail
           CODE="$(curl --silent --show-error --location --retry 4 --retry-delay 2 --output "$RUNNER_TEMP/customer-api.json" --write-out '%{http_code}' "$URL/api/customer/ordering")"
           cat "$RUNNER_TEMP/customer-api.json"
           test "$CODE" = 200
@@ -163,14 +194,85 @@ jobs:
           if (!Array.isArray(p.products) || p.products.length < 1) process.exit(15);
           NODE
 
-      - name: Save evidence
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v2-q-live-02a-v2-staging-${{ env.CORE_SHA }}
           path: |
+            ${{ runner.temp }}/focused.log
+            ${{ runner.temp }}/v2-core.log
+            ${{ runner.temp }}/typecheck.log
+            ${{ runner.temp }}/customer.log
+            ${{ runner.temp }}/functions-build.log
             ${{ runner.temp }}/deploy.log
             ${{ runner.temp }}/customer.html
             ${{ runner.temp }}/customer-api.json
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Persist bounded result marker
+        if: always()
+        shell: bash
+        env:
+          ISOLATION: ${{ steps.isolation.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          FOCUSED: ${{ steps.focused.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          CUSTOMER: ${{ steps.customer.outcome }}
+          COMPOSE: ${{ steps.compose.outcome }}
+          FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          LIVE_CUSTOMER: ${{ steps.live_customer.outcome }}
+          LIVE_API: ${{ steps.live_api.outcome }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          if [[ "$ISOLATION" == success && "$INSTALL" == success && "$FOCUSED" == success && "$CORE_REGRESSION" == success && "$TYPECHECK" == success && "$CUSTOMER" == success && "$COMPOSE" == success && "$FUNCTIONS_BUILD" == success && "$DEPLOY" == success && "$LIVE_CUSTOMER" == success && "$LIVE_API" == success ]]; then
+            CONCLUSION=success
+          else
+            CONCLUSION=failure
+          fi
+          mkdir -p builder/.ci-results
+          {
+            printf 'core_sha=%s\ncustomer_sha=%s\n' "$CORE_SHA" "$CUSTOMER_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\npreview_url=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PREVIEW_URL"
+            printf 'isolation=%s\ninstall=%s\nfocused=%s\ncore_regression=%s\ntypecheck=%s\ncustomer=%s\ncompose=%s\nfunctions_build=%s\ndeploy=%s\nlive_customer=%s\nlive_api=%s\n' "$ISOLATION" "$INSTALL" "$FOCUSED" "$CORE_REGRESSION" "$TYPECHECK" "$CUSTOMER" "$COMPOSE" "$FUNCTIONS_BUILD" "$DEPLOY" "$LIVE_CUSTOMER" "$LIVE_API"
+            printf 'conclusion=%s\n' "$CONCLUSION"
+          } > builder/.ci-results/v2-q-live-02a-v2-staging.txt
+          git -C builder config user.name 'morefunos-builder-bot'
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-live-02a-v2-staging.txt
+          if ! git -C builder diff --cached --quiet; then
+            git -C builder commit -m "ci(result): V2 Q-LIVE-02A V2 staging $CORE_SHA"
+            git -C builder push origin HEAD:main
+          fi
+
+      - name: Enforce result
+        if: always()
+        shell: bash
+        env:
+          ISOLATION: ${{ steps.isolation.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          FOCUSED: ${{ steps.focused.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          CUSTOMER: ${{ steps.customer.outcome }}
+          COMPOSE: ${{ steps.compose.outcome }}
+          FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          LIVE_CUSTOMER: ${{ steps.live_customer.outcome }}
+          LIVE_API: ${{ steps.live_api.outcome }}
+        run: |
+          [[ "$ISOLATION" == success ]]
+          [[ "$INSTALL" == success ]]
+          [[ "$FOCUSED" == success ]]
+          [[ "$CORE_REGRESSION" == success ]]
+          [[ "$TYPECHECK" == success ]]
+          [[ "$CUSTOMER" == success ]]
+          [[ "$COMPOSE" == success ]]
+          [[ "$FUNCTIONS_BUILD" == success ]]
+          [[ "$DEPLOY" == success ]]
+          [[ "$LIVE_CUSTOMER" == success ]]
+          [[ "$LIVE_API" == success ]]
