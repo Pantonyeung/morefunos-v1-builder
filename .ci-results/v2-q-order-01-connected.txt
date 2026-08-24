@@ -1,0 +1,12 @@
+core_sha=dea5cf8c321c8e52c454740d1aa69ae629d336e2
+customer_sha=d44b03de913c667b6c43837e8f98a9d07542d1de
+smt_sha=beead70a709cc4d3d0d52f686f713134baf55a4a
+builder_sha=27356fc5241cf259fab89ffec1ac4ba9e4ba8118
+run_id=32743251133
+identity=skipped
+install=skipped
+integration=skipped
+customer=skipped
+functions_build=skipped
+boundary=skipped
+conclusion=failure
