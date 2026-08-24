@@ -63,7 +63,10 @@ jobs:
         if: ${{ always() && steps.install_admin.outcome == 'success' }}
         continue-on-error: true
         working-directory: source/apps/admin-web
-        run: npm test -- reporting-history.vitest.test.tsx
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- reporting-history.vitest.test.tsx 2>&1 | tee "$GITHUB_WORKSPACE/reporting-ui.log"
       - name: Typecheck
         id: typecheck
         if: ${{ always() }}
@@ -85,9 +88,10 @@ jobs:
           if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
           printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_UI_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
+          if [[ -f "$GITHUB_WORKSPACE/reporting-ui.log" ]]; then tail -n 120 "$GITHUB_WORKSPACE/reporting-ui.log" > builder/.ci-results/admin-v2-reporting-history-ui.log; fi
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
-          git -C builder add .ci-results/admin-v2-reporting-history.txt
+          git -C builder add .ci-results/admin-v2-reporting-history.txt .ci-results/admin-v2-reporting-history-ui.log 2>/dev/null || git -C builder add .ci-results/admin-v2-reporting-history.txt
           if git -C builder diff --cached --quiet; then exit 0; fi
           git -C builder commit -m "ci(result): Admin V2 historical reporting $SOURCE_SHA"
           git -C builder push origin HEAD:main
