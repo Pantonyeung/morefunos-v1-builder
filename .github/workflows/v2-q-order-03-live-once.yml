@@ -1,0 +1,285 @@
+name: V2 Q-ORDER-03 Live One-Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-live.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CORE_SHA: 21410e49eeab09fe4e08e02166cb477b084e684b
+      CUSTOMER_SHA: 30c0d178d768038f14ee62bc319039a63c30c16a
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+      PREVIEW_BRANCH: q-order-03-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: builder, persist-credentials: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/checkout@v4
+        with: { repository: Pantonyeung/morefunos-v1, ref: '${{ env.CORE_SHA }}', token: '${{ secrets.V1_SOURCE_READ_TOKEN }}', path: core, persist-credentials: false }
+      - uses: actions/checkout@v4
+        with: { repository: Pantonyeung/morefunos-v1, ref: '${{ env.CUSTOMER_SHA }}', token: '${{ secrets.V1_SOURCE_READ_TOKEN }}', path: customer, persist-credentials: false }
+      - uses: actions/checkout@v4
+        with: { repository: Pantonyeung/morefunos-v1, ref: '${{ env.SMT_SHA }}', token: '${{ secrets.V1_SOURCE_READ_TOKEN }}', path: smt, persist-credentials: false }
+
+      - name: Verify exact identities and isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          test "$(git -C smt rev-parse HEAD)" = "$SMT_SHA"
+          grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          grep -q 'createCanonicalOrderDurableStoreV1' core/packages/integration-v2/canonical-order-durable-store.ts
+          grep -q 'readCustomerOrderLifecycleRuntime' customer/apps/customer-web/customer-runtime-bridge.js
+          ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
+
+      - name: Install dependencies
+        working-directory: core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Compose exact Customer assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-bridge.js; do
+            cp "customer/apps/customer-web/$file" "deploy/customer/$file"
+          done
+          cat > deploy/index.html <<'HTML'
+          <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Q-ORDER-03</title></head><body><a href="/customer/">Customer</a></body></html>
+          HTML
+
+      - name: Add ephemeral canonical accept operator
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(openssl rand -hex 32)"
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
+          mkdir -p core/functions/api/operator
+          cat > core/functions/api/operator/q-order-03.ts <<EOF
+          import { FirebaseRtdbDurabilityPort } from '../../../packages/durability/firebase-rtdb-durability.ts';
+          import { createDurabilityCoordinator } from '../../../packages/durability/durability.ts';
+          import { FirebasePublishedBusinessStateStoreV1 } from '../../../packages/runtime-v2/firebase-published-business-state-store.ts';
+          import { createOperationalStateCheckpointReaderV1 } from '../../../packages/runtime-v2/operational-state-reader.ts';
+          import { createOperationalStateDurableAuthorityV1 } from '../../../packages/runtime-v2/operational-state-durable-authority.ts';
+          import { createGoogleFirebaseBearerTokenProviderV1 } from '../../../packages/integration-v2/admin-production-edge.ts';
+          import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
+          import { createDurableChannelTransportV1 } from '../../../packages/integration-v2/durable-channel-transport.ts';
+          import { createCanonicalOrderDurableStoreV1 } from '../../../packages/integration-v2/canonical-order-durable-store.ts';
+          import { createSmtChannelDecisionReconciliationV1 } from '../../../packages/integration-v2/smt-channel-decision-reconciliation.ts';
+          import { createSmtDurableChannelHydratorV1 } from '../../../packages/integration-v2/smt-durable-channel-hydrator.ts';
+          import { createBusinessRuntime } from '../../../packages/runtime/business-runtime.ts';
+          import { createPaymentAuthority } from '../../../packages/payment/payment-authority.ts';
+          import { createFulfillmentAuthority } from '../../../packages/fulfillment/fulfillment-authority.ts';
+          import { createPrintAuthority } from '../../../packages/printing/print-authority.ts';
+          import { createOperationalFacts } from '../../../packages/facts/operational-facts.ts';
+          import { modifierPriceKey } from '../../../packages/policy/business-policy.ts';
+
+          const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH'; const NS='morefunos-v2-staging';
+          const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
+          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; }
+          interface Ctx { request:Request; env:Env & Record<string,unknown>; }
+          const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store'}});
+          class PrintRepo { jobs=new Map(); async getByDedupeKey(key:string){return this.jobs.get(key)??null;} async save(job:any){this.jobs.set(job.dedupeKey,structuredClone(job));} }
+          class NoNativePrint { async execute():Promise<never>{throw new Error('Q_ORDER_03_NATIVE_PRINT_FORBIDDEN');} }
+          const codeOf=(e:unknown)=>e instanceof Error&&e.message?e.message:'UNKNOWN';
+
+          function infra(env:Env){
+            const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);
+            const port=new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});
+            const published=new FirebasePublishedBusinessStateStoreV1({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});
+            return{port,published};
+          }
+
+          export async function onRequest(context:Ctx):Promise<Response>{
+            if(context.request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
+            if(context.env.CF_PAGES_BRANCH!==BRANCH)return json({ok:false,error:'NOT_FOUND'},404);
+            if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409);
+            if(context.request.headers.get('authorization')!=='Bearer '+TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
+            try{
+              const {port,published}=infra(context.env); const body=await context.request.json() as Record<string,unknown>;
+              if(body.action==='set-status'){
+                const status=body.status==='open'?'open':body.status==='closed'?'closed':null; if(!status)return json({ok:false,error:'STATUS_INVALID'},400);
+                const current=await createOperationalStateCheckpointReaderV1(port).readCurrent();
+                if(current.storeStatus===status)return json({ok:true,state:current,unchanged:true});
+                const next=await createOperationalStateDurableAuthorityV1({port,initialState:current}).execute({expectedRevision:current.revision,command:{kind:'set-store-status',status},committedAt:new Date().toISOString()});
+                return json({ok:true,state:next});
+              }
+              if(body.action==='accept'){
+                const businessDate=String(body.businessDate??''); const submissionId=String(body.submissionId??'');
+                const state=await published.readCurrent(); if(!state)throw new Error('PUBLISHED_BUSINESS_STATE_REQUIRED');
+                const operational=await createOperationalStateCheckpointReaderV1(port).readCurrent();
+                if(operational.businessDate!==businessDate||operational.storeStatus!=='open')throw new Error('Q_ORDER_03_OPERATIONAL_NOT_OPEN');
+                const productMap=new Map(); const base:any={}; const modifiers:any={}; const nodes:any={}; const reqs:any={}; const customerVis:any={}; const operationsVis:any={};
+                for(const p of state.catalog.products){
+                  const tx=p.transactionData; if(!tx)continue;
+                  productMap.set(p.id,{id:p.id,status:p.enabled?'active':'inactive',names:{customer:tx.customerName,operations:tx.operationsName},pricing:{selectorKeys:[...tx.selectorKeys]},optionGroups:tx.optionGroups.map((g:any,gi:number)=>({id:g.id,name:g.id,enabled:true,required:g.required,min:g.min,max:g.max,order:gi,options:g.options.map((o:any,oi:number)=>({id:o.id,name:o.name,enabled:o.enabled,priceDeltaMinor:o.priceDeltaMinor,order:oi}))}))});
+                  base[p.id]=tx.basePriceMinor; customerVis[p.id]=state.presentations.customer.itemOrderByCategory[p.categoryId]?.includes(p.id)===true; operationsVis[p.id]=state.presentations.smt.itemOrderByCategory[p.categoryId]?.includes(p.id)===true;
+                  const node='product:'+p.id; nodes[node]=operational.productAvailability[p.id]?.soldOut===true?'soldout':'available'; reqs[p.id]=[node];
+                  for(const g of tx.optionGroups)for(const o of g.options)modifiers[modifierPriceKey(p.id,g.id,o.id)]=o.priceDeltaMinor;
+                }
+                const policy={policyVersion:'published:'+state.publishSequence,menuRevision:state.catalog.version,pricingRevision:state.catalog.version,availabilityRevision:'operational:'+operational.revision,rulesRevision:state.catalog.version,currency:'HKD',pricing:{productBaseMinor:base,modifierOptionMinor:modifiers},visibility:{customer:customerVis,operations:operationsVis},availability:{nodes,productRequirements:reqs},comboRules:[],modifierRules:[]};
+                const runtime=createBusinessRuntime({getActivePolicy:()=>policy,getProduct:(id:string)=>productMap.get(id)??null,isStoreReady:()=>true,resolveFulfillmentPolicy:()=>({requiresPaymentBeforeProduction:true,requiredTasks:[]}),payment:createPaymentAuthority(),fulfillment:createFulfillmentAuthority(),print:createPrintAuthority(new PrintRepo() as any,new NoNativePrint() as any),durability:createDurabilityCoordinator(port),facts:createOperationalFacts()});
+                const transport=createDurableChannelTransportV1(port);
+                const hydrated=await createSmtDurableChannelHydratorV1({queue:transport,runtime}).hydrate(businessDate);
+                if(!hydrated.pending.some((x:any)=>x.submissionId===submissionId))throw new Error('Q_ORDER_03_SUBMISSION_NOT_PENDING');
+                const accepted=await createSmtChannelDecisionReconciliationV1({runtime,durable:transport,orders:createCanonicalOrderDurableStoreV1(port)}).accept({submissionId,intakeId:'intake:'+submissionId,orderId:'order:'+submissionId,idempotencyKey:'final:'+submissionId,operatorId:'q-order-03-operator',deviceId:'q-order-03-preview',serviceMode:'takeaway',at:new Date().toISOString()});
+                return json({ok:true,submissionId,orderId:accepted.order.orderId,status:accepted.durableChannel.status,totalMinor:accepted.order.totalMinor});
+              }
+              return json({ok:false,error:'ACTION_INVALID'},400);
+            }catch(error){return json({ok:false,error:codeOf(error)},500);}
+          }
+          EOF
+
+      - name: Build harness deployment
+        working-directory: core
+        run: npx wrangler pages functions build --outdir=../deploy
+
+      - name: Deploy harness preview
+        id: deploy
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          npx wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"
+          test -n "$URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Open canonical staging
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"set-status","status":"open"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/open.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/open.json');if(!x.ok||x.state.storeStatus!=='open')process.exit(1)"
+          curl --fail --silent --show-error "$URL/api/customer/ordering" > "$RUNNER_TEMP/ordering.json"
+          node - <<'NODE'
+          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ordering.json','utf8'));if(x.storeStatus!=='open')process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate);
+          NODE
+
+      - name: Submit protected Customer order and prove waiting
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOOKUP_TOKEN="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"
+          echo "::add-mask::$LOOKUP_TOKEN"
+          printf '%s' "$LOOKUP_TOKEN" > "$RUNNER_TEMP/lookup-token"
+          DATE="$(cat "$RUNNER_TEMP/business-date")"; ID="q-order-03-${GITHUB_RUN_ID}"; export DATE ID LOOKUP_TOKEN
+          node - <<'NODE'
+          const fs=require('fs');fs.writeFileSync(process.env.RUNNER_TEMP+'/submit.json',JSON.stringify({submissionId:process.env.ID,idempotencyKey:'idem:'+process.env.ID,lookupToken:process.env.LOOKUP_TOKEN,createdAt:new Date().toISOString(),businessDate:process.env.DATE,payload:{lines:[{lineId:'line-1',productId:'F4',quantity:1,selections:[{optionGroupId:'drink',optionIds:['milk-tea']}]}],pickup:{mode:'takeaway',requestedTime:'asap'},customerDisplayedTotalMinor:4500,currency:'HKD'}}));
+          NODE
+          CODE="$(curl --silent --show-error -H 'content-type: application/json' --data-binary @"$RUNNER_TEMP/submit.json" -o "$RUNNER_TEMP/submit-response.json" -w '%{http_code}' "$URL/api/customer/orders")"
+          test "$CODE" = 202
+          node -e "const x=require(process.env.RUNNER_TEMP+'/submit-response.json');if(!x.ok||x.status!=='submitted'||x.lifecycleProtected!==true)process.exit(1)"
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/waiting.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/waiting.json');if(!x.ok||x.lifecycle.status!=='waiting'||x.lifecycle.authoritativeAcceptance!==false)process.exit(1)"
+          WRONG="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"; echo "::add-mask::$WRONG"
+          WRONG_CODE="$(curl --silent --show-error -H "authorization: Bearer $WRONG" -o "$RUNNER_TEMP/wrong.json" -w '%{http_code}' "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE")"
+          test "$WRONG_CODE" = 404
+          printf '%s' "$ID" > "$RUNNER_TEMP/submission-id"
+          rm -f "$RUNNER_TEMP/submit.json"
+
+      - name: Canonical SMT/Core accept with durable Order then durable Channel
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"; DATE="$(cat "$RUNNER_TEMP/business-date")"; ID="$(cat "$RUNNER_TEMP/submission-id")"
+          printf '{"action":"accept","businessDate":"%s","submissionId":"%s"}' "$DATE" "$ID" > "$RUNNER_TEMP/accept-request.json"
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @"$RUNNER_TEMP/accept-request.json" "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/accepted.json"
+          cat "$RUNNER_TEMP/accepted.json"
+          node - <<'NODE'
+          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/accepted.json','utf8'));if(!x.ok||x.status!=='accepted'||!String(x.orderId||'').startsWith('order:q-order-03-')||x.totalMinor!==4500)process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/order-id',x.orderId);
+          NODE
+
+      - name: Prove protected Customer accepted lifecycle from durable state
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOOKUP_TOKEN="$(cat "$RUNNER_TEMP/lookup-token")"; DATE="$(cat "$RUNNER_TEMP/business-date")"; ID="$(cat "$RUNNER_TEMP/submission-id")"; ORDER_ID="$(cat "$RUNNER_TEMP/order-id")"; export ORDER_ID
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/customer-accepted.json"
+          node - <<'NODE'
+          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/customer-accepted.json','utf8'));if(!x.ok||x.lifecycle.status!=='accepted'||x.lifecycle.authoritativeAcceptance!==true||x.lifecycle.orderId!==process.env.ORDER_ID)process.exit(1);
+          NODE
+
+      - name: Close staging
+        if: always()
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"set-status","status":"closed"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/close.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/close.json');if(!x.ok||x.state.storeStatus!=='closed')process.exit(1)"
+
+      - name: Build and deploy clean exact-source preview
+        id: clean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f core/functions/api/operator/q-order-03.ts
+          rm -rf deploy-clean
+          cp -R deploy deploy-clean
+          rm -f deploy-clean/_worker.js
+          (cd core && npx wrangler pages functions build --outdir=../deploy-clean)
+          (cd core && npx wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | tail -n1)"
+          test -n "$URL"; echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify clean durable accepted state and final closed
+        env: { URL: '${{ steps.clean.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOOKUP_TOKEN="$(cat "$RUNNER_TEMP/lookup-token")"; DATE="$(cat "$RUNNER_TEMP/business-date")"; ID="$(cat "$RUNNER_TEMP/submission-id")"; ORDER_ID="$(cat "$RUNNER_TEMP/order-id")"; export ORDER_ID
+          curl --fail --silent --show-error "$URL/api/customer/ordering" > "$RUNNER_TEMP/final-ordering.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/final-ordering.json');if(x.storeStatus!=='closed')process.exit(1)"
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/final-accepted.json"
+          node - <<'NODE'
+          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/final-accepted.json','utf8'));if(!x.ok||x.lifecycle.status!=='accepted'||x.lifecycle.orderId!==process.env.ORDER_ID)process.exit(1);
+          NODE
+          OP="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' "$URL/api/operator/q-order-03" || true)"
+          ! printf '%s' "$OP" | grep -q 'UNAUTHORIZED'
+
+      - name: Persist live result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence builder/.ci-results
+          {
+            printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'preview_branch=%s\nlive_url=https://%s.morefunos-v1.pages.dev\n' "$PREVIEW_BRANCH" "$PREVIEW_BRANCH"
+            printf 'customer_submit=success\ncustomer_waiting=success\nwrong_token_404=success\ncanonical_accept=success\ncanonical_order_durable=success\ndurable_channel_accepted=success\ncustomer_accepted=success\ncleanup_final_closed=success\noperator_removed=success\nconclusion=success\n'
+          } > builder/.ci-results/v2-q-order-03-live.txt
+          cp builder/.ci-results/v2-q-order-03-live.txt evidence/result.txt
+          for f in open.json ordering.json submit-response.json waiting.json wrong.json accepted.json customer-accepted.json close.json final-ordering.json final-accepted.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/; done
+          git -C builder config user.name morefunos-builder-bot
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-order-03-live.txt
+          git -C builder commit -m "ci(result): Q-ORDER-03 live PASS $CORE_SHA"
+          git -C builder push origin HEAD:main
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-order-03-live-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
