@@ -1,0 +1,181 @@
+name: V2 Q-LIVE-01 Customer Public Edge Qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_source_sha:
+        description: 'Exact MoreFunOS main/Core + Customer Worker source SHA'
+        required: true
+        type: string
+      customer_source_sha:
+        description: 'Exact MoreFunOS Customer browser source SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate exact SHA inputs
+        id: req
+        shell: bash
+        env:
+          CORE_SHA: ${{ inputs.core_source_sha }}
+          CUSTOMER_SHA: ${{ inputs.customer_source_sha }}
+        run: |
+          set -euo pipefail
+          CORE="$(printf '%s' "$CORE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          CUSTOMER="$(printf '%s' "$CUSTOMER_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$CORE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CUSTOMER" =~ ^[0-9a-f]{40}$ ]]
+          echo "core_sha=$CORE" >> "$GITHUB_OUTPUT"
+          echo "customer_sha=$CUSTOMER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact Core/Edge source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.req.outputs.core_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+
+      - name: Checkout exact Customer browser source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.req.outputs.customer_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+
+      - name: Verify exact source identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C core rev-parse HEAD)" = "${{ steps.req.outputs.core_sha }}"
+          test "$(git -C customer rev-parse HEAD)" = "${{ steps.req.outputs.customer_sha }}"
+
+      - name: Install Core dependencies
+        working-directory: core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run Q-LIVE-01 edge composition tests
+        id: edge_tests
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test \
+            packages/integration-v2/customer-production-edge.test.ts \
+            packages/integration-v2/customer-public-read-adapter.test.ts \
+            packages/runtime-v2/operational-state-reader.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/q-live-01-edge.log"
+
+      - name: Install Customer Worker dependencies
+        id: worker_install
+        continue-on-error: true
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run Customer Worker Wrangler dry-run
+        id: worker_dry_run
+        continue-on-error: true
+        working-directory: core/infra/cloudflare/customer-v2-worker
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee "$RUNNER_TEMP/q-live-01-worker.log"
+
+      - name: Run Customer browser runtime regression
+        id: customer_test
+        continue-on-error: true
+        working-directory: customer
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            apps/customer-web/customer-runtime-bridge.test.mjs \
+            apps/customer-web/customer-closure-static.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/q-live-01-customer.log"
+          grep -q '/api/customer/ordering' apps/customer-web/customer-runtime-bridge.js
+
+      - name: Run V2 Core regression
+        id: core_regression
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/q-live-01-v2-core.log"
+
+      - name: Run strict typecheck
+        id: typecheck
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/q-live-01-typecheck.log"
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        env:
+          CORE_SHA: ${{ steps.req.outputs.core_sha }}
+          CUSTOMER_SHA: ${{ steps.req.outputs.customer_sha }}
+          EDGE_TESTS: ${{ steps.edge_tests.outcome }}
+          WORKER_INSTALL: ${{ steps.worker_install.outcome }}
+          WORKER_DRY_RUN: ${{ steps.worker_dry_run.outcome }}
+          CUSTOMER_TEST: ${{ steps.customer_test.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'core_source_sha=%s\ncustomer_source_sha=%s\n' "$CORE_SHA" "$CUSTOMER_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'edge_tests=%s\nworker_install=%s\nworker_dry_run=%s\ncustomer_test=%s\ncore_regression=%s\ntypecheck=%s\n' \
+              "$EDGE_TESTS" "$WORKER_INSTALL" "$WORKER_DRY_RUN" "$CUSTOMER_TEST" "$CORE_REGRESSION" "$TYPECHECK"
+          } > evidence/q-live-01-summary.txt
+          for item in edge worker customer v2-core typecheck; do
+            test -f "$RUNNER_TEMP/q-live-01-$item.log" && cp "$RUNNER_TEMP/q-live-01-$item.log" "evidence/$item.log" || true
+          done
+          cat evidence/q-live-01-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-live-01-${{ steps.req.outputs.core_sha }}-${{ steps.req.outputs.customer_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          EDGE_TESTS: ${{ steps.edge_tests.outcome }}
+          WORKER_INSTALL: ${{ steps.worker_install.outcome }}
+          WORKER_DRY_RUN: ${{ steps.worker_dry_run.outcome }}
+          CUSTOMER_TEST: ${{ steps.customer_test.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          [[ "$EDGE_TESTS" == success ]]
+          [[ "$WORKER_INSTALL" == success ]]
+          [[ "$WORKER_DRY_RUN" == success ]]
+          [[ "$CUSTOMER_TEST" == success ]]
+          [[ "$CORE_REGRESSION" == success ]]
+          [[ "$TYPECHECK" == success ]]
