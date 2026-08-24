@@ -1,6 +1,6 @@
-source_sha=7e4584748bd0b905d7592180395f5b203a91c090
-builder_sha=1527308cdc1363f012aafe9f22530ebd2636c5f5
-run_id=32692379540
-staff_ui_test=failure
+source_sha=45420bfc71f362634a948e71a7ebb944bee71d88
+builder_sha=95c8f43e719592ec830592b85778aa802dbe2079
+run_id=32692540903
+staff_ui_test=success
 typecheck=success
-conclusion=failure
+conclusion=success
