@@ -1,0 +1,77 @@
+name: Admin V2 Staff UI-B Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/admin-v2-staff-ui-b.sha'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: builder
+          persist-credentials: true
+      - id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < builder/.ci-requests/admin-v2-staff-ui-b.sha | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Install Admin Web
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run Staff UI-B test
+        id: staff_ui
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- staff-management.vitest.test.tsx staff.vitest.test.tsx staff-port.vitest.test.ts
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        working-directory: source
+        run: npm run typecheck:v2-core
+      - name: Persist result
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          STAFF_UI: ${{ steps.staff_ui.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$STAFF_UI" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          mkdir -p builder/.ci-results
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nstaff_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$STAFF_UI" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-staff-ui-b.txt
+          git -C builder config user.name 'morefunos-builder-bot'
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/admin-v2-staff-ui-b.txt
+          if git -C builder diff --cached --quiet; then exit 0; fi
+          git -C builder commit -m "ci(result): Admin V2 Staff UI-B $SOURCE_SHA"
+          git -C builder push origin HEAD:main
+      - name: Enforce
+        if: always()
+        env:
+          STAFF_UI: ${{ steps.staff_ui.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          [[ "$STAFF_UI" == success ]]
+          [[ "$TYPECHECK" == success ]]
