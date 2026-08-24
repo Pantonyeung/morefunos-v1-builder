@@ -15,7 +15,7 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
@@ -82,6 +82,37 @@ jobs:
           set -o pipefail
           npm run build --prefix apps/smm-web 2>&1 | tee "$RUNNER_TEMP/smm-build.log"
 
+      - name: Install pinned Playwright verifier
+        id: browser_install
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm install --prefix apps/smm-web --no-save --no-audit --no-fund playwright@1.61.0 2>&1 | tee "$RUNNER_TEMP/smm-playwright-install.log"
+          cd apps/smm-web
+          npx playwright install --with-deps chromium 2>&1 | tee -a "$RUNNER_TEMP/smm-playwright-install.log"
+
+      - name: Run D-103 browser geometry capture
+        id: fidelity
+        if: steps.browser_install.outcome == 'success'
+        continue-on-error: true
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run preview --prefix apps/smm-web > "$RUNNER_TEMP/smm-preview.log" 2>&1 &
+          PREVIEW_PID=$!
+          cleanup(){ kill "$PREVIEW_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/?preview=1 >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl --fail --silent http://127.0.0.1:4173/?preview=1 >/dev/null
+          npm run fidelity:capture --prefix apps/smm-web 2>&1 | tee "$RUNNER_TEMP/smm-fidelity.log"
+
       - name: Record SMM verification evidence
         if: always()
         shell: bash
@@ -90,17 +121,23 @@ jobs:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          BROWSER_OUTCOME: ${{ steps.browser_install.outcome }}
+          FIDELITY_OUTCOME: ${{ steps.fidelity.outcome }}
         run: |
           set -euo pipefail
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/smm-ui-shell-summary.txt
           printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/smm-ui-shell-summary.txt
-          printf 'install=%s\ntest=%s\nbuild=%s\n' "$INSTALL_OUTCOME" "$TEST_OUTCOME" "$BUILD_OUTCOME" >> evidence/smm-ui-shell-summary.txt
+          printf 'install=%s\ntest=%s\nbuild=%s\nbrowser_install=%s\nfidelity=%s\n' "$INSTALL_OUTCOME" "$TEST_OUTCOME" "$BUILD_OUTCOME" "$BROWSER_OUTCOME" "$FIDELITY_OUTCOME" >> evidence/smm-ui-shell-summary.txt
           node --version >> evidence/smm-ui-shell-summary.txt
           npm --version >> evidence/smm-ui-shell-summary.txt
           test -f "$RUNNER_TEMP/smm-install.log" && cp "$RUNNER_TEMP/smm-install.log" evidence/smm-install.log || true
           test -f "$RUNNER_TEMP/smm-test.log" && cp "$RUNNER_TEMP/smm-test.log" evidence/smm-test.log || true
           test -f "$RUNNER_TEMP/smm-build.log" && cp "$RUNNER_TEMP/smm-build.log" evidence/smm-build.log || true
+          test -f "$RUNNER_TEMP/smm-playwright-install.log" && cp "$RUNNER_TEMP/smm-playwright-install.log" evidence/smm-playwright-install.log || true
+          test -f "$RUNNER_TEMP/smm-preview.log" && cp "$RUNNER_TEMP/smm-preview.log" evidence/smm-preview.log || true
+          test -f "$RUNNER_TEMP/smm-fidelity.log" && cp "$RUNNER_TEMP/smm-fidelity.log" evidence/smm-fidelity.log || true
+          test -d source/apps/smm-web/artifacts/fidelity && cp -R source/apps/smm-web/artifacts/fidelity evidence/fidelity || true
           cat evidence/smm-ui-shell-summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload SMM verification evidence
@@ -119,7 +156,11 @@ jobs:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          BROWSER_OUTCOME: ${{ steps.browser_install.outcome }}
+          FIDELITY_OUTCOME: ${{ steps.fidelity.outcome }}
         run: |
           [[ "$INSTALL_OUTCOME" == success ]]
           [[ "$TEST_OUTCOME" == success ]]
           [[ "$BUILD_OUTCOME" == success ]]
+          [[ "$BROWSER_OUTCOME" == success ]]
+          [[ "$FIDELITY_OUTCOME" == success ]]
