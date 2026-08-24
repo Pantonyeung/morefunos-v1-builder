@@ -1,0 +1,90 @@
+name: V2 Q-ORDER-03 Policy Focused One-Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-policy-focused.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 17b4b25458edf8e612b3bd8339d874af4001e8d6
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source and policy seam
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          grep -q 'rulesRevision' source/packages/runtime-v2/pricing-adjustment-policy-authority.ts
+          grep -q 'V2_STAGING_RULES_REVISION' source/packages/integration-v2/v2-staging-provisioner.ts
+          grep -q 'stableValue' source/packages/runtime-v2/firebase-global-versioned-state-store.ts
+
+      - name: Install dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run policy and transaction regressions
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test \
+            packages/runtime-v2/pricing-adjustment-policy-authority.test.ts \
+            packages/runtime-v2/pricing-policy-durability.test.ts \
+            packages/runtime-v2/pricing-policy-firebase-durability.test.ts \
+            packages/runtime-v2/transaction-execution-gate.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/policy-focused.log"
+
+      - name: Build Pages Functions
+        working-directory: source
+        run: npx wrangler pages functions build --outdir="$RUNNER_TEMP/q-order-03-policy-functions"
+
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p builder/.ci-results evidence
+          {
+            printf 'source_sha=%s\n' "$SOURCE_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'policy_regression=success\nfunctions_build=success\nconclusion=success\n'
+          } > builder/.ci-results/v2-q-order-03-policy-focused.txt
+          cp builder/.ci-results/v2-q-order-03-policy-focused.txt evidence/result.txt
+          cp "$RUNNER_TEMP/policy-focused.log" evidence/policy-focused.log
+          git -C builder config user.name morefunos-builder-bot
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-order-03-policy-focused.txt
+          git -C builder commit -m "ci(result): Q-ORDER-03 policy focused PASS $SOURCE_SHA"
+          git -C builder push origin HEAD:main
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-order-03-policy-focused-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
