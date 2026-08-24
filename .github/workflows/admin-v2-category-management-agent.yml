@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 env:
@@ -70,3 +70,24 @@ jobs:
         run: |
           set -euo pipefail
           npm run build
+
+      - name: Persist category gate diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-v2-category-management-latest.log'
+          {
+            printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+            printf 'JOB_STATUS=%s\n' "$JOB_STATUS"
+            printf 'WORKFLOW_RUN_ID=%s\n' "$GITHUB_RUN_ID"
+            printf 'WORKFLOW_RUN_ATTEMPT=%s\n' "$GITHUB_RUN_ATTEMPT"
+          } > /tmp/category-gate.log
+          content="$(base64 -w0 /tmp/category-gate.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin category gate diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
