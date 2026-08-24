@@ -42,8 +42,20 @@ jobs:
         working-directory: source
         shell: bash
         run: node --experimental-strip-types --test packages/integration-v2/admin-orders-history-transport.test.ts
+      - name: Install Admin Web
+        id: install_admin
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run historical Orders Web Port test
+        id: orders_web_test
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- orders-history-port.vitest.test.ts
       - name: Typecheck
         id: typecheck
+        if: ${{ always() }}
         continue-on-error: true
         working-directory: source
         run: npm run typecheck:v2-core
@@ -53,12 +65,14 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           ORDERS_TEST: ${{ steps.orders_test.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
+          ORDERS_WEB_TEST: ${{ steps.orders_web_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$ORDERS_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          if [[ "$ORDERS_TEST" == success && "$INSTALL_ADMIN" == success && "$ORDERS_WEB_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\norders_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$ORDERS_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-orders-history.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\norders_test=%s\ninstall_admin=%s\norders_web_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$ORDERS_TEST" "$INSTALL_ADMIN" "$ORDERS_WEB_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-orders-history.txt
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/admin-v2-orders-history.txt
@@ -70,7 +84,11 @@ jobs:
         shell: bash
         env:
           ORDERS_TEST: ${{ steps.orders_test.outcome }}
+          INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
+          ORDERS_WEB_TEST: ${{ steps.orders_web_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$ORDERS_TEST" == success ]]
+          [[ "$INSTALL_ADMIN" == success ]]
+          [[ "$ORDERS_WEB_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
