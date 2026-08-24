@@ -1,0 +1,86 @@
+name: Admin V2 Overview Agent
+
+on:
+  push:
+    paths:
+      - '.github/workflows/admin-v2-overview-agent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  statuses: write
+
+env:
+  SOURCE_SHA: a6592cbefd3ca628dedfb5b9d6619c11943a39f9
+
+jobs:
+  overview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Install Admin Web dependencies
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+
+      - name: Overview tests
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vitest run src/overview.vitest.test.tsx src/AdminEntry.vitest.test.tsx
+
+      - name: Full Admin Web tests
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test
+
+      - name: Admin Web typecheck and build
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+
+      - name: Persist overview gate diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-v2-overview-latest.log'
+          {
+            printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+            printf 'JOB_STATUS=%s\n' "$JOB_STATUS"
+            printf 'WORKFLOW_RUN_ID=%s\n' "$GITHUB_RUN_ID"
+            printf 'WORKFLOW_RUN_ATTEMPT=%s\n' "$GITHUB_RUN_ATTEMPT"
+          } > /tmp/overview-gate.log
+          content="$(base64 -w0 /tmp/overview-gate.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin overview gate diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
