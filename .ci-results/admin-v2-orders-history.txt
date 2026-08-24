@@ -1,8 +1,8 @@
-source_sha=ba760eddee60598223e9f1cacac82fecb0c20a0b
-builder_sha=f9ce87b1a8c95822823332a44b8858cec773b848
-run_id=32694767433
+source_sha=e1e3398653a7fc2da3bd90626d1f76bffe57b397
+builder_sha=207b9175fe1e530c0b74aba18899f472bedb5010
+run_id=32694823879
 orders_test=success
 install_admin=success
-orders_web_test=failure
+orders_web_test=success
 typecheck=success
-conclusion=failure
+conclusion=success
