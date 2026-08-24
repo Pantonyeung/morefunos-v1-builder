@@ -29,6 +29,12 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
+      - name: Pin npm CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund
+          test "$(npm --version)" = "11.19.0"
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
