@@ -5,11 +5,10 @@
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/admin-web[39m
 
- [32m✓[39m src/reporting-history.vitest.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 494[2mms[22m[39m
-     [33m[2m✓[22m[39m builds explicit business dates and renders only the canonical FINAL projection [33m 464[2mms[22m[39m
+ [32m✓[39m src/reporting-history.vitest.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 239[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 [2m      Tests [22m [1m[32m2 passed[39m[22m[90m (2)[39m
-[2m   Start at [22m 06:45:10
-[2m   Duration [22m 1.51s[2m (transform 63ms, setup 0ms, import 193ms, tests 494ms, environment 691ms)[22m
+[2m   Start at [22m 06:46:33
+[2m   Duration [22m 1.28s[2m (transform 78ms, setup 0ms, import 221ms, tests 239ms, environment 687ms)[22m
 
