@@ -1,0 +1,4 @@
+trigger=2026-08-25T04:40+08:00
+core_sha=18511b8de267d47a8bb91a58c5a9ae210097b7e4
+customer_sha=d44b03de913c667b6c43837e8f98a9d07542d1de
+smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
