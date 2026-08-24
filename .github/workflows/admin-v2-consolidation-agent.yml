@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 env:
-  SOURCE_SHA: eafa8cfd8be059964f8638bce9618d075bbd75a8
+  SOURCE_SHA: 1af8fbd11ea873d2d6634da4389526b13944abe5
 
 jobs:
   admin-consolidation:
