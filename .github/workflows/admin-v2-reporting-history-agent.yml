@@ -67,6 +67,12 @@ jobs:
         run: |
           set -o pipefail
           npm test -- reporting-history.vitest.test.tsx 2>&1 | tee "$GITHUB_WORKSPACE/reporting-ui.log"
+      - name: Run Historical Reporting routing test
+        id: reporting_routing_test
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- reporting-history-routing.vitest.test.tsx
       - name: Typecheck
         id: typecheck
         if: ${{ always() }}
@@ -82,12 +88,13 @@ jobs:
           INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
           REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
+          REPORTING_ROUTING_TEST: ${{ steps.reporting_routing_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$REPORTING_ROUTING_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_UI_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_ui_test=%s\nreporting_routing_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_UI_TEST" "$REPORTING_ROUTING_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
           if [[ -f "$GITHUB_WORKSPACE/reporting-ui.log" ]]; then tail -n 120 "$GITHUB_WORKSPACE/reporting-ui.log" > builder/.ci-results/admin-v2-reporting-history-ui.log; fi
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
@@ -103,10 +110,12 @@ jobs:
           INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
           REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
+          REPORTING_ROUTING_TEST: ${{ steps.reporting_routing_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$REPORTING_TEST" == success ]]
           [[ "$INSTALL_ADMIN" == success ]]
           [[ "$REPORTING_WEB_TEST" == success ]]
           [[ "$REPORTING_UI_TEST" == success ]]
+          [[ "$REPORTING_ROUTING_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
