@@ -1,9 +1,9 @@
-source_sha=38e217c9c96cf6523206d8ab5bb6c15fc59c4046
-builder_sha=d8efc187fbc60d4f21c80a4910acd3c6a0bf1ec6
-run_id=32675543323
+source_sha=1412dbbed635ee106c67872c069d4feeea99e209
+builder_sha=f93b590589d016f53b4c00832fd99f6fb540b2df
+run_id=32675724975
 transport_test=failure
 daily_reset_test=success
-worker_test=success
+worker_test=failure
 worker_dry_run=success
 admin_port_test=success
 typecheck=success
