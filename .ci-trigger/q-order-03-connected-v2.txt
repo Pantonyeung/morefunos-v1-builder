@@ -1,4 +1,0 @@
-trigger=2026-08-25T06:35+08:00-rerun-1
-core_sha=21410e49eeab09fe4e08e02166cb477b084e684b
-customer_sha=30c0d178d768038f14ee62bc319039a63c30c16a
-smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
