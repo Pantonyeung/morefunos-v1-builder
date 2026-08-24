@@ -1,6 +1,12 @@
 source_sha=45420bfc71f362634a948e71a7ebb944bee71d88
-builder_sha=95c8f43e719592ec830592b85778aa802dbe2079
-run_id=32692540903
+builder_sha=27efd23777ca583eb99195edabbec099f9d4a4c1
+run_id=32694272031
+builder_checkout=success
+request=success
+setup_node=success
+pin_npm=success
+source_checkout=success
+install_admin=success
 staff_ui_test=success
 typecheck=success
 conclusion=success
