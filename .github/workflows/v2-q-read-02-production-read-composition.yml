@@ -1,0 +1,163 @@
+name: V2 Q-READ-02 Production Read Composition
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_source_sha:
+        description: 'Exact MoreFunOS main/Core source SHA'
+        required: true
+        type: string
+      customer_source_sha:
+        description: 'Exact MoreFunOS Customer source SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate exact SHA inputs
+        id: req
+        shell: bash
+        env:
+          CORE_SHA: ${{ inputs.core_source_sha }}
+          CUSTOMER_SHA: ${{ inputs.customer_source_sha }}
+        run: |
+          set -euo pipefail
+          CORE="$(printf '%s' "$CORE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          CUSTOMER="$(printf '%s' "$CUSTOMER_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$CORE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CUSTOMER" =~ ^[0-9a-f]{40}$ ]]
+          echo "core_sha=$CORE" >> "$GITHUB_OUTPUT"
+          echo "customer_sha=$CUSTOMER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact Core source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.req.outputs.core_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+
+      - name: Checkout exact Customer source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.req.outputs.customer_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+
+      - name: Verify exact source identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C core rev-parse HEAD)" = "${{ steps.req.outputs.core_sha }}"
+          test "$(git -C customer rev-parse HEAD)" = "${{ steps.req.outputs.customer_sha }}"
+
+      - name: Install Core dependencies
+        working-directory: core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run Q-READ-02 Core focused tests
+        id: core_focused
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test \
+            packages/runtime-v2/operational-state-reader.test.ts \
+            packages/runtime-v2/customer-ordering-projection.test.ts \
+            packages/integration-v2/customer-public-read-adapter.test.ts \
+            packages/runtime-v2/q-read-01-connected.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/q-read-02-core.log"
+
+      - name: Run Customer runtime bridge tests
+        id: customer_test
+        continue-on-error: true
+        working-directory: customer
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            apps/customer-web/customer-runtime-bridge.test.mjs \
+            apps/customer-web/customer-closure-static.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/q-read-02-customer.log"
+          grep -q 'customer-runtime-bridge.js' apps/customer-web/index.html
+          grep -q '/api/customer/ordering' apps/customer-web/customer-runtime-bridge.js
+
+      - name: Run V2 Core regression
+        id: core_regression
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/q-read-02-v2-core.log"
+
+      - name: Run strict typecheck
+        id: typecheck
+        continue-on-error: true
+        working-directory: core
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/q-read-02-typecheck.log"
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        env:
+          CORE_SHA: ${{ steps.req.outputs.core_sha }}
+          CUSTOMER_SHA: ${{ steps.req.outputs.customer_sha }}
+          CORE_FOCUSED: ${{ steps.core_focused.outcome }}
+          CUSTOMER_TEST: ${{ steps.customer_test.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'core_source_sha=%s\n' "$CORE_SHA"
+            printf 'customer_source_sha=%s\n' "$CUSTOMER_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'core_focused=%s\ncustomer_test=%s\ncore_regression=%s\ntypecheck=%s\n' "$CORE_FOCUSED" "$CUSTOMER_TEST" "$CORE_REGRESSION" "$TYPECHECK"
+          } > evidence/q-read-02-summary.txt
+          test -f "$RUNNER_TEMP/q-read-02-core.log" && cp "$RUNNER_TEMP/q-read-02-core.log" evidence/core-focused.log || true
+          test -f "$RUNNER_TEMP/q-read-02-customer.log" && cp "$RUNNER_TEMP/q-read-02-customer.log" evidence/customer-runtime.log || true
+          test -f "$RUNNER_TEMP/q-read-02-v2-core.log" && cp "$RUNNER_TEMP/q-read-02-v2-core.log" evidence/v2-core-regression.log || true
+          test -f "$RUNNER_TEMP/q-read-02-typecheck.log" && cp "$RUNNER_TEMP/q-read-02-typecheck.log" evidence/typecheck.log || true
+          cat evidence/q-read-02-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-read-02-${{ steps.req.outputs.core_sha }}-${{ steps.req.outputs.customer_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce verification result
+        if: always()
+        shell: bash
+        env:
+          CORE_FOCUSED: ${{ steps.core_focused.outcome }}
+          CUSTOMER_TEST: ${{ steps.customer_test.outcome }}
+          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          [[ "$CORE_FOCUSED" == success ]]
+          [[ "$CUSTOMER_TEST" == success ]]
+          [[ "$CORE_REGRESSION" == success ]]
+          [[ "$TYPECHECK" == success ]]
