@@ -58,6 +58,12 @@ jobs:
         continue-on-error: true
         working-directory: source/apps/admin-web
         run: npm test -- reporting-history-port.vitest.test.ts
+      - name: Run Historical Reporting UI-A test
+        id: reporting_ui_test
+        if: ${{ always() && steps.install_admin.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: source/apps/admin-web
+        run: npm test -- reporting-history.vitest.test.tsx
       - name: Typecheck
         id: typecheck
         if: ${{ always() }}
@@ -72,12 +78,13 @@ jobs:
           REPORTING_TEST: ${{ steps.reporting_test.outcome }}
           INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
+          REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           set -euo pipefail
-          if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
+          if [[ "$REPORTING_TEST" == success && "$INSTALL_ADMIN" == success && "$REPORTING_WEB_TEST" == success && "$REPORTING_UI_TEST" == success && "$TYPECHECK" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreporting_test=%s\ninstall_admin=%s\nreporting_web_test=%s\nreporting_ui_test=%s\ntypecheck=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$REPORTING_TEST" "$INSTALL_ADMIN" "$REPORTING_WEB_TEST" "$REPORTING_UI_TEST" "$TYPECHECK" "$CONCLUSION" > builder/.ci-results/admin-v2-reporting-history.txt
           git -C builder config user.name 'morefunos-builder-bot'
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/admin-v2-reporting-history.txt
@@ -91,9 +98,11 @@ jobs:
           REPORTING_TEST: ${{ steps.reporting_test.outcome }}
           INSTALL_ADMIN: ${{ steps.install_admin.outcome }}
           REPORTING_WEB_TEST: ${{ steps.reporting_web_test.outcome }}
+          REPORTING_UI_TEST: ${{ steps.reporting_ui_test.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
         run: |
           [[ "$REPORTING_TEST" == success ]]
           [[ "$INSTALL_ADMIN" == success ]]
           [[ "$REPORTING_WEB_TEST" == success ]]
+          [[ "$REPORTING_UI_TEST" == success ]]
           [[ "$TYPECHECK" == success ]]
