@@ -1,0 +1,6 @@
+source_sha=74c6c3fb026fdc7f32bd4b56d4dbceca84d04892
+builder_sha=59ce5201fd7fbadb2288d0779bae1707110c248d
+run_id=32692236926
+staff_ui_test=skipped
+typecheck=skipped
+conclusion=failure
