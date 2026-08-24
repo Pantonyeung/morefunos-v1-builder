@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 env:
-  SOURCE_SHA: dc3a585c7e8ef28893d73e6eb130a08fdda5eeec
+  SOURCE_SHA: 6b23408d982377b295e05706d91acab3b22d37e1
 
 jobs:
   payment-exceptions-surface:
