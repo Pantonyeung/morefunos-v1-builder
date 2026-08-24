@@ -1,0 +1,119 @@
+name: V2 Q-ORDER-02 Evidence Closure One-Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-02-evidence-close.txt'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  close-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CORE_SHA: 18511b8de267d47a8bb91a58c5a9ae210097b7e4
+      CUSTOMER_SHA: d44b03de913c667b6c43837e8f98a9d07542d1de
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+      SOURCE_RUN_ID: '32776811277'
+      SOURCE_ARTIFACT_ID: '9538269168'
+      SOURCE_ARTIFACT_DIGEST: 'sha256:de11dffb8bb5c993d9310f5f5483458c884e7f907981a9bc988a80cce5561527'
+    steps:
+      - name: Checkout Builder evidence plane
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+
+      - name: Checkout exact SMT source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SMT_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: smt
+          persist-credentials: false
+
+      - name: Download source live evidence artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-q-order-02-fixed-${{ env.CORE_SHA }}
+          path: evidence
+          repository: Pantonyeung/morefunos-v1-builder
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Verify exact SMT seam and preserved live evidence
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C smt rev-parse HEAD)" = "$SMT_SHA"
+          grep -q 'pendingChannelSubmissions' smt/apps/smt-web/src/smt-runtime-adapter.ts
+          grep -q 'readOrders' smt/apps/smt-web/src/contracts.ts
+          test -f evidence/smt.log
+          test -f evidence/live-envelope.json
+          test -f evidence/first.json
+          test -f evidence/replay.json
+          test -f evidence/open.json
+          test -f evidence/close.json
+          test -f evidence/final-ordering.json
+          grep -q '"ok":true' evidence/smt.log
+          grep -q '"pending":1' evidence/smt.log
+          node - <<'NODE'
+          const fs=require('fs');
+          const live=JSON.parse(fs.readFileSync('evidence/live-envelope.json','utf8'));
+          const first=JSON.parse(fs.readFileSync('evidence/first.json','utf8'));
+          const replay=JSON.parse(fs.readFileSync('evidence/replay.json','utf8'));
+          const opened=JSON.parse(fs.readFileSync('evidence/open.json','utf8'));
+          const closed=JSON.parse(fs.readFileSync('evidence/close.json','utf8'));
+          const finalState=JSON.parse(fs.readFileSync('evidence/final-ordering.json','utf8'));
+          if(!live.ok||live.count!==1||!live.envelope) process.exit(1);
+          if(live.envelope.source!=='customer'||live.envelope.channel!=='customer-web'||live.envelope.status!=='submitted'||live.envelope.authoritativeAcceptance!==false) process.exit(1);
+          if(!first.ok||!replay.ok||first.submissionId!==replay.submissionId||first.status!=='submitted'||replay.status!=='submitted') process.exit(1);
+          if(!opened.ok||opened.state.storeStatus!=='open') process.exit(1);
+          if(!closed.ok||closed.state.storeStatus!=='closed') process.exit(1);
+          if(finalState.storeStatus!=='closed') process.exit(1);
+          const smt=fs.readFileSync('evidence/smt.log','utf8');
+          if(!smt.includes(live.envelope.submissionId)) process.exit(1);
+          console.log(JSON.stringify({ok:true,submissionId:live.envelope.submissionId,channel:live.envelope.channel,finalStoreStatus:finalState.storeStatus}));
+          NODE
+
+      - name: Persist final Q-ORDER-02 PASS marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p builder/.ci-results closure
+          {
+            printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA"
+            printf 'source_run_id=%s\nsource_artifact_id=%s\nsource_artifact_digest=%s\n' "$SOURCE_RUN_ID" "$SOURCE_ARTIFACT_ID" "$SOURCE_ARTIFACT_DIGEST"
+            printf 'closure_builder_sha=%s\nclosure_run_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'live_customer_submit=success\nlive_idempotent_replay=success\nlive_durable_exactly_once=success\nsmt_canonical_pending_hydration=success\noperational_open_close=success\ncleanup_final_closed=success\nconclusion=success\n'
+          } > builder/.ci-results/v2-q-order-02-final.txt
+          cp builder/.ci-results/v2-q-order-02-final.txt closure/result.txt
+          git -C builder config user.name morefunos-builder-bot
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-order-02-final.txt
+          if ! git -C builder diff --cached --quiet; then
+            git -C builder commit -m "ci(result): Q-ORDER-02 final PASS $CORE_SHA"
+            git -C builder push origin HEAD:main
+          fi
+
+      - name: Upload closure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-order-02-final-${{ env.CORE_SHA }}
+          path: |
+            closure
+            evidence/smt.log
+            evidence/live-envelope.json
+            evidence/first.json
+            evidence/replay.json
+            evidence/open.json
+            evidence/close.json
+            evidence/final-ordering.json
+          if-no-files-found: error
+          retention-days: 30
