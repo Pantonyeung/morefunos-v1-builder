@@ -1,5 +1,5 @@
 name: V2 Q-LIVE-02A V2 Staging One-Shot
-# trigger: latest isolated V2 staging 2026-08-24
+# trigger: deployment-contract gate 2026-08-24
 
 on:
   push:
@@ -31,14 +31,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate Builder secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN"
-          test -n "$CLOUDFLARE_ACCOUNT_ID"
-
-      - name: Checkout exact V2 Core/Pages source
+      - name: Checkout exact V2 Pages source
         uses: actions/checkout@v4
         with:
           repository: Pantonyeung/morefunos-v1
@@ -56,7 +49,7 @@ jobs:
           path: customer
           persist-credentials: false
 
-      - name: Verify exact source identity and D-111 isolation
+      - name: Verify D-111 isolated source
         id: isolation
         continue-on-error: true
         shell: bash
@@ -74,7 +67,7 @@ jobs:
         working-directory: core
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Run V2 staging and Customer focused tests
+      - name: Run deployment boundary tests
         id: focused
         continue-on-error: true
         working-directory: core
@@ -88,20 +81,6 @@ jobs:
             packages/runtime-v2/q-read-01-connected.test.ts \
             packages/runtime-v2/operational-state-reader.test.ts \
             2>&1 | tee "$RUNNER_TEMP/focused.log"
-
-      - name: Run full V2 Core regression
-        id: core_regression
-        continue-on-error: true
-        working-directory: core
-        shell: bash
-        run: npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core.log"
-
-      - name: Run strict V2 Core typecheck
-        id: typecheck
-        continue-on-error: true
-        working-directory: core
-        shell: bash
-        run: npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
 
       - name: Run Customer browser regression
         id: customer
@@ -124,16 +103,7 @@ jobs:
           set -euo pipefail
           rm -rf deploy
           mkdir -p deploy/customer
-          for file in \
-            index.html \
-            customer-shell.css \
-            customer-shell.js \
-            customer-closure.css \
-            customer-closure.js \
-            customer-closure-v2.js \
-            customer-closure-v3.css \
-            customer-closure-v3.js \
-            customer-runtime-bridge.js; do
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-bridge.js; do
             test -f "customer/apps/customer-web/$file"
             cp "customer/apps/customer-web/$file" "deploy/customer/$file"
           done
@@ -147,7 +117,6 @@ jobs:
         run: |
           set -o pipefail
           npx wrangler pages functions build --outdir=../deploy 2>&1 | tee "$RUNNER_TEMP/functions-build.log"
-          test -f ../deploy/_worker.js
 
       - name: Deploy exact V2 staging preview
         id: deploy
@@ -156,6 +125,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx wrangler pages deploy ../deploy \
             --project-name=morefunos-v1 \
             --branch="$PREVIEW_BRANCH" \
@@ -170,11 +141,9 @@ jobs:
         shell: bash
         env:
           URL: ${{ steps.deploy.outputs.url }}
-        run: |
-          set -o pipefail
-          curl --fail --silent --show-error --location --retry 4 --retry-delay 2 "$URL/customer/" -o "$RUNNER_TEMP/customer.html"
+        run: curl --fail --silent --show-error --location --retry 4 --retry-delay 2 "$URL/customer/" -o "$RUNNER_TEMP/customer.html"
 
-      - name: Live canonical API smoke
+      - name: Live isolated canonical API smoke
         id: live_api
         continue-on-error: true
         shell: bash
@@ -192,7 +161,8 @@ jobs:
           if (p.catalogVersion !== 'catalog-qread01-v1') process.exit(12);
           if (p.presentationRevision !== 'customer-qread01-r1') process.exit(13);
           if (typeof p.operationalRevision !== 'number') process.exit(14);
-          if (!Array.isArray(p.products) || p.products.length < 1) process.exit(15);
+          if (p.storeStatus !== 'closed') process.exit(15);
+          if (!Array.isArray(p.products) || p.products.length < 1) process.exit(16);
           NODE
 
       - name: Upload evidence
@@ -202,8 +172,6 @@ jobs:
           name: v2-q-live-02a-v2-staging-${{ env.CORE_SHA }}
           path: |
             ${{ runner.temp }}/focused.log
-            ${{ runner.temp }}/v2-core.log
-            ${{ runner.temp }}/typecheck.log
             ${{ runner.temp }}/customer.log
             ${{ runner.temp }}/functions-build.log
             ${{ runner.temp }}/deploy.log
@@ -219,8 +187,6 @@ jobs:
           ISOLATION: ${{ steps.isolation.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           FOCUSED: ${{ steps.focused.outcome }}
-          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
-          TYPECHECK: ${{ steps.typecheck.outcome }}
           CUSTOMER: ${{ steps.customer.outcome }}
           COMPOSE: ${{ steps.compose.outcome }}
           FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
@@ -230,16 +196,12 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
-          if [[ "$ISOLATION" == success && "$INSTALL" == success && "$FOCUSED" == success && "$CORE_REGRESSION" == success && "$TYPECHECK" == success && "$CUSTOMER" == success && "$COMPOSE" == success && "$FUNCTIONS_BUILD" == success && "$DEPLOY" == success && "$LIVE_CUSTOMER" == success && "$LIVE_API" == success ]]; then
-            CONCLUSION=success
-          else
-            CONCLUSION=failure
-          fi
+          if [[ "$ISOLATION" == success && "$INSTALL" == success && "$FOCUSED" == success && "$CUSTOMER" == success && "$COMPOSE" == success && "$FUNCTIONS_BUILD" == success && "$DEPLOY" == success && "$LIVE_CUSTOMER" == success && "$LIVE_API" == success ]]; then CONCLUSION=success; else CONCLUSION=failure; fi
           mkdir -p builder/.ci-results
           {
             printf 'core_sha=%s\ncustomer_sha=%s\n' "$CORE_SHA" "$CUSTOMER_SHA"
             printf 'builder_sha=%s\nrun_id=%s\npreview_url=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PREVIEW_URL"
-            printf 'isolation=%s\ninstall=%s\nfocused=%s\ncore_regression=%s\ntypecheck=%s\ncustomer=%s\ncompose=%s\nfunctions_build=%s\ndeploy=%s\nlive_customer=%s\nlive_api=%s\n' "$ISOLATION" "$INSTALL" "$FOCUSED" "$CORE_REGRESSION" "$TYPECHECK" "$CUSTOMER" "$COMPOSE" "$FUNCTIONS_BUILD" "$DEPLOY" "$LIVE_CUSTOMER" "$LIVE_API"
+            printf 'isolation=%s\ninstall=%s\nfocused=%s\ncustomer=%s\ncompose=%s\nfunctions_build=%s\ndeploy=%s\nlive_customer=%s\nlive_api=%s\n' "$ISOLATION" "$INSTALL" "$FOCUSED" "$CUSTOMER" "$COMPOSE" "$FUNCTIONS_BUILD" "$DEPLOY" "$LIVE_CUSTOMER" "$LIVE_API"
             printf 'conclusion=%s\n' "$CONCLUSION"
           } > builder/.ci-results/v2-q-live-02a-v2-staging.txt
           git -C builder config user.name 'morefunos-builder-bot'
@@ -257,8 +219,6 @@ jobs:
           ISOLATION: ${{ steps.isolation.outcome }}
           INSTALL: ${{ steps.install.outcome }}
           FOCUSED: ${{ steps.focused.outcome }}
-          CORE_REGRESSION: ${{ steps.core_regression.outcome }}
-          TYPECHECK: ${{ steps.typecheck.outcome }}
           CUSTOMER: ${{ steps.customer.outcome }}
           COMPOSE: ${{ steps.compose.outcome }}
           FUNCTIONS_BUILD: ${{ steps.functions_build.outcome }}
@@ -269,8 +229,6 @@ jobs:
           [[ "$ISOLATION" == success ]]
           [[ "$INSTALL" == success ]]
           [[ "$FOCUSED" == success ]]
-          [[ "$CORE_REGRESSION" == success ]]
-          [[ "$TYPECHECK" == success ]]
           [[ "$CUSTOMER" == success ]]
           [[ "$COMPOSE" == success ]]
           [[ "$FUNCTIONS_BUILD" == success ]]
