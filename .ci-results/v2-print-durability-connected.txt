@@ -1,0 +1,6 @@
+source_sha=06539471b357395688b452b6f4ecef32e249398c
+base_apply_ack=6b5674c11e03588a359c6be2dea1ea11384bb792
+builder_sha=03561e5761f3c8f5dee80359ba756790b346dcb3
+run_id=32806366773
+phase=durable-tests
+conclusion=failure
