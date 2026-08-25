@@ -37,7 +37,7 @@ jobs:
           path: source
           persist-credentials: false
 
-      - name: Verify exact source and Rules Authority seam
+      - name: Verify exact source and runtime seams
         shell: bash
         run: |
           set -euo pipefail
@@ -46,6 +46,12 @@ jobs:
           grep -q "createFirebaseCanonicalRulesAuthorityV1" source/packages/runtime-v2/rules-firebase-authority.ts
           grep -q "rulesReader" source/packages/runtime-v2/transaction-execution-gate.ts
           grep -q "RULES_AUTHORITY_NOT_PROVISIONED" source/packages/runtime-v2/transaction-execution-gate.test.ts
+          test -f source/packages/integration-v2/google-service-account-webcrypto.ts
+          grep -q "createWebCryptoGoogleJwtClientFactoryV1" source/functions/api/customer/ordering.ts
+          if grep -R -n -F "google-auth-library" source/functions; then
+            echo "Node-only google-auth-library leaked into Pages Functions" >&2
+            exit 1
+          fi
 
       - name: Install dependencies
         working-directory: source
@@ -58,10 +64,12 @@ jobs:
           set -o pipefail
           node --experimental-strip-types --test \
             packages/runtime-v2/rules-authority.test.ts \
+            packages/runtime-v2/global-versioned-state.test.ts \
             packages/runtime-v2/transaction-execution-gate.test.ts \
             packages/runtime-v2/pricing-adjustment-policy-authority.test.ts \
             packages/runtime-v2/pricing-policy-durability.test.ts \
             packages/runtime-v2/pricing-policy-firebase-durability.test.ts \
+            functions/api/customer/ordering.test.ts \
             2>&1 | tee "$RUNNER_TEMP/rules-q-order-03.log"
 
       - name: Run V2 Core regressions
@@ -73,7 +81,7 @@ jobs:
 
       - name: TypeScript check
         working-directory: source
-        run: npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit
+        run: npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json
 
       - name: Build Pages Functions
         working-directory: source
@@ -87,7 +95,7 @@ jobs:
           {
             printf 'source_sha=%s\n' "$SOURCE_SHA"
             printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
-            printf 'rules_authority=success\nq_order_03_regression=success\nv2_core=success\ntypescript=success\nfunctions_build=success\nconclusion=success\n'
+            printf 'rules_authority=success\nq_order_03_regression=success\nv2_core=success\ntypescript=success\nfunctions_runtime_boundary=success\nfunctions_build=success\nconclusion=success\n'
           } > evidence/result.txt
           cp "$RUNNER_TEMP/rules-q-order-03.log" evidence/rules-q-order-03.log
           cp "$RUNNER_TEMP/v2-core.log" evidence/v2-core.log
