@@ -73,7 +73,7 @@ jobs:
 
       - name: TypeScript check
         working-directory: source
-        run: npx tsc --noEmit
+        run: npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit
 
       - name: Build Pages Functions
         working-directory: source
