@@ -1,0 +1,129 @@
+name: V2 Payment Live Rerun Safe
+
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-trigger/payment-live-rerun-safe.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: d5988f750037148e6a10bed161a1741585d23229
+      BASE_Q_ORDER_03: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+      PREVIEW_BRANCH: payment-v2-staging
+      CANONICAL_ORDER_ID: order:q-order-03-final-32799881467
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: builder, persist-credentials: true }
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run rerun-safe Payment live qualification
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap; mkdir -p evidence
+          persist(){
+            rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/result.txt"
+            {
+              printf 'source_sha=%s\nbase_q_order_03=%s\nbuilder_sha=%s\nrun_id=%s\npreview_branch=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$BASE_Q_ORDER_03" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PREVIEW_BRANCH" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/business-date" && printf 'business_date=%s\n' "$(cat "$RUNNER_TEMP/business-date")" || true
+              test -f "$RUNNER_TEMP/live-url" && printf 'live_url=%s\n' "$(cat "$RUNNER_TEMP/live-url")" || true
+              test -f "$RUNNER_TEMP/clean-url" && printf 'clean_url=%s\n' "$(cat "$RUNNER_TEMP/clean-url")" || true
+              if [ "$conclusion" = success ]; then printf 'canonical_order_terms=success\nsmt_authorized_payment=success\nwrong_capability_denied=success\nwrong_writer_denied=success\npayment_durable_readback=success\npayment_restart_recovery=success\nidempotent_replay=success\nidempotency_conflict_denied=success\nstale_version_denied=success\nrerun_safe=success\noperator_capability_removed=success\n'; fi
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in ordering.json exercise.json wrong-auth.json deploy.log clean-deploy.log operator-after-clean.txt; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true; git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results; cp "$RESULT" builder/.ci-results/v2-payment-live-rerun-safe.txt
+            git -C builder add .ci-results/v2-payment-live-rerun-safe.txt; git -C builder commit -m "ci(result): Payment rerun-safe $conclusion phase $PHASE $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source merge-base --is-ancestor "$BASE_Q_ORDER_03" "$SOURCE_SHA"
+          grep -q 'normalizeDurablePaymentStateFromFirebaseV1' source/packages/payment/durable-payment-authority.ts
+
+          PHASE=install
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator
+          TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
+          mkdir -p source/functions/api/operator
+          cat > source/functions/api/operator/payment-live.ts <<EOF
+          import { FirebaseRtdbDurabilityPort } from '../../../packages/durability/firebase-rtdb-durability.ts';
+          import { createDurablePaymentAuthority } from '../../../packages/payment/durable-payment-authority.ts';
+          import { createCanonicalOrderDurableStoreV1 } from '../../../packages/integration-v2/canonical-order-durable-store.ts';
+          import { createGoogleFirebaseBearerTokenProviderV1 } from '../../../packages/integration-v2/admin-production-edge.ts';
+          import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
+          const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH'; const NS='morefunos-v2-staging'; const EXPECTED_ORDER='$CANONICAL_ORDER_ID'; const RUN='$GITHUB_RUN_ID';
+          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; }
+          interface Ctx { request:Request; env:Env & Record<string,unknown>; }
+          const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store'}}); const code=(e:unknown)=>e instanceof Error&&e.message?e.message:'UNKNOWN';
+          const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
+          function infra(env:Env){const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);return new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});}
+          export async function onRequest(context:Ctx):Promise<Response>{
+            if(context.request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405); if(context.env.CF_PAGES_BRANCH!==BRANCH)return json({ok:false,error:'NOT_FOUND'},404); if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409); if(context.request.headers.get('authorization')!=='Bearer '+TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
+            try{
+              const body=await context.request.json() as {businessDate?:string;orderId?:string}; const date=String(body.businessDate||''); const orderId=String(body.orderId||''); if(!/^\d{4}-\d{2}-\d{2}$/u.test(date)||orderId!==EXPECTED_ORDER)throw new Error('PAYMENT_QUALIFICATION_INPUT_INVALID');
+              const port=infra(context.env); const order=await createCanonicalOrderDurableStoreV1(port).get(date,orderId); if(!order)throw new Error('PAYMENT_CANONICAL_ORDER_NOT_FOUND'); if(order.status!=='accepted')throw new Error('PAYMENT_CANONICAL_ORDER_NOT_ACCEPTED');
+              const payment=createDurablePaymentAuthority(port); const terms={orderId:order.orderId,orderRevision:order.revision,currency:order.currency,totalMinor:order.totalMinor}; await payment.open({terms,businessDate:order.businessDate,committedAt:new Date().toISOString()}); let snap=await payment.snapshot(order.orderId);
+              if(snap.version===0){await payment.recordPayment(order.orderId,{writer:'smt-local',expectedVersion:0,idempotencyKey:'payment-live:canonical:fps',operatorId:'payment-live-smt',at:new Date().toISOString(),method:'FPS',amountMinor:2000,reference:'PAYMENT-LIVE-FPS'});snap=await payment.snapshot(order.orderId);}
+              if(snap.version===1){await payment.recordCashTender(order.orderId,{writer:'smt-local',expectedVersion:1,idempotencyKey:'payment-live:canonical:cash',operatorId:'payment-live-smt',at:new Date().toISOString(),tenderedMinor:3000});snap=await payment.snapshot(order.orderId);}
+              if(snap.version!==2||!snap.fullySettled||snap.summary.netReceivedMinor!==order.totalMinor)throw new Error('PAYMENT_SETTLEMENT_RESULT_INVALID');
+              const restarted=createDurablePaymentAuthority(port); const restored=await restarted.snapshot(order.orderId); const durable=await restarted.durableState(order.orderId); if(durable.operations.length!==2)throw new Error('PAYMENT_DURABLE_FACTS_INVALID');
+              const first=durable.operations[0]; if(first.kind!=='record_payment')throw new Error('PAYMENT_FIRST_OPERATION_INVALID'); const replay=await restarted.recordPayment(order.orderId,first.command); const afterReplay=await restarted.snapshot(order.orderId); if(afterReplay.version!==restored.version)throw new Error('PAYMENT_REPLAY_ADVANCED_VERSION');
+              let idempotencyConflict='';try{await restarted.recordPayment(order.orderId,{...first.command,amountMinor:first.command.amountMinor+100});}catch(e){idempotencyConflict=code(e);} if(idempotencyConflict!=='PAYMENT_IDEMPOTENCY_CONFLICT')throw new Error('PAYMENT_IDEMPOTENCY_CONFLICT_NOT_DENIED');
+              let stale='';try{await restarted.recordPayment(order.orderId,{...first.command,idempotencyKey:'payment-live:'+RUN+':stale',expectedVersion:0,amountMinor:100});}catch(e){stale=code(e);} if(stale!=='PAYMENT_VERSION_CONFLICT')throw new Error('PAYMENT_STALE_VERSION_NOT_DENIED');
+              let wrongWriter='';try{await restarted.recordPayment(order.orderId,{...first.command,idempotencyKey:'payment-live:'+RUN+':wrong-writer',expectedVersion:2,writer:'customer-web',amountMinor:100});}catch(e){wrongWriter=code(e);} if(wrongWriter!=='PAYMENT_WRITER_NOT_ALLOWED')throw new Error('PAYMENT_WRONG_WRITER_NOT_DENIED');
+              const events=await restarted.events(order.orderId); if(events.length!==3)throw new Error('PAYMENT_EVENT_FACTS_INVALID');
+              return json({ok:true,order:{orderId:order.orderId,businessDate:order.businessDate,totalMinor:order.totalMinor},snapshot:restored,replay,idempotencyConflict,stale,wrongWriter,eventTypes:events.map(x=>x.type),operationCount:durable.operations.length});
+            }catch(error){return json({ok:false,error:code(error)},500);}
+          }
+          EOF
+
+          PHASE=build
+          rm -rf deploy; mkdir -p deploy; printf '<!doctype html><html><body>payment live</body></html>' > deploy/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+          PHASE=deploy
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
+          PHASE=runtime-date
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/ordering.json" -w '%{http_code}' "$URL/api/customer/ordering")"; test "$CODE" = 200; node -e "const fs=require('fs');const x=require(process.env.RUNNER_TEMP+'/ordering.json');if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.businessDate||''))process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate)"; DATE="$(cat "$RUNNER_TEMP/business-date")"
+          PHASE=wrong-capability
+          WRONG="$(openssl rand -hex 32)"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $WRONG" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/wrong-auth.json" -w '%{http_code}' "$URL/api/operator/payment-live")"; test "$CODE" = 401
+          PHASE=exercise
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/exercise.json" -w '%{http_code}' "$URL/api/operator/payment-live")"; cat "$RUNNER_TEMP/exercise.json"; test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/exercise.json');if(!x.ok||x.order.orderId!==process.env.CANONICAL_ORDER_ID||x.order.totalMinor!==4500||x.snapshot.version!==2||!x.snapshot.fullySettled||x.snapshot.summary.netReceivedMinor!==4500||x.operationCount!==2||x.idempotencyConflict!=='PAYMENT_IDEMPOTENCY_CONFLICT'||x.stale!=='PAYMENT_VERSION_CONFLICT'||x.wrongWriter!=='PAYMENT_WRITER_NOT_ALLOWED')process.exit(1)"
+          PHASE=clean-redeploy
+          rm -f source/functions/api/operator/payment-live.ts; rm -rf deploy-clean; mkdir -p deploy-clean; printf '<!doctype html><html><body>payment clean</body></html>' > deploy-clean/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy-clean); ! grep -R -q 'payment-live' deploy-clean || exit 1
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
+          CLEAN_URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | tail -n1)"; test -n "$CLEAN_URL"; printf '%s' "$CLEAN_URL" > "$RUNNER_TEMP/clean-url"
+          PHASE=cleanup-verify
+          POST_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/payment-live")"; test "$POST_CODE" != 200; ! grep -Eq 'UNAUTHORIZED|NAMESPACE_MISMATCH|PAYMENT_' "$RUNNER_TEMP/operator-after-clean.txt"
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-payment-live-rerun-safe-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
