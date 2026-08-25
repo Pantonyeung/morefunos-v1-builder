@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SOURCE_SHA: 0e10bc587cfe0af64f40ead55d7bd86e251f3bd3
+      SOURCE_SHA: ba340d14ef4fb0acfaf2d59198e03b8d714f6825
       BASE_APPLY_ACK: 6b5674c11e03588a359c6be2dea1ea11384bb792
     steps:
       - uses: actions/checkout@v4
@@ -53,27 +53,21 @@ jobs:
             exit "$rc"
           }
           trap persist EXIT
-
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           git -C source merge-base --is-ancestor "$BASE_APPLY_ACK" "$SOURCE_SHA"
           grep -q "json-v1" source/packages/printing/durable-print-job-repository.ts
           grep -q "PRINT_EXECUTION_CARRIER_NOT_ALLOWED" source/packages/runtime-v2/print-runtime-dispatch.ts
-
+          grep -q "PRINT LIVE PASS" source/docs/ports-v2/system-integration/DEVELOPMENT_PROGRESS.md
           PHASE=install
           (cd source && npm install --ignore-scripts --no-audit --no-fund)
-
           PHASE=print-authority-tests
           (cd source && node --test --experimental-strip-types packages/printing/print-authority.test.ts packages/printing/print-authority-order-query.test.ts) | tee evidence/print-authority-tests.log
-
           PHASE=runtime-dispatch-tests
           (cd source && node --test --experimental-strip-types packages/runtime-v2/print-runtime-dispatch.test.ts packages/runtime-v2/order-fulfillment-execution-plan.test.ts) | tee evidence/runtime-dispatch-tests.log
-
           PHASE=durable-tests
           (cd source && node --test --experimental-strip-types packages/printing/durable-print-job-repository.test.ts) | tee evidence/durable-tests.log
-
           PHASE=typescript
           (cd source && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22 && ./node_modules/.bin/tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck packages/printing/print-authority.ts packages/printing/durable-print-job-repository.ts packages/printing/durable-print-job-repository.test.ts packages/runtime-v2/print-runtime-dispatch.ts packages/runtime-v2/order-fulfillment-execution-plan.ts packages/durability/durability.ts) | tee evidence/typescript.log
-
           PHASE=complete
       - uses: actions/upload-artifact@v4
         if: always()
