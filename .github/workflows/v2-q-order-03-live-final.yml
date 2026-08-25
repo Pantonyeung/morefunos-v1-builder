@@ -1,0 +1,201 @@
+name: V2 Q-ORDER-03 Live Final
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-live-final.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CORE_SHA: 3f5c3e394e158ba153f6842ee13b9cfa84e012e0
+      CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+      PREVIEW_BRANCH: q-order-03-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SMT_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: smt
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Run full protected Customer to SMT/Core to Customer live chain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap
+          mkdir -p evidence
+          persist() {
+            rc=$?
+            conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/q-order-03-live-final.txt"
+            {
+              printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
+              printf 'preview_branch=%s\nphase=%s\nconclusion=%s\n' "$PREVIEW_BRANCH" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/live-url" && printf 'live_url=%s\n' "$(cat "$RUNNER_TEMP/live-url")" || true
+              test -f "$RUNNER_TEMP/rules-status" && printf 'rules_http_status=%s\n' "$(cat "$RUNNER_TEMP/rules-status")" || true
+              if [ "$conclusion" = success ]; then
+                printf 'rules_authority_provision=success\nrules_revision=q-order-03-preview-rules-v1\ncustomer_modules_live=success\ncustomer_submit=success\ncustomer_waiting=success\nwrong_token_404=success\ncanonical_accept=success\ncanonical_order_durable=success\ndurable_channel_accepted=success\ncustomer_accepted=success\ncleanup_final_closed=success\noperator_removed=success\n'
+              fi
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in rules.json open.json ordering.json submit-response.json waiting.json wrong.json accepted.json customer-accepted.json close.json final-ordering.json final-accepted.json deploy.log clean-deploy.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot
+            git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true
+            git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results
+            cp "$RESULT" builder/.ci-results/v2-q-order-03-live-final.txt
+            git -C builder add .ci-results/v2-q-order-03-live-final.txt
+            git -C builder commit -m "ci(result): Q-ORDER-03 live $conclusion phase $PHASE $CORE_SHA" || true
+            git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          test "$(git -C smt rev-parse HEAD)" = "$SMT_SHA"
+          grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          test -f core/packages/runtime-v2/rules-firebase-authority.ts
+          test -f core/packages/integration-v2/smt-channel-decision-reconciliation.ts
+
+          PHASE=customer-assets
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do
+            cp "customer/apps/customer-web/$file" "deploy/customer/$file"
+          done
+          for module in customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do test -s "deploy/customer/$module"; done
+          cat > deploy/index.html <<'HTML'
+          <!doctype html><html lang="zh-Hant"><body><a href="/customer/">Customer</a></body></html>
+          HTML
+
+          PHASE=install
+          (cd core && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator
+          TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"; export TOKEN PREVIEW_BRANCH
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          text=Path('builder/.github/workflows/v2-q-order-03-live-once.yml').read_text()
+          start="          cat > core/functions/api/operator/q-order-03.ts <<EOF\n"
+          i=text.index(start)+len(start); j=text.index("\n          EOF", i)
+          lines=[]
+          for line in text[i:j].splitlines(): lines.append(line[10:] if line.startswith('          ') else line)
+          source='\n'.join(lines)+'\n'
+          source=source.replace("const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH';", f"const TOKEN='{os.environ['TOKEN']}'; const BRANCH='{os.environ['PREVIEW_BRANCH']}';")
+          p=Path('core/functions/api/operator/q-order-03.ts'); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(source)
+          PY
+
+          PHASE=build
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+
+          PHASE=deploy
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
+
+          PHASE=customer-modules-live
+          curl --fail --silent --show-error "$URL/customer/" > "$RUNNER_TEMP/customer.html"
+          grep -q 'customer-runtime-bridge.js' "$RUNNER_TEMP/customer.html"
+          for module in customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/$module" -w '%{http_code}' "$URL/customer/$module")"; test "$CODE" = 200; done
+
+          PHASE=rules-provision
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/rules.json" -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03")"
+          printf '%s' "$CODE" > "$RUNNER_TEMP/rules-status"; cat "$RUNNER_TEMP/rules.json"; test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/rules.json');if(!x.ok||x.snapshot.policyVersion!=='q-order-03-preview-policy-v1'||x.snapshot.revision!=='q-order-03-preview-rules-v1'||!Number.isInteger(x.version))process.exit(1)"
+
+          PHASE=open
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"set-status","status":"open"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/open.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/open.json');if(!x.ok||x.state.storeStatus!=='open')process.exit(1)"
+          curl --fail --silent --show-error "$URL/api/customer/ordering" > "$RUNNER_TEMP/ordering.json"
+          node - <<'NODE'
+          const fs=require('fs'); const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ordering.json','utf8')); if(x.storeStatus!=='open')process.exit(1); fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate);
+          NODE
+
+          PHASE=customer-submit
+          LOOKUP_TOKEN="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"; echo "::add-mask::$LOOKUP_TOKEN"; printf '%s' "$LOOKUP_TOKEN" > "$RUNNER_TEMP/lookup-token"
+          DATE="$(cat "$RUNNER_TEMP/business-date")"; ID="q-order-03-final-${GITHUB_RUN_ID}"; export DATE ID LOOKUP_TOKEN
+          node - <<'NODE'
+          const fs=require('fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/submit.json',JSON.stringify({submissionId:process.env.ID,idempotencyKey:'idem:'+process.env.ID,lookupToken:process.env.LOOKUP_TOKEN,createdAt:new Date().toISOString(),businessDate:process.env.DATE,payload:{lines:[{lineId:'line-1',productId:'F4',quantity:1,selections:[{optionGroupId:'drink',optionIds:['milk-tea']}]}],pickup:{mode:'takeaway',requestedTime:'asap'},customerDisplayedTotalMinor:4500,currency:'HKD'}}));
+          NODE
+          CODE="$(curl --silent --show-error -H 'content-type: application/json' --data-binary @"$RUNNER_TEMP/submit.json" -o "$RUNNER_TEMP/submit-response.json" -w '%{http_code}' "$URL/api/customer/orders")"; test "$CODE" = 202
+          node -e "const x=require(process.env.RUNNER_TEMP+'/submit-response.json');if(!x.ok||x.status!=='submitted'||x.lifecycleProtected!==true)process.exit(1)"
+          printf '%s' "$ID" > "$RUNNER_TEMP/submission-id"; rm -f "$RUNNER_TEMP/submit.json"
+
+          PHASE=waiting
+          ID="$(cat "$RUNNER_TEMP/submission-id")"; DATE="$(cat "$RUNNER_TEMP/business-date")"; LOOKUP_TOKEN="$(cat "$RUNNER_TEMP/lookup-token")"
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/waiting.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/waiting.json');if(!x.ok||x.lifecycle.status!=='waiting'||x.lifecycle.authoritativeAcceptance!==false)process.exit(1)"
+          WRONG="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"; echo "::add-mask::$WRONG"; WRONG_CODE="$(curl --silent --show-error -H "authorization: Bearer $WRONG" -o "$RUNNER_TEMP/wrong.json" -w '%{http_code}' "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE")"; test "$WRONG_CODE" = 404
+
+          PHASE=accept
+          printf '{"action":"accept","businessDate":"%s","submissionId":"%s"}' "$DATE" "$ID" > "$RUNNER_TEMP/accept-request.json"
+          CODE="$(curl --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @"$RUNNER_TEMP/accept-request.json" -o "$RUNNER_TEMP/accepted.json" -w '%{http_code}' "$URL/api/operator/q-order-03")"; cat "$RUNNER_TEMP/accepted.json"; test "$CODE" = 200
+          node - <<'NODE'
+          const fs=require('fs'); const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/accepted.json','utf8')); if(!x.ok||x.status!=='accepted'||!String(x.orderId||'').startsWith('order:q-order-03-final-')||x.totalMinor!==4500||x.rulesRevision!=='q-order-03-preview-rules-v1'||x.policyVersion!=='q-order-03-preview-policy-v1')process.exit(1); fs.writeFileSync(process.env.RUNNER_TEMP+'/order-id',x.orderId);
+          NODE
+
+          PHASE=customer-accepted
+          ORDER_ID="$(cat "$RUNNER_TEMP/order-id")"; export ORDER_ID
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/customer-accepted.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/customer-accepted.json');if(!x.ok||x.lifecycle.status!=='accepted'||x.lifecycle.authoritativeAcceptance!==true||x.lifecycle.orderId!==process.env.ORDER_ID)process.exit(1)"
+
+          PHASE=close
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"set-status","status":"closed"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/close.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/close.json');if(!x.ok||x.state.storeStatus!=='closed')process.exit(1)"
+
+          PHASE=clean-redeploy
+          rm -f core/functions/api/operator/q-order-03.ts
+          rm -rf deploy-clean; cp -R deploy deploy-clean; rm -f deploy-clean/_worker.js
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy-clean)
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
+          CLEAN_URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | tail -n1)"; test -n "$CLEAN_URL"
+
+          PHASE=final-verify
+          curl --fail --silent --show-error "$CLEAN_URL/api/customer/ordering" > "$RUNNER_TEMP/final-ordering.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/final-ordering.json');if(x.storeStatus!=='closed')process.exit(1)"
+          curl --fail --silent --show-error -H "authorization: Bearer $LOOKUP_TOKEN" "$CLEAN_URL/api/customer/order-status?submissionId=$ID&businessDate=$DATE" > "$RUNNER_TEMP/final-accepted.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/final-accepted.json');if(!x.ok||x.lifecycle.status!=='accepted'||x.lifecycle.orderId!==process.env.ORDER_ID)process.exit(1)"
+          OP_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/q-order-03")"; test "$OP_CODE" = 404
+
+          PHASE=complete
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-q-order-03-live-final-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
