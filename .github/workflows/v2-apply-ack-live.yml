@@ -1,0 +1,147 @@
+name: V2 Apply Ack Live
+
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-trigger/apply-ack-live.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 6b5674c11e03588a359c6be2dea1ea11384bb792
+      BASE_PAYMENT: d5988f750037148e6a10bed161a1741585d23229
+      PREVIEW_BRANCH: apply-ack-v2-staging
+      CANONICAL_ORDER_ID: order:q-order-03-final-32799881467
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: builder, persist-credentials: true }
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run Apply Ack Preview live qualification
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap; mkdir -p evidence
+          persist(){
+            rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/result.txt"
+            {
+              printf 'source_sha=%s\nbase_payment=%s\nbuilder_sha=%s\nrun_id=%s\npreview_branch=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$BASE_PAYMENT" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PREVIEW_BRANCH" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/business-date" && printf 'business_date=%s\n' "$(cat "$RUNNER_TEMP/business-date")" || true
+              test -f "$RUNNER_TEMP/live-url" && printf 'live_url=%s\n' "$(cat "$RUNNER_TEMP/live-url")" || true
+              test -f "$RUNNER_TEMP/clean-url" && printf 'clean_url=%s\n' "$(cat "$RUNNER_TEMP/clean-url")" || true
+              if [ "$conclusion" = success ]; then printf 'canonical_order=success\npayment_gate=success\napply_durable_ack=success\nrestart_recovery=success\nidempotent_replay=success\nidempotency_conflict_denied=success\nstale_version_denied=success\nwrong_writer_denied=success\nrerun_safe=success\noperator_capability_removed=success\n'; fi
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in ordering.json exercise.json wrong-auth.json deploy.log clean-deploy.log operator-after-clean.txt; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true; git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results; cp "$RESULT" builder/.ci-results/v2-apply-ack-live.txt
+            git -C builder add .ci-results/v2-apply-ack-live.txt; git -C builder commit -m "ci(result): Apply Ack live $conclusion phase $PHASE $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source merge-base --is-ancestor "$BASE_PAYMENT" "$SOURCE_SHA"
+          grep -q 'morefunos.fulfillment.state.v1' source/packages/fulfillment/durable-fulfillment-authority.ts
+
+          PHASE=install
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator
+          TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
+          mkdir -p source/functions/api/operator
+          cat > source/functions/api/operator/apply-ack-live.ts <<'EOF'
+          import { FirebaseRtdbDurabilityPort } from '../../../packages/durability/firebase-rtdb-durability.ts';
+          import { createCanonicalOrderDurableStoreV1 } from '../../../packages/integration-v2/canonical-order-durable-store.ts';
+          import { createGoogleFirebaseBearerTokenProviderV1 } from '../../../packages/integration-v2/admin-production-edge.ts';
+          import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
+          import { createDurablePaymentAuthority } from '../../../packages/payment/durable-payment-authority.ts';
+          import { createDurableFulfillmentAuthority } from '../../../packages/fulfillment/durable-fulfillment-authority.ts';
+          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; APPLY_ACK_OPERATOR_TOKEN?:string; }
+          interface Ctx { request:Request; env:Env & Record<string,unknown>; }
+          const BRANCH='apply-ack-v2-staging'; const NS='morefunos-v2-staging'; const EXPECTED_ORDER='order:q-order-03-final-32799881467';
+          const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store'}}); const code=(e:unknown)=>e instanceof Error&&e.message?e.message:'UNKNOWN';
+          const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
+          function infra(env:Env){const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);return new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});}
+          export async function onRequest(context:Ctx):Promise<Response>{
+            if(context.request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
+            if(context.env.CF_PAGES_BRANCH!==BRANCH)return json({ok:false,error:'NOT_FOUND'},404);
+            if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409);
+            if(!context.env.APPLY_ACK_OPERATOR_TOKEN || context.request.headers.get('authorization')!=='Bearer '+context.env.APPLY_ACK_OPERATOR_TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
+            try{
+              const body=await context.request.json() as {businessDate?:string;orderId?:string}; const date=String(body.businessDate||''); const orderId=String(body.orderId||'');
+              if(!/^\d{4}-\d{2}-\d{2}$/u.test(date)||orderId!==EXPECTED_ORDER)throw new Error('APPLY_ACK_QUALIFICATION_INPUT_INVALID');
+              const port=infra(context.env); const order=await createCanonicalOrderDurableStoreV1(port).get(date,orderId); if(!order)throw new Error('APPLY_ACK_CANONICAL_ORDER_NOT_FOUND');
+              const payment=createDurablePaymentAuthority(port); const pay=await payment.snapshot(orderId); if(!pay.fullySettled)throw new Error('APPLY_ACK_PAYMENT_NOT_SETTLED');
+              const fulfillment=createDurableFulfillmentAuthority(port);
+              const terms={orderId:order.orderId,orderRevision:order.revision,requiresPaymentBeforeProduction:true,requiredTasks:[],lines:order.lines.map(line=>({lineId:line.lineId,productId:line.productId,quantity:line.quantity}))};
+              await fulfillment.open({terms,businessDate:order.businessDate,committedAt:new Date().toISOString()});
+              let snap=await fulfillment.snapshot(orderId); let ack;
+              if(snap.state==='held'){
+                const out=await fulfillment.authorizeProduction(orderId,{writer:'smt-local',expectedVersion:0,idempotencyKey:'apply-ack-live:canonical:authorize',operatorId:'apply-ack-live-smt',at:new Date().toISOString()},pay); snap=out.snapshot; ack=out.ack;
+              }else{
+                const durable=await fulfillment.durableState(orderId); const first=durable.operations[0]; if(!first||first.kind!=='authorize_production')throw new Error('APPLY_ACK_EXISTING_OPERATION_INVALID'); const out=await fulfillment.authorizeProduction(orderId,first.command,first.payment); snap=out.snapshot; ack=out.ack;
+              }
+              if(snap.state!=='production_authorized'||snap.version!==1||ack.fulfillmentVersion!==1)throw new Error('APPLY_ACK_RESULT_INVALID');
+              const restarted=createDurableFulfillmentAuthority(port); const restored=await restarted.snapshot(orderId); const durable=await restarted.durableState(orderId); if(restored.state!=='production_authorized'||durable.operations.length!==1)throw new Error('APPLY_ACK_RESTART_INVALID');
+              const first=durable.operations[0]; if(first.kind!=='authorize_production')throw new Error('APPLY_ACK_OPERATION_INVALID'); const replay=await restarted.authorizeProduction(orderId,first.command,first.payment); if(replay.snapshot.version!==1||replay.ack.checkpointRevision!==ack.checkpointRevision)throw new Error('APPLY_ACK_REPLAY_ADVANCED');
+              let idem=''; try{await restarted.authorizeProduction(orderId,{...first.command,operatorId:'other'},first.payment);}catch(e){idem=code(e);} if(idem!=='FULFILLMENT_IDEMPOTENCY_CONFLICT')throw new Error('APPLY_ACK_IDEMPOTENCY_CONFLICT_NOT_DENIED');
+              let stale=''; try{await restarted.markReady(orderId,{writer:'smt-local',expectedVersion:0,idempotencyKey:'apply-ack-live:stale',operatorId:'apply-ack-live-smt',at:new Date().toISOString()});}catch(e){stale=code(e);} if(stale!=='FULFILLMENT_VERSION_CONFLICT')throw new Error('APPLY_ACK_STALE_NOT_DENIED');
+              let wrongWriter=''; try{await restarted.markReady(orderId,{writer:'customer-web',expectedVersion:1,idempotencyKey:'apply-ack-live:wrong-writer',operatorId:'customer',at:new Date().toISOString()});}catch(e){wrongWriter=code(e);} if(wrongWriter!=='FULFILLMENT_WRITER_NOT_ALLOWED')throw new Error('APPLY_ACK_WRONG_WRITER_NOT_DENIED');
+              return json({ok:true,orderId,businessDate:date,paymentFullySettled:pay.fullySettled,snapshot:restored,ack,replayAck:replay.ack,operationCount:durable.operations.length,idempotencyConflict:idem,stale,wrongWriter});
+            }catch(error){return json({ok:false,error:code(error)},500);}
+          }
+          EOF
+
+          PHASE=build
+          rm -rf deploy; mkdir -p deploy; printf '<!doctype html><html><body>apply ack live</body></html>' > deploy/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+          PHASE=deploy
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"
+          printf '%s' "$TOKEN" | (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages secret put APPLY_ACK_OPERATOR_TOKEN --project-name=morefunos-v1)
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
+
+          PHASE=runtime-date
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/ordering.json" -w '%{http_code}' "$URL/api/customer/ordering")"; test "$CODE" = 200
+          node -e "const fs=require('fs');const x=require(process.env.RUNNER_TEMP+'/ordering.json');if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.businessDate||''))process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate)"; DATE="$(cat "$RUNNER_TEMP/business-date")"
+
+          PHASE=wrong-capability
+          WRONG="$(openssl rand -hex 32)"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $WRONG" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/wrong-auth.json" -w '%{http_code}' "$URL/api/operator/apply-ack-live")"; test "$CODE" = 401
+
+          PHASE=exercise
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/exercise.json" -w '%{http_code}' "$URL/api/operator/apply-ack-live")"; cat "$RUNNER_TEMP/exercise.json"; test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/exercise.json');if(!x.ok||!x.paymentFullySettled||x.snapshot.state!=='production_authorized'||x.snapshot.version!==1||x.ack.fulfillmentVersion!==1||x.operationCount!==1||x.idempotencyConflict!=='FULFILLMENT_IDEMPOTENCY_CONFLICT'||x.stale!=='FULFILLMENT_VERSION_CONFLICT'||x.wrongWriter!=='FULFILLMENT_WRITER_NOT_ALLOWED')process.exit(1)"
+
+          PHASE=clean-redeploy
+          rm -f source/functions/api/operator/apply-ack-live.ts; rm -rf deploy-clean; mkdir -p deploy-clean; printf '<!doctype html><html><body>apply ack clean</body></html>' > deploy-clean/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy-clean); ! grep -R -q 'apply-ack-live' deploy-clean || exit 1
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
+          CLEAN_URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | head -n1)"; test -n "$CLEAN_URL"; printf '%s' "$CLEAN_URL" > "$RUNNER_TEMP/clean-url"
+          PHASE=cleanup-verify
+          POST_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/apply-ack-live")"; test "$POST_CODE" != 200; ! grep -Eq 'UNAUTHORIZED|NAMESPACE_MISMATCH|APPLY_ACK_|FULFILLMENT_' "$RUNNER_TEMP/operator-after-clean.txt"
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-apply-ack-live-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
