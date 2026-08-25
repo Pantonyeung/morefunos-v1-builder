@@ -1,0 +1,55 @@
+name: V2 Payment Durable Qualify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/payment-durable-qualify.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 7d756c4f07f6a0d3d635d979aea22a580299f11b
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Qualify Payment durable authority with persistent phase evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap; mkdir -p evidence
+          persist(){ rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure; RESULT="$RUNNER_TEMP/result.txt"; {
+            printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PHASE" "$conclusion";
+            [ "$conclusion" = success ] && printf 'payment_domain=success\npayment_durable_restart=success\ndurability_regression=success\ntypescript=success\n' || true;
+          } > "$RESULT"; cp "$RESULT" evidence/result.txt; for f in payment.log durable.log durability.log ts.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done;
+          git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'; git -C builder fetch origin main || true; git -C builder rebase origin/main || true; mkdir -p builder/.ci-results; cp "$RESULT" builder/.ci-results/v2-payment-durable-qualify.txt; git -C builder add .ci-results/v2-payment-durable-qualify.txt; git -C builder commit -m "ci(result): Payment durable $conclusion phase $PHASE $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true; exit "$rc"; }
+          trap persist EXIT
+          PHASE=exact-source; test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"; grep -q 'createDurablePaymentAuthority' source/packages/payment/durable-payment-authority.ts; grep -q 'survives coordinator restart' source/packages/payment/durable-payment-authority.test.ts
+          PHASE=install; (cd source && npm install --ignore-scripts --no-audit --no-fund)
+          PHASE=payment-domain-tests; (cd source && node --experimental-strip-types --test packages/payment/payment-authority.test.ts packages/payment/order-settlement-units.test.ts) 2>&1 | tee "$RUNNER_TEMP/payment.log"
+          PHASE=payment-durable-tests; (cd source && node --experimental-strip-types --test packages/payment/durable-payment-authority.test.ts) 2>&1 | tee "$RUNNER_TEMP/durable.log"
+          PHASE=durability-regression; (cd source && node --experimental-strip-types --test packages/durability/durability.test.ts) 2>&1 | tee "$RUNNER_TEMP/durability.log"
+          PHASE=typescript; (cd source && npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json) 2>&1 | tee "$RUNNER_TEMP/ts.log"
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-payment-durable-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
