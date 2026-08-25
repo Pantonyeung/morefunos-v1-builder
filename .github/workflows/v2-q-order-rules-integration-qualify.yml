@@ -7,7 +7,7 @@ on:
       - '.ci-trigger/q-order-rules-integration.txt'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   qualify:
@@ -16,6 +16,10 @@ jobs:
     env:
       SOURCE_SHA: 6dd6885df4df6accd7a9bad6a0865ad44ad14a55
     steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
       - uses: actions/checkout@v4
         with:
           repository: Pantonyeung/morefunos-v1
@@ -65,15 +69,21 @@ jobs:
           npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/q-order-rules-pages 2>&1 | tee "$RUNNER_TEMP/pages.log"
           grep -q 'Compiled Worker successfully' "$RUNNER_TEMP/pages.log"
 
-      - name: Prepare evidence
+      - name: Prepare and persist evidence
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p evidence
-          printf 'source_sha=%s\nrun_id=%s\nrules_authority=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
+          mkdir -p evidence builder/.ci-results
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
+          cp evidence/result.txt builder/.ci-results/v2-q-order-rules-integration.txt
           cp "$RUNNER_TEMP/rules.log" evidence/rules.log
           cp "$RUNNER_TEMP/core.log" evidence/core.log
           cp "$RUNNER_TEMP/pages.log" evidence/pages.log
+          git -C builder config user.name morefunos-builder-bot
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-q-order-rules-integration.txt
+          git -C builder commit -m "ci(result): Q-ORDER rules integration PASS $SOURCE_SHA"
+          git -C builder push origin HEAD:main
 
       - uses: actions/upload-artifact@v4
         with:
