@@ -1,4 +1,4 @@
-source_sha=629d3033b03e2787eb9f56dbd1c4673d79f9bfff
+source_sha=8ed90bdc39ac054cf0d85f520a7a94fa1346e8ae
 base_sha=e8dcc94bdb39a62810b154d4c8dced083d1609ec
-branch_name=governance/SYS/B0011-b0010-closure-race-reconciliation
-request_id=B0011-RECONCILIATION-20260825T2314HKT
+branch_name=main
+request_id=B0011-FINAL-MAIN-ADMISSION-20260825T2316HKT
