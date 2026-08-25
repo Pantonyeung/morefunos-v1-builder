@@ -127,14 +127,14 @@ jobs:
           fi
 
           run_stage "carrier-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
-          run_stage "carrier-smt-clean-install" npm --prefix apps/smt-clean install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund || exit 1
+          run_stage "carrier-smt-clean-install" bash -lc 'cd apps/smt-clean && npx -y npm@12.0.2 install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund' || exit 1
           run_stage "carrier-runtime-contracts" node --experimental-strip-types --test packages/native/*.test.ts packages/printing/*.test.ts packages/durability/*.test.ts || exit 1
           run_stage "carrier-web-compat" npm --prefix apps/smt-web test || exit 1
-          run_stage "carrier-smt-clean-production-contract" npm --prefix apps/smt-clean exec -- vitest run src/runtime/production-runtime-contract.test.ts || exit 1
+          run_stage "carrier-smt-clean-production-contract" bash -lc 'cd apps/smt-clean && npx -y npm@12.0.2 exec -- vitest run src/runtime/production-runtime-contract.test.ts' || exit 1
           run_stage "carrier-static" node --test apps/smt-android/carrier-*-static.test.mjs || exit 1
           run_stage "carrier-typecheck" tsc --noEmit -p tsconfig.json || exit 1
           run_stage "carrier-smt-web-build" npm --prefix apps/smt-web run build || exit 1
-          run_stage "carrier-smt-clean-build" npm --prefix apps/smt-clean run build --workspaces=false || exit 1
+          run_stage "carrier-smt-clean-build" bash -lc 'cd apps/smt-clean && npx -y npm@12.0.2 run build --workspaces=false' || exit 1
           run_stage "carrier-smt-clean-installed-asset-base" bash -lc 'test -s apps/smt-clean/dist/index.html && grep -Eq "(src|href)=\"\./assets/" apps/smt-clean/dist/index.html && ! grep -Eq "(src|href)=\"/assets/" apps/smt-clean/dist/index.html' || exit 1
           run_stage "carrier-android-compile" gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon || exit 1
           run_stage "carrier-android-lint" gradle -p apps/smt-android :app:lintDebug --no-daemon || exit 1
