@@ -1,0 +1,3 @@
+source=0e10bc587cfe0af64f40ead55d7bd86e251f3bd3
+base_apply_ack=6b5674c11e03588a359c6be2dea1ea11384bb792
+requested_at=2026-08-25T11:45:00+08:00
