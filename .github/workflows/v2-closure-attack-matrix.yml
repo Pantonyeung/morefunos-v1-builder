@@ -1,0 +1,212 @@
+name: V2 Closure Attack Matrix
+
+on:
+  push:
+    branches: [main]
+    paths: [closure-attack-request.json]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact MoreFunOS V1 source SHA under attack
+        required: true
+        type: string
+      base_sha:
+        description: Accepted evidence ancestor SHA (optional)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-closure-attack-${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_REPO: Pantonyeung/morefunos-v1
+  NODE_VERSION: '22.22.2'
+  NPM_VERSION: '12.0.2'
+
+jobs:
+  attack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve attack target
+        id: target
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_SOURCE_SHA: ${{ inputs.source_sha }}
+          DISPATCH_BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            SOURCE_SHA="$DISPATCH_SOURCE_SHA"
+            BASE_SHA="$DISPATCH_BASE_SHA"
+          else
+            test -s closure-attack-request.json
+            mapfile -t VALUES < <(node <<'NODE'
+          const fs=require('node:fs');
+          const q=JSON.parse(fs.readFileSync('closure-attack-request.json','utf8'));
+          if (!/^[0-9a-f]{40}$/.test(q.sourceSha ?? '')) process.exit(2);
+          if (q.baseSha && !/^[0-9a-f]{40}$/.test(q.baseSha)) process.exit(3);
+          console.log(q.sourceSha);
+          console.log(q.baseSha ?? '');
+          NODE
+            )
+            SOURCE_SHA="${VALUES[0]}"
+            BASE_SHA="${VALUES[1]}"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Pin npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          WRAP_DIR="$RUNNER_TEMP/npm12-bin"
+          mkdir -p "$WRAP_DIR"
+          cat > "$WRAP_DIR/npm" <<EOF
+          #!/usr/bin/env bash
+          exec npx -y npm@${NPM_VERSION} "\$@"
+          EOF
+          chmod +x "$WRAP_DIR/npm"
+          echo "$WRAP_DIR" >> "$GITHUB_PATH"
+
+      - name: Checkout exact source with complete ancestry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ steps.target.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Run attack matrix without early exit
+        id: attacks
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.target.outputs.source_sha }}
+          BASE_SHA: ${{ steps.target.outputs.base_sha }}
+        run: |
+          set -uo pipefail
+          REPORT="$GITHUB_WORKSPACE/closure-attack-report.md"
+          RAW="$GITHUB_WORKSPACE/closure-attack-results.tsv"
+          : > "$RAW"
+
+          attack() {
+            local id="$1" category="$2" description="$3"; shift 3
+            local log="$RUNNER_TEMP/attack-${id}.log"
+            echo "::group::ATTACK $id — $description"
+            set +e
+            ( set -o pipefail; "$@" ) >"$log" 2>&1
+            local rc=$?
+            set -e
+            cat "$log"
+            echo "::endgroup::"
+            if [[ $rc -eq 0 ]]; then
+              printf '%s\t%s\tPASS\t%s\n' "$id" "$category" "$description" >> "$RAW"
+            else
+              printf '%s\t%s\tFAIL\t%s\n' "$id" "$category" "$description" >> "$RAW"
+              cp "$log" "$GITHUB_WORKSPACE/attack-${id}.log"
+            fi
+          }
+          set -e
+
+          attack A01 IDENTITY 'Exact source SHA must match request' bash -lc 'test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"'
+
+          if [[ -n "$BASE_SHA" ]]; then
+            attack A02 LINEAGE 'Source must descend from accepted evidence base' bash -lc 'git -C source merge-base --is-ancestor "$BASE_SHA" "$SOURCE_SHA"'
+          else
+            printf 'A02\tLINEAGE\tSKIP\tNo base SHA supplied\n' >> "$RAW"
+          fi
+
+          attack A03 HYGIENE 'Checked-out exact source must be clean' bash -lc 'test -z "$(git -C source status --porcelain)"'
+          attack A04 RUNTIME_ROOT 'Canonical SMT runtime root and resolver must exist' bash -lc 'test -s source/apps/smt-clean/package.json && test -s source/apps/smt-clean/src/main.tsx && test -s source/apps/smt-web/src/runtime-resolver.ts && grep -F "CleanSmtApp" source/apps/smt-clean/src/main.tsx >/dev/null && grep -F "resolveCleanSmtCoreRuntime" source/apps/smt-clean/src/main.tsx >/dev/null'
+
+          attack A05 DEPENDENCY_LOCK 'SMT web dependencies must install strictly from lockfile' bash -lc 'npm --prefix source/apps/smt-web ci --no-audit --no-fund'
+          attack A06 DEPENDENCY_RESOLVE 'SMT clean dependency graph must resolve without lifecycle scripts' bash -lc '(cd source/apps/smt-clean && npm install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund && npm ls --all --workspaces=false >/dev/null)'
+
+          attack A07 SMT_CLEAN_TEST 'SMT clean test suite' bash -lc '(cd source/apps/smt-clean && npm test --workspaces=false)'
+          attack A08 SMT_WEB_TEST 'Shared SMT runtime seam tests' bash -lc 'npm --prefix source/apps/smt-web test'
+          attack A09 RERUN_ISOLATION 'Immediate second test run must stay green and reveal pollution/flakiness' bash -lc '(cd source/apps/smt-clean && npm test --workspaces=false) && npm --prefix source/apps/smt-web test'
+
+          attack A10 BUILD 'Canonical SMT runtime must build from exact source' bash -lc '(cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html && find source/apps/smt-clean/dist -type f -size +0c | grep -q .'
+          attack A11 REBUILD 'Second clean rebuild must succeed from deleted dist' bash -lc 'rm -rf source/apps/smt-clean/dist && (cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html'
+
+          attack A12 STATIC_SECRET 'Source must not contain obvious committed private keys or bearer tokens' bash -lc '! grep -RIE --exclude-dir=.git --exclude-dir=node_modules --exclude="*.md" "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._-]{16,}" source/apps source/packages 2>/dev/null | head -1 | grep -q .'
+
+          attack A13 LEGACY_ENTRY 'Runtime entry must not regress to PresentationApp prototype ownership' bash -lc '! grep -E "PresentationApp|PrototypePages" source/apps/smt-clean/src/main.tsx | grep -q .'
+
+          attack A14 GENERATED_DIRTY 'Install/test/build must not mutate tracked source files' bash -lc 'test -z "$(git -C source status --porcelain --untracked-files=no)"'
+
+          TOTAL=$(awk -F '\t' '$3=="PASS"||$3=="FAIL"{n++}END{print n+0}' "$RAW")
+          FAILS=$(awk -F '\t' '$3=="FAIL"{n++}END{print n+0}' "$RAW")
+          PASSES=$(awk -F '\t' '$3=="PASS"{n++}END{print n+0}' "$RAW")
+
+          {
+            echo '# MoreFunOS V2 Closure Attack Report'
+            echo
+            echo "- Source: \`$SOURCE_SHA\`"
+            echo "- Base: \`${BASE_SHA:-not-supplied}\`"
+            echo "- Builder run: \`$GITHUB_RUN_ID\`"
+            echo "- Result: **$([[ $FAILS -eq 0 ]] && echo PASS || echo FAIL)**"
+            echo "- Attacks: $TOTAL | pass: $PASSES | fail: $FAILS"
+            echo
+            echo '| ID | Class | Result | Attack |'
+            echo '|---|---|---|---|'
+            while IFS=$'\t' read -r id class result desc; do
+              echo "| $id | $class | $result | $desc |"
+            done < "$RAW"
+            if [[ $FAILS -gt 0 ]]; then
+              echo
+              echo '## Failure logs'
+              for f in "$GITHUB_WORKSPACE"/attack-*.log; do
+                [[ -e "$f" ]] || continue
+                echo
+                echo "### $(basename "$f")"
+                echo '```text'
+                tail -n 120 "$f"
+                echo '```'
+              done
+            fi
+          } > "$REPORT"
+
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          echo "fail_count=$FAILS" >> "$GITHUB_OUTPUT"
+
+      - name: Upload complete attack evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: v2-closure-attack-${{ steps.target.outputs.source_sha }}
+          path: |
+            closure-attack-report.md
+            closure-attack-results.tsv
+            attack-*.log
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce zero unresolved attacks
+        if: always()
+        shell: bash
+        env:
+          FAIL_COUNT: ${{ steps.attacks.outputs.fail_count }}
+        run: |
+          set -euo pipefail
+          test -n "$FAIL_COUNT"
+          test "$FAIL_COUNT" = '0'
