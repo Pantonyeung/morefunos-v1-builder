@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 6dd6885df4df6accd7a9bad6a0865ad44ad14a55
+      SOURCE_SHA: 31111fe6be91ce9eead5956da1b19092677afc17
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +41,7 @@ jobs:
           test -f source/packages/runtime-v2/rules-authority.ts
           test -f source/packages/runtime-v2/rules-firebase-authority.ts
           test -f source/packages/runtime-v2/admin-rules-publish-service.ts
+          grep -q 'readCurrentVersioned' source/packages/runtime-v2/rules-authority.ts
           grep -q 'stableJsonSignatureV1' source/packages/runtime-v2/firebase-global-versioned-state-store.ts
           grep -q 'toArrayBuffer' source/packages/integration-v2/google-service-account-webcrypto.ts
 
@@ -74,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p evidence builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nrepeatable_cas_publish=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
           cp evidence/result.txt builder/.ci-results/v2-q-order-rules-integration.txt
           cp "$RUNNER_TEMP/rules.log" evidence/rules.log
           cp "$RUNNER_TEMP/core.log" evidence/core.log
