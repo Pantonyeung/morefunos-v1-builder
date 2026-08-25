@@ -27,6 +27,7 @@ env:
   MIN_CARRIER_VERSION_CODE: '21'
   BRIDGE_VERSION: '1'
   WRANGLER_VERSION: '4.118.0'
+  NPM_VERSION: '12.0.2'
   SMT_RUNTIME_ROOT: source/apps/smt-clean
   SMT_RUNTIME_ENTRY: apps/smt-clean/src/main.tsx
   SMT_RUNTIME_UI_DONOR_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
@@ -102,6 +103,13 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.22.2'
+
+      - name: Pin official npm CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent "npm@${NPM_VERSION}"
+          test "$(npm --version)" = "$NPM_VERSION"
 
       - name: Mark source checkout stage
         shell: bash
@@ -362,6 +370,6 @@ jobs:
           if [[ -z "${SOURCE_SHA:-}" || -z "${REQUEST_ID:-}" ]]; then exit 0; fi
           STAGE='unknown'
           if [[ -s "$RUNNER_TEMP/runtime-v3-stage" ]]; then STAGE="$(cat "$RUNNER_TEMP/runtime-v3-stage")"; fi
-          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE product_root=apps/smt-clean"
+          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE product_root=apps/smt-clean npm=$NPM_VERSION"
           if [[ -n "${RELEASE_ID:-}" ]]; then BODY="$BODY release_id=$RELEASE_ID"; fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
