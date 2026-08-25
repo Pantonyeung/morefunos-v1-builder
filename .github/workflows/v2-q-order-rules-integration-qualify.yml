@@ -1,0 +1,82 @@
+name: V2 Q-ORDER Rules Integration Qualify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-rules-integration.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 6dd6885df4df6accd7a9bad6a0865ad44ad14a55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Verify exact integrated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f source/packages/integration-v2/smt-durable-channel-hydrator.ts
+          test -f source/packages/integration-v2/smt-channel-decision-reconciliation.ts
+          test -f source/packages/integration-v2/canonical-order-durable-store.ts
+          test -f source/packages/runtime-v2/rules-authority.ts
+          test -f source/packages/runtime-v2/rules-firebase-authority.ts
+          test -f source/packages/runtime-v2/admin-rules-publish-service.ts
+          grep -q 'stableJsonSignatureV1' source/packages/runtime-v2/firebase-global-versioned-state-store.ts
+          grep -q 'toArrayBuffer' source/packages/integration-v2/google-service-account-webcrypto.ts
+
+      - name: Install dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run Rules and V2 Core regressions
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test packages/runtime-v2/rules-authority.test.ts 2>&1 | tee "$RUNNER_TEMP/rules.log"
+          node --experimental-strip-types --test packages/runtime-v2/*.test.ts 2>&1 | tee "$RUNNER_TEMP/core.log"
+
+      - name: TypeScript check
+        working-directory: source
+        run: npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json
+
+      - name: Build Pages Functions
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf /tmp/q-order-rules-pages
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/q-order-rules-pages 2>&1 | tee "$RUNNER_TEMP/pages.log"
+          grep -q 'Compiled Worker successfully' "$RUNNER_TEMP/pages.log"
+
+      - name: Prepare evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'source_sha=%s\nrun_id=%s\nrules_authority=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
+          cp "$RUNNER_TEMP/rules.log" evidence/rules.log
+          cp "$RUNNER_TEMP/core.log" evidence/core.log
+          cp "$RUNNER_TEMP/pages.log" evidence/pages.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-q-order-rules-integration-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
