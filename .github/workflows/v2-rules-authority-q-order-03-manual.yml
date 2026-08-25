@@ -1,0 +1,100 @@
+name: V2 Rules Authority Q-ORDER-03 Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Pantonyeung/morefunos-v1 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source and Rules Authority seam
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          grep -q "RULES_AUTHORITY_STATE_KEY_V1" source/packages/runtime-v2/rules-authority.ts
+          grep -q "createFirebaseCanonicalRulesAuthorityV1" source/packages/runtime-v2/rules-firebase-authority.ts
+          grep -q "rulesReader" source/packages/runtime-v2/transaction-execution-gate.ts
+          grep -q "RULES_AUTHORITY_NOT_PROVISIONED" source/packages/runtime-v2/transaction-execution-gate.test.ts
+
+      - name: Install dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run focused Rules and Q-ORDER-03 regressions
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test \
+            packages/runtime-v2/rules-authority.test.ts \
+            packages/runtime-v2/transaction-execution-gate.test.ts \
+            packages/runtime-v2/pricing-adjustment-policy-authority.test.ts \
+            packages/runtime-v2/pricing-policy-durability.test.ts \
+            packages/runtime-v2/pricing-policy-firebase-durability.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/rules-q-order-03.log"
+
+      - name: Run V2 Core regressions
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test packages/runtime-v2/*.test.ts 2>&1 | tee "$RUNNER_TEMP/v2-core.log"
+
+      - name: TypeScript check
+        working-directory: source
+        run: npx tsc --noEmit
+
+      - name: Build Pages Functions
+        working-directory: source
+        run: npx wrangler pages functions build --outdir="$RUNNER_TEMP/rules-q-order-03-functions"
+
+      - name: Prepare evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'source_sha=%s\n' "$SOURCE_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'rules_authority=success\nq_order_03_regression=success\nv2_core=success\ntypescript=success\nfunctions_build=success\nconclusion=success\n'
+          } > evidence/result.txt
+          cp "$RUNNER_TEMP/rules-q-order-03.log" evidence/rules-q-order-03.log
+          cp "$RUNNER_TEMP/v2-core.log" evidence/v2-core.log
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-rules-authority-q-order-03-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
