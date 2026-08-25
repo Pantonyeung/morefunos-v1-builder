@@ -54,19 +54,24 @@ jobs:
         run: |
           set -Eeuo pipefail
           PHASE=bootstrap
-          mkdir -p builder/.ci-results evidence
+          mkdir -p evidence
           persist() {
             rc=$?
             conclusion=success
             if [ "$rc" -ne 0 ]; then conclusion=failure; fi
+            RESULT="$RUNNER_TEMP/q-order-03-live-diagnostic-result.txt"
             {
               printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
               printf 'phase=%s\nconclusion=%s\n' "$PHASE" "$conclusion"
-            } > builder/.ci-results/v2-q-order-03-live-diagnostic.txt
-            cp builder/.ci-results/v2-q-order-03-live-diagnostic.txt evidence/result.txt
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
             for f in deploy.log rules.json ordering.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
             git -C builder config user.name morefunos-builder-bot
             git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true
+            git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results
+            cp "$RESULT" builder/.ci-results/v2-q-order-03-live-diagnostic.txt
             git -C builder add .ci-results/v2-q-order-03-live-diagnostic.txt
             git -C builder commit -m "ci(result): Q-ORDER-03 diagnostic $conclusion phase $PHASE" || true
             git -C builder push origin HEAD:main || true
