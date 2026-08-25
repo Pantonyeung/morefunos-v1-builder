@@ -1,0 +1,86 @@
+name: V2 Customer Pages Module Boundary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/customer-pages-module-boundary.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Verify exact Customer source and replaceable boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          for file in customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do
+            test -f "customer/apps/customer-web/$file"
+            node --check "customer/apps/customer-web/$file"
+          done
+          ! grep -Eq 'querySelector|document\.|window\.' customer/apps/customer-web/customer-runtime-adapter.js
+          ! grep -Eq 'querySelector|document\.|window\.' customer/apps/customer-web/customer-runtime-store.js
+          grep -q "./customer-runtime-adapter.js" customer/apps/customer-web/customer-runtime-bridge.js
+          grep -q "./customer-runtime-store.js" customer/apps/customer-web/customer-runtime-bridge.js
+          grep -q "./customer-runtime-ui-binding.js" customer/apps/customer-web/customer-runtime-bridge.js
+
+      - name: Compose Pages static asset set exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do
+            cp "customer/apps/customer-web/$file" "deploy/customer/$file"
+          done
+          for module in customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do
+            test -s "deploy/customer/$module"
+          done
+
+      - name: Run Customer boundary regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test customer/apps/customer-web/customer-runtime-bridge.test.mjs
+          node --test customer/apps/customer-web/customer-runtime-store.test.mjs
+          node --test customer/apps/customer-web/customer-ui-boundary.test.mjs
+          node --test customer/apps/customer-web/customer-closure-static.test.mjs
+
+      - name: Persist evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p builder/.ci-results evidence
+          printf 'customer_sha=%s\nbuilder_sha=%s\nrun_id=%s\nreplaceable_boundary=success\npages_static_modules=success\ncustomer_regressions=success\nconclusion=success\n' "$CUSTOMER_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" | tee evidence/result.txt > builder/.ci-results/v2-customer-pages-module-boundary.txt
+          git -C builder config user.name morefunos-builder-bot
+          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder add .ci-results/v2-customer-pages-module-boundary.txt
+          git -C builder commit -m "ci(result): Customer Pages module boundary PASS $CUSTOMER_SHA"
+          git -C builder push origin HEAD:main
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-pages-module-boundary-${{ env.CUSTOMER_SHA }}
+          path: evidence
+          retention-days: 30
