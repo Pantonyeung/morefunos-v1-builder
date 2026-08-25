@@ -1,5 +1,9 @@
-source_sha=c2391dfb804f2a3e0e09dfea2245f2a03b40f2ac
-builder_sha=d8e4cdd2e825566c25330e3cc672435ab1cb54c6
-run_id=32799247878
-phase=typescript
-conclusion=failure
+source_sha=4b88a87952ef690bb8936cc5fa0ded909381e9c2
+builder_sha=d5cd1983497c66e8456a6b0d500e41f89da0bd8c
+run_id=32799384997
+phase=complete
+conclusion=success
+canonical_order_firebase_normalization=success
+rules_codec=success
+typescript=success
+pages_functions=success
