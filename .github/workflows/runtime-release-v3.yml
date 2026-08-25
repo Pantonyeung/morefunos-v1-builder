@@ -31,6 +31,7 @@ env:
   SMT_RUNTIME_ROOT: source/apps/smt-clean
   SMT_RUNTIME_ENTRY: apps/smt-clean/src/main.tsx
   SMT_RUNTIME_UI_DONOR_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+  SHARED_FIXTURES_SHA: 7618149a36d819171efbc220ddfed58af0b577c9
 
 concurrency:
   group: runtime-release-v3-${{ github.event_name == 'workflow_dispatch' && inputs.release_channel || github.ref_name }}
@@ -135,6 +136,16 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Checkout exact shared TEST_ONLY fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SHARED_FIXTURES_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: shared-ui-fixtures
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Verify exact source and canonical SMT product root
         shell: bash
         env:
@@ -143,6 +154,7 @@ jobs:
           set -euo pipefail
           echo 'source-identity' > "$RUNNER_TEMP/runtime-v3-stage"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C shared-ui-fixtures rev-parse HEAD)" = "$SHARED_FIXTURES_SHA"
           test -s "$SMT_RUNTIME_ROOT/package.json"
           test -s "$SMT_RUNTIME_ROOT/index.html"
           test -s "$SMT_RUNTIME_ROOT/src/main.tsx"
@@ -163,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'test' > "$RUNNER_TEMP/runtime-v3-stage"
-          (cd "$SMT_RUNTIME_ROOT" && npm test --workspaces=false)
+          (cd "$SMT_RUNTIME_ROOT" && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/shared-ui-fixtures" npm test --workspaces=false)
           npm --prefix source/apps/smt-web test
 
       - name: Build canonical SMT Clean Runtime
@@ -173,6 +185,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'build' > "$RUNNER_TEMP/runtime-v3-stage"
+          unset MOREFUNOS_SHARED_UI_FIXTURES_DIR || true
           (cd "$SMT_RUNTIME_ROOT" && npm run build --workspaces=false)
           test -s "$SMT_RUNTIME_ROOT/dist/index.html"
           find "$SMT_RUNTIME_ROOT/dist" -maxdepth 2 -type f -size +0c | grep -q .
@@ -265,7 +278,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'metadata' > "$RUNNER_TEMP/runtime-v3-stage"
-          export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL RELEASE_ID RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 MIN_CARRIER_VERSION_CODE BRIDGE_VERSION SMT_RUNTIME_ENTRY SMT_RUNTIME_UI_DONOR_SHA
+          export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL RELEASE_ID RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 MIN_CARRIER_VERSION_CODE BRIDGE_VERSION SMT_RUNTIME_ENTRY SMT_RUNTIME_UI_DONOR_SHA SHARED_FIXTURES_SHA
           node <<'NODE'
           const fs=require('node:fs');
           const update={
@@ -288,6 +301,8 @@ jobs:
             productRoot:'apps/smt-clean',
             productEntry:process.env.SMT_RUNTIME_ENTRY,
             uiDonorSha:process.env.SMT_RUNTIME_UI_DONOR_SHA,
+            sharedTestFixturesSha:process.env.SHARED_FIXTURES_SHA,
+            sharedTestFixturesAuthority:'TEST_ONLY_NON_PRODUCTION',
             builderRepository:process.env.GITHUB_REPOSITORY,
             builderSha:process.env.GITHUB_SHA,
             builderRunId:process.env.GITHUB_RUN_ID,
@@ -341,7 +356,7 @@ jobs:
           set -euo pipefail
           echo 'evidence' > "$RUNNER_TEMP/runtime-v3-stage"
           TAG="builder-v3-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
-          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Runtime Release V3. Canonical product root apps/smt-clean. Source ${SOURCE_SHA}. UI donor ${SMT_RUNTIME_UI_DONOR_SHA}. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
+          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Runtime Release V3. Canonical product root apps/smt-clean. Source ${SOURCE_SHA}. UI donor ${SMT_RUNTIME_UI_DONOR_SHA}. TEST_ONLY fixtures ${SHARED_FIXTURES_SHA}. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
 
       - name: Install pinned official Wrangler CLI
         shell: bash
@@ -380,6 +395,6 @@ jobs:
           if [[ -z "${SOURCE_SHA:-}" || -z "${REQUEST_ID:-}" ]]; then exit 0; fi
           STAGE='unknown'
           if [[ -s "$RUNNER_TEMP/runtime-v3-stage" ]]; then STAGE="$(cat "$RUNNER_TEMP/runtime-v3-stage")"; fi
-          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE product_root=apps/smt-clean npm=$NPM_VERSION"
+          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE product_root=apps/smt-clean npm=$NPM_VERSION fixtures=$SHARED_FIXTURES_SHA"
           if [[ -n "${RELEASE_ID:-}" ]]; then BODY="$BODY release_id=$RELEASE_ID"; fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
