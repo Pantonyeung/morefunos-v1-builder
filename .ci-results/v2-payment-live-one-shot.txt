@@ -1,7 +1,8 @@
 source_sha=d5988f750037148e6a10bed161a1741585d23229
 base_q_order_03=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
-builder_sha=9b36ef965be447341bed1bff974ecc41f916752a
-run_id=32802544099
+builder_sha=70df6aa8388ff28cb15a8c141308c27a63f2581b
+run_id=32802696072
 preview_branch=payment-v2-staging
-phase=exact-source
+phase=exercise
 conclusion=failure
+live_url=https://payment-v2-staging.morefunos-v1.pages.dev
