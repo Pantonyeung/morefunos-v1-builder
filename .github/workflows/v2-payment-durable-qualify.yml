@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 7d756c4f07f6a0d3d635d979aea22a580299f11b
+      SOURCE_SHA: 4427fdeaeaec9f0ca3333ec2beb8f8e5e990d123
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,7 +40,7 @@ jobs:
           } > "$RESULT"; cp "$RESULT" evidence/result.txt; for f in payment.log durable.log durability.log ts.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done;
           git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'; git -C builder fetch origin main || true; git -C builder rebase origin/main || true; mkdir -p builder/.ci-results; cp "$RESULT" builder/.ci-results/v2-payment-durable-qualify.txt; git -C builder add .ci-results/v2-payment-durable-qualify.txt; git -C builder commit -m "ci(result): Payment durable $conclusion phase $PHASE $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true; exit "$rc"; }
           trap persist EXIT
-          PHASE=exact-source; test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"; grep -q 'createDurablePaymentAuthority' source/packages/payment/durable-payment-authority.ts; grep -q 'survives coordinator restart' source/packages/payment/durable-payment-authority.test.ts
+          PHASE=exact-source; test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"; grep -q 'createDurablePaymentAuthority' source/packages/payment/durable-payment-authority.ts; grep -q 'survives coordinator restart' source/packages/payment/durable-payment-authority.test.ts; grep -q 'Base Authority Source: `39e3ae537ee1bc6e69e81d7a12b135c44c14856c`' source/docs/ports-v2/system-integration/CRI_PAYMENT_LIVE_QUALIFICATION_2026-08-25.md
           PHASE=install; (cd source && npm install --ignore-scripts --no-audit --no-fund)
           PHASE=payment-domain-tests; (cd source && node --experimental-strip-types --test packages/payment/payment-authority.test.ts packages/payment/order-settlement-units.test.ts) 2>&1 | tee "$RUNNER_TEMP/payment.log"
           PHASE=payment-durable-tests; (cd source && node --experimental-strip-types --test packages/payment/durable-payment-authority.test.ts) 2>&1 | tee "$RUNNER_TEMP/durable.log"
