@@ -1,8 +1,8 @@
-core_sha=3f5c3e394e158ba153f6842ee13b9cfa84e012e0
+core_sha=4b88a87952ef690bb8936cc5fa0ded909381e9c2
 customer_sha=31100dae325f43d5ceaeddd53a270b85aef75be2
 smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
-builder_sha=bd43a4c111b3a05080c258862c7f809555222b48
-run_id=32798870778
+builder_sha=cbeb3884b231a588622bd802d3207cfca6975e44
+run_id=32799476197
 preview_branch=q-order-03-v2-staging
 phase=accept
 conclusion=failure
