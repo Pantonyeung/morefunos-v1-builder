@@ -1,10 +1,10 @@
-core_sha=4b88a87952ef690bb8936cc5fa0ded909381e9c2
+core_sha=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
 customer_sha=31100dae325f43d5ceaeddd53a270b85aef75be2
 smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
-builder_sha=cbeb3884b231a588622bd802d3207cfca6975e44
-run_id=32799476197
+builder_sha=dc6d4e378d2db1a8ac97f3287f2e2dbcc52c03f6
+run_id=32799881467
 preview_branch=q-order-03-v2-staging
-phase=accept
+phase=final-verify
 conclusion=failure
 live_url=https://q-order-03-v2-staging.morefunos-v1.pages.dev
 rules_http_status=200
