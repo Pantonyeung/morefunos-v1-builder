@@ -1,4 +1,4 @@
-source_sha=f84f43d05c37959d97bf1c0b1a0e8444535131bb
+source_sha=04da4a6e28329789df86fbd775665267f2f26839
 base_sha=1cb0dd53ba237840d2eeb3b0235b3f872238ad7c
 branch_name=governance/SYS/B0010-builder-governance-guard-closure
-request_id=B0010-20260825T2259HKT
+request_id=B0010-CLOSURE-METADATA-20260825T2303HKT
