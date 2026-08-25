@@ -105,7 +105,7 @@ jobs:
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
           PHASE=deploy
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
-          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
+          URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
           PHASE=runtime-date
           CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/ordering.json" -w '%{http_code}' "$URL/api/customer/ordering")"; test "$CODE" = 200; node -e "const fs=require('fs');const x=require(process.env.RUNNER_TEMP+'/ordering.json');if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.businessDate||''))process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate)"; DATE="$(cat "$RUNNER_TEMP/business-date")"
           PHASE=wrong-capability
@@ -117,7 +117,7 @@ jobs:
           rm -f source/functions/api/operator/payment-live.ts; rm -rf deploy-clean; mkdir -p deploy-clean; printf '<!doctype html><html><body>payment clean</body></html>' > deploy-clean/index.html
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy-clean); ! grep -R -q 'payment-live' deploy-clean || exit 1
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
-          CLEAN_URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | tail -n1)"; test -n "$CLEAN_URL"; printf '%s' "$CLEAN_URL" > "$RUNNER_TEMP/clean-url"
+          CLEAN_URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | head -n1)"; test -n "$CLEAN_URL"; printf '%s' "$CLEAN_URL" > "$RUNNER_TEMP/clean-url"
           PHASE=cleanup-verify
           POST_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/payment-live")"; test "$POST_CODE" != 200; ! grep -Eq 'UNAUTHORIZED|NAMESPACE_MISMATCH|PAYMENT_' "$RUNNER_TEMP/operator-after-clean.txt"
           PHASE=complete
