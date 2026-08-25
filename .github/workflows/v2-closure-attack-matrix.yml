@@ -141,16 +141,32 @@ jobs:
           attack A05 DEPENDENCY_LOCK 'SMT web dependencies must install strictly from lockfile' bash -lc 'npm --prefix source/apps/smt-web ci --no-audit --no-fund'
           attack A06 DEPENDENCY_RESOLVE 'SMT clean dependency graph must resolve without lifecycle scripts' bash -lc '(cd source/apps/smt-clean && npm install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund && npm ls --all --workspaces=false >/dev/null)'
 
-          attack A07 SMT_CLEAN_TEST 'SMT clean test suite' bash -lc '(cd source/apps/smt-clean && npm test --workspaces=false)'
+          attack A07 SMT_CLEAN_TEST 'SMT clean test suite with explicit TEST_ONLY shared fixtures' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/source" npm test --workspaces=false)'
           attack A08 SMT_WEB_TEST 'Shared SMT runtime seam tests' bash -lc 'npm --prefix source/apps/smt-web test'
-          attack A09 RERUN_ISOLATION 'Immediate second test run must stay green and reveal pollution/flakiness' bash -lc '(cd source/apps/smt-clean && npm test --workspaces=false) && npm --prefix source/apps/smt-web test'
+          attack A09 RERUN_ISOLATION 'Immediate second test run must stay green and reveal pollution/flakiness' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/source" npm test --workspaces=false) && npm --prefix source/apps/smt-web test'
 
-          attack A10 BUILD 'Canonical SMT runtime must build from exact source' bash -lc '(cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html && find source/apps/smt-clean/dist -type f -size +0c | grep -q .'
-          attack A11 REBUILD 'Second clean rebuild must succeed from deleted dist' bash -lc 'rm -rf source/apps/smt-clean/dist && (cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html'
+          attack A10 BUILD 'Canonical SMT runtime must build from exact source without TEST_ONLY fixtures' bash -lc '(cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html && find source/apps/smt-clean/dist -type f -size +0c | grep -q .'
+          attack A11 REBUILD 'Second clean rebuild must succeed from deleted dist without TEST_ONLY fixtures' bash -lc 'rm -rf source/apps/smt-clean/dist && (cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html'
 
-          attack A12 STATIC_SECRET 'Source must not contain obvious committed private keys or bearer tokens' bash -lc '! grep -RIE --exclude-dir=.git --exclude-dir=node_modules --exclude="*.md" "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._-]{16,}" source/apps source/packages 2>/dev/null | head -1 | grep -q .'
+          attack A12 STATIC_SECRET 'Production source must not contain obvious committed private keys or bearer tokens' bash -lc '
+            set -euo pipefail
+            hit=$(grep -RIlE --exclude-dir=.git --exclude-dir=node_modules --exclude="*.md" "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._-]{16,}" source/apps source/packages 2>/dev/null | head -1 || true)
+            if [[ -n "$hit" ]]; then
+              echo "Potential committed secret pattern detected in: $hit"
+              exit 1
+            fi
+          '
 
-          attack A13 LEGACY_ENTRY 'Runtime entry must not regress to PresentationApp prototype ownership' bash -lc '! grep -E "PresentationApp|PrototypePages" source/apps/smt-clean/src/main.tsx | grep -q .'
+          attack A13 LEGACY_ENTRY 'Production runtime must default to CleanSmtApp; PresentationApp allowed only behind explicit previewMode' bash -lc '
+            node <<"NODE"
+          const fs = require("node:fs");
+          const s = fs.readFileSync("source/apps/smt-clean/src/main.tsx", "utf8");
+          if (/PrototypePages/.test(s)) process.exit(1);
+          if (!/const\s+previewMode\s*=/.test(s)) process.exit(2);
+          if (!/previewMode\s*\?\s*<PresentationApp\s*\/>\s*:\s*<CleanSmtApp\b/.test(s)) process.exit(3);
+          if (!/const\s+runtime\s*=\s*previewMode\s*\?\s*null\s*:\s*resolveCleanSmtCoreRuntime\(\)/.test(s)) process.exit(4);
+          NODE
+          '
 
           attack A14 GENERATED_DIRTY 'Install/test/build must not mutate tracked source files' bash -lc 'test -z "$(git -C source status --porcelain --untracked-files=no)"'
 
