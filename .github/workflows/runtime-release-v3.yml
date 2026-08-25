@@ -27,6 +27,9 @@ env:
   MIN_CARRIER_VERSION_CODE: '21'
   BRIDGE_VERSION: '1'
   WRANGLER_VERSION: '4.118.0'
+  SMT_RUNTIME_ROOT: source/apps/smt-clean
+  SMT_RUNTIME_ENTRY: apps/smt-clean/src/main.tsx
+  SMT_RUNTIME_UI_DONOR_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
 
 concurrency:
   group: runtime-release-v3-${{ github.event_name == 'workflow_dispatch' && inputs.release_channel || github.ref_name }}
@@ -36,7 +39,7 @@ jobs:
   release:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout Builder release executor
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,8 +115,9 @@ jobs:
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+          fetch-depth: 0
 
-      - name: Verify exact source identity
+      - name: Verify exact source and canonical SMT product root
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
@@ -121,27 +125,52 @@ jobs:
           set -euo pipefail
           echo 'source-identity' > "$RUNNER_TEMP/runtime-v3-stage"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -s "$SMT_RUNTIME_ROOT/package.json"
+          test -s "$SMT_RUNTIME_ROOT/index.html"
+          test -s "$SMT_RUNTIME_ROOT/src/main.tsx"
+          grep -F "CleanSmtApp" "$SMT_RUNTIME_ROOT/src/main.tsx" >/dev/null
+          grep -F "resolveCleanSmtCoreRuntime" "$SMT_RUNTIME_ROOT/src/main.tsx" >/dev/null
+          test -s source/apps/smt-web/src/runtime-resolver.ts
 
       - name: Install SMT Runtime dependencies
         shell: bash
         run: |
+          set -euo pipefail
           echo 'install' > "$RUNNER_TEMP/runtime-v3-stage"
           npm --prefix source/apps/smt-web ci --no-audit --no-fund
+          npm --prefix "$SMT_RUNTIME_ROOT" install --ignore-scripts --no-audit --no-fund
 
-      - name: Verify SMT Runtime
-        shell: bash
-        run: |
-          echo 'test' > "$RUNNER_TEMP/runtime-v3-stage"
-          npm --prefix source/apps/smt-web test
-
-      - name: Build SMT Runtime
+      - name: Verify SMT Clean Runtime and shared runtime seam
         shell: bash
         run: |
           set -euo pipefail
+          echo 'test' > "$RUNNER_TEMP/runtime-v3-stage"
+          npm --prefix "$SMT_RUNTIME_ROOT" test
+          npm --prefix source/apps/smt-web test
+
+      - name: Build canonical SMT Clean Runtime
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
           echo 'build' > "$RUNNER_TEMP/runtime-v3-stage"
-          npm --prefix source/apps/smt-web run build
-          test -s source/apps/smt-web/dist/index.html
-          find source/apps/smt-web/dist -maxdepth 2 -type f -size +0c | grep -q .
+          npm --prefix "$SMT_RUNTIME_ROOT" run build
+          test -s "$SMT_RUNTIME_ROOT/dist/index.html"
+          find "$SMT_RUNTIME_ROOT/dist" -maxdepth 2 -type f -size +0c | grep -q .
+          export SOURCE_SHA SMT_RUNTIME_ENTRY SMT_RUNTIME_UI_DONOR_SHA
+          node <<'NODE'
+          const fs=require('node:fs');
+          const identity={
+            schema:'morefunos.smt.runtime-product-root.v1',
+            product:'SMT',
+            runtimeRoot:'apps/smt-clean',
+            entry:process.env.SMT_RUNTIME_ENTRY,
+            sourceSha:process.env.SOURCE_SHA,
+            uiDonorSha:process.env.SMT_RUNTIME_UI_DONOR_SHA,
+          };
+          fs.writeFileSync('source/apps/smt-clean/dist/morefunos-runtime-product-root.json',JSON.stringify(identity,null,2)+'\n');
+          NODE
 
       - name: Setup JDK 17 for Runtime signing
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -186,10 +215,11 @@ jobs:
           MoreFun-Channel: ${RELEASE_CHANNEL}
           MoreFun-Min-Carrier-Version-Code: ${MIN_CARRIER_VERSION_CODE}
           MoreFun-Bridge-Version: ${BRIDGE_VERSION}
+          MoreFun-Product-Root: apps/smt-clean
           EOF
           sed -i 's/^          //' "$MANIFEST"
 
-          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C source/apps/smt-web/dist .
+          jar cfm "$RUNTIME_BUNDLE" "$MANIFEST" -C "$SMT_RUNTIME_ROOT/dist" .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" -keypass "$V1_ANDROID_KEY_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
           jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$V1_ANDROID_KEYSTORE_PASSWORD" "$RUNTIME_BUNDLE" "$V1_ANDROID_KEY_ALIAS" >/dev/null
 
@@ -217,7 +247,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'metadata' > "$RUNNER_TEMP/runtime-v3-stage"
-          export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL RELEASE_ID RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
+          export SOURCE_REPO SOURCE_SHA RELEASE_CHANNEL RELEASE_ID RUNTIME_FILENAME RUNTIME_SHA256 RUNTIME_BYTES CERT_SHA256 MIN_CARRIER_VERSION_CODE BRIDGE_VERSION SMT_RUNTIME_ENTRY SMT_RUNTIME_UI_DONOR_SHA
           node <<'NODE'
           const fs=require('node:fs');
           const update={
@@ -237,6 +267,9 @@ jobs:
             runtimeBytes:Number(process.env.RUNTIME_BYTES),
             signingCertificateSha256:process.env.CERT_SHA256,
             runtimePackageContract:'PASS',
+            productRoot:'apps/smt-clean',
+            productEntry:process.env.SMT_RUNTIME_ENTRY,
+            uiDonorSha:process.env.SMT_RUNTIME_UI_DONOR_SHA,
             builderRepository:process.env.GITHUB_REPOSITORY,
             builderSha:process.env.GITHUB_SHA,
             builderRunId:process.env.GITHUB_RUN_ID,
@@ -247,9 +280,10 @@ jobs:
           fs.writeFileSync('RUNTIME_SHA256SUMS',`${process.env.RUNTIME_SHA256}  ${process.env.RUNTIME_FILENAME}\n`);
           NODE
 
-      - name: Verify generated Runtime contract
+      - name: Verify generated Runtime contract and product root
         shell: bash
         env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           RUNTIME_BUNDLE: ${{ steps.signing.outputs.runtime_bundle }}
           RUNTIME_SHA256: ${{ steps.signing.outputs.runtime_sha256 }}
           RELEASE_ID: ${{ steps.signing.outputs.release_id }}
@@ -263,7 +297,18 @@ jobs:
           (cd "$EXTRACT_DIR" && jar xf "$RUNTIME_BUNDLE")
           test -s "$EXTRACT_DIR/index.html"
           test -s "$EXTRACT_DIR/META-INF/MANIFEST.MF"
+          test -s "$EXTRACT_DIR/morefunos-runtime-product-root.json"
           grep -F "MoreFun-Release-Id: $RELEASE_ID" "$EXTRACT_DIR/META-INF/MANIFEST.MF" >/dev/null
+          grep -F "MoreFun-Product-Root: apps/smt-clean" "$EXTRACT_DIR/META-INF/MANIFEST.MF" >/dev/null
+          export SOURCE_SHA EXTRACT_DIR SMT_RUNTIME_UI_DONOR_SHA
+          node <<'NODE'
+          const fs=require('node:fs');
+          const p=JSON.parse(fs.readFileSync(`${process.env.EXTRACT_DIR}/morefunos-runtime-product-root.json`,'utf8'));
+          if(p.schema!=='morefunos.smt.runtime-product-root.v1')process.exit(2);
+          if(p.product!=='SMT'||p.runtimeRoot!=='apps/smt-clean'||p.entry!=='apps/smt-clean/src/main.tsx')process.exit(3);
+          if(p.sourceSha!==process.env.SOURCE_SHA)process.exit(4);
+          if(p.uiDonorSha!==process.env.SMT_RUNTIME_UI_DONOR_SHA)process.exit(5);
+          NODE
 
       - name: Deliver immutable Runtime evidence
         shell: bash
@@ -278,7 +323,7 @@ jobs:
           set -euo pipefail
           echo 'evidence' > "$RUNNER_TEMP/runtime-v3-stage"
           TAG="builder-v3-${RELEASE_ID}-run-${GITHUB_RUN_ID}"
-          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Runtime Release V3. Source ${SOURCE_SHA}. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
+          gh release create "$TAG" "$RUNTIME_BUNDLE" runtime-update.json runtime-build-metadata.json RUNTIME_SHA256SUMS --repo "$SOURCE_REPO" --target "$SOURCE_SHA" --title "MoreFunOS SMT ${RELEASE_ID}" --notes "Runtime Release V3. Canonical product root apps/smt-clean. Source ${SOURCE_SHA}. UI donor ${SMT_RUNTIME_UI_DONOR_SHA}. Signer ${CERT_SHA256}. Bundle ${RUNTIME_SHA256}." --prerelease
 
       - name: Install pinned official Wrangler CLI
         shell: bash
@@ -298,6 +343,7 @@ jobs:
           RUNTIME_METADATA: ${{ github.workspace }}/runtime-build-metadata.json
           OTA_WORKER_DIR: ${{ github.workspace }}/source/infra/cloudflare/ota-worker
         run: |
+          set -euo pipefail
           echo 'publish' > "$RUNNER_TEMP/runtime-v3-stage"
           node scripts/publish-runtime-online.mjs
 
@@ -316,6 +362,6 @@ jobs:
           if [[ -z "${SOURCE_SHA:-}" || -z "${REQUEST_ID:-}" ]]; then exit 0; fi
           STAGE='unknown'
           if [[ -s "$RUNNER_TEMP/runtime-v3-stage" ]]; then STAGE="$(cat "$RUNNER_TEMP/runtime-v3-stage")"; fi
-          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE"
+          BODY="runtime-release-v3 request_id=$REQUEST_ID source_sha=$SOURCE_SHA status=$RESULT channel=$RELEASE_CHANNEL run_id=$GITHUB_RUN_ID stage=$STAGE product_root=apps/smt-clean"
           if [[ -n "${RELEASE_ID:-}" ]]; then BODY="$BODY release_id=$RELEASE_ID"; fi
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
