@@ -138,14 +138,14 @@ jobs:
           set -euo pipefail
           echo 'install' > "$RUNNER_TEMP/runtime-v3-stage"
           npm --prefix source/apps/smt-web ci --no-audit --no-fund
-          npm --prefix "$SMT_RUNTIME_ROOT" install --ignore-scripts --no-audit --no-fund
+          (cd "$SMT_RUNTIME_ROOT" && npm install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund)
 
       - name: Verify SMT Clean Runtime and shared runtime seam
         shell: bash
         run: |
           set -euo pipefail
           echo 'test' > "$RUNNER_TEMP/runtime-v3-stage"
-          npm --prefix "$SMT_RUNTIME_ROOT" test
+          (cd "$SMT_RUNTIME_ROOT" && npm test --workspaces=false)
           npm --prefix source/apps/smt-web test
 
       - name: Build canonical SMT Clean Runtime
@@ -155,7 +155,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'build' > "$RUNNER_TEMP/runtime-v3-stage"
-          npm --prefix "$SMT_RUNTIME_ROOT" run build
+          (cd "$SMT_RUNTIME_ROOT" && npm run build --workspaces=false)
           test -s "$SMT_RUNTIME_ROOT/dist/index.html"
           find "$SMT_RUNTIME_ROOT/dist" -maxdepth 2 -type f -size +0c | grep -q .
           export SOURCE_SHA SMT_RUNTIME_ENTRY SMT_RUNTIME_UI_DONOR_SHA
