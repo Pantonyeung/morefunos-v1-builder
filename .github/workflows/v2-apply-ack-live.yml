@@ -45,7 +45,7 @@ jobs:
               test -f "$RUNNER_TEMP/business-date" && printf 'business_date=%s\n' "$(cat "$RUNNER_TEMP/business-date")" || true
               test -f "$RUNNER_TEMP/live-url" && printf 'live_url=%s\n' "$(cat "$RUNNER_TEMP/live-url")" || true
               test -f "$RUNNER_TEMP/clean-url" && printf 'clean_url=%s\n' "$(cat "$RUNNER_TEMP/clean-url")" || true
-              if [ "$conclusion" = success ]; then printf 'canonical_order=success\npayment_gate=success\napply_durable_ack=success\nrestart_recovery=success\nidempotent_replay=success\nidempotency_conflict_denied=success\nstale_version_denied=success\nwrong_writer_denied=success\nrerun_safe=success\noperator_capability_removed=success\n'; fi
+              if [ "$conclusion" = success ]; then printf 'canonical_order=success\npayment_gate=success\napply_durable_ack=success\nrestart_recovery=success\nidempotent_replay=success\nidempotency_conflict_denied=success\nstale_version_denied=success\nwrong_writer_denied=success\nrerun_safe=success\nproduction_secret_absent=success\noperator_capability_removed=success\n'; fi
             } > "$RESULT"
             cp "$RESULT" evidence/result.txt
             for f in ordering.json exercise.json wrong-auth.json deploy.log clean-deploy.log operator-after-clean.txt; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
@@ -65,6 +65,11 @@ jobs:
           PHASE=install
           (cd source && npm install --ignore-scripts --no-audit --no-fund)
 
+          PHASE=production-secret-cleanup
+          (cd source && printf 'y\n' | npm exec --yes --package=wrangler@4.125.0 -- wrangler pages secret delete APPLY_ACK_OPERATOR_TOKEN --project-name=morefunos-v1) || true
+          SECRET_LIST="$(cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages secret list --project-name=morefunos-v1 2>/dev/null || true)"
+          ! printf '%s' "$SECRET_LIST" | grep -q 'APPLY_ACK_OPERATOR_TOKEN'
+
           PHASE=operator
           TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
           mkdir -p source/functions/api/operator
@@ -75,9 +80,9 @@ jobs:
           import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
           import { createDurablePaymentAuthority } from '../../../packages/payment/durable-payment-authority.ts';
           import { createDurableFulfillmentAuthority } from '../../../packages/fulfillment/durable-fulfillment-authority.ts';
-          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; APPLY_ACK_OPERATOR_TOKEN?:string; }
+          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; }
           interface Ctx { request:Request; env:Env & Record<string,unknown>; }
-          const BRANCH='apply-ack-v2-staging'; const NS='morefunos-v2-staging'; const EXPECTED_ORDER='order:q-order-03-final-32799881467';
+          const BRANCH='apply-ack-v2-staging'; const NS='morefunos-v2-staging'; const EXPECTED_ORDER='order:q-order-03-final-32799881467'; const TOKEN='__APPLY_ACK_TOKEN__';
           const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store'}}); const code=(e:unknown)=>e instanceof Error&&e.message?e.message:'UNKNOWN';
           const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
           function infra(env:Env){const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);return new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});}
@@ -85,7 +90,7 @@ jobs:
             if(context.request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
             if(context.env.CF_PAGES_BRANCH!==BRANCH)return json({ok:false,error:'NOT_FOUND'},404);
             if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409);
-            if(!context.env.APPLY_ACK_OPERATOR_TOKEN || context.request.headers.get('authorization')!=='Bearer '+context.env.APPLY_ACK_OPERATOR_TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
+            if(context.request.headers.get('authorization')!=='Bearer '+TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
             try{
               const body=await context.request.json() as {businessDate?:string;orderId?:string}; const date=String(body.businessDate||''); const orderId=String(body.orderId||'');
               if(!/^\d{4}-\d{2}-\d{2}$/u.test(date)||orderId!==EXPECTED_ORDER)throw new Error('APPLY_ACK_QUALIFICATION_INPUT_INVALID');
@@ -110,13 +115,12 @@ jobs:
             }catch(error){return json({ok:false,error:code(error)},500);}
           }
           EOF
+          sed -i "s/__APPLY_ACK_TOKEN__/$TOKEN/g" source/functions/api/operator/apply-ack-live.ts
 
           PHASE=build
           rm -rf deploy; mkdir -p deploy; printf '<!doctype html><html><body>apply ack live</body></html>' > deploy/index.html
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
           PHASE=deploy
-          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"
-          printf '%s' "$TOKEN" | (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages secret put APPLY_ACK_OPERATOR_TOKEN --project-name=morefunos-v1)
           (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
           URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
 
