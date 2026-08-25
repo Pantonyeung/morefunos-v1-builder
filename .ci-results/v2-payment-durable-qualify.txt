@@ -1,0 +1,9 @@
+source_sha=7d756c4f07f6a0d3d635d979aea22a580299f11b
+builder_sha=c324b22dcbd832a9cdeb5364323737d742af63ee
+run_id=32801895575
+phase=complete
+conclusion=success
+payment_domain=success
+payment_durable_restart=success
+durability_regression=success
+typescript=success
