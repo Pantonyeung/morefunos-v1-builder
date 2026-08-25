@@ -1,0 +1,93 @@
+name: V2 Q-ORDER-03 Cleanup Only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-cleanup-only.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CORE_SHA: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+      CLEAN_URL: https://12d982c3.morefunos-v1.pages.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Prove one-shot operator capability is absent
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap
+          mkdir -p evidence
+          persist(){
+            rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/result.txt"
+            {
+              printf 'core_sha=%s\nbuilder_sha=%s\nrun_id=%s\nclean_url=%s\nphase=%s\nconclusion=%s\n' "$CORE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$CLEAN_URL" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/get-code" && printf 'operator_get_status=%s\n' "$(cat "$RUNNER_TEMP/get-code")" || true
+              test -f "$RUNNER_TEMP/post-code" && printf 'operator_post_status=%s\n' "$(cat "$RUNNER_TEMP/post-code")" || true
+              [ "$conclusion" = success ] && printf 'operator_source_absent=success\noperator_compiled_route_absent=success\noperator_live_capability_absent=success\n' || true
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in operator-get.txt operator-post.txt build.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot
+            git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true
+            git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results
+            cp "$RESULT" builder/.ci-results/v2-q-order-03-cleanup-only.txt
+            git -C builder add .ci-results/v2-q-order-03-cleanup-only.txt
+            git -C builder commit -m "ci(result): Q-ORDER-03 cleanup $conclusion phase $PHASE $CORE_SHA" || true
+            git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C source rev-parse HEAD)" = "$CORE_SHA"
+          test ! -e source/functions/api/operator/q-order-03.ts
+
+          PHASE=clean-build
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
+          rm -rf /tmp/q-order-03-clean-build
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/q-order-03-clean-build) 2>&1 | tee "$RUNNER_TEMP/build.log"
+          grep -q 'Compiled Worker successfully' "$RUNNER_TEMP/build.log"
+          if grep -R -n -F 'q-order-03' /tmp/q-order-03-clean-build; then
+            echo 'ephemeral operator route leaked into clean compiled output' >&2
+            exit 1
+          fi
+
+          PHASE=live-capability
+          GET_CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/operator-get.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/q-order-03")"
+          POST_CODE="$(curl --silent --show-error -X POST -H 'authorization: Bearer definitely-not-the-ephemeral-token' -H 'content-type: application/json' --data '{"action":"set-status","status":"open"}' -o "$RUNNER_TEMP/operator-post.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/q-order-03")"
+          printf '%s' "$GET_CODE" > "$RUNNER_TEMP/get-code"
+          printf '%s' "$POST_CODE" > "$RUNNER_TEMP/post-code"
+          cat "$RUNNER_TEMP/operator-get.txt"
+          cat "$RUNNER_TEMP/operator-post.txt"
+          test "$POST_CODE" != 200
+          ! grep -Eq 'METHOD_NOT_ALLOWED|UNAUTHORIZED|NAMESPACE_MISMATCH|ACTION_INVALID|Q_ORDER_03_' "$RUNNER_TEMP/operator-get.txt" "$RUNNER_TEMP/operator-post.txt"
+
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-q-order-03-cleanup-only-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
