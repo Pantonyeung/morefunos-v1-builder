@@ -1,0 +1,118 @@
+name: V2 Q-ORDER-03 Rules Provision Recheck
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-rules-provision-recheck.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  recheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CORE_SHA: 3f5c3e394e158ba153f6842ee13b9cfa84e012e0
+      CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
+      PREVIEW_BRANCH: q-order-03-diagnostic-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Deploy and recheck canonical Rules provision
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap
+          mkdir -p evidence
+          persist() {
+            rc=$?
+            conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/result.txt"
+            {
+              printf 'core_sha=%s\ncustomer_sha=%s\nbuilder_sha=%s\nrun_id=%s\nphase=%s\nconclusion=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/rules-status" && printf 'rules_http_status=%s\n' "$(cat "$RUNNER_TEMP/rules-status")" || true
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in rules.json rules-status deploy.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot
+            git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true
+            git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results
+            cp "$RESULT" builder/.ci-results/v2-q-order-03-rules-provision-recheck.txt
+            git -C builder add .ci-results/v2-q-order-03-rules-provision-recheck.txt
+            git -C builder commit -m "ci(result): Q-ORDER-03 rules provision $conclusion phase $PHASE" || true
+            git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=compose
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do cp "customer/apps/customer-web/$file" "deploy/customer/$file"; done
+          cat > deploy/index.html <<'HTML'
+          <!doctype html><html><body><a href="/customer/">Customer</a></body></html>
+          HTML
+
+          PHASE=install
+          (cd core && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator
+          TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; export TOKEN PREVIEW_BRANCH
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          text=Path('builder/.github/workflows/v2-q-order-03-live-once.yml').read_text()
+          start="          cat > core/functions/api/operator/q-order-03.ts <<EOF\n"
+          i=text.index(start)+len(start); j=text.index("\n          EOF", i)
+          lines=[]
+          for line in text[i:j].splitlines(): lines.append(line[10:] if line.startswith('          ') else line)
+          source='\n'.join(lines)+'\n'
+          source=source.replace("const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH';", f"const TOKEN='{os.environ['TOKEN']}'; const BRANCH='{os.environ['PREVIEW_BRANCH']}';")
+          p=Path('core/functions/api/operator/q-order-03.ts'); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(source)
+          PY
+
+          PHASE=build
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+
+          PHASE=deploy
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"; test -n "$URL"
+
+          PHASE=rules-provision
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/rules.json" -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03")"
+          printf '%s' "$CODE" > "$RUNNER_TEMP/rules-status"; cat "$RUNNER_TEMP/rules.json"; test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/rules.json');if(!x.ok||x.snapshot.revision!=='q-order-03-preview-rules-v1'||!Number.isInteger(x.version))process.exit(1)"
+
+          PHASE=complete
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-q-order-03-rules-provision-recheck-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
