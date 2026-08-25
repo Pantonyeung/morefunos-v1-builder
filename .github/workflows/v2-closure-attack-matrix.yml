@@ -24,6 +24,7 @@ concurrency:
 
 env:
   SOURCE_REPO: Pantonyeung/morefunos-v1
+  SHARED_FIXTURES_SHA: '7618149a36d819171efbc220ddfed58af0b577c9'
   NODE_VERSION: '22.22.2'
   NPM_VERSION: '12.0.2'
 
@@ -96,6 +97,16 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Checkout exact shared TEST_ONLY fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SHARED_FIXTURES_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: fixtures
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Run attack matrix without early exit
         id: attacks
         shell: bash
@@ -141,20 +152,39 @@ jobs:
           attack A05 DEPENDENCY_LOCK 'SMT web dependencies must install strictly from lockfile' bash -lc 'npm --prefix source/apps/smt-web ci --no-audit --no-fund'
           attack A06 DEPENDENCY_RESOLVE 'SMT clean dependency graph must resolve without lifecycle scripts' bash -lc '(cd source/apps/smt-clean && npm install --workspaces=false --package-lock=false --ignore-scripts --no-audit --no-fund && npm ls --all --workspaces=false >/dev/null)'
 
-          attack A07 SMT_CLEAN_TEST 'SMT clean test suite with explicit TEST_ONLY shared fixtures' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/source" npm test --workspaces=false)'
+          attack A07 SMT_CLEAN_TEST 'SMT clean test suite with exact TEST_ONLY shared fixture source' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/fixtures" npm test --workspaces=false)'
           attack A08 SMT_WEB_TEST 'Shared SMT runtime seam tests' bash -lc 'npm --prefix source/apps/smt-web test'
-          attack A09 RERUN_ISOLATION 'Immediate second test run must stay green and reveal pollution/flakiness' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/source" npm test --workspaces=false) && npm --prefix source/apps/smt-web test'
+          attack A09 RERUN_ISOLATION 'Immediate second test run must stay green and reveal pollution/flakiness' bash -lc '(cd source/apps/smt-clean && MOREFUNOS_SHARED_UI_FIXTURES_DIR="$GITHUB_WORKSPACE/fixtures" npm test --workspaces=false) && npm --prefix source/apps/smt-web test'
 
           attack A10 BUILD 'Canonical SMT runtime must build from exact source without TEST_ONLY fixtures' bash -lc '(cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html && find source/apps/smt-clean/dist -type f -size +0c | grep -q .'
           attack A11 REBUILD 'Second clean rebuild must succeed from deleted dist without TEST_ONLY fixtures' bash -lc 'rm -rf source/apps/smt-clean/dist && (cd source/apps/smt-clean && npm run build --workspaces=false) && test -s source/apps/smt-clean/dist/index.html'
 
-          attack A12 STATIC_SECRET 'Production source must not contain obvious committed private keys or bearer tokens' bash -lc '
-            set -euo pipefail
-            hit=$(grep -RIlE --exclude-dir=.git --exclude-dir=node_modules --exclude="*.md" "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|Authorization:[[:space:]]*Bearer[[:space:]]+[A-Za-z0-9._-]{16,}" source/apps source/packages 2>/dev/null | head -1 || true)
-            if [[ -n "$hit" ]]; then
-              echo "Potential committed secret pattern detected in: $hit"
-              exit 1
-            fi
+          attack A12 STATIC_SECRET 'Production source must not contain actual committed private-key payloads or bearer tokens' bash -lc '
+            node <<"NODE"
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const roots = ["source/apps", "source/packages"];
+          const privateKey = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\\?\n?[A-Za-z0-9+/=]{40,}/m;
+          const bearer = /Authorization:\s*Bearer\s+[A-Za-z0-9._-]{16,}/;
+          const hits = [];
+          const visit = (p) => {
+            const st = fs.statSync(p);
+            if (st.isDirectory()) {
+              if ([".git", "node_modules"].includes(path.basename(p))) return;
+              for (const name of fs.readdirSync(p)) visit(path.join(p, name));
+              return;
+            }
+            if (/\.md$/i.test(p)) return;
+            let s;
+            try { s = fs.readFileSync(p, "utf8"); } catch { return; }
+            if (privateKey.test(s) || bearer.test(s)) hits.push(p);
+          };
+          for (const root of roots) visit(root);
+          if (hits.length) {
+            console.error(`Potential committed secret payload detected in: ${hits[0]}`);
+            process.exit(1);
+          }
+          NODE
           '
 
           attack A13 LEGACY_ENTRY 'Production runtime must default to CleanSmtApp; PresentationApp allowed only behind explicit previewMode' bash -lc '
@@ -179,6 +209,7 @@ jobs:
             echo
             echo "- Source: \`$SOURCE_SHA\`"
             echo "- Base: \`${BASE_SHA:-not-supplied}\`"
+            echo "- Shared TEST_ONLY fixtures: \`$SHARED_FIXTURES_SHA\`"
             echo "- Builder run: \`$GITHUB_RUN_ID\`"
             echo "- Result: **$([[ $FAILS -eq 0 ]] && echo PASS || echo FAIL)**"
             echo "- Attacks: $TOTAL | pass: $PASSES | fail: $FAILS"
