@@ -1,0 +1,4 @@
+core_sha=3f5c3e394e158ba153f6842ee13b9cfa84e012e0
+customer_sha=31100dae325f43d5ceaeddd53a270b85aef75be2
+smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
+requested_at=2026-08-25T09:55:00+08:00
