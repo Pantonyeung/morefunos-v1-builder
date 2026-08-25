@@ -1,2 +1,3 @@
-source_sha=7d756c4f07f6a0d3d635d979aea22a580299f11b
-triggered_at=2026-08-25T10:20:00+08:00
+source_sha=4427fdeaeaec9f0ca3333ec2beb8f8e5e990d123
+base_q_order_03=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+triggered_at=2026-08-25T10:39:00+08:00
