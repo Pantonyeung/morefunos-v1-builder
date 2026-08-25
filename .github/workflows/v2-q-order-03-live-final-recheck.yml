@@ -1,0 +1,73 @@
+name: V2 Q-ORDER-03 Live Final Recheck
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-live-final-recheck.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CORE_SHA: 4b88a87952ef690bb8936cc5fa0ded909381e9c2
+      CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+      PREVIEW_BRANCH: q-order-03-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SMT_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: smt
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Execute the exact final live script against the new Core SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          text=Path('builder/.github/workflows/v2-q-order-03-live-final.yml').read_text()
+          marker='      - name: Run full protected Customer to SMT/Core to Customer live chain\n        shell: bash\n        run: |\n'
+          start=text.index(marker)+len(marker)
+          end=text.index('\n      - uses: actions/upload-artifact@v4',start)
+          block=text[start:end]
+          lines=[]
+          for line in block.splitlines():
+              lines.append(line[10:] if line.startswith('          ') else line)
+          Path('/tmp/q-order-03-live-final.sh').write_text('\n'.join(lines)+'\n')
+          PY
+          bash /tmp/q-order-03-live-final.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-q-order-03-live-final-recheck-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
