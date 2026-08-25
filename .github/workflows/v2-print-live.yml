@@ -1,0 +1,149 @@
+name: V2 Print Live
+
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-trigger/print-live.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 0e10bc587cfe0af64f40ead55d7bd86e251f3bd3
+      BASE_APPLY_ACK: 6b5674c11e03588a359c6be2dea1ea11384bb792
+      PREVIEW_BRANCH: print-v2-staging
+      CANONICAL_ORDER_ID: order:q-order-03-final-32799881467
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: builder, persist-credentials: true }
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run Print Preview live qualification
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap; mkdir -p evidence
+          persist(){
+            rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            RESULT="$RUNNER_TEMP/result.txt"
+            {
+              printf 'source_sha=%s\nbase_apply_ack=%s\nbuilder_sha=%s\nrun_id=%s\npreview_branch=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$BASE_APPLY_ACK" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PREVIEW_BRANCH" "$PHASE" "$conclusion"
+              test -f "$RUNNER_TEMP/business-date" && printf 'business_date=%s\n' "$(cat "$RUNNER_TEMP/business-date")" || true
+              test -f "$RUNNER_TEMP/live-url" && printf 'live_url=%s\n' "$(cat "$RUNNER_TEMP/live-url")" || true
+              test -f "$RUNNER_TEMP/clean-url" && printf 'clean_url=%s\n' "$(cat "$RUNNER_TEMP/clean-url")" || true
+              if [ "$conclusion" = success ]; then printf 'canonical_order=success\napply_ack_gate=success\nprint_firebase_durability=success\naccepted_restart_no_duplicate=success\nambiguous_dispatch_fail_closed=success\ngeneric_payload_shape=success\nrerun_safe=success\noperator_capability_removed=success\n'; fi
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in ordering.json exercise.json wrong-auth.json deploy.log clean-deploy.log operator-after-clean.txt; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true; git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results; cp "$RESULT" builder/.ci-results/v2-print-live.txt
+            git -C builder add .ci-results/v2-print-live.txt; git -C builder commit -m "ci(result): Print live $conclusion phase $PHASE $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source merge-base --is-ancestor "$BASE_APPLY_ACK" "$SOURCE_SHA"
+
+          PHASE=install
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator
+          TOKEN="$(openssl rand -hex 32)"; echo "::add-mask::$TOKEN"; printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
+          mkdir -p source/functions/api/operator
+          cat > source/functions/api/operator/print-live.ts <<'EOF'
+          import { FirebaseRtdbDurabilityPort } from '../../../packages/durability/firebase-rtdb-durability.ts';
+          import type { DurableCheckpoint } from '../../../packages/durability/durability.ts';
+          import { createCanonicalOrderDurableStoreV1 } from '../../../packages/integration-v2/canonical-order-durable-store.ts';
+          import { createGoogleFirebaseBearerTokenProviderV1 } from '../../../packages/integration-v2/admin-production-edge.ts';
+          import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
+          import { createDurableFulfillmentAuthority } from '../../../packages/fulfillment/durable-fulfillment-authority.ts';
+          import { createPrintAuthority } from '../../../packages/printing/print-authority.ts';
+          import { createDurablePrintJobRepositoryV1 } from '../../../packages/printing/durable-print-job-repository.ts';
+          interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; }
+          interface Ctx { request:Request; env:Env & Record<string,unknown>; }
+          const BRANCH='print-v2-staging'; const NS='morefunos-v2-staging'; const EXPECTED_ORDER='order:q-order-03-final-32799881467'; const TOKEN='__PRINT_TOKEN__';
+          const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store'}}); const code=(e:unknown)=>e instanceof Error&&e.message?e.message:'UNKNOWN';
+          const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
+          function infra(env:Env){const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);return new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});}
+          export async function onRequest(context:Ctx):Promise<Response>{
+            if(context.request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
+            if(context.env.CF_PAGES_BRANCH!==BRANCH)return json({ok:false,error:'NOT_FOUND'},404);
+            if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409);
+            if(context.request.headers.get('authorization')!=='Bearer '+TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
+            try{
+              const body=await context.request.json() as {businessDate?:string;orderId?:string}; const date=String(body.businessDate||''); const orderId=String(body.orderId||'');
+              if(!/^\d{4}-\d{2}-\d{2}$/u.test(date)||orderId!==EXPECTED_ORDER)throw new Error('PRINT_QUALIFICATION_INPUT_INVALID');
+              const port=infra(context.env); const order=await createCanonicalOrderDurableStoreV1(port).get(date,orderId); if(!order)throw new Error('PRINT_CANONICAL_ORDER_NOT_FOUND');
+              const fulfillment=await createDurableFulfillmentAuthority(port).snapshot(orderId); if(fulfillment.state!=='production_authorized')throw new Error('PRINT_APPLY_ACK_NOT_READY');
+              const repo=createDurablePrintJobRepositoryV1(port,date);
+              const executed:string[]=[];
+              const execution={async execute(request:any){
+                const key='v2:print-execution-evidence:'+request.executionId; const existing=await port.loadCheckpoint<any>(key); if(existing)throw new Error('PRINT_EXECUTION_DUPLICATE');
+                const checkpoint:DurableCheckpoint<any>={key,schemaVersion:1,businessDate:date,revision:1,payload:{executionId:request.executionId,dedupeKey:request.dedupeKey,targets:request.targets},committedAt:new Date().toISOString()};
+                const saved=await port.saveCheckpoint(0,checkpoint); if(saved.ok===false)throw new Error('PRINT_EXECUTION_EVIDENCE_CONFLICT'); executed.push(request.executionId);
+                return {executionId:request.executionId,status:'accepted' as const,targets:request.targets.map((t:any)=>({targetRole:t.role,status:'accepted' as const}))};
+              }};
+              const input={intentId:`${orderId}:r${order.revision}:req:live-kitchen-v1`,orderId,orderRevision:order.revision,documentKind:'kitchen_ticket',templateVersion:'kitchen-v1',payloadVersion:`${orderId}:r${order.revision}:live-kitchen-v1`,payload:order,targets:[{role:'kitchen',copies:1}],requestedBy:'smt-local'};
+              const first=createPrintAuthority(repo,execution); first.createIntent(input); const firstResult=await first.dispatch(input.intentId); if(firstResult.status!=='accepted')throw new Error('PRINT_FIRST_DISPATCH_NOT_ACCEPTED');
+              const restarted=createPrintAuthority(repo,execution); restarted.createIntent(input); const replay=await restarted.dispatch(input.intentId); if(replay.status!=='accepted')throw new Error('PRINT_RESTART_ACCEPTED_MISSING');
+              const executionId=`print:${input.intentId}:a1`; const marker=await port.loadCheckpoint<any>('v2:print-execution-evidence:'+executionId); if(!marker||marker.revision!==1)throw new Error('PRINT_EXECUTION_EVIDENCE_MISSING');
+              const ambiguousInput={...input,intentId:`${orderId}:r${order.revision}:req:live-ambiguous-v1`,documentKind:'label',payloadVersion:`${orderId}:r${order.revision}:live-ambiguous-v1`,targets:[{role:'label',copies:1}]};
+              const ambiguous=createPrintAuthority(repo,execution); const created=ambiguous.createIntent(ambiguousInput); await repo.save({...created,status:'dispatching',attempts:1,targets:created.targets.map(t=>({...t,status:'dispatching' as const}))});
+              const ambiguousRestart=createPrintAuthority(repo,execution); ambiguousRestart.createIntent(ambiguousInput); const ambiguousResult=await ambiguousRestart.dispatch(ambiguousInput.intentId); if(ambiguousResult.status!=='unknown')throw new Error('PRINT_AMBIGUOUS_NOT_FAIL_CLOSED');
+              const ambiguousMarker=await port.loadCheckpoint<any>('v2:print-execution-evidence:'+`print:${ambiguousInput.intentId}:a1`); if(ambiguousMarker)throw new Error('PRINT_AMBIGUOUS_REEXECUTED');
+              const durable=await repo.getByDedupeKey(created.dedupeKey); if(!durable||!Array.isArray((durable.payload as any).lines))throw new Error('PRINT_PAYLOAD_SHAPE_DRIFT');
+              return json({ok:true,orderId,businessDate:date,fulfillmentState:fulfillment.state,first:firstResult.status,replay:replay.status,executions:executed.length,executionRevision:marker.revision,ambiguous:ambiguousResult.status,payloadLinesArray:true});
+            }catch(error){return json({ok:false,error:code(error)},500);}
+          }
+          EOF
+          sed -i "s/__PRINT_TOKEN__/$TOKEN/g" source/functions/api/operator/print-live.ts
+
+          PHASE=build
+          rm -rf deploy; mkdir -p deploy; printf '<!doctype html><html><body>print live</body></html>' > deploy/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+          PHASE=deploy
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/deploy.log" | head -n1)"; test -n "$URL"; printf '%s' "$URL" > "$RUNNER_TEMP/live-url"
+
+          PHASE=runtime-date
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/ordering.json" -w '%{http_code}' "$URL/api/customer/ordering")"; test "$CODE" = 200
+          node -e "const fs=require('fs');const x=require(process.env.RUNNER_TEMP+'/ordering.json');if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.businessDate||''))process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/business-date',x.businessDate)"; DATE="$(cat "$RUNNER_TEMP/business-date")"
+
+          PHASE=wrong-capability
+          WRONG="$(openssl rand -hex 32)"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $WRONG" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/wrong-auth.json" -w '%{http_code}' "$URL/api/operator/print-live")"; test "$CODE" = 401
+
+          PHASE=exercise
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"; CODE="$(curl --silent --show-error -X POST -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data "{\"businessDate\":\"$DATE\",\"orderId\":\"$CANONICAL_ORDER_ID\"}" -o "$RUNNER_TEMP/exercise.json" -w '%{http_code}' "$URL/api/operator/print-live")"; cat "$RUNNER_TEMP/exercise.json"; test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/exercise.json');if(!x.ok||x.fulfillmentState!=='production_authorized'||x.first!=='accepted'||x.replay!=='accepted'||x.executions!==1||x.executionRevision!==1||x.ambiguous!=='unknown'||!x.payloadLinesArray)process.exit(1)"
+
+          PHASE=clean-redeploy
+          rm -f source/functions/api/operator/print-live.ts; rm -rf deploy-clean; mkdir -p deploy-clean; printf '<!doctype html><html><body>print clean</body></html>' > deploy-clean/index.html
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy-clean); ! grep -R -q 'print-live' deploy-clean || exit 1
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy-clean --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$SOURCE_SHA") 2>&1 | tee "$RUNNER_TEMP/clean-deploy.log"
+          CLEAN_URL="$(grep -Eo 'https://[a-f0-9]+\.morefunos-v1\.pages\.dev' "$RUNNER_TEMP/clean-deploy.log" | head -n1)"; test -n "$CLEAN_URL"; printf '%s' "$CLEAN_URL" > "$RUNNER_TEMP/clean-url"
+          PHASE=cleanup-verify
+          POST_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/print-live")"; test "$POST_CODE" != 200; ! grep -Eq 'UNAUTHORIZED|NAMESPACE_MISMATCH|PRINT_' "$RUNNER_TEMP/operator-after-clean.txt"
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-print-live-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
