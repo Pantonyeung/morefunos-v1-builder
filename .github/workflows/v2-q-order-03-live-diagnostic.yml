@@ -1,0 +1,146 @@
+name: V2 Q-ORDER-03 Live Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-trigger/q-order-03-live-diagnostic.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CORE_SHA: 31111fe6be91ce9eead5956da1b19092677afc17
+      CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
+      SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
+      PREVIEW_BRANCH: q-order-03-diagnostic-v2-staging
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: true
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CORE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.CUSTOMER_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: customer
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SMT_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: smt
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Diagnose build deploy and Rules provisioning with persistent failure phase
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=bootstrap
+          mkdir -p builder/.ci-results evidence
+          persist() {
+            rc=$?
+            conclusion=success
+            if [ "$rc" -ne 0 ]; then conclusion=failure; fi
+            {
+              printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
+              printf 'phase=%s\nconclusion=%s\n' "$PHASE" "$conclusion"
+            } > builder/.ci-results/v2-q-order-03-live-diagnostic.txt
+            cp builder/.ci-results/v2-q-order-03-live-diagnostic.txt evidence/result.txt
+            for f in deploy.log rules.json ordering.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot
+            git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder add .ci-results/v2-q-order-03-live-diagnostic.txt
+            git -C builder commit -m "ci(result): Q-ORDER-03 diagnostic $conclusion phase $PHASE" || true
+            git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
+          test "$(git -C core rev-parse HEAD)" = "$CORE_SHA"
+          test "$(git -C customer rev-parse HEAD)" = "$CUSTOMER_SHA"
+          test "$(git -C smt rev-parse HEAD)" = "$SMT_SHA"
+          grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
+          test -f core/packages/runtime-v2/rules-firebase-authority.ts
+          test -f core/packages/integration-v2/smt-channel-decision-reconciliation.ts
+
+          PHASE=customer-assets
+          rm -rf deploy
+          mkdir -p deploy/customer
+          for file in index.html customer-shell.css customer-shell.js customer-closure.css customer-closure.js customer-closure-v2.js customer-closure-v3.css customer-closure-v3.js customer-runtime-adapter.js customer-runtime-store.js customer-runtime-ui-binding.js customer-runtime-bridge.js; do
+            cp "customer/apps/customer-web/$file" "deploy/customer/$file"
+          done
+          cat > deploy/index.html <<'HTML'
+          <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Q-ORDER-03 Diagnostic</title></head><body><a href="/customer/">Customer</a></body></html>
+          HTML
+
+          PHASE=install
+          (cd core && npm install --ignore-scripts --no-audit --no-fund)
+
+          PHASE=operator-extract
+          TOKEN="$(openssl rand -hex 32)"
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" > "$RUNNER_TEMP/operator-token"
+          export TOKEN PREVIEW_BRANCH
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          text=Path('builder/.github/workflows/v2-q-order-03-live-once.yml').read_text()
+          start="          cat > core/functions/api/operator/q-order-03.ts <<EOF\n"
+          i=text.index(start)+len(start)
+          j=text.index("\n          EOF", i)
+          block=text[i:j]
+          lines=[]
+          for line in block.splitlines():
+              lines.append(line[10:] if line.startswith('          ') else line)
+          source='\n'.join(lines)+'\n'
+          source=source.replace("const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH';", f"const TOKEN='{os.environ['TOKEN']}'; const BRANCH='{os.environ['PREVIEW_BRANCH']}';")
+          p=Path('core/functions/api/operator/q-order-03.ts')
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text(source)
+          PY
+          grep -q "const BRANCH='$PREVIEW_BRANCH'" core/functions/api/operator/q-order-03.ts
+          grep -q 'createFirebaseCanonicalRulesAuthorityV1' core/functions/api/operator/q-order-03.ts
+
+          PHASE=pages-build
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=../deploy)
+
+          PHASE=pages-deploy
+          (cd core && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages deploy ../deploy --project-name=morefunos-v1 --branch="$PREVIEW_BRANCH" --commit-hash="$CORE_SHA") 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"
+          test -n "$URL"
+
+          PHASE=rules-provision
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/rules.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/rules.json');if(!x.ok||x.snapshot.policyVersion!=='q-order-03-preview-policy-v1'||x.snapshot.revision!=='q-order-03-preview-rules-v1'||!Number.isInteger(x.version))process.exit(1)"
+
+          PHASE=public-read
+          curl --fail --silent --show-error "$URL/api/customer/ordering" > "$RUNNER_TEMP/ordering.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/ordering.json');if(!x.catalogVersion||!Number.isSafeInteger(x.operationalRevision))process.exit(1)"
+
+          PHASE=complete
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-q-order-03-live-diagnostic-${{ env.CORE_SHA }}
+          path: evidence
+          retention-days: 30
