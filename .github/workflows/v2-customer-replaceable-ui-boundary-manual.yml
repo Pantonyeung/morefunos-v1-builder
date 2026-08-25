@@ -1,0 +1,116 @@
+name: V2 Customer Replaceable UI Boundary Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Pantonyeung/morefunos-v1 Customer source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v4
+        with:
+          path: builder
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source and architecture files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f source/apps/customer-web/customer-runtime-adapter.js
+          test -f source/apps/customer-web/customer-runtime-store.js
+          test -f source/apps/customer-web/customer-runtime-ui-binding.js
+          test -f source/apps/customer-web/customer-ui-boundary.test.mjs
+          grep -q "Customer Runtime Store / ViewModel" source/apps/customer-web/README.md
+
+      - name: Syntax preflight
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check apps/customer-web/customer-runtime-adapter.js
+          node --check apps/customer-web/customer-runtime-store.js
+          node --check apps/customer-web/customer-runtime-ui-binding.js
+          node --check apps/customer-web/customer-runtime-bridge.js
+
+      - name: Run Customer runtime and replaceable UI boundary tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test \
+            apps/customer-web/customer-runtime-bridge.test.mjs \
+            apps/customer-web/customer-runtime-store.test.mjs \
+            apps/customer-web/customer-ui-boundary.test.mjs \
+            apps/customer-web/customer-closure-static.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/customer-ui-boundary.log"
+
+      - name: Explicit presentation transport guard
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            apps/customer-web/customer-shell.js
+            apps/customer-web/customer-closure.js
+            apps/customer-web/customer-closure-v2.js
+            apps/customer-web/customer-closure-v3.js
+          )
+          if grep -En '\bfetch\s*\(|firebase|firebasedatabase|firebaseio|/api/customer/' "${files[@]}"; then
+            echo 'Presentation owns transport/API/Firebase boundary' >&2
+            exit 1
+          fi
+          if grep -En 'querySelector|createElement|innerHTML' \
+            apps/customer-web/customer-runtime-adapter.js \
+            apps/customer-web/customer-runtime-store.js; then
+            echo 'Adapter/Store owns DOM boundary' >&2
+            exit 1
+          fi
+
+      - name: Prepare evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'source_sha=%s\n' "$SOURCE_SHA"
+            printf 'builder_sha=%s\nrun_id=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'legacy_runtime_regression=success\n'
+            printf 'runtime_store=success\n'
+            printf 'replaceable_ui_boundary=success\n'
+            printf 'presentation_transport_guard=success\n'
+            printf 'conclusion=success\n'
+          } > evidence/result.txt
+          cp "$RUNNER_TEMP/customer-ui-boundary.log" evidence/customer-ui-boundary.log
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-replaceable-ui-boundary-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
