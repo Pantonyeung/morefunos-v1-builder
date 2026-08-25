@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      CORE_SHA: 4b88a87952ef690bb8936cc5fa0ded909381e9c2
+      CORE_SHA: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
       CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
       SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
       PREVIEW_BRANCH: q-order-03-v2-staging
