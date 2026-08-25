@@ -64,12 +64,21 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "request source_sha=$SOURCE_SHA base_sha=${BASE_SHA:-none} branch_name=$BRANCH_NAME"
 
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          echo "v2-source-credential=present"
+
       - name: Checkout exact Morefun-v2 source
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
           ref: ${{ steps.request.outputs.source_sha }}
-          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           fetch-depth: 0
           persist-credentials: false
