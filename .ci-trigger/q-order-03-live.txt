@@ -1,0 +1,3 @@
+core_sha=31111fe6be91ce9eead5956da1b19092677afc17
+requested_at=2026-08-25T09:35:00+08:00
+mode=rules-authority-live-preview
