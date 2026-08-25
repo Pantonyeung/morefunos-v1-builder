@@ -52,7 +52,7 @@ requireAll(carrier, [
   'carrier-runtime-contracts',
   'packages/native/*.test.ts',
   'carrier-web-compat',
-  'npm --prefix apps/smt-web run test:carrier',
+  'npm --prefix apps/smt-web test',
   'carrier-static',
   'apps/smt-android/carrier-static.test.mjs',
   ':app:compileDebugJavaWithJavac',
