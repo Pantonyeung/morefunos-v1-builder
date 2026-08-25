@@ -1,0 +1,11 @@
+core_sha=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+builder_sha=6026e78ec3cf397c7a4d462d1a92446647d3ba65
+run_id=32800116029
+clean_url=https://12d982c3.morefunos-v1.pages.dev
+phase=complete
+conclusion=success
+operator_get_status=200
+operator_post_status=405
+operator_source_absent=success
+operator_compiled_route_absent=success
+operator_live_capability_absent=success
