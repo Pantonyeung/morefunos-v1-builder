@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 4b88a87952ef690bb8936cc5fa0ded909381e9c2
+      SOURCE_SHA: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
     steps:
       - uses: actions/checkout@v4
         with:
