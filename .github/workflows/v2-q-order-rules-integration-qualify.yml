@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 31111fe6be91ce9eead5956da1b19092677afc17
+      SOURCE_SHA: 3f5c3e394e158ba153f6842ee13b9cfa84e012e0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,8 +40,11 @@ jobs:
           test -f source/packages/integration-v2/canonical-order-durable-store.ts
           test -f source/packages/runtime-v2/rules-authority.ts
           test -f source/packages/runtime-v2/rules-firebase-authority.ts
+          test -f source/packages/runtime-v2/rules-firebase-authority.test.ts
           test -f source/packages/runtime-v2/admin-rules-publish-service.ts
           grep -q 'readCurrentVersioned' source/packages/runtime-v2/rules-authority.ts
+          grep -q 'encodeFirebaseCanonicalRulesSnapshotV1' source/packages/runtime-v2/rules-firebase-authority.ts
+          grep -q 'decodeFirebaseCanonicalRulesSnapshotV1' source/packages/runtime-v2/rules-firebase-authority.ts
           grep -q 'stableJsonSignatureV1' source/packages/runtime-v2/firebase-global-versioned-state-store.ts
           grep -q 'toArrayBuffer' source/packages/integration-v2/google-service-account-webcrypto.ts
 
@@ -54,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node --experimental-strip-types --test packages/runtime-v2/rules-authority.test.ts 2>&1 | tee "$RUNNER_TEMP/rules.log"
+          node --experimental-strip-types --test packages/runtime-v2/rules-authority.test.ts packages/runtime-v2/rules-firebase-authority.test.ts 2>&1 | tee "$RUNNER_TEMP/rules.log"
           node --experimental-strip-types --test packages/runtime-v2/*.test.ts 2>&1 | tee "$RUNNER_TEMP/core.log"
 
       - name: TypeScript check
@@ -74,14 +77,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p evidence builder/.ci-results
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nrepeatable_cas_publish=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
-          cp evidence/result.txt builder/.ci-results/v2-q-order-rules-integration.txt
+          mkdir -p evidence
+          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nrepeatable_cas_publish=success\nfirebase_rules_codec=success\nlegacy_rule_list_decode=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
           cp "$RUNNER_TEMP/rules.log" evidence/rules.log
           cp "$RUNNER_TEMP/core.log" evidence/core.log
           cp "$RUNNER_TEMP/pages.log" evidence/pages.log
           git -C builder config user.name morefunos-builder-bot
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git -C builder fetch origin main
+          git -C builder rebase origin/main
+          mkdir -p builder/.ci-results
+          cp evidence/result.txt builder/.ci-results/v2-q-order-rules-integration.txt
           git -C builder add .ci-results/v2-q-order-rules-integration.txt
           git -C builder commit -m "ci(result): Q-ORDER rules integration PASS $SOURCE_SHA"
           git -C builder push origin HEAD:main
