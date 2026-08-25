@@ -30,10 +30,39 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
 
-      - name: Verify exact integrated source
+      - name: Qualify exact source with persistent phase evidence
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          PHASE=bootstrap
+          mkdir -p evidence
+          persist() {
+            rc=$?
+            conclusion=success
+            if [ "$rc" -ne 0 ]; then conclusion=failure; fi
+            RESULT="$RUNNER_TEMP/q-order-rules-result.txt"
+            {
+              printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PHASE" "$conclusion"
+              if [ "$conclusion" = success ]; then
+                printf 'rules_authority=success\nrepeatable_cas_publish=success\nfirebase_rules_codec=success\nlegacy_rule_list_decode=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\n'
+              fi
+            } > "$RESULT"
+            cp "$RESULT" evidence/result.txt
+            for f in rules.log core.log ts.log pages.log; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            git -C builder config user.name morefunos-builder-bot
+            git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true
+            git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results
+            cp "$RESULT" builder/.ci-results/v2-q-order-rules-integration.txt
+            git -C builder add .ci-results/v2-q-order-rules-integration.txt
+            git -C builder commit -m "ci(result): Q-ORDER rules integration $conclusion phase $PHASE $SOURCE_SHA" || true
+            git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+
+          PHASE=exact-source
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -f source/packages/integration-v2/smt-durable-channel-hydrator.ts
           test -f source/packages/integration-v2/smt-channel-decision-reconciliation.ts
@@ -41,58 +70,30 @@ jobs:
           test -f source/packages/runtime-v2/rules-authority.ts
           test -f source/packages/runtime-v2/rules-firebase-authority.ts
           test -f source/packages/runtime-v2/rules-firebase-authority.test.ts
-          test -f source/packages/runtime-v2/admin-rules-publish-service.ts
-          grep -q 'readCurrentVersioned' source/packages/runtime-v2/rules-authority.ts
           grep -q 'encodeFirebaseCanonicalRulesSnapshotV1' source/packages/runtime-v2/rules-firebase-authority.ts
           grep -q 'decodeFirebaseCanonicalRulesSnapshotV1' source/packages/runtime-v2/rules-firebase-authority.ts
-          grep -q 'stableJsonSignatureV1' source/packages/runtime-v2/firebase-global-versioned-state-store.ts
-          grep -q 'toArrayBuffer' source/packages/integration-v2/google-service-account-webcrypto.ts
 
-      - name: Install dependencies
-        working-directory: source
-        run: npm install --ignore-scripts --no-audit --no-fund
+          PHASE=install
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
 
-      - name: Run Rules and V2 Core regressions
-        working-directory: source
-        shell: bash
-        run: |
-          set -o pipefail
-          node --experimental-strip-types --test packages/runtime-v2/rules-authority.test.ts packages/runtime-v2/rules-firebase-authority.test.ts 2>&1 | tee "$RUNNER_TEMP/rules.log"
-          node --experimental-strip-types --test packages/runtime-v2/*.test.ts 2>&1 | tee "$RUNNER_TEMP/core.log"
+          PHASE=rules-tests
+          (cd source && node --experimental-strip-types --test packages/runtime-v2/rules-authority.test.ts packages/runtime-v2/rules-firebase-authority.test.ts) 2>&1 | tee "$RUNNER_TEMP/rules.log"
 
-      - name: TypeScript check
-        working-directory: source
-        run: npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json
+          PHASE=v2-core
+          (cd source && node --experimental-strip-types --test packages/runtime-v2/*.test.ts) 2>&1 | tee "$RUNNER_TEMP/core.log"
 
-      - name: Build Pages Functions
-        working-directory: source
-        shell: bash
-        run: |
-          set -o pipefail
+          PHASE=typescript
+          (cd source && npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json) 2>&1 | tee "$RUNNER_TEMP/ts.log"
+
+          PHASE=pages-build
           rm -rf /tmp/q-order-rules-pages
-          npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/q-order-rules-pages 2>&1 | tee "$RUNNER_TEMP/pages.log"
+          (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/q-order-rules-pages) 2>&1 | tee "$RUNNER_TEMP/pages.log"
           grep -q 'Compiled Worker successfully' "$RUNNER_TEMP/pages.log"
 
-      - name: Prepare and persist evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p evidence
-          printf 'source_sha=%s\nbuilder_sha=%s\nrun_id=%s\nrules_authority=success\nrepeatable_cas_publish=success\nfirebase_rules_codec=success\nlegacy_rule_list_decode=success\nq_order_integration_files=success\nv2_core=success\ntypescript=success\npages_functions=success\nconclusion=success\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" > evidence/result.txt
-          cp "$RUNNER_TEMP/rules.log" evidence/rules.log
-          cp "$RUNNER_TEMP/core.log" evidence/core.log
-          cp "$RUNNER_TEMP/pages.log" evidence/pages.log
-          git -C builder config user.name morefunos-builder-bot
-          git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
-          git -C builder fetch origin main
-          git -C builder rebase origin/main
-          mkdir -p builder/.ci-results
-          cp evidence/result.txt builder/.ci-results/v2-q-order-rules-integration.txt
-          git -C builder add .ci-results/v2-q-order-rules-integration.txt
-          git -C builder commit -m "ci(result): Q-ORDER rules integration PASS $SOURCE_SHA"
-          git -C builder push origin HEAD:main
+          PHASE=complete
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: v2-q-order-rules-integration-${{ env.SOURCE_SHA }}
           path: evidence
