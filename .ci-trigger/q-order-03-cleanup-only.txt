@@ -1,0 +1,3 @@
+core_sha=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+clean_url=https://12d982c3.morefunos-v1.pages.dev
+requested_at=2026-08-25T10:05:00+08:00
