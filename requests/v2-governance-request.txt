@@ -1,4 +1,4 @@
-source_sha=8ed90bdc39ac054cf0d85f520a7a94fa1346e8ae
-base_sha=e8dcc94bdb39a62810b154d4c8dced083d1609ec
-branch_name=main
-request_id=B0011-FINAL-MAIN-ADMISSION-20260825T2316HKT
+source_sha=3deb0b461483e81456e5794e7731282a06edcefc
+base_sha=72915f2171d86722043ec2a7f0c208ca50adf266
+branch_name=governance/SYS/B0012-development-constitution-foundation
+request_id=B0012-CONSTITUTION-FOUNDATION-20260825T2357HKT
