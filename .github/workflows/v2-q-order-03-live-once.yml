@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      CORE_SHA: 21410e49eeab09fe4e08e02166cb477b084e684b
+      CORE_SHA: 31111fe6be91ce9eead5956da1b19092677afc17
       CUSTOMER_SHA: 30c0d178d768038f14ee62bc319039a63c30c16a
       SMT_SHA: beead70bd6e9b11bbc2770b9e7da0c5efb753438
       PREVIEW_BRANCH: q-order-03-v2-staging
@@ -43,6 +43,8 @@ jobs:
           grep -q '"FIREBASE_NAMESPACE": "morefunos-v2-staging"' core/wrangler.jsonc
           grep -q 'createCanonicalOrderDurableStoreV1' core/packages/integration-v2/canonical-order-durable-store.ts
           grep -q 'readCustomerOrderLifecycleRuntime' customer/apps/customer-web/customer-runtime-bridge.js
+          grep -q 'createFirebaseCanonicalRulesAuthorityV1' core/packages/runtime-v2/rules-firebase-authority.ts
+          grep -q 'readCurrentVersioned' core/packages/runtime-v2/rules-authority.ts
           ! grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.test.*' -E 'FIREBASE_NAMESPACE.*(p-line-staging|b-line-staging)' core/functions core/packages/integration-v2 core/wrangler.jsonc
 
       - name: Install dependencies
@@ -76,6 +78,9 @@ jobs:
           import { FirebasePublishedBusinessStateStoreV1 } from '../../../packages/runtime-v2/firebase-published-business-state-store.ts';
           import { createOperationalStateCheckpointReaderV1 } from '../../../packages/runtime-v2/operational-state-reader.ts';
           import { createOperationalStateDurableAuthorityV1 } from '../../../packages/runtime-v2/operational-state-durable-authority.ts';
+          import { createFirebaseCanonicalRulesAuthorityV1 } from '../../../packages/runtime-v2/rules-firebase-authority.ts';
+          import { AdminRulesPublishServiceV1 } from '../../../packages/runtime-v2/admin-rules-publish-service.ts';
+          import { RULES_AUTHORITY_SCHEMA_VERSION_V1 } from '../../../packages/runtime-v2/rules-authority.ts';
           import { createGoogleFirebaseBearerTokenProviderV1 } from '../../../packages/integration-v2/admin-production-edge.ts';
           import { createWebCryptoGoogleJwtClientFactoryV1 } from '../../../packages/integration-v2/google-service-account-webcrypto.ts';
           import { createDurableChannelTransportV1 } from '../../../packages/integration-v2/durable-channel-transport.ts';
@@ -90,6 +95,7 @@ jobs:
           import { modifierPriceKey } from '../../../packages/policy/business-policy.ts';
 
           const TOKEN='$TOKEN'; const BRANCH='$PREVIEW_BRANCH'; const NS='morefunos-v2-staging';
+          const QUAL_POLICY='q-order-03-preview-policy-v1'; const QUAL_RULES='q-order-03-preview-rules-v1';
           const googleJwt=createWebCryptoGoogleJwtClientFactoryV1();
           interface Env { FIREBASE_DATABASE_URL:string; FIREBASE_NAMESPACE:string; GOOGLE_SERVICE_ACCOUNT_EMAIL:string; GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:string; CF_PAGES_BRANCH?:string; }
           interface Ctx { request:Request; env:Env & Record<string,unknown>; }
@@ -102,7 +108,8 @@ jobs:
             const tokens=createGoogleFirebaseBearerTokenProviderV1({email:env.GOOGLE_SERVICE_ACCOUNT_EMAIL,privateKey:env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY},googleJwt);
             const port=new FirebaseRtdbDurabilityPort({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});
             const published=new FirebasePublishedBusinessStateStoreV1({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});
-            return{port,published};
+            const rules=createFirebaseCanonicalRulesAuthorityV1({databaseUrl:env.FIREBASE_DATABASE_URL,namespace:env.FIREBASE_NAMESPACE,tokens});
+            return{port,published,rules};
           }
 
           export async function onRequest(context:Ctx):Promise<Response>{
@@ -111,7 +118,17 @@ jobs:
             if(context.env.FIREBASE_NAMESPACE!==NS)return json({ok:false,error:'NAMESPACE_MISMATCH'},409);
             if(context.request.headers.get('authorization')!=='Bearer '+TOKEN)return json({ok:false,error:'UNAUTHORIZED'},401);
             try{
-              const {port,published}=infra(context.env); const body=await context.request.json() as Record<string,unknown>;
+              const {port,published,rules}=infra(context.env); const body=await context.request.json() as Record<string,unknown>;
+              if(body.action==='provision-rules'){
+                const service=new AdminRulesPublishServiceV1(rules); const current=await service.readCurrentVersioned();
+                if(current){
+                  if(current.snapshot.policyVersion!==QUAL_POLICY||current.snapshot.revision!==QUAL_RULES)throw new Error('Q_ORDER_03_RULES_STATE_CONFLICT');
+                  return json({ok:true,version:current.version,snapshot:current.snapshot,unchanged:true});
+                }
+                const snapshot=await service.publishSnapshot({expectedVersion:null,snapshot:{schemaVersion:RULES_AUTHORITY_SCHEMA_VERSION_V1,policyVersion:QUAL_POLICY,revision:QUAL_RULES,comboRules:[],modifierRules:[],publishedAt:new Date().toISOString()}});
+                const versioned=await service.readCurrentVersioned();
+                return json({ok:true,version:versioned?.version??null,snapshot});
+              }
               if(body.action==='set-status'){
                 const status=body.status==='open'?'open':body.status==='closed'?'closed':null; if(!status)return json({ok:false,error:'STATUS_INVALID'},400);
                 const current=await createOperationalStateCheckpointReaderV1(port).readCurrent();
@@ -124,6 +141,8 @@ jobs:
                 const state=await published.readCurrent(); if(!state)throw new Error('PUBLISHED_BUSINESS_STATE_REQUIRED');
                 const operational=await createOperationalStateCheckpointReaderV1(port).readCurrent();
                 if(operational.businessDate!==businessDate||operational.storeStatus!=='open')throw new Error('Q_ORDER_03_OPERATIONAL_NOT_OPEN');
+                const canonicalRules=await rules.requireCurrent();
+                if(canonicalRules.policyVersion!==QUAL_POLICY||canonicalRules.revision!==QUAL_RULES)throw new Error('Q_ORDER_03_RULES_REVISION_MISMATCH');
                 const productMap=new Map(); const base:any={}; const modifiers:any={}; const nodes:any={}; const reqs:any={}; const customerVis:any={}; const operationsVis:any={};
                 for(const p of state.catalog.products){
                   const tx=p.transactionData; if(!tx)continue;
@@ -132,13 +151,13 @@ jobs:
                   const node='product:'+p.id; nodes[node]=operational.productAvailability[p.id]?.soldOut===true?'soldout':'available'; reqs[p.id]=[node];
                   for(const g of tx.optionGroups)for(const o of g.options)modifiers[modifierPriceKey(p.id,g.id,o.id)]=o.priceDeltaMinor;
                 }
-                const policy={policyVersion:'published:'+state.publishSequence,menuRevision:state.catalog.version,pricingRevision:state.catalog.version,availabilityRevision:'operational:'+operational.revision,rulesRevision:state.catalog.version,currency:'HKD',pricing:{productBaseMinor:base,modifierOptionMinor:modifiers},visibility:{customer:customerVis,operations:operationsVis},availability:{nodes,productRequirements:reqs},comboRules:[],modifierRules:[]};
+                const policy={policyVersion:canonicalRules.policyVersion,menuRevision:state.catalog.version,pricingRevision:state.catalog.version,availabilityRevision:'operational:'+operational.revision,rulesRevision:canonicalRules.revision,currency:'HKD',pricing:{productBaseMinor:base,modifierOptionMinor:modifiers},visibility:{customer:customerVis,operations:operationsVis},availability:{nodes,productRequirements:reqs},comboRules:canonicalRules.comboRules,modifierRules:canonicalRules.modifierRules};
                 const runtime=createBusinessRuntime({getActivePolicy:()=>policy,getProduct:(id:string)=>productMap.get(id)??null,isStoreReady:()=>true,resolveFulfillmentPolicy:()=>({requiresPaymentBeforeProduction:true,requiredTasks:[]}),payment:createPaymentAuthority(),fulfillment:createFulfillmentAuthority(),print:createPrintAuthority(new PrintRepo() as any,new NoNativePrint() as any),durability:createDurabilityCoordinator(port),facts:createOperationalFacts()});
                 const transport=createDurableChannelTransportV1(port);
                 const hydrated=await createSmtDurableChannelHydratorV1({queue:transport,runtime}).hydrate(businessDate);
                 if(!hydrated.pending.some((x:any)=>x.submissionId===submissionId))throw new Error('Q_ORDER_03_SUBMISSION_NOT_PENDING');
                 const accepted=await createSmtChannelDecisionReconciliationV1({runtime,durable:transport,orders:createCanonicalOrderDurableStoreV1(port)}).accept({submissionId,intakeId:'intake:'+submissionId,orderId:'order:'+submissionId,idempotencyKey:'final:'+submissionId,operatorId:'q-order-03-operator',deviceId:'q-order-03-preview',serviceMode:'takeaway',at:new Date().toISOString()});
-                return json({ok:true,submissionId,orderId:accepted.order.orderId,status:accepted.durableChannel.status,totalMinor:accepted.order.totalMinor});
+                return json({ok:true,submissionId,orderId:accepted.order.orderId,status:accepted.durableChannel.status,totalMinor:accepted.order.totalMinor,rulesRevision:accepted.order.authority.rulesRevision,policyVersion:accepted.order.authority.policyVersion});
               }
               return json({ok:false,error:'ACTION_INVALID'},400);
             }catch(error){return json({ok:false,error:codeOf(error)},500);}
@@ -159,6 +178,15 @@ jobs:
           URL="$(grep -Eo 'https://[^ ]+\.pages\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1)"
           test -n "$URL"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Provision qualification Rules through canonical authority
+        env: { URL: '${{ steps.deploy.outputs.url }}' }
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat "$RUNNER_TEMP/operator-token")"
+          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/rules.json"
+          node -e "const x=require(process.env.RUNNER_TEMP+'/rules.json');if(!x.ok||x.snapshot.policyVersion!=='q-order-03-preview-policy-v1'||x.snapshot.revision!=='q-order-03-preview-rules-v1'||!Number.isInteger(x.version))process.exit(1)"
 
       - name: Open canonical staging
         env: { URL: '${{ steps.deploy.outputs.url }}' }
@@ -206,7 +234,7 @@ jobs:
           curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @"$RUNNER_TEMP/accept-request.json" "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/accepted.json"
           cat "$RUNNER_TEMP/accepted.json"
           node - <<'NODE'
-          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/accepted.json','utf8'));if(!x.ok||x.status!=='accepted'||!String(x.orderId||'').startsWith('order:q-order-03-')||x.totalMinor!==4500)process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/order-id',x.orderId);
+          const fs=require('fs');const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/accepted.json','utf8'));if(!x.ok||x.status!=='accepted'||!String(x.orderId||'').startsWith('order:q-order-03-')||x.totalMinor!==4500||x.rulesRevision!=='q-order-03-preview-rules-v1'||x.policyVersion!=='q-order-03-preview-policy-v1')process.exit(1);fs.writeFileSync(process.env.RUNNER_TEMP+'/order-id',x.orderId);
           NODE
 
       - name: Prove protected Customer accepted lifecycle from durable state
@@ -268,10 +296,10 @@ jobs:
           {
             printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
             printf 'preview_branch=%s\nlive_url=https://%s.morefunos-v1.pages.dev\n' "$PREVIEW_BRANCH" "$PREVIEW_BRANCH"
-            printf 'customer_submit=success\ncustomer_waiting=success\nwrong_token_404=success\ncanonical_accept=success\ncanonical_order_durable=success\ndurable_channel_accepted=success\ncustomer_accepted=success\ncleanup_final_closed=success\noperator_removed=success\nconclusion=success\n'
+            printf 'rules_authority_provision=success\nrules_revision=q-order-03-preview-rules-v1\ncustomer_submit=success\ncustomer_waiting=success\nwrong_token_404=success\ncanonical_accept=success\ncanonical_order_durable=success\ndurable_channel_accepted=success\ncustomer_accepted=success\ncleanup_final_closed=success\noperator_removed=success\nconclusion=success\n'
           } > builder/.ci-results/v2-q-order-03-live.txt
           cp builder/.ci-results/v2-q-order-03-live.txt evidence/result.txt
-          for f in open.json ordering.json submit-response.json waiting.json wrong.json accepted.json customer-accepted.json close.json final-ordering.json final-accepted.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/; done
+          for f in rules.json open.json ordering.json submit-response.json waiting.json wrong.json accepted.json customer-accepted.json close.json final-ordering.json final-accepted.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/; done
           git -C builder config user.name morefunos-builder-bot
           git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git -C builder add .ci-results/v2-q-order-03-live.txt
