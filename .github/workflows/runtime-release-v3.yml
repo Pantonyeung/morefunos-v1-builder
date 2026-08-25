@@ -104,16 +104,26 @@ jobs:
         with:
           node-version: '22.22.2'
 
-      - name: Pin official npm CLI
+      - name: Pin official npm CLI without global mutation
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global --silent "npm@${NPM_VERSION}"
-          test "$(npm --version)" = "$NPM_VERSION"
+          npx -y "npm@${NPM_VERSION}" --version | grep -Fx "$NPM_VERSION"
+          WRAP_DIR="$RUNNER_TEMP/npm12-bin"
+          mkdir -p "$WRAP_DIR"
+          cat > "$WRAP_DIR/npm" <<EOF
+          #!/usr/bin/env bash
+          exec npx -y npm@${NPM_VERSION} "\$@"
+          EOF
+          chmod +x "$WRAP_DIR/npm"
+          echo "$WRAP_DIR" >> "$GITHUB_PATH"
 
       - name: Mark source checkout stage
         shell: bash
-        run: echo 'source-checkout' > "$RUNNER_TEMP/runtime-v3-stage"
+        run: |
+          set -euo pipefail
+          test "$(npm --version)" = "$NPM_VERSION"
+          echo 'source-checkout' > "$RUNNER_TEMP/runtime-v3-stage"
 
       - name: Checkout exact MoreFunOS V1 source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
