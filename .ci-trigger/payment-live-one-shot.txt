@@ -1,0 +1,5 @@
+source_sha=d5988f750037148e6a10bed161a1741585d23229
+base_q_order_03=39e3ae537ee1bc6e69e81d7a12b135c44c14856c
+canonical_order_id=order:q-order-03-final-32799881467
+business_date=2026-08-25
+triggered_at=2026-08-25T10:52:00+08:00
