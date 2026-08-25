@@ -1,0 +1,65 @@
+name: V2 Print Durability Connected
+
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-trigger/print-durability-connected.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: 06539471b357395688b452b6f4ecef32e249398c
+      BASE_APPLY_ACK: 6b5674c11e03588a359c6be2dea1ea11384bb792
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: builder, persist-credentials: true }
+      - uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Qualify Print durability exact source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PHASE=exact-source; mkdir -p evidence
+          persist(){
+            rc=$?; conclusion=success; [ "$rc" -eq 0 ] || conclusion=failure
+            {
+              printf 'source_sha=%s\nbase_apply_ack=%s\nbuilder_sha=%s\nrun_id=%s\nphase=%s\nconclusion=%s\n' "$SOURCE_SHA" "$BASE_APPLY_ACK" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$PHASE" "$conclusion"
+              if [ "$conclusion" = success ]; then printf 'apply_ack_ancestry=success\nprint_authority_regression=success\ndurable_queue=success\nrestart_no_duplicate=success\nunknown_no_blind_retry=success\noutbox_ack=success\ntypescript=success\n'; fi
+            } | tee evidence/result.txt
+            git -C builder config user.name morefunos-builder-bot; git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
+            git -C builder fetch origin main || true; git -C builder rebase origin/main || true
+            mkdir -p builder/.ci-results; cp evidence/result.txt builder/.ci-results/v2-print-durability-connected.txt
+            git -C builder add .ci-results/v2-print-durability-connected.txt; git -C builder commit -m "ci(result): Print durability $conclusion $SOURCE_SHA" || true; git -C builder push origin HEAD:main || true
+            exit "$rc"
+          }
+          trap persist EXIT
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source merge-base --is-ancestor "$BASE_APPLY_ACK" "$SOURCE_SHA"
+          PHASE=install
+          (cd source && npm install --ignore-scripts --no-audit --no-fund)
+          PHASE=authority-tests
+          (cd source && node --test --experimental-strip-types packages/printing/print-authority.test.ts packages/printing/print-authority-order-query.test.ts) | tee evidence/authority-tests.log
+          PHASE=durable-tests
+          (cd source && node --test --experimental-strip-types packages/printing/durable-print-coordinator.test.ts packages/durability/durability.test.ts) | tee evidence/durable-tests.log
+          PHASE=typescript
+          (cd source && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22 && ./node_modules/.bin/tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck packages/printing/print-authority.ts packages/printing/durable-print-coordinator.ts packages/printing/durable-print-coordinator.test.ts packages/durability/durability.ts) | tee evidence/typescript.log
+          PHASE=complete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-print-durability-connected-${{ env.SOURCE_SHA }}
+          path: evidence
+          retention-days: 30
