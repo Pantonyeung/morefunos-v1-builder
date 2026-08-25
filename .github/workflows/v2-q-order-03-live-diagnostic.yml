@@ -63,9 +63,10 @@ jobs:
             {
               printf 'core_sha=%s\ncustomer_sha=%s\nsmt_sha=%s\nbuilder_sha=%s\nrun_id=%s\n' "$CORE_SHA" "$CUSTOMER_SHA" "$SMT_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
               printf 'phase=%s\nconclusion=%s\n' "$PHASE" "$conclusion"
+              if [ -f "$RUNNER_TEMP/rules-status" ]; then printf 'rules_http_status=%s\n' "$(cat "$RUNNER_TEMP/rules-status")"; fi
             } > "$RESULT"
             cp "$RESULT" evidence/result.txt
-            for f in deploy.log rules.json ordering.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
+            for f in deploy.log rules.json rules-status ordering.json; do test -f "$RUNNER_TEMP/$f" && cp "$RUNNER_TEMP/$f" evidence/ || true; done
             git -C builder config user.name morefunos-builder-bot
             git -C builder config user.email '107616897+Pantonyeung@users.noreply.github.com'
             git -C builder fetch origin main || true
@@ -134,7 +135,10 @@ jobs:
           test -n "$URL"
 
           PHASE=rules-provision
-          curl --fail --silent --show-error -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03" > "$RUNNER_TEMP/rules.json"
+          CODE="$(curl --silent --show-error -o "$RUNNER_TEMP/rules.json" -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data '{"action":"provision-rules"}' "$URL/api/operator/q-order-03")"
+          printf '%s' "$CODE" > "$RUNNER_TEMP/rules-status"
+          cat "$RUNNER_TEMP/rules.json"
+          test "$CODE" = 200
           node -e "const x=require(process.env.RUNNER_TEMP+'/rules.json');if(!x.ok||x.snapshot.policyVersion!=='q-order-03-preview-policy-v1'||x.snapshot.revision!=='q-order-03-preview-rules-v1'||!Number.isInteger(x.version))process.exit(1)"
 
           PHASE=public-read
