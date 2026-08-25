@@ -31,6 +31,7 @@ jobs:
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - name: Run Payment live qualification against canonical accepted Order
