@@ -1,0 +1,7 @@
+core_sha=31111fe6be91ce9eead5956da1b19092677afc17
+customer_sha=31100dae325f43d5ceaeddd53a270b85aef75be2
+smt_sha=beead70bd6e9b11bbc2770b9e7da0c5efb753438
+builder_sha=be360aea6bd634354cb5813d5274895b433794c2
+run_id=32798314261
+phase=rules-provision
+conclusion=failure
