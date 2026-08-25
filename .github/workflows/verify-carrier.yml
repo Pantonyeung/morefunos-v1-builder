@@ -124,7 +124,7 @@ jobs:
 
           run_stage "carrier-smt-locked-install" npm --prefix apps/smt-web ci --no-audit --no-fund || exit 1
           run_stage "carrier-runtime-contracts" node --experimental-strip-types --test packages/native/*.test.ts packages/printing/*.test.ts packages/durability/*.test.ts || exit 1
-          run_stage "carrier-web-compat" npm --prefix apps/smt-web run test:carrier || exit 1
+          run_stage "carrier-web-compat" npm --prefix apps/smt-web test || exit 1
           run_stage "carrier-static" node --test apps/smt-android/carrier-static.test.mjs || exit 1
           run_stage "carrier-typecheck" tsc --noEmit -p tsconfig.json || exit 1
           run_stage "carrier-smt-build" npm --prefix apps/smt-web run build || exit 1
