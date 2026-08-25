@@ -1,0 +1,9 @@
+source_sha=6b5674c11e03588a359c6be2dea1ea11384bb792
+base_payment=d5988f750037148e6a10bed161a1741585d23229
+builder_sha=f6b206a9ced0feb0dbfd0782c4b0e9ec08291d54
+run_id=32805628340
+preview_branch=apply-ack-v2-staging
+phase=exercise
+conclusion=failure
+business_date=2026-08-24
+live_url=https://5df863e3.morefunos-v1.pages.dev
