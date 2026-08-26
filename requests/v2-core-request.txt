@@ -1,0 +1,4 @@
+source_sha=cbd36ce979964443b40774c761e975921234776c
+base_sha=1945313efdd63370ce2c8d6649f25e57070edac5
+branch_name=work/CORE/B0017-core-catalog-foundation
+request_id=B0017-CORE-CATALOG-TDD-RED-001-20260826
