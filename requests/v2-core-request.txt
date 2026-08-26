@@ -1,4 +1,4 @@
-source_sha=ab7edff5b665ec2682e0c7948cd48333992f35a6
-base_sha=165d9a3f51064b05d12981b67680593d7172b1ee
+source_sha=e0a9fa2fb807724bb9540e75807abfb2f1f43ec5
+base_sha=ab7edff5b665ec2682e0c7948cd48333992f35a6
 branch_name=governance/CORE/B0020-core-availability-contract-completion
-request_id=B0020-CORE-AVAILABILITY-CONTRACT-CANDIDATE-001-20260826
+request_id=B0020-CORE-AVAILABILITY-CONTRACT-CANDIDATE-002-20260826
