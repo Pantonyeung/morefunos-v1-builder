@@ -1,0 +1,102 @@
+name: Repair SMT Clean License Lockfile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-smt-clean-license-lockfile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 6fbb81c14ed980c02857881604663adce93803da
+    steps:
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Checkout exact private V2 source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git -C source status --porcelain)"
+
+      - name: Canonicalize SMT Clean lockfile and prove npm ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source/apps/smt-clean
+          rm -rf node_modules
+          rm -f package-lock.json
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          test -s package-lock.json
+          node -e "JSON.parse(require('node:fs').readFileSync('package-lock.json','utf8'))"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ls --all --json > dependency-tree.json || true
+          npm run build
+          test -s dist/third-party-licenses.json
+          rm -rf node_modules
+          cd ../..
+          test "$(git diff --name-only)" = "apps/smt-clean/package-lock.json"
+          test -z "$(git ls-files --others --exclude-standard | grep -v '^apps/smt-clean/dependency-tree.json$' | grep -v '^apps/smt-clean/dist/' || true)"
+
+      - name: Upload reviewed evidence candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: smt-clean-lockfile-review-${{ env.SOURCE_SHA }}
+          path: |
+            source/apps/smt-clean/package-lock.json
+            source/apps/smt-clean/dependency-tree.json
+            source/apps/smt-clean/dist/third-party-licenses.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit only canonical lockfile and push repair branch
+        shell: bash
+        env:
+          V1_WRITE_TOKEN: ${{ secrets.V1_B2_LOCKFILE_WRITE_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$V1_WRITE_TOKEN"
+          cd source
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          REPAIR_BRANCH="builder/smt-clean-lockfile-${SHORT_SHA}"
+          git config user.name 'MoreFunOS V1 Builder'
+          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git add -- apps/smt-clean/package-lock.json
+          test "$(git diff --cached --name-only)" = "apps/smt-clean/package-lock.json"
+          git commit -m 'build(smt-clean): canonicalize dependency lockfile'
+          ASKPASS="$RUNNER_TEMP/v1-smt-clean-lock-write-askpass.sh"
+          cat > "$ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "x-access-token" ;;
+            *Password*) printf '%s\n' "$V1_WRITE_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS"
+          export GIT_TERMINAL_PROMPT=0
+          git push https://github.com/Pantonyeung/morefunos-v1.git "HEAD:refs/heads/${REPAIR_BRANCH}"
+          rm -f "$ASKPASS"
+          echo "repair_branch=$REPAIR_BRANCH"
+          echo "new_sha=$(git rev-parse HEAD)"
