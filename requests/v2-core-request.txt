@@ -1,4 +1,4 @@
-source_sha=9b47754cd88f14c9bec62c9c8d030ab7f2468047
+source_sha=6ab3bae10b7800b438b2256373303f0b60777fe0
 base_sha=e09c509a9bc0f750d2e2372810f8d369fd4b3161
 branch_name=governance/CORE/B0027-businessday-cash-contract-completion
-request_id=B0027-CORE-BUSINESSDAY-CASH-CONTRACT-20260827
+request_id=B0027-CORE-BUSINESSDAY-CASH-CONTRACT-REGISTRY-20260827
