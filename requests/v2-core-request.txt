@@ -1,4 +1,4 @@
-source_sha=559b1cc1379f1310c72853451b63dc3649dacb21
-base_sha=ed0322013c66d11eb9feecbcbdd2b88cda8a81ef
-branch_name=main
-request_id=B0024-CORE-ORDER-FOUNDATION-ACTIVE-SEAL-20260826
+source_sha=925754ac37be2bf38f9171ac2ce69b4cbd7bd06f
+base_sha=559b1cc1379f1310c72853451b63dc3649dacb21
+branch_name=work/CORE/B0024-core-order-foundation
+request_id=B0024-CORE-ORDER-VALIDATION-SLICE-20260826
