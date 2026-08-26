@@ -1,4 +1,4 @@
-source_sha=64603c52a3f0d7f8b612cfe2bc780b0bb51e0554
-base_sha=47fc7fcf7a583361edb6e5bc2371cd9888b977ab
+source_sha=ed0322013c66d11eb9feecbcbdd2b88cda8a81ef
+base_sha=64603c52a3f0d7f8b612cfe2bc780b0bb51e0554
 branch_name=main
-request_id=B0024-CORE-ORDER-FOUNDATION-CLEAN-BOOTSTRAP-V2-20260826
+request_id=B0024-CORE-ORDER-FOUNDATION-OPEN-SEAL-20260826
