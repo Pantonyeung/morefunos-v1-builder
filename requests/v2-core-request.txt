@@ -1,4 +1,4 @@
-source_sha=66f2246be6d1235e1aa609e13da83451bd7a7ec9
+source_sha=9c4c095834d3040077da24a08094d3aae5d40b68
 base_sha=c04acd955d2be883608eba08ee28be557e69a4b8
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-GREEN-002-FIELD-RULES-20260826
+request_id=B0017-CORE-CATALOG-TDD-GREEN-002-ROOM-SYNC-20260826
