@@ -1,4 +1,4 @@
-source_sha=8c7a5e403da0aa7f92152bb902956103c0500969
-base_sha=80c4894986b78b7409b584add5c10f508ef79ebc
-branch_name=work/CORE/B0019-core-pricing-foundation
-request_id=B0019-CORE-PRICING-CLOSURE-20260826
+source_sha=206fa3e0212f5dcc54a97e5310162f6f85021270
+base_sha=8c7a5e403da0aa7f92152bb902956103c0500969
+branch_name=main
+request_id=B0019-CORE-PRICING-MAIN-SEAL-20260826
