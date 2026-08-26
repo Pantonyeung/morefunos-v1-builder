@@ -1,4 +1,4 @@
-source_sha=be86a9119e5c6a79153fed4f4ecc6628584dc95d
+source_sha=2191c4bddcd12ce2db2bca17547faecc2d7a9c3c
 base_sha=e09c509a9bc0f750d2e2372810f8d369fd4b3161
 branch_name=governance/CORE/B0027-businessday-cash-contract-completion
-request_id=B0027-CORE-BUSINESSDAY-CASH-CONTRACT-FINAL-REGISTERED-20260827
+request_id=B0027-CORE-BUSINESSDAY-CASH-ADMISSION-CANDIDATE-20260827
