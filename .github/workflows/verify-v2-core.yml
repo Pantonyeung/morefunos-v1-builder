@@ -18,6 +18,10 @@ on:
   push:
     paths:
       - 'requests/v2-core-request.txt'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'requests/v2-core-request.txt'
 
 permissions:
   contents: read
