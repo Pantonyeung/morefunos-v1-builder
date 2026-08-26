@@ -1,4 +1,4 @@
-source_sha=042df83ff9b0c4e49cd736dd9daeb4dafc03729a
-base_sha=07eed739fac2def1e60de39612e4a824d14bf845
+source_sha=b5c7f44c1a3c24f2b3f28fcf589673a385e0f0ab
+base_sha=042df83ff9b0c4e49cd736dd9daeb4dafc03729a
 branch_name=main
-request_id=B0018-CORE-PRICING-MAIN-HOUSEKEEPING-SEAL-20260826
+request_id=B0019-CORE-PRICING-FOUNDATION-BOOTSTRAP-20260826
