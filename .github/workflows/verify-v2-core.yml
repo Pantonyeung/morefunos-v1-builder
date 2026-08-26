@@ -33,6 +33,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Resolve exact request
         id: request
         shell: bash
