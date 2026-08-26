@@ -1,4 +1,4 @@
-source_sha=6891ebc999cef3ed51e271d3eda5a317ba1ad6b4
-base_sha=1b3e94e12c3e5ea742e7e484ac1243c2878882f7
-branch_name=governance/CORE/B0023-core-order-contract-completion
-request_id=B0023-CORE-ORDER-CONTRACT-CLOSURE-20260826
+source_sha=47fc7fcf7a583361edb6e5bc2371cd9888b977ab
+base_sha=6891ebc999cef3ed51e271d3eda5a317ba1ad6b4
+branch_name=main
+request_id=B0023-CORE-ORDER-CONTRACT-CANONICAL-MAIN-SEAL-20260826
