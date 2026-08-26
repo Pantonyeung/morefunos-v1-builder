@@ -1,4 +1,4 @@
-source_sha=f6841522e2bc62c7b4e3023081f86c16fe27780a
-base_sha=4d81f8654a084a43d15d2ebe12cbb7cac8f97d5e
-branch_name=governance/SYS/B0028-post-seal-closure-reconciliation
-request_id=B0028-SYS-POST-SEAL-CLOSURE-HARDENING-20260827
+source_sha=581f18c1bdf0b7debcb8ed30f54e85bd2a9ae0c3
+base_sha=edbf5d68b6de51a9dd2c8a2c85448abf5dae8ef3
+branch_name=main
+request_id=B0028-SYS-TERMINAL-SEAL-20260827
