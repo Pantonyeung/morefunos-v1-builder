@@ -12,20 +12,27 @@ permissions:
 
 jobs:
   collect:
-    runs-on: ubuntu-latest
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout exact MoreFunOS V2 source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: 155816bc01516339057df3c45b368735d911e073
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
+          persist-credentials: false
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
+
+      - name: Verify exact source identity
+        working-directory: source
+        run: test "$(git rev-parse HEAD)" = "155816bc01516339057df3c45b368735d911e073"
 
       - name: Generate deterministic npm lockfile
         working-directory: source/apps/smt-clean
