@@ -1,4 +1,4 @@
-source_sha=78ada1b76df5673c510a3d1296fbd2d9770d364b
+source_sha=51162e9d678460d436de47838daacdd0019860b5
 base_sha=06fab9e57ade81b3d9d75562aae576fd4d7d27e0
 branch_name=governance/CORE/B0018-core-pricing-contract-completion
-request_id=B0018-CORE-PRICING-RULESET-CANDIDATE-20260826
+request_id=B0018-CORE-PRICING-FINAL-LINKAGE-CANDIDATE-20260826
