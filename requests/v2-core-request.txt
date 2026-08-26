@@ -1,4 +1,4 @@
-source_sha=5caa3b3b832213def47aa8fbdeb024aaa1c5c9da
-base_sha=a4dcb2a276ca9747aee17874aa5f2f3b8ff9a14a
+source_sha=36386f2053d7cbfed31cf44fb844356f39b9e1e3
+base_sha=5caa3b3b832213def47aa8fbdeb024aaa1c5c9da
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-GREEN-010-IDEMPOTENCY-20260826
+request_id=B0017-CORE-CATALOG-TDD-RED-011-COMMAND-HANDLER-20260826
