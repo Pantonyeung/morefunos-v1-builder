@@ -1,4 +1,4 @@
-source_sha=36461f37f5ddd4ad23c0a5d2c4e177287a9825ed
-base_sha=c1c8a23cfab0956a26a1d52841fe09f73683c9ae
+source_sha=56838d1bcf0fec0fb6f47b7c90951eca8d6fc6ef
+base_sha=36461f37f5ddd4ad23c0a5d2c4e177287a9825ed
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-GREEN-005-OPTION-GROUP-20260826
+request_id=B0017-CORE-CATALOG-TDD-RED-006-PRODUCT-OPTION-20260826
