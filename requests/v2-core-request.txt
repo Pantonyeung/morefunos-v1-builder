@@ -1,4 +1,4 @@
-source_sha=e832d6e3f4671a0b02ac27ac2897fb355f8f7b15
+source_sha=a9c2032a45bbd90743bc8df5960b2e49b526cee1
 base_sha=ac8f3c8539429f0685ee17eaaf36a286cf6c996a
 branch_name=work/CORE/B0022-core-availability-foundation
-request_id=B0022-CORE-AVAILABILITY-TDD-GREEN-007-PAUSED-RESUME-GUARD-20260826
+request_id=B0022-CORE-AVAILABILITY-CLOSURE-20260826
