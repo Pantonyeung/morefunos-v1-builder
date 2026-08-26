@@ -1,4 +1,4 @@
-source_sha=cbd36ce979964443b40774c761e975921234776c
+source_sha=04eda2a2a37ebe8f3f53961ed232aa1f5cef076f
 base_sha=1945313efdd63370ce2c8d6649f25e57070edac5
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-RED-001-20260826
+request_id=B0017-CORE-CATALOG-TDD-ASSERTION-RED-001-20260826
