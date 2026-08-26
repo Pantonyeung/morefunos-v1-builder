@@ -1,4 +1,4 @@
-source_sha=80c4894986b78b7409b584add5c10f508ef79ebc
-base_sha=b5c7f44c1a3c24f2b3f28fcf589673a385e0f0ab
-branch_name=main
-request_id=B0019-CORE-PRICING-FOUNDATION-OPEN-STATE-20260826
+source_sha=e07b23be4e1026f7ac2aaf740fbdba3ef693463e
+base_sha=80c4894986b78b7409b584add5c10f508ef79ebc
+branch_name=work/CORE/B0019-core-pricing-foundation
+request_id=B0019-CORE-PRICING-TDD-RED-001-MONEY-PROFILE-20260826
