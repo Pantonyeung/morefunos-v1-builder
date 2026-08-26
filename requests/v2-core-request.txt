@@ -1,4 +1,4 @@
-source_sha=1cb11c8297494cf4d6e4e4fd19744897585717ea
-base_sha=ebb0f1638a26741afda628d8248cd499d030e6cd
-branch_name=main
-request_id=B0026-SYS-B0025-RECONCILIATION-MAIN-SEAL-20260827
+source_sha=9b47754cd88f14c9bec62c9c8d030ab7f2468047
+base_sha=e09c509a9bc0f750d2e2372810f8d369fd4b3161
+branch_name=governance/CORE/B0027-businessday-cash-contract-completion
+request_id=B0027-CORE-BUSINESSDAY-CASH-CONTRACT-20260827
