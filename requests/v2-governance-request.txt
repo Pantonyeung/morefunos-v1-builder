@@ -1,4 +1,4 @@
-source_sha=3b2f2638eab80b1c9ef40bcfb7314f530c645ccc
+source_sha=d4fb728fc0fd682944b4cd4b309da339ffe2913a
 base_sha=6b99ee56b9c6abb31fb48a4d5dda4e411f6007c4
-branch_name=main
-request_id=B0016-PHASE3-CORE-CATALOG-ACTIVATION-20260826
+branch_name=governance/SYS/B0016-phase3-core-catalog-activation
+request_id=B0016-PHASE3-CORE-CATALOG-REVERIFY-AFTER-KEETA-INTENT-20260826
