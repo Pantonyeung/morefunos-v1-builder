@@ -1,4 +1,4 @@
-source_sha=1b3e94e12c3e5ea742e7e484ac1243c2878882f7
-base_sha=20cf361d27e9e816cee48c9a2f4024bdf5009a0d
-branch_name=main
-request_id=B0023-CORE-ORDER-CONTRACT-OPEN-SEAL-20260826
+source_sha=2b7d1ac682e467715182430b1c829dcd84d2b282
+base_sha=1b3e94e12c3e5ea742e7e484ac1243c2878882f7
+branch_name=governance/CORE/B0023-core-order-contract-completion
+request_id=B0023-CORE-ORDER-CONTRACT-OWNER-DECISIONS-20260826
