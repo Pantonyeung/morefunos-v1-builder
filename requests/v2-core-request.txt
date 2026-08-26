@@ -1,4 +1,4 @@
-source_sha=6daf461a2ce32c7fb4516413ffc73d2d932a1a27
-base_sha=486b5919a4146cc4614545b57cabfa20b882f6d6
+source_sha=c7854a5ee2d1128dac8f9df2c9af692ed13b1291
+base_sha=6daf461a2ce32c7fb4516413ffc73d2d932a1a27
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-GREEN-018-CATEGORY-LOCAL-REORDER-20260826
+request_id=B0017-CORE-CATALOG-CLOSURE-CANDIDATE-20260826
