@@ -1,4 +1,4 @@
-source_sha=de9c3ae7e92faed102689437f971da684c850318
-base_sha=4ff3f45bad86e384d84bff9874605a47b6b664fe
+source_sha=d3c3ade94edcdbcae91787dad25d6a9a5fd04261
+base_sha=de9c3ae7e92faed102689437f971da684c850318
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-RED-012-AUTHORIZATION-SEAM-20260826
+request_id=B0017-CORE-CATALOG-TDD-GREEN-012-AUTHORIZATION-SEAM-20260826
