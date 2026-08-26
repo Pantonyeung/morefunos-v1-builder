@@ -1,4 +1,4 @@
-source_sha=fa2f4aea5a14696b5bc266256178aa27c51e4c9f
+source_sha=d0dfd1c323d73ac81c521df1c76e587e2f1ceab9
 base_sha=328c28d827f8a70bf084995cbb099fd03f391de5
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-RED-007-EXPECTED-REVISION-20260826
+request_id=B0017-CORE-CATALOG-TDD-GREEN-007-EXPECTED-REVISION-20260826
