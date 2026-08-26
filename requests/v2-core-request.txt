@@ -1,4 +1,4 @@
-source_sha=06b4dc7b79f67e8012a9e283f890017f2e9fe876
-base_sha=3e66aec95852114fcc60fd81a0a8be08975682db
-branch_name=main
-request_id=B0024-CORE-ORDER-MAIN-SEAL-20260826
+source_sha=ca57c68af16564136af34a53d58b515815669896
+base_sha=79e1b1d4cf02af4fe192738d20e045f388d5fdf2
+branch_name=governance/CORE/B0025-core-payment-contract-completion
+request_id=B0025-CORE-PAYMENT-CONTRACT-CANDIDATE-20260826
