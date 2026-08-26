@@ -1,4 +1,4 @@
-source_sha=47fc7fcf7a583361edb6e5bc2371cd9888b977ab
-base_sha=6891ebc999cef3ed51e271d3eda5a317ba1ad6b4
+source_sha=2048d6c5b9fce9ff6f6fcde21532e5e6d64b1b75
+base_sha=47fc7fcf7a583361edb6e5bc2371cd9888b977ab
 branch_name=main
-request_id=B0023-CORE-ORDER-CONTRACT-CANONICAL-MAIN-SEAL-20260826
+request_id=B0024-CORE-ORDER-FOUNDATION-BOOTSTRAP-20260826
