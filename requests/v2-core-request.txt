@@ -1,4 +1,4 @@
-source_sha=5c3088b66d88da40dbfcade5b1def17f944b8358
-base_sha=3780a6af98d26e7e5be7df2c361c02b9db4af9ca
+source_sha=8c1075de54db79c06456d2130e034347f0f88539
+base_sha=5c3088b66d88da40dbfcade5b1def17f944b8358
 branch_name=main
-request_id=B0022-CORE-AVAILABILITY-BOOTSTRAP-20260826
+request_id=B0022-CORE-AVAILABILITY-OPEN-STATE-20260826
