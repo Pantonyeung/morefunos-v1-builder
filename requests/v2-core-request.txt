@@ -1,4 +1,4 @@
-source_sha=2bb8c9f89913663fcc70c22c371af81a4d3b2b19
-base_sha=462a9c15a7ce1e41859032fb6b61b3c2dbced2a2
+source_sha=06fab9e57ade81b3d9d75562aae576fd4d7d27e0
+base_sha=2bb8c9f89913663fcc70c22c371af81a4d3b2b19
 branch_name=main
-request_id=B0018-CORE-PRICING-CONTRACT-BOOTSTRAP-SEAL-20260826
+request_id=B0018-CORE-PRICING-OPEN-STATE-SEAL-20260826
