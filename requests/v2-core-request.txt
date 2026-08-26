@@ -1,4 +1,4 @@
-source_sha=36386f2053d7cbfed31cf44fb844356f39b9e1e3
+source_sha=4ff3f45bad86e384d84bff9874605a47b6b664fe
 base_sha=5caa3b3b832213def47aa8fbdeb024aaa1c5c9da
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-RED-011-COMMAND-HANDLER-20260826
+request_id=B0017-CORE-CATALOG-TDD-GREEN-011-COMMAND-HANDLER-20260826
