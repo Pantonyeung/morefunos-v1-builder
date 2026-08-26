@@ -1,4 +1,4 @@
-source_sha=92eadb753c84e4a03bbfe529ee300d7b12ffd439
+source_sha=5c5dd3f9d1d086bb49a0e4dd43d56ce6fcf8dcc9
 base_sha=8c1075de54db79c06456d2130e034347f0f88539
 branch_name=work/CORE/B0022-core-availability-foundation
-request_id=B0022-CORE-AVAILABILITY-TDD-RED-001-RECORD-20260826
+request_id=B0022-CORE-AVAILABILITY-TDD-GREEN-001-RECORD-20260826
