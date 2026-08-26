@@ -1,4 +1,4 @@
-source_sha=a9c2032a45bbd90743bc8df5960b2e49b526cee1
-base_sha=ac8f3c8539429f0685ee17eaaf36a286cf6c996a
-branch_name=work/CORE/B0022-core-availability-foundation
-request_id=B0022-CORE-AVAILABILITY-CLOSURE-20260826
+source_sha=2e07e5f33205ab234d3308678533a33ab2af4ace
+base_sha=a9c2032a45bbd90743bc8df5960b2e49b526cee1
+branch_name=main
+request_id=B0022-CORE-AVAILABILITY-CANONICAL-MAIN-SEAL-20260826
