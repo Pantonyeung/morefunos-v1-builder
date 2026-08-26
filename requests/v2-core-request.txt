@@ -1,4 +1,4 @@
-source_sha=61c1ff56e9d58c68311bf23c531ac5e1b60061b0
-base_sha=2191c4bddcd12ce2db2bca17547faecc2d7a9c3c
-branch_name=main
-request_id=B0027-CORE-BUSINESSDAY-CASH-MAIN-SEAL-20260827
+source_sha=f6841522e2bc62c7b4e3023081f86c16fe27780a
+base_sha=4d81f8654a084a43d15d2ebe12cbb7cac8f97d5e
+branch_name=governance/SYS/B0028-post-seal-closure-reconciliation
+request_id=B0028-SYS-POST-SEAL-CLOSURE-HARDENING-20260827
