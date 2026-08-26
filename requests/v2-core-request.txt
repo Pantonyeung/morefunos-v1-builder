@@ -1,4 +1,4 @@
-source_sha=849d1f4596445c0862ec36d6d6bc342a4bbef259
-base_sha=e0a9fa2fb807724bb9540e75807abfb2f1f43ec5
-branch_name=governance/CORE/B0020-core-availability-contract-completion
-request_id=B0020-CORE-AVAILABILITY-CLOSURE-20260826
+source_sha=3780a6af98d26e7e5be7df2c361c02b9db4af9ca
+base_sha=40fb9bb2db7c4b92202c53bef7e209d42404519d
+branch_name=main
+request_id=B0021-B0020-RECONCILED-MAIN-SEAL-20260826
