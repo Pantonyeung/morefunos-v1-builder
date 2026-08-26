@@ -103,7 +103,18 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          node --test packages/catalog/*.test.ts | tee "$RUNNER_TEMP/v2-core-tests.log"
+          node --test packages/catalog/*.test.ts | tee "$RUNNER_TEMP/v2-core-catalog-tests.log"
+
+      - name: Core Pricing tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/pricing/*.test.ts' > /dev/null; then
+            node --test packages/pricing/*.test.ts | tee "$RUNNER_TEMP/v2-core-pricing-tests.log"
+          else
+            echo 'no pricing tests present' | tee "$RUNNER_TEMP/v2-core-pricing-tests.log"
+          fi
 
       - name: TypeScript static check
         shell: bash
@@ -154,7 +165,8 @@ jobs:
           name: v2-core-evidence-${{ steps.request.outputs.source_sha }}
           path: |
             ${{ runner.temp }}/v2-core-evidence.txt
-            ${{ runner.temp }}/v2-core-tests.log
+            ${{ runner.temp }}/v2-core-catalog-tests.log
+            ${{ runner.temp }}/v2-core-pricing-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
