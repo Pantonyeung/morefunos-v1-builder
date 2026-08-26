@@ -1,4 +1,4 @@
-source_sha=e07b23be4e1026f7ac2aaf740fbdba3ef693463e
+source_sha=5b1761b24d896e9d14cc583c2fad1f51f65aecf3
 base_sha=80c4894986b78b7409b584add5c10f508ef79ebc
 branch_name=work/CORE/B0019-core-pricing-foundation
-request_id=B0019-CORE-PRICING-TDD-RED-001-MONEY-PROFILE-20260826
+request_id=B0019-CORE-PRICING-TDD-GREEN-001-MONEY-PROFILE-20260826
