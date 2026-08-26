@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           cd source/apps/smt-clean
           rm -rf node_modules
-          rm -f package-lock.json
+          rm -f package-lock.json dependency-tree.json
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           test -s package-lock.json
           node -e "JSON.parse(require('node:fs').readFileSync('package-lock.json','utf8'))"
@@ -55,8 +55,9 @@ jobs:
           test -s dist/third-party-licenses.json
           rm -rf node_modules
           cd ../..
-          test "$(git diff --name-only)" = "apps/smt-clean/package-lock.json"
-          test -z "$(git ls-files --others --exclude-standard | grep -v '^apps/smt-clean/dependency-tree.json$' | grep -v '^apps/smt-clean/dist/' || true)"
+          test -z "$(git diff --name-only)"
+          UNTRACKED="$(git ls-files --others --exclude-standard | grep -v '^apps/smt-clean/dependency-tree.json$' | grep -v '^apps/smt-clean/dist/' || true)"
+          test "$UNTRACKED" = "apps/smt-clean/package-lock.json"
 
       - name: Upload reviewed evidence candidate
         uses: actions/upload-artifact@v4
