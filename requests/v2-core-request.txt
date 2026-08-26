@@ -1,4 +1,4 @@
-source_sha=a4dcb2a276ca9747aee17874aa5f2f3b8ff9a14a
-base_sha=3936617fb6659ffffcad55700e8655722eb7851a
+source_sha=a3a02a77883581d48dfa0e42e4eb909b944773e0
+base_sha=a4dcb2a276ca9747aee17874aa5f2f3b8ff9a14a
 branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-TDD-GREEN-009-CATEGORY-HIERARCHY-20260826
+request_id=B0017-CORE-CATALOG-TDD-RED-010-IDEMPOTENCY-20260826
