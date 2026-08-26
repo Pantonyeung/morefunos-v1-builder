@@ -1,4 +1,4 @@
-source_sha=1686ae1148a18e0858ea4abb7178071cc2afe83f
-base_sha=c521ac69149aebfb09fdaf30520565906cc58f5e
+source_sha=41eeef6c0270fae8c931cf53b05aeb797ddc0cd1
+base_sha=1686ae1148a18e0858ea4abb7178071cc2afe83f
 branch_name=work/CORE/B0024-core-order-foundation
-request_id=B0024-CORE-ORDER-EXPECTED-REVISION-20260826
+request_id=B0024-CORE-ORDER-COMPLETION-20260826
