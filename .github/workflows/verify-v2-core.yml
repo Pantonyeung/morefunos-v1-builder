@@ -116,6 +116,17 @@ jobs:
             echo 'no pricing tests present' | tee "$RUNNER_TEMP/v2-core-pricing-tests.log"
           fi
 
+      - name: Core Availability tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/availability/*.test.ts' > /dev/null; then
+            node --test packages/availability/*.test.ts | tee "$RUNNER_TEMP/v2-core-availability-tests.log"
+          else
+            echo 'no availability tests present' | tee "$RUNNER_TEMP/v2-core-availability-tests.log"
+          fi
+
       - name: TypeScript static check
         shell: bash
         run: |
@@ -167,6 +178,7 @@ jobs:
             ${{ runner.temp }}/v2-core-evidence.txt
             ${{ runner.temp }}/v2-core-catalog-tests.log
             ${{ runner.temp }}/v2-core-pricing-tests.log
+            ${{ runner.temp }}/v2-core-availability-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
