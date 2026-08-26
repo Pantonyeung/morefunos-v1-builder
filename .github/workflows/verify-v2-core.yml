@@ -143,6 +143,17 @@ jobs:
             exit 1
           fi
 
+      - name: Core BusinessDay Cash tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/business-day-cash/*.test.ts' > /dev/null; then
+            node --test packages/business-day-cash/*.test.ts | tee "$RUNNER_TEMP/v2-core-business-day-cash-tests.log"
+          else
+            echo 'no business-day-cash tests present' | tee "$RUNNER_TEMP/v2-core-business-day-cash-tests.log"
+          fi
+
       - name: TypeScript static check
         shell: bash
         run: |
@@ -196,6 +207,7 @@ jobs:
             ${{ runner.temp }}/v2-core-pricing-tests.log
             ${{ runner.temp }}/v2-core-availability-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
+            ${{ runner.temp }}/v2-core-business-day-cash-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
