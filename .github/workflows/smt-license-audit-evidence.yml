@@ -1,0 +1,59 @@
+name: SMT License Audit Evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/smt-license-audit-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact MoreFunOS V2 source
+        uses: actions/checkout@v4
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: 155816bc01516339057df3c45b368735d911e073
+          path: source
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Generate deterministic npm lockfile
+        working-directory: source/apps/smt-clean
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install exact resolved dependency tree
+        working-directory: source/apps/smt-clean
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Capture full dependency tree
+        working-directory: source/apps/smt-clean
+        run: npm ls --all --json > dependency-tree.json || true
+
+      - name: Build and emit bundled license metadata
+        working-directory: source/apps/smt-clean
+        run: npm run build
+
+      - name: Assert license metadata exists
+        working-directory: source/apps/smt-clean
+        run: test -s dist/third-party-licenses.json
+
+      - name: Upload license audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: smt-license-audit-evidence-155816bc
+          path: |
+            source/apps/smt-clean/package-lock.json
+            source/apps/smt-clean/dependency-tree.json
+            source/apps/smt-clean/dist/third-party-licenses.json
+          if-no-files-found: error
+          retention-days: 30
