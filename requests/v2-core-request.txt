@@ -1,4 +1,4 @@
-source_sha=1c38a2a4fdb8a6c1f3000965cb9bca3e64c91d6b
-base_sha=6962c2657c40a5f265dbad9426eb797fd5125b3c
+source_sha=aad67b9df0fd0e710445867b66be667c68da3bd3
+base_sha=1c38a2a4fdb8a6c1f3000965cb9bca3e64c91d6b
 branch_name=work/CORE/B0022-core-availability-foundation
-request_id=B0022-CORE-AVAILABILITY-TDD-GREEN-004-IDEMPOTENCY-20260826
+request_id=B0022-CORE-AVAILABILITY-TDD-RED-005-RESTORE-SCHEDULE-20260826
