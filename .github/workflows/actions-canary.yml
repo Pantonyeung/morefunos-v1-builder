@@ -1,0 +1,13 @@
+name: Actions Canary
+
+on:
+  push:
+    paths:
+      - 'requests/actions-canary.txt'
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Runner started
+        run: echo "actions-canary=PASS"
