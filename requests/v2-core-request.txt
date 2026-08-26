@@ -1,4 +1,4 @@
-source_sha=c7854a5ee2d1128dac8f9df2c9af692ed13b1291
-base_sha=6daf461a2ce32c7fb4516413ffc73d2d932a1a27
-branch_name=work/CORE/B0017-core-catalog-foundation
-request_id=B0017-CORE-CATALOG-CLOSURE-CANDIDATE-20260826
+source_sha=462a9c15a7ce1e41859032fb6b61b3c2dbced2a2
+base_sha=c7854a5ee2d1128dac8f9df2c9af692ed13b1291
+branch_name=main
+request_id=B0017-CORE-CATALOG-CANONICAL-MAIN-SEAL-20260826
