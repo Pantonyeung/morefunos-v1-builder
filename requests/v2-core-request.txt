@@ -1,4 +1,4 @@
-source_sha=1569a704d23a12821975005ee6ae7477ca33cfa1
-base_sha=03c260ed7a99487bca79ab2343265cabc9174632
-branch_name=main
-request_id=B0025-CORE-PAYMENT-MAIN-SEAL-20260827
+source_sha=ebb0f1638a26741afda628d8248cd499d030e6cd
+base_sha=aab34d480b15a527df67a10a4c7b0b59ae8f3cd3
+branch_name=governance/SYS/B0026-b0025-closure-reconciliation
+request_id=B0026-SYS-B0025-CLOSURE-RECONCILIATION-20260827
