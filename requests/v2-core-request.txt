@@ -1,4 +1,4 @@
-source_sha=0c5c5ebe6088a10f6be22c4d97c9c54c86bc263f
-base_sha=559b1cc1379f1310c72853451b63dc3649dacb21
+source_sha=c521ac69149aebfb09fdaf30520565906cc58f5e
+base_sha=0c5c5ebe6088a10f6be22c4d97c9c54c86bc263f
 branch_name=work/CORE/B0024-core-order-foundation
-request_id=B0024-CORE-ORDER-VALIDATION-GOVERNANCE-SYNC-20260826
+request_id=B0024-CORE-ORDER-IDEMPOTENT-ACCEPTANCE-20260826
