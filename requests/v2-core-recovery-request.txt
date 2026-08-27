@@ -1,4 +1,4 @@
-source_sha=80125bd26679bf719740ae7483be775f9be72968
+source_sha=0f226af0eb3848238ab4f9d65c75db026633ea3d
 base_sha=7e0896c44bcb785e24b57db8dce73e2b1c74a73d
 branch_name=work/CORE/B0092-store-configuration-publication-contract
-request_id=B0092-STORE-CONFIGURATION-20260827
+request_id=B0092-STORE-CONFIGURATION-FINAL-20260827
