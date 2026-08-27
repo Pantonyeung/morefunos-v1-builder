@@ -1,4 +1,4 @@
-source_sha=16a5b5741659242d1d8cc5b0970160e2063d27b6
+source_sha=380a4d1978f71e9c8d439ad76ac755436633370c
 base_sha=ebc4963349a9031c7e7a0ce462c88bdf2ef17f7a
 branch_name=work/PRT/B0047-print-dispatch-controller
-request_id=B0047-FINAL-GOVERNANCE-AFTER-CROSS-IMPACT-FIX-20260827
+request_id=B0047-MR-HEAD-GOVERNANCE-20260827
