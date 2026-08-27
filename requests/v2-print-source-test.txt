@@ -1,3 +1,3 @@
-source_sha=1991919e35ecadcbf33094c7ce602fc393beb4d2
+source_sha=c2c62b131eba537855b11c713c92a12eba27c3d4
 branch_name=work/PRT/B0046-configurable-ip-printer-transport
-request_id=B0046-MR-HEAD-FINAL-20260827
+request_id=B0046-RECONCILED-FINAL-FUNCTIONAL-20260827
