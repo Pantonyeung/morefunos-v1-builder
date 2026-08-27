@@ -1,4 +1,4 @@
-source_sha=daafba9254cb9d10f9b67600da67cf26cae92611
+source_sha=e683f1d0e8b38b2085c97cb8f1956607bd7a5a5a
 base_sha=72d164393d4297c2d2ba7828aaccceda7d09c354
-branch_name=work/CORE/B0131-internal-port-adapter-composition
-request_id=B0131-FINAL-MANAGER-ADMISSION-20260828
+branch_name=work/CORE/B0100-inventory-stock-recovery
+request_id=B0100-RECOVERY-ADMISSION-20260828
