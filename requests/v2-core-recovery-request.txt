@@ -1,4 +1,4 @@
-source_sha=dab00d5a48289d5d7788cf267ecf6fea24300fca
-base_sha=6e2b1005309c99e9934ab27e9695181ff908328a
-branch_name=work/CORE/B0151-availability-residual-semantics
-request_id=B0151-FINAL-MANAGER-ADMISSION-20260828
+source_sha=342ce417730679f7689956c53001182f2ad1a7e7
+base_sha=b3c942ce962a4e610ebe2c874be0a1933c5d9401
+branch_name=work/CORE/B0101-inventory-ledger-durable-core
+request_id=B0101-INVENTORY-LEDGER-DURABLE-CORE-20260828
