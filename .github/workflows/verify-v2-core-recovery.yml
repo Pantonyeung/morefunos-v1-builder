@@ -146,6 +146,17 @@ jobs:
             exit 1
           fi
 
+      - name: Core Event Durability tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/event-durability/*.test.ts' > /dev/null; then
+            node --test packages/event-durability/*.test.ts | tee "$RUNNER_TEMP/v2-core-event-durability-tests.log"
+          else
+            echo 'no event durability tests present' | tee "$RUNNER_TEMP/v2-core-event-durability-tests.log"
+          fi
+
       - name: TypeScript static check
         shell: bash
         run: |
@@ -196,6 +207,7 @@ jobs:
             ${{ runner.temp }}/v2-core-availability-tests.log
             ${{ runner.temp }}/v2-core-store-configuration-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
+            ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
