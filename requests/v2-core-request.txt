@@ -1,5 +1,5 @@
-source_sha=3daab037ea404cac59b1d5098f99654a9c53a28b
-base_sha=c3364226cc067ccf231418388b267d860ac4a7c7
-branch_name=work/CORE/B0054-fulfillment-provider-event-inbox
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0054-FULFILLMENT-PROVIDER-EVENT-INBOX-FINAL-MR-20260827
+source_sha=2899ff74ab350d7cf48bfc2a40fda87c4fed8daf
+base_sha=2b98abb9eb4f9523a8ad920bedcbad81ebfb27a8
+branch_name=work/CORE/B0055-fulfillment-decision-policy
+verification_phase=CANDIDATE
+request_id=B0055-FULFILLMENT-DECISION-POLICY-CANDIDATE-20260827
