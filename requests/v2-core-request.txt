@@ -1,4 +1,4 @@
-source_sha=162b0ebae1ca77976c3768f05c8ef45298151455
-base_sha=abaf403dc139a0abd3768efa437e0e01fb8c302d
-branch_name=work/INTG/B0030-keeta-integration-readiness
-request_id=B0030-INTG-KEETA-KO-READINESS-20260827
+source_sha=4902c7bfc4d6e82c49d33f3748684e177b1af474
+base_sha=94bd84c09af2b1485983b4cb1860a13a093ff1d6
+branch_name=work/CORE/B0031-payment-foundation
+request_id=B0031-CORE-PAYMENT-FOUNDATION-20260827
