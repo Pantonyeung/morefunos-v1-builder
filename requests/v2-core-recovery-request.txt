@@ -1,4 +1,4 @@
-source_sha=5acae681ff3e8af7b0839b34576b7e650f0daa87
+source_sha=0efa16608d343f02e03cb7a026aa62e8b7398d90
 base_sha=f66854567d229336153d652fa6a7babdcb003e01
 branch_name=work/CORE/B0093-store-configuration-durable-repository
-request_id=B0093-DURABLE-STORE-CONFIGURATION-20260828
+request_id=B0093-FINAL-CLOSURE-20260828
