@@ -1,4 +1,4 @@
-source_sha=d1ab406c0b8cdc6a1888eb485a4090c3aa15ff37
-base_sha=63003fd02a15509085dd8aa40b578df7f6e203a6
+source_sha=8eb6c7957df6159083884c7e36c56bdf910e115a
+base_sha=3f82754681309e13dd8c3d63068b7281e5c302cd
 branch_name=governance/SYS/B0040-open-print-room
-request_id=B0040-PRINT-ROOM-GOVERNANCE-RETRY-20260827
+request_id=B0040-PRINT-ROOM-GOVERNANCE-FRESH-20260827
