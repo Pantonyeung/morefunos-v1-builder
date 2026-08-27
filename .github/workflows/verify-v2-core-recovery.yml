@@ -156,6 +156,17 @@ jobs:
             echo 'no identity rbac tests present' | tee "$RUNNER_TEMP/v2-core-identity-rbac-tests.log"
           fi
 
+      - name: Core Session Device Trust tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/session-device-trust/*.test.ts' > /dev/null; then
+            node --test packages/session-device-trust/*.test.ts | tee "$RUNNER_TEMP/v2-core-session-device-trust-tests.log"
+          else
+            echo 'no session device trust tests present' | tee "$RUNNER_TEMP/v2-core-session-device-trust-tests.log"
+          fi
+
       - name: Core Order tests
         shell: bash
         run: |
@@ -252,6 +263,7 @@ jobs:
             ${{ runner.temp }}/v2-core-store-configuration-tests.log
             ${{ runner.temp }}/v2-core-merchant-store-tests.log
             ${{ runner.temp }}/v2-core-identity-rbac-tests.log
+            ${{ runner.temp }}/v2-core-session-device-trust-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
