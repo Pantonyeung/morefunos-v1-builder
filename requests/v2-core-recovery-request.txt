@@ -1,4 +1,4 @@
-source_sha=0efa16608d343f02e03cb7a026aa62e8b7398d90
-base_sha=f66854567d229336153d652fa6a7babdcb003e01
-branch_name=work/CORE/B0093-store-configuration-durable-repository
-request_id=B0093-FINAL-CLOSURE-20260828
+source_sha=1135b646f0121a681577ec40ec6162fe9260f412
+base_sha=d7a4f2e424992447def40ddbc7927f8fbdc14eb1
+branch_name=work/CORE/B0121-transactional-publication-event-metadata
+request_id=B0121-POST-RECONCILE-TERMINAL-20260828
