@@ -123,6 +123,17 @@ jobs:
             echo 'no availability tests present' | tee "$RUNNER_TEMP/v2-core-availability-tests.log"
           fi
 
+      - name: Core Inventory tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/inventory/*.test.ts' > /dev/null; then
+            node --test packages/inventory/*.test.ts | tee "$RUNNER_TEMP/v2-core-inventory-tests.log"
+          else
+            echo 'no inventory tests present' | tee "$RUNNER_TEMP/v2-core-inventory-tests.log"
+          fi
+
       - name: Core Store Configuration tests
         shell: bash
         run: |
@@ -271,6 +282,7 @@ jobs:
             ${{ runner.temp }}/v2-core-catalog-tests.log
             ${{ runner.temp }}/v2-core-pricing-tests.log
             ${{ runner.temp }}/v2-core-availability-tests.log
+            ${{ runner.temp }}/v2-core-inventory-tests.log
             ${{ runner.temp }}/v2-core-store-configuration-tests.log
             ${{ runner.temp }}/v2-core-merchant-store-tests.log
             ${{ runner.temp }}/v2-core-identity-rbac-tests.log
