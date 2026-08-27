@@ -1,4 +1,4 @@
-source_sha=94f17c198cc6a6988681f90e64667612ecde7fc0
+source_sha=688f69117be9b71458cb906754539a3b7ee2ad5a
 base_sha=13e301fe03b39930aa9fd52cc8fa2a76286bcdb2
-branch_name=work/CORE/B0123-event-delivery-replay-boundary
-request_id=B0123-TERMINAL-SEAL-20260828
+branch_name=work/CORE/B0095-store-lifecycle-semantics
+request_id=B0095-FINAL-ADMISSION-ROOM-SYNC-20260828
