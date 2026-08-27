@@ -1,4 +1,4 @@
-source_sha=6379e23b089ec4abb0cf4e72ce077782791696f9
-base_sha=c474b362e8b3adfb3618ffc1d8b36efcd8cdc7c4
-branch_name=work/CORE/B0131-internal-port-adapter-composition
-request_id=B0131-TERMINAL-ANCESTRY-CLEAN-20260828
+source_sha=dc5ff9b7deb725e939de8d6cb48c40591862dec5
+base_sha=ccdbf5feeb46fe3f33c9b482cb53581a56a40490
+branch_name=work/CORE/B0141-reporting-projection-read-model
+request_id=B0141-REPORTING-PROJECTION-20260828
