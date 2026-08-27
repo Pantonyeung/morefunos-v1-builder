@@ -193,7 +193,8 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          npx --yes --package typescript@7.0.2 --package @types/node@24 tsc --noEmit -p tsconfig.json | tee "$RUNNER_TEMP/v2-core-typecheck.log"
+          npm install --no-save --package-lock=false --ignore-scripts typescript@7.0.2 @types/node@24
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json | tee "$RUNNER_TEMP/v2-core-typecheck.log"
 
       - name: Governance guard
         shell: bash
