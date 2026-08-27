@@ -1,4 +1,4 @@
-source_sha=6bd6b4a28b850b47c23a1b3609adada51e9d9757
-base_sha=860878def39b441fa1b7354cf416e156c34d0ad7
-branch_name=governance/CORE/B0032-fulfillment-contract-completion
-request_id=B0032-CORE-FULFILLMENT-CONTRACT-CANDIDATE-20260827
+source_sha=63003fd02a15509085dd8aa40b578df7f6e203a6
+base_sha=a49e5119b08e99f8a8ba5c2b603ad18f694dfc8d
+branch_name=main
+request_id=B0032-CORE-FULFILLMENT-TERMINAL-SEAL-20260827
