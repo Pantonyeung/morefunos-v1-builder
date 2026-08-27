@@ -1,5 +1,5 @@
-source_sha=8cc3c03461af268b031213f3768d2d3c6b0d91c3
-base_sha=33ffcc1c8d62bb5bde68c11575a5c68064be1329
-branch_name=work/INTG/B0032-provider-adapter-activation-manifest
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0032-PROVIDER-ADAPTER-ACTIVATION-MANIFEST-FINAL-MR-20260827
+source_sha=dc146f7255b569c8edd2febb1c23684d45a31c81
+base_sha=003e4f2a8978bc416fa51b1d8e4892e25194e26d
+branch_name=work/INTG/B0034-provider-contract-intake-binding
+verification_phase=CANDIDATE
+request_id=B0034-PROVIDER-CONTRACT-INTAKE-BINDING-CANDIDATE-20260827
