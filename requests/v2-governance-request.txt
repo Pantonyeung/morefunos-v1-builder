@@ -1,4 +1,4 @@
-source_sha=1945313efdd63370ce2c8d6649f25e57070edac5
-base_sha=d4fb728fc0fd682944b4cd4b309da339ffe2913a
-branch_name=main
-request_id=B0016-HOUSEKEEPING-B0017-OPEN-ROOT-RECONCILIATION-SEAL-20260826
+source_sha=7aa26a7e2020e8a495d5ef8d9e05984bc38d6eff
+base_sha=63003fd02a15509085dd8aa40b578df7f6e203a6
+branch_name=governance/SYS/B0040-open-print-room
+request_id=B0040-PRINT-ROOM-GOVERNANCE-20260827
