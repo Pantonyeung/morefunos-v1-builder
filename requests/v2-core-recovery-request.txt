@@ -1,4 +1,4 @@
-source_sha=3181a4151a2386bd28252773ea4db7fbb38a922b
-base_sha=6404ae5d5f93498c10e072d689034e5e4b80fe60
+source_sha=daafba9254cb9d10f9b67600da67cf26cae92611
+base_sha=72d164393d4297c2d2ba7828aaccceda7d09c354
 branch_name=work/CORE/B0131-internal-port-adapter-composition
-request_id=B0131-MANAGER-RECONCILED-ADMISSION-20260828
+request_id=B0131-FINAL-MANAGER-ADMISSION-20260828
