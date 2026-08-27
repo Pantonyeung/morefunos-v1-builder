@@ -1,5 +1,5 @@
-source_sha=b5b8bf3e425ef44d10bc774c45641bb468a1d0f3
-base_sha=2b98abb9eb4f9523a8ad920bedcbad81ebfb27a8
-branch_name=work/CORE/B0055-fulfillment-decision-policy
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0055-FULFILLMENT-DECISION-POLICY-FINAL-MR-20260827
+source_sha=fae8f491cba5c7c9a5aac9039d594b1f310755a6
+base_sha=ebc4963349a9031c7e7a0ce462c88bdf2ef17f7a
+branch_name=work/CORE/B0056-fulfillment-action-orchestrator
+verification_phase=CANDIDATE
+request_id=B0056-FULFILLMENT-ACTION-ORCHESTRATOR-CANDIDATE-20260827
