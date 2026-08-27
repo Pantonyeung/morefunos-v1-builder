@@ -1,5 +1,5 @@
-source_sha=c2bc6b7a5507c2c04fef3d732b5ebedea1302276
-base_sha=97e18ac1af06e0f69ff1184d0ed9fbf263c355c8
-branch_name=work/INTG/B0038-provider-contract-conflict-gate
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0038-PROVIDER-CONTRACT-CONFLICT-GATE-FINAL-MR-20260827
+source_sha=0a764b0f7b4cc2ccc39d9411c3e51ee53715c91e
+base_sha=7b482ff4edd596f310bfb6bc414d00ca9268987c
+branch_name=work/INTG/B0039-provider-implementation-handoff
+verification_phase=CANDIDATE
+request_id=B0039-PROVIDER-IMPLEMENTATION-HANDOFF-CANDIDATE-20260827
