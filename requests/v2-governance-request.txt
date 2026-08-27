@@ -1,4 +1,4 @@
-source_sha=c2c62b131eba537855b11c713c92a12eba27c3d4
-base_sha=1557b0c93ccc0dc8c0ff7feff427a0fce61bd85c
+source_sha=eb9df1e11973f9b316bbb32d854273446b5f9198
+base_sha=81da3746a51c35e2f259e0457d896d673cf9e8b1
 branch_name=work/PRT/B0046-configurable-ip-printer-transport
-request_id=B0046-RECONCILED-FINAL-GOVERNANCE-20260827
+request_id=B0046-REFRESHED-FINAL-GOVERNANCE-20260827
