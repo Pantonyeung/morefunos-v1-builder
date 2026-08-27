@@ -1,4 +1,4 @@
-source_sha=c1e4a70272ade517f4ccd4a7fb94f63d54429628
+source_sha=041c9d9f189529f00a909d8b2a2b961a82f44230
 base_sha=c474b362e8b3adfb3618ffc1d8b36efcd8cdc7c4
-branch_name=work/CORE/B0081-identity-staff-rbac-foundation
-request_id=B0081-IDENTITY-STAFF-RBAC-FOUNDATION-20260828
+branch_name=work/CORE/B0131-internal-port-adapter-composition
+request_id=B0131-TERMINAL-SEAL-20260828
