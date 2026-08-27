@@ -190,6 +190,17 @@ jobs:
             echo 'no internal port runtime tests present' | tee "$RUNNER_TEMP/v2-core-internal-port-runtime-tests.log"
           fi
 
+      - name: Core Reporting Projection tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/reporting-projection/*.test.ts' > /dev/null; then
+            node --test packages/reporting-projection/*.test.ts | tee "$RUNNER_TEMP/v2-core-reporting-projection-tests.log"
+          else
+            echo 'no reporting projection tests present' | tee "$RUNNER_TEMP/v2-core-reporting-projection-tests.log"
+          fi
+
       - name: TypeScript static check
         shell: bash
         run: |
@@ -244,6 +255,7 @@ jobs:
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
+            ${{ runner.temp }}/v2-core-reporting-projection-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
