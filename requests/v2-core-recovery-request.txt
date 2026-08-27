@@ -1,4 +1,4 @@
-source_sha=6c8383125926e756b11f780ba8733b0a9876ad24
+source_sha=4de603ae9a39232cba3d4a751ac87d78cd0051e6
 base_sha=2fd7403ebf849ef8d0b9a9a618535d9d4a7d4f53
-branch_name=work/CORE/B0082-session-device-trust-core
-request_id=B0082-TERMINAL-SEAL-20260828
+branch_name=work/CORE/B0151-availability-residual-semantics
+request_id=B0151-AVAILABILITY-RESIDUAL-SEMANTICS-20260828
