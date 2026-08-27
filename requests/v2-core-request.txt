@@ -1,5 +1,5 @@
-source_sha=e5213d4fd414ba51683a2bf35366a03deda773c3
-base_sha=515326b3ef796c2c331cf53c03d41861924522e5
-branch_name=work/CORE/B0057-fulfillment-operational-queue
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0057-FULFILLMENT-OPERATIONAL-QUEUE-FINAL-MR-20260827
+source_sha=167d4323777e199a9442c4c131a626dceaeff6ae
+base_sha=494fed9d2254f32ff1de018c0ba56e15c59eac44
+branch_name=work/CORE/B0058-fulfillment-queue-persistence-subscription
+verification_phase=CANDIDATE
+request_id=B0058-FULFILLMENT-QUEUE-PERSISTENCE-SUBSCRIPTION-CANDIDATE-20260827
