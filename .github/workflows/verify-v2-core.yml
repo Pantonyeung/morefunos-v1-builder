@@ -15,6 +15,11 @@ on:
         description: V2 branch name represented by source SHA
         required: true
         type: string
+      verification_phase:
+        description: CANDIDATE or FINAL_MERGE_REQUEST
+        required: true
+        default: CANDIDATE
+        type: string
   push:
     paths:
       - 'requests/v2-core-request.txt'
@@ -50,25 +55,31 @@ jobs:
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
           INPUT_BASE_SHA: ${{ inputs.base_sha }}
           INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+          INPUT_VERIFICATION_PHASE: ${{ inputs.verification_phase }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BASE_SHA="$(printf '%s' "${INPUT_BASE_SHA:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+            VERIFICATION_PHASE="$(printf '%s' "$INPUT_VERIFICATION_PHASE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
           else
             test -f requests/v2-core-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+            VERIFICATION_PHASE="$(sed -n 's/^verification_phase=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            if [[ -z "$VERIFICATION_PHASE" ]]; then VERIFICATION_PHASE="CANDIDATE"; fi
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
           [[ -n "$BRANCH_NAME" ]]
+          [[ "$VERIFICATION_PHASE" == "CANDIDATE" || "$VERIFICATION_PHASE" == "FINAL_MERGE_REQUEST" ]]
           {
             echo "source_sha=$SOURCE_SHA"
             echo "base_sha=$BASE_SHA"
             echo "branch_name=$BRANCH_NAME"
+            echo "verification_phase=$VERIFICATION_PHASE"
           } >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
@@ -205,15 +216,24 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
           BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
         run: |
           set -euo pipefail
           test -f source/scripts/merge_request_guard.py
-          ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
-          if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
-          (
-            cd source
-            python3 scripts/merge_request_guard.py "${ARGS[@]}"
-          ) | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+          if [[ "$VERIFICATION_PHASE" == "CANDIDATE" ]]; then
+            {
+              echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP'
+              echo "branch=$BRANCH_NAME"
+              echo 'formal_merge_request_not_yet_authorized=true'
+            } | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+          else
+            ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
+            if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
+            (
+              cd source
+              python3 scripts/merge_request_guard.py "${ARGS[@]}"
+            ) | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+          fi
 
       - name: Write evidence manifest
         if: always()
@@ -222,6 +242,7 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
           BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/v2-core-evidence.txt" <<EOF
@@ -231,6 +252,7 @@ jobs:
           source_sha=${SOURCE_SHA}
           base_sha=${BASE_SHA:-none}
           branch_name=${BRANCH_NAME}
+          verification_phase=${VERIFICATION_PHASE}
           node_version=$(node --version)
           typescript_version=7.0.2
           EOF
