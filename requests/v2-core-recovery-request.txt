@@ -1,4 +1,4 @@
-source_sha=cca73a92e75eec8de4d7a0c46acc9f7b0132df06
+source_sha=adb8106d722def59a8eba6a5dd82c029a78849a8
 base_sha=903d91da331da7b231ad905f025ba50365ca15f9
 branch_name=work/CORE/B0122-durable-event-repositories
-request_id=B0122-DURABLE-EVENT-REPOSITORIES-RECONCILED-20260828
+request_id=B0122-TERMINAL-SEAL-20260828
