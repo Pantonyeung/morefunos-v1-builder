@@ -1,4 +1,4 @@
-source_sha=818c111ea95ee9970d233f2117718e2c4acac31b
-base_sha=af86859b19c5f0e9e94365d523bb19be5fbeea84
-branch_name=work/CORE/B0090-merchant-store-recovery
-request_id=B0090-RECOVERY-ADMISSION-EXPLICIT-NODE-TYPES-20260827
+source_sha=48eeeaadf76779b64b3858ac0393738660ace3ab
+base_sha=ab114dd95bf28d5d7860b0347b1eebb250b436fe
+branch_name=work/CORE/B0120-event-durability-recovery
+request_id=B0120-RECOVERY-ADMISSION-20260827
