@@ -1,3 +1,3 @@
-source_sha=09a16982bb2eb74b637f8efd6123afec3fbd71cd
-branch_name=work/PRT/B0048-printer-health-evidence
-request_id=B0048-ADMISSION-REFRESH-FUNCTIONAL-20260827
+source_sha=933219131369d83a796822b6e33f054f930104fb
+branch_name=work/PRT/B0049-print-operator-attention-resolution
+request_id=B0049-OPERATOR-ATTENTION-FUNCTIONAL-20260827
