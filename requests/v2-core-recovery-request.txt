@@ -1,4 +1,4 @@
-source_sha=b4eb16ebd481f8f0e2ce0be33b3d52a482847cd5
-base_sha=bbd6d5c895a057d941f59df8a4ab2f956490b7a4
-branch_name=work/CORE/B0131-internal-port-adapter-composition
-request_id=B0131-INTERNAL-PORT-COMPOSITION-R2-20260828
+source_sha=c1e4a70272ade517f4ccd4a7fb94f63d54429628
+base_sha=c474b362e8b3adfb3618ffc1d8b36efcd8cdc7c4
+branch_name=work/CORE/B0081-identity-staff-rbac-foundation
+request_id=B0081-IDENTITY-STAFF-RBAC-FOUNDATION-20260828
