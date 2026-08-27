@@ -1,4 +1,4 @@
-source_sha=f330d979f171db7c84cd28734cc578424871998d
-base_sha=7e0896c44bcb785e24b57db8dce73e2b1c74a73d
-branch_name=work/CORE/B0092-store-configuration-publication-contract
-request_id=B0092-CLOSURE-20260827
+source_sha=ba0d86414dd0c26e7a705e3c381107bdf8ea7789
+base_sha=ad286c2a3d15c9301a0b524a0b599855506eb048
+branch_name=work/CORE/B0121-transactional-publication-event-metadata
+request_id=B0121-CLOSURE-20260828
