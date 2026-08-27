@@ -1,4 +1,4 @@
-source_sha=2f3d8f9f7280000cbc63c13d7009731fdf7d0d68
-base_sha=f4f09f15dd3853a01aaeb1ed5a3ac06d35298fb6
-branch_name=work/CORE/B0141-reporting-projection-read-model
-request_id=B0141-FINAL-RACE-RECONCILED-ADMISSION-20260828
+source_sha=dab00d5a48289d5d7788cf267ecf6fea24300fca
+base_sha=6e2b1005309c99e9934ab27e9695181ff908328a
+branch_name=work/CORE/B0151-availability-residual-semantics
+request_id=B0151-FINAL-MANAGER-ADMISSION-20260828
