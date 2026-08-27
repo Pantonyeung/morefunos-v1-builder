@@ -1,5 +1,5 @@
-source_sha=3231dbf729b81771603dae7584e1465424753b1e
-base_sha=a0b11bae5380dc849c96a06aefb930563181671d
-branch_name=work/INTG/B0037-provider-meeting-intake-normalizer
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0037-PROVIDER-MEETING-INTAKE-NORMALIZER-FINAL-MR-20260827
+source_sha=695a59fab4c4c716f7d49eba70ebbb739425d76e
+base_sha=97e18ac1af06e0f69ff1184d0ed9fbf263c355c8
+branch_name=work/INTG/B0038-provider-contract-conflict-gate
+verification_phase=CANDIDATE
+request_id=B0038-PROVIDER-CONTRACT-CONFLICT-GATE-CANDIDATE-20260827
