@@ -1,4 +1,4 @@
-source_sha=748f6398329bb069984fd369838119d0235f8654
-base_sha=3f82754681309e13dd8c3d63068b7281e5c302cd
-branch_name=work/CORE/B0050-fulfillment-foundation
-request_id=B0050-CORE-FULFILLMENT-FOUNDATION-CANDIDATE-R2-20260827
+source_sha=ea58becca04e6e358214b569fc44fe109a9cc920
+base_sha=11219f4b2351171a379941d2979535e98cfa7771
+branch_name=governance/SYS/B0060-parallel-delivery-control-plane
+request_id=B0060-PARALLEL-DELIVERY-CONTROL-PLANE-COMPLETED-MR-20260827
