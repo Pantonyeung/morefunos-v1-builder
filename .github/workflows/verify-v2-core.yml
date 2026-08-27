@@ -193,7 +193,7 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          npx --yes --package typescript@7.0.2 tsc --noEmit -p tsconfig.json | tee "$RUNNER_TEMP/v2-core-typecheck.log"
+          npx --yes --package typescript@7.0.2 --package @types/node@24 tsc --noEmit -p tsconfig.json | tee "$RUNNER_TEMP/v2-core-typecheck.log"
 
       - name: Governance guard
         shell: bash
@@ -255,6 +255,7 @@ jobs:
           verification_phase=${VERIFICATION_PHASE}
           node_version=$(node --version)
           typescript_version=7.0.2
+          node_types_version=24
           EOF
 
       - name: Upload Core evidence
