@@ -1,4 +1,4 @@
-source_sha=57841f8a5b71420d6e4440538d718584010ff367
+source_sha=20f9791618fe96df76d13b3f7d13dbda719c5ddf
 base_sha=f5d1da4546dbf19416b9b3807b1ab833913ba005
 branch_name=work/PRT/B0041-print-output-contract-foundation
-request_id=B0041-PRINT-GOLDEN-FIXTURE-CHECKPOINT-20260827
+request_id=B0041-PRINT-CONTRACT-CLOSURE-SEAL-20260827
