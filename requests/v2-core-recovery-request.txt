@@ -1,4 +1,4 @@
-source_sha=e2df5ac1fc9804f6c8d27d74e0c277e92a16809b
+source_sha=a788b7b37e2236c58ce5e038813fee91b089163c
 base_sha=9136b249123744524ef784d85544fae38ddcf107
 branch_name=work/CORE/B0094-store-configuration-lifecycle-service
-request_id=B0094-LIFECYCLE-SERVICE-20260828
+request_id=B0094-LIFECYCLE-FIXTURE-CORRECTION-20260828
