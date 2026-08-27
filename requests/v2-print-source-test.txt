@@ -1,3 +1,3 @@
-source_sha=deda92b57ecd2c8e4f8408e7b4041b0332b3ed67
+source_sha=16a5b5741659242d1d8cc5b0970160e2063d27b6
 branch_name=work/PRT/B0047-print-dispatch-controller
-request_id=B0047-FINAL-FUNCTIONAL-20260827
+request_id=B0047-FINAL-FUNCTIONAL-AFTER-GOVERNANCE-FIX-20260827
