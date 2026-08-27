@@ -1,5 +1,5 @@
-source_sha=5dcad36ec4163befa793cd7fc154103511bf70b7
+source_sha=081d90b6ad53df48cebf5233f0b4684eb948542d
 base_sha=08eaa47ab4c198e7506e13e8d57b72e9f88d1a62
 branch_name=work/CORE/B0059-fulfillment-operational-action-ingress
-verification_phase=CANDIDATE
-request_id=B0059-FULFILLMENT-OPERATIONAL-ACTION-INGRESS-CANDIDATE-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0059-FULFILLMENT-OPERATIONAL-ACTION-INGRESS-FINAL-MR-20260827
