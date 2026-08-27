@@ -1,4 +1,4 @@
-source_sha=b0d1871a7ff2ab625873db125c6987f66f64f0d7
-base_sha=ad286c2a3d15c9301a0b524a0b599855506eb048
-branch_name=work/CORE/B0091-merchant-store-canonical-contract
-request_id=B0091-CANONICAL-CONTRACT-ADMISSION-20260827
+source_sha=80125bd26679bf719740ae7483be775f9be72968
+base_sha=7e0896c44bcb785e24b57db8dce73e2b1c74a73d
+branch_name=work/CORE/B0092-store-configuration-publication-contract
+request_id=B0092-STORE-CONFIGURATION-20260827
