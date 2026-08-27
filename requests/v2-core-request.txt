@@ -1,5 +1,5 @@
-source_sha=4af12515452cde2812453169e9032f731238d368
-base_sha=b1f6021b1e566c4d140c79b0faee1cc9aa32cd6b
-branch_name=work/INTG/B0031-keeta-provider-contract-gate
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0031-KEETA-PROVIDER-CONTRACT-GATE-FINAL-MR-20260827
+source_sha=03478e8cff91d578c2eae5854e369eabda04a12b
+base_sha=ea9420612bd83e9babb3402e10ade4e332954ab4
+branch_name=work/INTG/B0032-provider-adapter-activation-manifest
+verification_phase=CANDIDATE
+request_id=B0032-PROVIDER-ADAPTER-ACTIVATION-MANIFEST-CANDIDATE-20260827
