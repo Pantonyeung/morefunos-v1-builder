@@ -1,4 +1,5 @@
-source_sha=c19f829e25766434020006ad343c9190c09367a6
-base_sha=0e84e60e43f618e128484d2a1799168aef63107d
-branch_name=main
-request_id=B0060-PARALLEL-DELIVERY-CONTROL-PLANE-TERMINAL-SEAL-20260827
+source_sha=4dfca40d346a33c26b2724c6b8007cc849865f89
+base_sha=c19f829e25766434020006ad343c9190c09367a6
+branch_name=work/CORE/B0051-fulfillment-foundation-reconciliation
+verification_phase=CANDIDATE
+request_id=B0051-FULFILLMENT-V3-CANDIDATE-20260827
