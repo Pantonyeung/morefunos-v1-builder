@@ -1,4 +1,4 @@
-source_sha=3a534f034ae1e16ef05aa6ae98dc2bb4e07f714a
+source_sha=027756349dd55de3a9fe31367724f3f6902cd63f
 base_sha=2d3a1da4977e18380c0b0d6f8c7cdf59ca3d1062
-branch_name=work/CORE/B0100-inventory-stock-recovery
-request_id=B0100-TERMINAL-RACE-RECONCILE-20260828
+branch_name=work/CORE/B0141-reporting-projection-read-model
+request_id=B0141-MANAGER-RECONCILED-ADMISSION-20260828
