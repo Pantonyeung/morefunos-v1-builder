@@ -167,6 +167,17 @@ jobs:
             echo 'no session device trust tests present' | tee "$RUNNER_TEMP/v2-core-session-device-trust-tests.log"
           fi
 
+      - name: Core Security Context Gateway tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/security-context-gateway/*.test.ts' > /dev/null; then
+            node --test packages/security-context-gateway/*.test.ts | tee "$RUNNER_TEMP/v2-core-security-context-gateway-tests.log"
+          else
+            echo 'no security context gateway tests present' | tee "$RUNNER_TEMP/v2-core-security-context-gateway-tests.log"
+          fi
+
       - name: Core Order tests
         shell: bash
         run: |
@@ -264,6 +275,7 @@ jobs:
             ${{ runner.temp }}/v2-core-merchant-store-tests.log
             ${{ runner.temp }}/v2-core-identity-rbac-tests.log
             ${{ runner.temp }}/v2-core-session-device-trust-tests.log
+            ${{ runner.temp }}/v2-core-security-context-gateway-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
