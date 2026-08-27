@@ -1,3 +1,3 @@
-source_sha=351d7162d4b9937e5ab14e2d909800999bef0c46
+source_sha=855d0944bdb4f5773b7bf1ce99e75769716bf6a7
 branch_name=work/PRT/B0049-print-operator-attention-resolution
-request_id=B0049-MRHEAD-FUNCTIONAL-20260827
+request_id=B0049-FINAL-REFRESHED-HEAD-FUNCTIONAL-20260827
