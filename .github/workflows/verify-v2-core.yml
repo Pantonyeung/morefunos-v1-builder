@@ -166,6 +166,18 @@ jobs:
             exit 1
           fi
 
+      - name: Core Fulfillment tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/fulfillment/*.test.ts' > /dev/null; then
+            node --test packages/fulfillment/*.test.ts | tee "$RUNNER_TEMP/v2-core-fulfillment-tests.log"
+          else
+            echo 'no fulfillment tests present' | tee "$RUNNER_TEMP/v2-core-fulfillment-tests.log"
+            exit 1
+          fi
+
       - name: TypeScript static check
         shell: bash
         run: |
@@ -221,6 +233,7 @@ jobs:
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-business-day-cash-tests.log
             ${{ runner.temp }}/v2-core-payment-tests.log
+            ${{ runner.temp }}/v2-core-fulfillment-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
           if-no-files-found: warn
