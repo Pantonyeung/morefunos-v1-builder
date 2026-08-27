@@ -1,4 +1,4 @@
-source_sha=4902c7bfc4d6e82c49d33f3748684e177b1af474
+source_sha=85f58d4d1c3becea4bf5ca8c6b31bfcb9c46d80e
 base_sha=94bd84c09af2b1485983b4cb1860a13a093ff1d6
 branch_name=work/CORE/B0031-payment-foundation
-request_id=B0031-CORE-PAYMENT-FOUNDATION-20260827
+request_id=B0031-CORE-PAYMENT-FOUNDATION-R2-20260827
