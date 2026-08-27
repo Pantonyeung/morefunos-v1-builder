@@ -1,4 +1,4 @@
-source_sha=af86859b19c5f0e9e94365d523bb19be5fbeea84
-base_sha=ab90eb0880e146c199ab8e0c26d3991cacddc72c
-branch_name=governance/SYS/B0071-recovery-to-core-delivery-master-plan
-request_id=B0071-RECOVERY-RESERVED-GUARD-EXACT-20260827
+source_sha=818c111ea95ee9970d233f2117718e2c4acac31b
+base_sha=af86859b19c5f0e9e94365d523bb19be5fbeea84
+branch_name=work/CORE/B0090-merchant-store-recovery
+request_id=B0090-RESERVED-RECOVERY-GOVERNANCE-20260827
