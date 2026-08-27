@@ -1,4 +1,4 @@
-source_sha=c53e27cae6d184820bbb466d6d590b6c1b1dd2da
+source_sha=091af60b400e826deff9ed9e1a27340130f24f5c
 base_sha=7f576bb277a0f008d70fac99f8ea9a49adba2d5f
 branch_name=work/CORE/B0095-store-lifecycle-semantics
-request_id=B0095-MERCHANT-STORE-LIFECYCLE-20260828
+request_id=B0095-FOCUSED-REGRESSION-20260828
