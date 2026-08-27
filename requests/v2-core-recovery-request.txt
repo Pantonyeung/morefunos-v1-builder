@@ -1,4 +1,4 @@
-source_sha=f7f3db13822752fcd58ae92ab301168a7923b952
+source_sha=ba2588d0508734d6c47f6f408ec6516eb6638772
 base_sha=9136b249123744524ef784d85544fae38ddcf107
-branch_name=work/CORE/B0094-store-configuration-lifecycle-service
-request_id=B0094-FINAL-CLOSURE-20260828
+branch_name=work/CORE/B0121-transactional-publication-event-metadata
+request_id=B0121-MANAGER-FINAL-ADMISSION-20260828
