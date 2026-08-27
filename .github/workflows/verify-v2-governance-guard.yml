@@ -1,0 +1,119 @@
+name: V2 Governance Guard Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-governance-guard-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact comparison base SHA
+        required: true
+        type: string
+      branch_name:
+        description: V2 branch name represented by source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(printf '%s' "$INPUT_BASE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+          else
+            test -f requests/v2-governance-guard-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-governance-guard-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-governance-guard-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-governance-guard-request.txt | tr -d '\r\n')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v6
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity and up-to-date base
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source merge-base --is-ancestor "$BASE_SHA" "$SOURCE_SHA"
+          echo "source-identity=PASS sha=$SOURCE_SHA base-ancestor=PASS"
+
+      - name: Governance reservation regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source/scripts
+          python3 -m unittest -v test_governance_guard_branch_reservation.py | tee "$RUNNER_TEMP/v2-governance-reservation-tests.log"
+
+      - name: Governance guard
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          cd source
+          python3 scripts/governance_guard.py --head "$SOURCE_SHA" --base "$BASE_SHA" --branch "$BRANCH_NAME" | tee "$RUNNER_TEMP/v2-governance-guard.log"
+
+      - name: Upload governance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-governance-guard-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-governance-reservation-tests.log
+            ${{ runner.temp }}/v2-governance-guard.log
+          if-no-files-found: warn
+          retention-days: 30
