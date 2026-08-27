@@ -1,4 +1,4 @@
-source_sha=c962814c93e5327eccb4957eb984e781fa2f2ffc
-base_sha=ea6c5b6ccf5dc4a8aa9f47815d99c6ff75885c06
-branch_name=main
-request_id=B0029-CORE-BUSINESSDAY-CASH-TERMINAL-SEAL-20260827
+source_sha=162b0ebae1ca77976c3768f05c8ef45298151455
+base_sha=abaf403dc139a0abd3768efa437e0e01fb8c302d
+branch_name=work/INTG/B0030-keeta-integration-readiness
+request_id=B0030-INTG-KEETA-KO-READINESS-20260827
