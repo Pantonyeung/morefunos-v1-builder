@@ -1,3 +1,3 @@
-source_sha=6d77f9a26492980bf3c2cb94e400150c950dba44
-branch_name=work/PRT/B0047-print-dispatch-controller
-request_id=B0047-LATEST-MAIN-FINAL-FUNCTIONAL-20260827
+source_sha=79782422c07caae60a46323b36190b91ace07bfe
+branch_name=work/PRT/B0048-printer-health-evidence
+request_id=B0048-PRINTER-HEALTH-EVIDENCE-FUNCTIONAL-20260827
