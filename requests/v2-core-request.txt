@@ -1,4 +1,4 @@
-source_sha=85f58d4d1c3becea4bf5ca8c6b31bfcb9c46d80e
-base_sha=94bd84c09af2b1485983b4cb1860a13a093ff1d6
-branch_name=work/CORE/B0031-payment-foundation
-request_id=B0031-CORE-PAYMENT-FOUNDATION-R2-20260827
+source_sha=fd7f105d5d892d3bf18133823d7f9b96bdc5384c
+base_sha=4ad4390859322bb401adc5a56712dfd65d080525
+branch_name=main
+request_id=B0031-CORE-PAYMENT-TERMINAL-SEAL-20260827
