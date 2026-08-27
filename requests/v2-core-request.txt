@@ -1,5 +1,5 @@
-source_sha=fb1272079f781a6e87580ff7eeebd747b959f19f
-base_sha=4d45d45270477f57fd6a5a1cf7b72b9952efccfe
+source_sha=0af43aa25e262026d055b5de89cc0e69c471335d
+base_sha=e7a575671c88135303bfbe3b9d8335e218aa7400
 branch_name=work/INTG/B0036-provider-technical-answer-evidence
-verification_phase=CANDIDATE
-request_id=B0036-PROVIDER-TECHNICAL-ANSWER-EVIDENCE-RECONCILED-CANDIDATE-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0036-PROVIDER-TECHNICAL-ANSWER-EVIDENCE-FINAL-MR-20260827
