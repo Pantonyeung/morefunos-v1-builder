@@ -1,4 +1,4 @@
-source_sha=1ff8fc09d0deb262327b52ef2c0fe2037421e9b9
-base_sha=a86e4ef16dfaa46bd71b6f625fde6bcfcc9a6deb
-branch_name=work/PRT/B0045-native-print-executor-boundary
-request_id=B0045-MR-HEAD-FINAL-GOVERNANCE-20260827
+source_sha=fe7a2699747ef99fa058a4f87ede6af5ebfad0b4
+base_sha=557b933e58cff05f52ab5ff742ae0794788401b2
+branch_name=work/PRT/B0046-configurable-ip-printer-transport
+request_id=B0046-FINAL-GOVERNANCE-SEAL-20260827
