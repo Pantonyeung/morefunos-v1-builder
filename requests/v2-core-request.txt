@@ -1,5 +1,5 @@
-source_sha=083e4f83745cd2b98a0caf192d71e1e6b318809e
+source_sha=2b4c8081e624054fe2e5c2ce27419e01ce19671a
 base_sha=5efbc7f3a1acda6038d2bf6181e5f3d78e2fc216
 branch_name=work/INTG/B0035-provider-readiness-matrix
-verification_phase=CANDIDATE
-request_id=B0035-PROVIDER-READINESS-MATRIX-CANDIDATE-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0035-PROVIDER-READINESS-MATRIX-FINAL-MR-20260827
