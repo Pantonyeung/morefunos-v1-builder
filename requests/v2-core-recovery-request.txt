@@ -1,4 +1,4 @@
-source_sha=adb8106d722def59a8eba6a5dd82c029a78849a8
-base_sha=903d91da331da7b231ad905f025ba50365ca15f9
-branch_name=work/CORE/B0122-durable-event-repositories
-request_id=B0122-TERMINAL-SEAL-20260828
+source_sha=c53e27cae6d184820bbb466d6d590b6c1b1dd2da
+base_sha=7f576bb277a0f008d70fac99f8ea9a49adba2d5f
+branch_name=work/CORE/B0095-store-lifecycle-semantics
+request_id=B0095-MERCHANT-STORE-LIFECYCLE-20260828
