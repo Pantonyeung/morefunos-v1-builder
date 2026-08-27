@@ -1,4 +1,4 @@
-source_sha=6d77f9a26492980bf3c2cb94e400150c950dba44
-base_sha=494fed9d2254f32ff1de018c0ba56e15c59eac44
-branch_name=work/PRT/B0047-print-dispatch-controller
-request_id=B0047-LATEST-MAIN-FINAL-GOVERNANCE-20260827
+source_sha=36abe4b5e2acf59eb95e7648034ccf030ddbf83a
+base_sha=b1f6021b1e566c4d140c79b0faee1cc9aa32cd6b
+branch_name=work/PRT/B0048-printer-health-evidence
+request_id=B0048-FINAL-GOVERNANCE-20260827
