@@ -1,4 +1,4 @@
-source_sha=b4510580a46c31e9d0b688012abd50400d1b9c8c
+source_sha=21cbf692646dc13578b1d32f4c6b36d324ed8ef4
 base_sha=1e702d89aa035e61ffe5c74dbe86d67c1c54be0e
 branch_name=work/PRT/B0042-print-plan-generator-foundation
-request_id=B0042-PRINT-PLAN-GENERATOR-CHECKPOINT-20260827
+request_id=B0042-PRINT-PLAN-GENERATOR-CHECKPOINT-R2-20260827
