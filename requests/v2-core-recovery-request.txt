@@ -1,4 +1,4 @@
-source_sha=ba0d86414dd0c26e7a705e3c381107bdf8ea7789
+source_sha=742bef8f2029bdc97574a6279904270779d9d100
 base_sha=ad286c2a3d15c9301a0b524a0b599855506eb048
 branch_name=work/CORE/B0121-transactional-publication-event-metadata
-request_id=B0121-CLOSURE-20260828
+request_id=B0121-TERMINAL-SEAL-20260828
