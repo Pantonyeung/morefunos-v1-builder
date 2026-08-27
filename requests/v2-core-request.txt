@@ -1,5 +1,5 @@
-source_sha=081d90b6ad53df48cebf5233f0b4684eb948542d
-base_sha=08eaa47ab4c198e7506e13e8d57b72e9f88d1a62
-branch_name=work/CORE/B0059-fulfillment-operational-action-ingress
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0059-FULFILLMENT-OPERATIONAL-ACTION-INGRESS-FINAL-MR-20260827
+source_sha=2c52b7f120819bc4607aa207e2bcbf0a30b355a3
+base_sha=b1f6021b1e566c4d140c79b0faee1cc9aa32cd6b
+branch_name=work/INTG/B0031-keeta-provider-contract-gate
+verification_phase=CANDIDATE
+request_id=B0031-KEETA-PROVIDER-CONTRACT-GATE-CANDIDATE-20260827
