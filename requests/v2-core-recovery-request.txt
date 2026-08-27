@@ -1,4 +1,4 @@
-source_sha=0a7e9fb2341c4cba8039fb87b3152dc0b113ca0f
+source_sha=323e63c81f88c3f7162e6a5612529770209e7195
 base_sha=6404ae5d5f93498c10e072d689034e5e4b80fe60
 branch_name=work/CORE/B0083-security-context-authorization-gateway
-request_id=B0083-GOVERNANCE-SYNC-R2-20260828
+request_id=B0083-TERMINAL-SEAL-20260828
