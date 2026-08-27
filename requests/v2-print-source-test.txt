@@ -1,3 +1,3 @@
-source_sha=92c8eb3eec272142ed38ec3433a43be9002592d1
-branch_name=work/PRT/B0044-template-renderer-durable-printjob-foundation
-request_id=B0044-PRINT-ADMISSION-FINAL-20260827
+source_sha=cf92bfb4d8c4c3761c90b35162b80ac053da9c93
+branch_name=work/PRT/B0045-native-print-executor-boundary
+request_id=B0045-NATIVE-EXECUTOR-CHECKPOINT-20260827
