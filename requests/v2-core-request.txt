@@ -1,5 +1,5 @@
-source_sha=0af43aa25e262026d055b5de89cc0e69c471335d
-base_sha=e7a575671c88135303bfbe3b9d8335e218aa7400
-branch_name=work/INTG/B0036-provider-technical-answer-evidence
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0036-PROVIDER-TECHNICAL-ANSWER-EVIDENCE-FINAL-MR-20260827
+source_sha=d618a043bd00e23aa44bade3d8fb3ad1b8f233ae
+base_sha=a0b11bae5380dc849c96a06aefb930563181671d
+branch_name=work/INTG/B0037-provider-meeting-intake-normalizer
+verification_phase=CANDIDATE
+request_id=B0037-PROVIDER-MEETING-INTAKE-NORMALIZER-CANDIDATE-20260827
