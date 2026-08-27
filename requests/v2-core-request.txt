@@ -1,5 +1,5 @@
-source_sha=6a284a8e8bb493a6016a6fba8dc59b0e52d76421
+source_sha=94287bc21359c18b389a572c119985d04e807ba2
 base_sha=096754ef3ae4622e11ee85b2da6098a0193bccc6
 branch_name=work/CORE/B0051-fulfillment-foundation-reconciliation
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0051-FULFILLMENT-V3-FINAL-MR-20260827
+request_id=B0051-FULFILLMENT-V3-FINAL-MR-RETRY-20260827
