@@ -1,4 +1,4 @@
-source_sha=8b73734344281d3df4d7968817a528787a258335
+source_sha=dabfcd5568fc1b3bf741dee29f1d8b997e89b23a
 base_sha=2fd7403ebf849ef8d0b9a9a618535d9d4a7d4f53
-branch_name=work/CORE/B0141-reporting-projection-read-model
-request_id=B0141-TERMINAL-SEAL-20260828
+branch_name=work/CORE/B0082-session-device-trust-core
+request_id=B0082-SESSION-DEVICE-TRUST-CORE-20260828
