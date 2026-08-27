@@ -1,4 +1,4 @@
-source_sha=323e63c81f88c3f7162e6a5612529770209e7195
+source_sha=3181a4151a2386bd28252773ea4db7fbb38a922b
 base_sha=6404ae5d5f93498c10e072d689034e5e4b80fe60
-branch_name=work/CORE/B0083-security-context-authorization-gateway
-request_id=B0083-TERMINAL-SEAL-20260828
+branch_name=work/CORE/B0131-internal-port-adapter-composition
+request_id=B0131-MANAGER-RECONCILED-ADMISSION-20260828
