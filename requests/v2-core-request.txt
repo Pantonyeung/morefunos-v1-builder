@@ -1,5 +1,5 @@
-source_sha=bed788f074ccc50801d1f74d37ac46a107eabe82
-base_sha=096754ef3ae4622e11ee85b2da6098a0193bccc6
-branch_name=work/CORE/B0051-fulfillment-foundation-reconciliation
+source_sha=e8a6d07408bc8bf5726787e9c5522a466add88a6
+base_sha=8817fc24cbea73bdff6b66265ab50e7a036cfebd
+branch_name=main
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0051-FULFILLMENT-V3-MANAGER-ADMISSION-20260827
+request_id=B0051-FULFILLMENT-V3-TERMINAL-SEAL-20260827
