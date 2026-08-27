@@ -1,4 +1,4 @@
-source_sha=027756349dd55de3a9fe31367724f3f6902cd63f
-base_sha=2d3a1da4977e18380c0b0d6f8c7cdf59ca3d1062
+source_sha=2f3d8f9f7280000cbc63c13d7009731fdf7d0d68
+base_sha=f4f09f15dd3853a01aaeb1ed5a3ac06d35298fb6
 branch_name=work/CORE/B0141-reporting-projection-read-model
-request_id=B0141-MANAGER-RECONCILED-ADMISSION-20260828
+request_id=B0141-FINAL-RACE-RECONCILED-ADMISSION-20260828
