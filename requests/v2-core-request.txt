@@ -1,5 +1,5 @@
-source_sha=34afd711d5752cc51e58e019e860f1a1cf4b7539
+source_sha=fc0d3bbfb97a668ccc88abb781786e59ff97ad71
 base_sha=1557b0c93ccc0dc8c0ff7feff427a0fce61bd85c
 branch_name=work/CORE/B0053-fulfillment-provider-port
-verification_phase=CANDIDATE
-request_id=B0053-FULFILLMENT-PROVIDER-PORT-CANDIDATE-R2-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0053-FULFILLMENT-PROVIDER-PORT-FINAL-MR-20260827
