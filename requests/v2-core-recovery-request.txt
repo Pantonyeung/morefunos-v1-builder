@@ -1,4 +1,4 @@
-source_sha=e1f4559b1db8307eb30ff329a5e46c3c8d364929
-base_sha=a67713238f666b3b8e53aa3b1076054513972960
-branch_name=work/CORE/B0150-availability-recovery
-request_id=B0150-RECOVERY-ADMISSION-20260827
+source_sha=b0d1871a7ff2ab625873db125c6987f66f64f0d7
+base_sha=ad286c2a3d15c9301a0b524a0b599855506eb048
+branch_name=work/CORE/B0091-merchant-store-canonical-contract
+request_id=B0091-CANONICAL-CONTRACT-ADMISSION-20260827
