@@ -1,5 +1,5 @@
-source_sha=e8a6d07408bc8bf5726787e9c5522a466add88a6
-base_sha=8817fc24cbea73bdff6b66265ab50e7a036cfebd
-branch_name=main
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0051-FULFILLMENT-V3-TERMINAL-SEAL-20260827
+source_sha=d59236a777c4d88cba83713ae36b0d9e0729a317
+base_sha=e8a6d07408bc8bf5726787e9c5522a466add88a6
+branch_name=work/CORE/B0052-fulfillment-persistence-offline
+verification_phase=CANDIDATE
+request_id=B0052-FULFILLMENT-PERSISTENCE-OFFLINE-CANDIDATE-20260827
