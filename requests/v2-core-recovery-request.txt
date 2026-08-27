@@ -1,4 +1,4 @@
-source_sha=d687af4aeec7275e10470452ce90629349aa678f
+source_sha=699fe0e7593cdec39ece5ad6cb06104eea974353
 base_sha=13e301fe03b39930aa9fd52cc8fa2a76286bcdb2
-branch_name=work/CORE/B0123-event-delivery-replay-boundary
-request_id=B0123-EVENT-DELIVERY-REPLAY-20260828
+branch_name=work/CORE/B0095-store-lifecycle-semantics
+request_id=B0095-FINAL-ADMISSION-20260828
