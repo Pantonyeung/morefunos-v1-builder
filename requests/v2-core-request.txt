@@ -1,5 +1,5 @@
-source_sha=2b4c8081e624054fe2e5c2ce27419e01ce19671a
-base_sha=5efbc7f3a1acda6038d2bf6181e5f3d78e2fc216
-branch_name=work/INTG/B0035-provider-readiness-matrix
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0035-PROVIDER-READINESS-MATRIX-FINAL-MR-20260827
+source_sha=da127f95122e94c5c95ef410566d05298852391e
+base_sha=3225c6f7a18072e568b8925181cae8574f8275ec
+branch_name=work/INTG/B0036-provider-technical-answer-evidence
+verification_phase=CANDIDATE
+request_id=B0036-PROVIDER-TECHNICAL-ANSWER-EVIDENCE-CANDIDATE-20260827
