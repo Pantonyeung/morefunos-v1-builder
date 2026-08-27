@@ -1,4 +1,4 @@
-source_sha=eb9df1e11973f9b316bbb32d854273446b5f9198
-base_sha=81da3746a51c35e2f259e0457d896d673cf9e8b1
-branch_name=work/PRT/B0046-configurable-ip-printer-transport
-request_id=B0046-REFRESHED-FINAL-GOVERNANCE-20260827
+source_sha=deda92b57ecd2c8e4f8408e7b4041b0332b3ed67
+base_sha=ebc4963349a9031c7e7a0ce462c88bdf2ef17f7a
+branch_name=work/PRT/B0047-print-dispatch-controller
+request_id=B0047-FINAL-GOVERNANCE-20260827
