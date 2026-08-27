@@ -1,4 +1,4 @@
-source_sha=21cbf692646dc13578b1d32f4c6b36d324ed8ef4
-base_sha=1e702d89aa035e61ffe5c74dbe86d67c1c54be0e
+source_sha=fba70531256ffeb3bd4f6e96708c9f4d7113d6cf
+base_sha=11219f4b2351171a379941d2979535e98cfa7771
 branch_name=work/PRT/B0042-print-plan-generator-foundation
-request_id=B0042-PRINT-PLAN-GENERATOR-CHECKPOINT-R2-20260827
+request_id=B0042-PRINT-PLAN-GENERATOR-CLOSURE-SEAL-20260827
