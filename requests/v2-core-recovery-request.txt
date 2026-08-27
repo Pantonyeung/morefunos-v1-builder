@@ -1,4 +1,4 @@
-source_sha=dabfcd5568fc1b3bf741dee29f1d8b997e89b23a
+source_sha=1cfdff50c38a8d8ea71843b5c2e3d4138203f4c9
 base_sha=2fd7403ebf849ef8d0b9a9a618535d9d4a7d4f53
 branch_name=work/CORE/B0082-session-device-trust-core
-request_id=B0082-SESSION-DEVICE-TRUST-CORE-20260828
+request_id=B0082-SESSION-DEVICE-TRUST-CORE-R2-20260828
