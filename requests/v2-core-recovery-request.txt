@@ -1,4 +1,4 @@
-source_sha=d032ba7ea279a7b97125f5334ea878a6ef9fc136
-base_sha=01e276e7ad5b3a07cf48175c009e40dbaaa6d53f
-branch_name=work/CORE/B0121-transactional-publication-event-metadata
-request_id=B0121-MANAGER-FINAL-ADMISSION-2-20260828
+source_sha=86f8cf896a4cb19b778fea99d05626f9fb9d6bda
+base_sha=7f576bb277a0f008d70fac99f8ea9a49adba2d5f
+branch_name=work/CORE/B0122-durable-event-repositories
+request_id=B0122-DURABLE-EVENT-REPOSITORIES-20260828
