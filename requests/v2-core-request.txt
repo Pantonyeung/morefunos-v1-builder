@@ -1,5 +1,5 @@
-source_sha=0a764b0f7b4cc2ccc39d9411c3e51ee53715c91e
+source_sha=892f9399dde6d0239a387b84a26df23bef6e260f
 base_sha=7b482ff4edd596f310bfb6bc414d00ca9268987c
 branch_name=work/INTG/B0039-provider-implementation-handoff
-verification_phase=CANDIDATE
-request_id=B0039-PROVIDER-IMPLEMENTATION-HANDOFF-CANDIDATE-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0039-PROVIDER-IMPLEMENTATION-HANDOFF-FINAL-MR-20260827
