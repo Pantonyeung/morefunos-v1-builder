@@ -145,6 +145,17 @@ jobs:
             echo 'no merchant store tests present' | tee "$RUNNER_TEMP/v2-core-merchant-store-tests.log"
           fi
 
+      - name: Core Identity RBAC tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/identity-rbac/*.test.ts' > /dev/null; then
+            node --test packages/identity-rbac/*.test.ts | tee "$RUNNER_TEMP/v2-core-identity-rbac-tests.log"
+          else
+            echo 'no identity rbac tests present' | tee "$RUNNER_TEMP/v2-core-identity-rbac-tests.log"
+          fi
+
       - name: Core Order tests
         shell: bash
         run: |
@@ -229,6 +240,7 @@ jobs:
             ${{ runner.temp }}/v2-core-availability-tests.log
             ${{ runner.temp }}/v2-core-store-configuration-tests.log
             ${{ runner.temp }}/v2-core-merchant-store-tests.log
+            ${{ runner.temp }}/v2-core-identity-rbac-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
