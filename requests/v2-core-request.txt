@@ -1,5 +1,5 @@
-source_sha=9cd0493d33db118dbd7a961c25a8d1a0272d4965
-base_sha=557b933e58cff05f52ab5ff742ae0794788401b2
-branch_name=work/CORE/B0052-fulfillment-persistence-offline
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0052-FULFILLMENT-PERSISTENCE-OFFLINE-FINAL-MR-R3-20260827
+source_sha=eb304bde0b6f507b30fc0e9bc723cba708d00882
+base_sha=1557b0c93ccc0dc8c0ff7feff427a0fce61bd85c
+branch_name=work/CORE/B0053-fulfillment-provider-port
+verification_phase=CANDIDATE
+request_id=B0053-FULFILLMENT-PROVIDER-PORT-CANDIDATE-20260827
