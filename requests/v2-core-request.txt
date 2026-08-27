@@ -1,5 +1,5 @@
-source_sha=fae8f491cba5c7c9a5aac9039d594b1f310755a6
+source_sha=3dd89ae2c37107213a05a3adddaa18edc2852f04
 base_sha=ebc4963349a9031c7e7a0ce462c88bdf2ef17f7a
 branch_name=work/CORE/B0056-fulfillment-action-orchestrator
-verification_phase=CANDIDATE
-request_id=B0056-FULFILLMENT-ACTION-ORCHESTRATOR-CANDIDATE-20260827
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0056-FULFILLMENT-ACTION-ORCHESTRATOR-FINAL-MR-20260827
