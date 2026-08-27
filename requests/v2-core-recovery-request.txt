@@ -1,4 +1,4 @@
-source_sha=400a4532ad866b3f7d5878b3afdb9856f0b2021c
+source_sha=f6aad93874dbf6484f9a250e89c5696a92c40d56
 base_sha=bbd6d5c895a057d941f59df8a4ab2f956490b7a4
-branch_name=work/CORE/B0080-identity-access-recovery
-request_id=B0080-IAM-RECOVERY-ADMISSION-20260828
+branch_name=work/CORE/B0131-internal-port-adapter-composition
+request_id=B0131-INTERNAL-PORT-COMPOSITION-20260828
