@@ -1,5 +1,5 @@
-source_sha=892f9399dde6d0239a387b84a26df23bef6e260f
-base_sha=7b482ff4edd596f310bfb6bc414d00ca9268987c
-branch_name=work/INTG/B0039-provider-implementation-handoff
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0039-PROVIDER-IMPLEMENTATION-HANDOFF-FINAL-MR-20260827
+source_sha=4d3d8da4eca48797c5ebfe9794167e9928336ab1
+base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
+branch_name=work/CORE/B0171-store-order-intake-operational-gate
+verification_phase=PRE_MERGE
+request_id=B0171-STORE-ORDER-INTAKE-GATE-PREMERGE-20260828
