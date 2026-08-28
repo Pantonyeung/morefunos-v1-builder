@@ -1,4 +1,4 @@
-source_sha=88d6b876117ffa6dbc2ec44e36676b4c116276c5
-base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
-branch_name=work/CORE/B0171-store-order-intake-operational-gate
-request_id=B0171-STORE-ORDER-INTAKE-TERMINAL-SEAL-20260828
+source_sha=fca22444ede37f7cdd85ecf97e91c0bdbc5a0fd7
+base_sha=32b7242f3e03a8407831fc97ac1aa58b8d38dd43
+branch_name=work/CORE/B0172-availability-runtime-contract-closure
+request_id=B0172-SMT-AVAILABILITY-PORT-CONTRACT-20260828
