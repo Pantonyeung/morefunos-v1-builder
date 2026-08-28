@@ -1,4 +1,4 @@
-source_sha=4827b639c267d072037826b11d8e8a8276dfcfd6
-base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
+source_sha=f60718417b4dc43f3aaf52aefe0665e641afce38
+base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
 branch_name=work/CORE/B0220-human-custody-active-work-foundation
-request_id=B0220-HUMAN-CUSTODY-ATOMIC-ROLLBACK-HARDENING-20260828
+request_id=B0220-HUMAN-CUSTODY-TERMINAL-SEAL-20260828
