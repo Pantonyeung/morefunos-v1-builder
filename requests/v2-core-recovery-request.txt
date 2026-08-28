@@ -1,4 +1,4 @@
-source_sha=8053f50ee7e5c53ee89b39a733ee9da4067a92ca
-base_sha=d00332391544dc0669547d1fa447ddb07df108a1
-branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-FULFILLMENT-EGRESS-CONSISTENCY-RED-20260828
+source_sha=3c3cdf33812d515920735e1f6ced34729971bcf7
+base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
+branch_name=work/CORE/B0220-human-custody-active-work-foundation
+request_id=B0220-HUMAN-CUSTODY-CORE-RED-20260828
