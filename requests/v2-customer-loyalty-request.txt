@@ -1,4 +1,4 @@
-source_sha=e6e4bad400c290562258e3b15c7a85d75500a049
-base_sha=da0d6a965873714b29d772f8fec202329fc9a023
-branch_name=work/CORE/B0112-customer-profile-coupon-contract-alignment
-request_id=B0112-CUSTOMER-PROFILE-COUPON-TERMINAL-B0175-20260828
+source_sha=b84cd6f60140b72f4bf4e2f19e4453b37817e0d7
+base_sha=d8e64a3e6e3447934d3a878b9a0bc9f331ab896a
+branch_name=work/CORE/B0113-customer-privacy-retention-lifecycle
+request_id=B0113-CUSTOMER-PRIVACY-PRECLOSURE-20260828
