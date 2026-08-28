@@ -1,4 +1,4 @@
-source_sha=9a29447a1e9936aebc91f9ae6d0ae5a25c2ab6f5
-base_sha=31febaf025fbadfa231f75ebecf77b0a0affffb5
+source_sha=8c79e2969055a11f4c91e491cf3767c3464086c5
+base_sha=2937715cebbc91a3bf2ee67b0281ac08e325940b
 branch_name=work/CORE/B0111-customer-loyalty-canonical-durable-core
-request_id=B0111-CUSTOMER-LOYALTY-CANONICAL-DURABLE-CORE-20260828
+request_id=B0111-CUSTOMER-LOYALTY-PRECLOSURE-20260828
