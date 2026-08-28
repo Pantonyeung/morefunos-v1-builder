@@ -1,4 +1,4 @@
-source_sha=c88e351ec5f7a2da7d99d12f9790b3effe63b812
+source_sha=0a32f4b028e273392e06cb81ab22e8d3af5fdd58
 base_sha=f35875953507342ffd90d2945a2109032d473a3a
 branch_name=work/CORE/B0183-refund-postgresql-production-durability
-request_id=B0183-REFUND-POSTGRESQL-TDD-RED-20260828
+request_id=B0183-REFUND-POSTGRESQL-TDD-GREEN-1-20260828
