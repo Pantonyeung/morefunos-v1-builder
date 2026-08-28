@@ -1,4 +1,4 @@
-source_sha=4e2185314f7330fa72ae053679dbb94664a75371
-base_sha=bfd598296f6206cfe477b30d917fcb8e06ce0dd0
-branch_name=work/CORE/B0211-customer-self-service-trusted-subject
-verification_phase=FINAL_MERGE_REQUEST
+source_sha=b2dc556782c82fa5001c1770f0efe4d8d8b07084
+base_sha=6631c6fe945b9116b218339bc747fcae440f867c
+branch_name=work/CORE/B0213-merchant-store-listing
+verification_phase=CANDIDATE
