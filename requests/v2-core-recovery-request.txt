@@ -1,4 +1,4 @@
-source_sha=1eb0e165c1191f146bc6389b4c078e50d830dda0
-base_sha=7db02339d4b02ddd68e43a641612f23cdcb0e317
-branch_name=work/CORE/B0180-production-persistence-foundation
-request_id=B0180-PRODUCTION-PERSISTENCE-TERMINAL-20260828
+source_sha=4869fdc5057abbdb17608a762dcc5e3f126656ab
+base_sha=afbaddba4f1ea02551f33242f6eb4684bb91da65
+branch_name=work/CORE/B0181-payment-postgresql-production-acceptance
+request_id=B0181-PAYMENT-POSTGRESQL-PREFLIGHT-20260828
