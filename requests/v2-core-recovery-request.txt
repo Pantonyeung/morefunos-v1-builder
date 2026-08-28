@@ -1,4 +1,4 @@
-source_sha=efd6f52c68219401774699873157f5fe5431750d
-base_sha=5f8d602e8b884d9c44488ab309690eb704c5f503
-branch_name=work/CORE/B0174-order-cancellation-correction
-request_id=B0174-ORDER-CANCELLATION-CORRECTION-RERUN-20260828
+source_sha=3efe4c6c3b5ae69448e089086cd259ab94298023
+base_sha=ba19f636133ed9151a950748adbaefa50340da98
+branch_name=work/CORE/B0175-offline-operations-health
+request_id=B0175-OFFLINE-OPERATIONS-HEALTH-TERMINAL-20260828
