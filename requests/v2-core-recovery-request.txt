@@ -1,4 +1,4 @@
-source_sha=88d6b876117ffa6dbc2ec44e36676b4c116276c5
-base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
+source_sha=e0f1143a16e4c41686fe990eed923783e8b6d892
+base_sha=f97f12cdf7f9c4abb244176019fb435251f83d55
 branch_name=work/CORE/B0171-store-order-intake-operational-gate
-request_id=B0171-STORE-ORDER-INTAKE-TERMINAL-SEAL-20260828
+request_id=B0171-STORE-ORDER-INTAKE-FRESH-RECONCILED-SEAL-20260828
