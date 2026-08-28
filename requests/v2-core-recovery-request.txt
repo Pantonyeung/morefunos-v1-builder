@@ -1,4 +1,4 @@
-source_sha=45d681394e2fb9d8c1bdc35d6e218f06f973415b
+source_sha=0d45af651fb1871ad936986c35e34d3f6d7bfc80
 base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-STORE-SCOPED-READ-GREEN-20260828
+request_id=B0210-BUSINESS-DAY-SCOPED-READ-RED-20260828
