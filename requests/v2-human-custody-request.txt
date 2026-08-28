@@ -1,4 +1,4 @@
-source_sha=ce547228e9caaa49bf400de03ac6dd39ee6272c8
+source_sha=8c6e4867985bfa947a1da7fee4043b4ba787bd2d
 base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
 branch_name=work/CORE/B0220-human-custody-active-work-foundation
-request_id=B0220-HUMAN-CUSTODY-SERVICE-RED-20260828
+request_id=B0220-HUMAN-CUSTODY-SERVICE-GREEN-20260828
