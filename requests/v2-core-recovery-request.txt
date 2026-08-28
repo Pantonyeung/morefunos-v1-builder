@@ -1,4 +1,4 @@
-source_sha=3aa0c85df911b92fe87a8631efecf2613f199ae8
-base_sha=112c0c1890bcc5c1036233267b13ddc9f2570455
+source_sha=1eb0e165c1191f146bc6389b4c078e50d830dda0
+base_sha=7db02339d4b02ddd68e43a641612f23cdcb0e317
 branch_name=work/CORE/B0180-production-persistence-foundation
-request_id=B0180-PRODUCTION-PERSISTENCE-PREFLIGHT-20260828
+request_id=B0180-PRODUCTION-PERSISTENCE-TERMINAL-20260828
