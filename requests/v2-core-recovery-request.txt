@@ -1,4 +1,4 @@
-source_sha=f090ba5630e739806040faa0b925432cde43ac47
+source_sha=9f187b8b92601aad0ac38a24bd7b4de4ac51debc
 base_sha=d00332391544dc0669547d1fa447ddb07df108a1
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-FULFILLMENT-MANUAL-ACTION-RED-20260828
+request_id=B0210-FULFILLMENT-MANUAL-ACTION-GREEN-20260828
