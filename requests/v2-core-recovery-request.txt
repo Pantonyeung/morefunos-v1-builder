@@ -1,4 +1,4 @@
-source_sha=76e13342c10837e367234ed13e333c8ac59438cd
-base_sha=ece51fecde2d0e039dd7af725f3cfc72af52ea15
-branch_name=work/CORE/B0101-inventory-ledger-durable-core
-request_id=B0101-INVENTORY-LEDGER-DURABLE-CORE-TERMINAL-20260828
+source_sha=ccd4019d67d1efc5b3917bd5c29da4dd6cef5b5b
+base_sha=8dab8de8c0349b23206d0a7dbd6561a695908816
+branch_name=work/CORE/B0110-customer-loyalty-recovery
+request_id=B0110-CUSTOMER-LOYALTY-RECOVERY-ADMISSION-20260828
