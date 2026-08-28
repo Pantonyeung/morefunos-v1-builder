@@ -1,4 +1,4 @@
-source_sha=631b356c85f3ce1407959e681ad75dad197267ff
-base_sha=2eeba451cfd1dcc7ec5c861eaa59cb9ab7a729e0
-branch_name=work/CORE/B0184-business-day-cash-postgresql-production-acceptance
-request_id=B0184-TERMINAL-POSTGRES-ADMISSION-SEAL-20260828
+source_sha=d1ad68de7d3c3c55b391c6119a2394e0e2c34c79
+base_sha=d00332391544dc0669547d1fa447ddb07df108a1
+branch_name=work/CORE/B0185-store-configuration-postgresql-production-durability
+request_id=B0185-STORE-CONFIGURATION-POSTGRES-RED-20260828
