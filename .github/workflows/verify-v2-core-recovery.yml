@@ -201,6 +201,18 @@ jobs:
             exit 1
           fi
 
+      - name: Core Payment tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/payment/*.test.ts' > /dev/null; then
+            node --test packages/payment/*.test.ts | tee "$RUNNER_TEMP/v2-core-payment-tests.log"
+          else
+            echo 'no payment tests present' | tee "$RUNNER_TEMP/v2-core-payment-tests.log"
+            exit 1
+          fi
+
       - name: Core Event Durability tests
         shell: bash
         run: |
@@ -289,6 +301,7 @@ jobs:
             ${{ runner.temp }}/v2-core-session-device-trust-tests.log
             ${{ runner.temp }}/v2-core-security-context-gateway-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
+            ${{ runner.temp }}/v2-core-payment-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
             ${{ runner.temp }}/v2-core-reporting-projection-tests.log
