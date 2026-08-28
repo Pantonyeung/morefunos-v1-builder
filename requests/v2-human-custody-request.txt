@@ -1,4 +1,4 @@
-source_sha=b1ccdbff2f55d297ebe288cc738f58ff5fdf20bc
+source_sha=07880c60b100db59324793819152c1c0ecb271d3
 base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
 branch_name=work/CORE/B0220-human-custody-active-work-foundation
-request_id=B0220-HUMAN-CUSTODY-SERVICE-GREEN-R2-20260828
+request_id=B0220-HUMAN-CUSTODY-POSTGRES-EXPIRY-CONCURRENCY-RED-20260828
