@@ -1,4 +1,4 @@
-source_sha=f6d016aa3298cdfe62346e6bf5f69a1248984b79
+source_sha=049dcf92914cfc710f7eff871d1df2836be9cfbe
 base_sha=32b7242f3e03a8407831fc97ac1aa58b8d38dd43
 branch_name=work/CORE/B0172-availability-runtime-contract-closure
-request_id=B0172-SMT-AVAILABILITY-PORT-CONTRACT-20260828-R2-CLEAN
+request_id=B0172-SMT-AVAILABILITY-PORT-CONTRACT-20260828-R3
