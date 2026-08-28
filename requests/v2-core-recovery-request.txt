@@ -1,4 +1,4 @@
-source_sha=d76095e38131956fc967d12afc8e82b5f6131c88
-base_sha=840cc729a7e384bae1f884eddefef1e95748ecc0
-branch_name=work/CORE/B0176-five-port-integration-certification
-request_id=B0176-FIVE-PORT-INTEGRATION-CERTIFICATION-TERMINAL-20260828
+source_sha=9bf38c49fefed090ed9949b216515aa54aa0c62f
+base_sha=f471bb73d9009d1ccc2965fb060bf929dae21f92
+branch_name=work/CORE/B0177-event-production-certification
+request_id=B0177-EVENT-PRODUCTION-CERTIFICATION-TERMINAL-20260828
