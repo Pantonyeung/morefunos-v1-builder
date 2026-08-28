@@ -1,4 +1,4 @@
-source_sha=7dd1e075159d0402b1418851e53d59be6951ba20
-base_sha=063ab66e92440f4a417a8b7637ae3eb2e5253d55
-branch_name=work/CORE/B0181-payment-postgresql-production-acceptance
-request_id=B0181-PAYMENT-POSTGRESQL-TERMINAL-20260828
+source_sha=7c0b60e95bcc48b065b6a78c8e866566843e1255
+base_sha=5a1ce566e9a273ac9429c454a70bb33b2fce6f7a
+branch_name=work/CORE/B0182-order-postgresql-production-acceptance
+request_id=B0182-ORDER-POSTGRESQL-TDD-RED-20260828
