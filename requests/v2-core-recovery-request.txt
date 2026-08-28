@@ -1,4 +1,4 @@
-source_sha=e0396485ebdca916162ba00a913c5fb8e1d946a2
-base_sha=d8e64a3e6e3447934d3a878b9a0bc9f331ab896a
-branch_name=work/CORE/B0177-event-production-certification
-request_id=B0177-AUDIT-CORRECTION-GOVERNANCE-TERMINAL-20260828
+source_sha=fa29941c1fea23b1b396a5c9a88a77487dc231bd
+base_sha=05d314f36c9d0e49008371a640a1cc06dd6985ff
+branch_name=work/CORE/B0178-payment-durable-acceptance
+request_id=B0178-PAYMENT-DURABLE-ACCEPTANCE-PREFLIGHT-20260828
