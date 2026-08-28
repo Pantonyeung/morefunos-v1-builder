@@ -1,4 +1,4 @@
-source_sha=4e6728ff9c9e2c9ec91fa5e4aa8683d22335e516
+source_sha=e5f69c2b2f487b47b2f7e7fa24327e4d94c91767
 base_sha=d00332391544dc0669547d1fa447ddb07df108a1
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-POST-RECONCILE-AVAILABILITY-TERMINAL-20260828
+request_id=B0210-FULFILLMENT-READ-EVENT-RED-20260828
