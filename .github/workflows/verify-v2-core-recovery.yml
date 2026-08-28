@@ -27,6 +27,22 @@ jobs:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: morefun_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d morefun_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/morefun_test
     steps:
       - name: Checkout Builder definition
         uses: actions/checkout@v6
@@ -93,6 +109,15 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
           echo "source-identity=PASS sha=$EXPECTED"
+
+      - name: Install source runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if [[ -f package.json ]]; then
+            npm install --no-save --ignore-scripts
+          fi
 
       - name: Core Catalog tests
         shell: bash
@@ -224,6 +249,17 @@ jobs:
             echo 'no event durability tests present' | tee "$RUNNER_TEMP/v2-core-event-durability-tests.log"
           fi
 
+      - name: Core Production Persistence tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/production-persistence/*.test.ts' > /dev/null; then
+            npm run test:core-production-persistence | tee "$RUNNER_TEMP/v2-core-production-persistence-tests.log"
+          else
+            echo 'no production persistence tests present' | tee "$RUNNER_TEMP/v2-core-production-persistence-tests.log"
+          fi
+
       - name: Core Internal Port Runtime tests
         shell: bash
         run: |
@@ -303,6 +339,7 @@ jobs:
             ${{ runner.temp }}/v2-core-order-tests.log
             ${{ runner.temp }}/v2-core-payment-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
+            ${{ runner.temp }}/v2-core-production-persistence-tests.log
             ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
             ${{ runner.temp }}/v2-core-reporting-projection-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
