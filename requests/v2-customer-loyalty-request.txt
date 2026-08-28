@@ -1,4 +1,4 @@
-source_sha=38d0c933a60e69b15be1f0c58e6df26b1d0e3c29
-base_sha=2937715cebbc91a3bf2ee67b0281ac08e325940b
-branch_name=work/CORE/B0111-customer-loyalty-canonical-durable-core
-request_id=B0111-CUSTOMER-LOYALTY-TERMINAL-20260828
+source_sha=5c63e5ec991e7ecad516fbe3fe790cc0bde5527c
+base_sha=a552c572f7147c4654d0d75e45c036bf8917e2c1
+branch_name=work/CORE/B0112-customer-profile-coupon-contract-alignment
+request_id=B0112-CUSTOMER-PROFILE-COUPON-PRECLOSURE-20260828
