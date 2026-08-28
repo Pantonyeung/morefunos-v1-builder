@@ -1,4 +1,4 @@
-source_sha=4bb2fd8eb25c00375ca142b27f9c5238458b179d
+source_sha=07358ceeae2207d3f43ac2a6c09429675bb4b48b
 base_sha=2eeba451cfd1dcc7ec5c861eaa59cb9ab7a729e0
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-AVAILABILITY-MUTATION-ADMISSION-GREEN-20260828
+request_id=B0210-AVAILABILITY-EVENT-SUBSCRIPTION-RED-20260828
