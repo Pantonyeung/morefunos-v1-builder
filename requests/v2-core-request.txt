@@ -1,5 +1,5 @@
 source_sha=4d3d8da4eca48797c5ebfe9794167e9928336ab1
 base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
 branch_name=work/CORE/B0171-store-order-intake-operational-gate
-verification_phase=PRE_MERGE
-request_id=B0171-STORE-ORDER-INTAKE-GATE-PREMERGE-20260828
+verification_phase=CANDIDATE
+request_id=B0171-STORE-ORDER-INTAKE-GATE-CANDIDATE-ATTEMPT-2-20260828
