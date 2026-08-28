@@ -1,5 +1,5 @@
-source_sha=4d3d8da4eca48797c5ebfe9794167e9928336ab1
-base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
-branch_name=work/CORE/B0171-store-order-intake-operational-gate
+source_sha=a887d61e1fe00de89ebe938d3598322bc9b8f21b
+base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
+branch_name=work/SMT/B0190-smt-canonical-ui-integration
 verification_phase=CANDIDATE
-request_id=B0171-STORE-ORDER-INTAKE-GATE-CANDIDATE-ATTEMPT-2-20260828
+request_id=B0190-SMT-CANONICAL-INTEGRATION-CANDIDATE-20260828
