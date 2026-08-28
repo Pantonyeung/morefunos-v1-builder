@@ -1,4 +1,4 @@
-source_sha=2e876474d2169f95164242cb275ec2cd47b3603e
+source_sha=e67c3298e68cba37485dc8c268305ddf232db1de
 base_sha=bfd598296f6206cfe477b30d917fcb8e06ce0dd0
 branch_name=work/CORE/B0211-customer-self-service-trusted-subject
 verification_phase=CANDIDATE
