@@ -1,4 +1,4 @@
-source_sha=f1e5a2e1c64323a4f85769a17afcc7b66b4beee4
-base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
-branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-ADMISSION-TERMINAL-20260828
+source_sha=4f4fc10fa0807100d5aaf055d1410b33205c2723
+base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
+branch_name=work/CORE/B0211-customer-self-service-trusted-subject
+request_id=B0211-TRUSTED-CUSTOMER-SUBJECT-RED-20260828
