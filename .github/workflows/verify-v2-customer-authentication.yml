@@ -1,0 +1,217 @@
+name: V2 Customer Authentication Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact comparison base SHA
+        required: true
+        type: string
+      branch_name:
+        description: V2 branch name represented by source SHA
+        required: true
+        type: string
+      verification_phase:
+        description: CANDIDATE or FINAL_MERGE_REQUEST
+        required: true
+        default: CANDIDATE
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-customer-authentication-request.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-customer-authentication-${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: morefun_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/morefun_test
+
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+          INPUT_VERIFICATION_PHASE: ${{ inputs.verification_phase }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(printf '%s' "$INPUT_BASE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+            VERIFICATION_PHASE="$(printf '%s' "$INPUT_VERIFICATION_PHASE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          else
+            test -f requests/v2-customer-authentication-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-authentication-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-customer-authentication-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-customer-authentication-request.txt | tr -d '\r\n')"
+            VERIFICATION_PHASE="$(sed -n 's/^verification_phase=//p' requests/v2-customer-authentication-request.txt | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            if [[ -z "$VERIFICATION_PHASE" ]]; then VERIFICATION_PHASE=CANDIDATE; fi
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          [[ "$VERIFICATION_PHASE" == CANDIDATE || "$VERIFICATION_PHASE" == FINAL_MERGE_REQUEST ]]
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "base_sha=$BASE_SHA"
+            echo "branch_name=$BRANCH_NAME"
+            echo "verification_phase=$VERIFICATION_PHASE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED"
+
+      - name: Install source dependencies
+        run: |
+          set -euo pipefail
+          cd source
+          npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Customer authentication focused tests
+        run: |
+          set -euo pipefail
+          cd source
+          node --test packages/customer-loyalty/customer-authentication-authority.test.ts packages/customer-loyalty/customer-authentication-postgres.test.ts | tee "$RUNNER_TEMP/v2-customer-authentication-tests.log"
+
+      - name: Production persistence regression
+        run: |
+          set -euo pipefail
+          cd source
+          npm run test:core-production-persistence | tee "$RUNNER_TEMP/v2-production-persistence-tests.log"
+
+      - name: Full Core regression
+        run: |
+          set -euo pipefail
+          cd source
+          node -e "for (const key of Object.keys(require('./package.json').scripts).filter(k=>k.startsWith('test:core-')).sort()) console.log(key)" > "$RUNNER_TEMP/core-scripts.txt"
+          while IFS= read -r script; do npm run "$script"; done < "$RUNNER_TEMP/core-scripts.txt" | tee "$RUNNER_TEMP/v2-full-core-tests.log"
+
+      - name: TypeScript static check
+        run: |
+          set -euo pipefail
+          cd source
+          npm run typecheck | tee "$RUNNER_TEMP/v2-customer-authentication-typecheck.log"
+
+      - name: Governance guard
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          cd source
+          python3 scripts/governance_guard.py --head "$SOURCE_SHA" --base "$BASE_SHA" --branch "$BRANCH_NAME" | tee "$RUNNER_TEMP/v2-customer-authentication-governance.log"
+
+      - name: Merge Request guard
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+        run: |
+          set -euo pipefail
+          if [[ "$VERIFICATION_PHASE" == CANDIDATE ]]; then
+            echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP' | tee "$RUNNER_TEMP/v2-customer-authentication-merge-request.log"
+          else
+            cd source
+            python3 scripts/merge_request_guard.py --head "$SOURCE_SHA" --base "$BASE_SHA" --branch "$BRANCH_NAME" | tee "$RUNNER_TEMP/v2-customer-authentication-merge-request.log"
+          fi
+
+      - name: Write evidence manifest
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+        run: |
+          cat > "$RUNNER_TEMP/v2-customer-authentication-evidence.txt" <<EOF
+          builder_repo=Pantonyeung/morefunos-v1-builder
+          builder_run_id=${GITHUB_RUN_ID}
+          source_repo=Pantonyeung/Morefun-v2
+          source_sha=${SOURCE_SHA}
+          base_sha=${BASE_SHA}
+          branch_name=${BRANCH_NAME}
+          verification_phase=${VERIFICATION_PHASE}
+          postgres_image=postgres:17-alpine
+          workflow=verify-v2-customer-authentication.yml
+          EOF
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-authentication-evidence-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-customer-authentication-evidence.txt
+            ${{ runner.temp }}/v2-customer-authentication-tests.log
+            ${{ runner.temp }}/v2-production-persistence-tests.log
+            ${{ runner.temp }}/v2-full-core-tests.log
+            ${{ runner.temp }}/v2-customer-authentication-typecheck.log
+            ${{ runner.temp }}/v2-customer-authentication-governance.log
+            ${{ runner.temp }}/v2-customer-authentication-merge-request.log
+          if-no-files-found: warn
+          retention-days: 30
