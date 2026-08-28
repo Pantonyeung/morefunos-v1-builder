@@ -1,4 +1,4 @@
-source_sha=bef8573c51e8b6fb130538831a817ce0e53873a6
+source_sha=20bc87d1dd565fff35ec93546bbcef7a41a50b19
 base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
 branch_name=work/CORE/B0211-customer-self-service-trusted-subject
-request_id=B0211-TRUSTED-CUSTOMER-SUBJECT-GREEN-20260828
+request_id=B0211-TRUSTED-CUSTOMER-SUBJECT-GREEN2-20260828
