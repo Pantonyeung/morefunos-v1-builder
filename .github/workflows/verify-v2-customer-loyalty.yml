@@ -1,0 +1,121 @@
+name: V2 Customer Loyalty Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-loyalty-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact comparison base SHA
+        required: true
+        type: string
+      branch_name:
+        description: V2 branch name represented by source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(printf '%s' "$INPUT_BASE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+          else
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-loyalty-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-customer-loyalty-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-customer-loyalty-request.txt | tr -d '\r\n')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v6
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Customer Loyalty focused tests
+        run: |
+          set -euo pipefail
+          cd source
+          node --test packages/customer-loyalty/*.test.ts | tee "$RUNNER_TEMP/v2-customer-loyalty-tests.log"
+
+      - name: TypeScript static check
+        run: |
+          set -euo pipefail
+          cd source
+          npm install --no-save --ignore-scripts typescript@7.0.2 @types/node@24
+          npx tsc --noEmit -p tsconfig.json --types node | tee "$RUNNER_TEMP/v2-customer-loyalty-typecheck.log"
+
+      - name: Governance guard
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          cd source
+          python3 scripts/governance_guard.py --head "$SOURCE_SHA" --base "$BASE_SHA" --branch "$BRANCH_NAME" | tee "$RUNNER_TEMP/v2-customer-loyalty-governance.log"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-loyalty-evidence-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-customer-loyalty-tests.log
+            ${{ runner.temp }}/v2-customer-loyalty-typecheck.log
+            ${{ runner.temp }}/v2-customer-loyalty-governance.log
+          if-no-files-found: warn
+          retention-days: 30
