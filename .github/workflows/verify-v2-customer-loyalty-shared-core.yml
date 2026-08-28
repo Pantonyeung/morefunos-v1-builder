@@ -1,0 +1,249 @@
+name: V2 Customer Loyalty Shared Core Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-loyalty-shared-core-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact comparison base SHA
+        required: true
+        type: string
+      branch_name:
+        description: V2 branch name represented by source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(printf '%s' "$INPUT_BASE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+          else
+            test -f requests/v2-customer-loyalty-shared-core-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-loyalty-shared-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-customer-loyalty-shared-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-customer-loyalty-shared-core-request.txt | tr -d '\r\n')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "base_sha=$BASE_SHA"
+            echo "branch_name=$BRANCH_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v6
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED"
+
+      - name: Core Catalog tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          node --test packages/catalog/*.test.ts | tee "$RUNNER_TEMP/v2-core-catalog-tests.log"
+
+      - name: Core Pricing tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/pricing/*.test.ts' > /dev/null; then node --test packages/pricing/*.test.ts | tee "$RUNNER_TEMP/v2-core-pricing-tests.log"; else echo 'no pricing tests present' | tee "$RUNNER_TEMP/v2-core-pricing-tests.log"; fi
+
+      - name: Core Availability tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/availability/*.test.ts' > /dev/null; then node --test packages/availability/*.test.ts | tee "$RUNNER_TEMP/v2-core-availability-tests.log"; else echo 'no availability tests present' | tee "$RUNNER_TEMP/v2-core-availability-tests.log"; fi
+
+      - name: Core Inventory tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/inventory/*.test.ts' > /dev/null; then node --test packages/inventory/*.test.ts | tee "$RUNNER_TEMP/v2-core-inventory-tests.log"; else echo 'no inventory tests present' | tee "$RUNNER_TEMP/v2-core-inventory-tests.log"; fi
+
+      - name: Core Store Configuration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/store-configuration/*.test.ts' > /dev/null; then node --test packages/store-configuration/*.test.ts | tee "$RUNNER_TEMP/v2-core-store-configuration-tests.log"; else echo 'no store configuration tests present' | tee "$RUNNER_TEMP/v2-core-store-configuration-tests.log"; fi
+
+      - name: Core Merchant Store tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/merchant-store/*.test.ts' > /dev/null; then node --test packages/merchant-store/*.test.ts | tee "$RUNNER_TEMP/v2-core-merchant-store-tests.log"; else echo 'no merchant store tests present' | tee "$RUNNER_TEMP/v2-core-merchant-store-tests.log"; fi
+
+      - name: Core Identity RBAC tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/identity-rbac/*.test.ts' > /dev/null; then node --test packages/identity-rbac/*.test.ts | tee "$RUNNER_TEMP/v2-core-identity-rbac-tests.log"; else echo 'no identity rbac tests present' | tee "$RUNNER_TEMP/v2-core-identity-rbac-tests.log"; fi
+
+      - name: Core Session Device Trust tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/session-device-trust/*.test.ts' > /dev/null; then node --test packages/session-device-trust/*.test.ts | tee "$RUNNER_TEMP/v2-core-session-device-trust-tests.log"; else echo 'no session device trust tests present' | tee "$RUNNER_TEMP/v2-core-session-device-trust-tests.log"; fi
+
+      - name: Core Security Context Gateway tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/security-context-gateway/*.test.ts' > /dev/null; then node --test packages/security-context-gateway/*.test.ts | tee "$RUNNER_TEMP/v2-core-security-context-gateway-tests.log"; else echo 'no security context gateway tests present' | tee "$RUNNER_TEMP/v2-core-security-context-gateway-tests.log"; fi
+
+      - name: Core Order tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/order/*.test.ts' > /dev/null; then node --test packages/order/*.test.ts | tee "$RUNNER_TEMP/v2-core-order-tests.log"; else echo 'no order tests present' | tee "$RUNNER_TEMP/v2-core-order-tests.log"; exit 1; fi
+
+      - name: Core Event Durability tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/event-durability/*.test.ts' > /dev/null; then node --test packages/event-durability/*.test.ts | tee "$RUNNER_TEMP/v2-core-event-durability-tests.log"; else echo 'no event durability tests present' | tee "$RUNNER_TEMP/v2-core-event-durability-tests.log"; fi
+
+      - name: Core Internal Port Runtime tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/internal-port-runtime/*.test.ts' > /dev/null; then node --test packages/internal-port-runtime/*.test.ts | tee "$RUNNER_TEMP/v2-core-internal-port-runtime-tests.log"; else echo 'no internal port runtime tests present' | tee "$RUNNER_TEMP/v2-core-internal-port-runtime-tests.log"; fi
+
+      - name: Core Reporting Projection tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/reporting-projection/*.test.ts' > /dev/null; then node --test packages/reporting-projection/*.test.ts | tee "$RUNNER_TEMP/v2-core-reporting-projection-tests.log"; else echo 'no reporting projection tests present' | tee "$RUNNER_TEMP/v2-core-reporting-projection-tests.log"; fi
+
+      - name: TypeScript static check
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          npm install --no-save --ignore-scripts typescript@7.0.2 @types/node@24
+          npx tsc --noEmit -p tsconfig.json --types node | tee "$RUNNER_TEMP/v2-core-typecheck.log"
+
+      - name: Governance guard
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          cd source
+          python3 scripts/governance_guard.py --head "$SOURCE_SHA" --base "$BASE_SHA" --branch "$BRANCH_NAME" | tee "$RUNNER_TEMP/v2-core-governance.log"
+
+      - name: Write evidence manifest
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/v2-core-recovery-evidence.txt" <<EOF
+          builder_repo=Pantonyeung/morefunos-v1-builder
+          builder_run_id=${GITHUB_RUN_ID}
+          source_repo=Pantonyeung/Morefun-v2
+          source_sha=${SOURCE_SHA}
+          base_sha=${BASE_SHA}
+          branch_name=${BRANCH_NAME}
+          workflow=verify-v2-customer-loyalty-shared-core.yml
+          EOF
+
+      - name: Upload recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-loyalty-shared-core-evidence-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-core-recovery-evidence.txt
+            ${{ runner.temp }}/v2-core-catalog-tests.log
+            ${{ runner.temp }}/v2-core-pricing-tests.log
+            ${{ runner.temp }}/v2-core-availability-tests.log
+            ${{ runner.temp }}/v2-core-inventory-tests.log
+            ${{ runner.temp }}/v2-core-store-configuration-tests.log
+            ${{ runner.temp }}/v2-core-merchant-store-tests.log
+            ${{ runner.temp }}/v2-core-identity-rbac-tests.log
+            ${{ runner.temp }}/v2-core-session-device-trust-tests.log
+            ${{ runner.temp }}/v2-core-security-context-gateway-tests.log
+            ${{ runner.temp }}/v2-core-order-tests.log
+            ${{ runner.temp }}/v2-core-event-durability-tests.log
+            ${{ runner.temp }}/v2-core-internal-port-runtime-tests.log
+            ${{ runner.temp }}/v2-core-reporting-projection-tests.log
+            ${{ runner.temp }}/v2-core-typecheck.log
+            ${{ runner.temp }}/v2-core-governance.log
+          if-no-files-found: warn
+          retention-days: 30
