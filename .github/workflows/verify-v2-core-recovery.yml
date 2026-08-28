@@ -226,6 +226,18 @@ jobs:
             exit 1
           fi
 
+      - name: Core Business Day Cash tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/business-day-cash/*.test.ts' > /dev/null; then
+            npm run test:core-business-day-cash | tee "$RUNNER_TEMP/v2-core-business-day-cash-tests.log"
+          else
+            echo 'no business day cash tests present' | tee "$RUNNER_TEMP/v2-core-business-day-cash-tests.log"
+            exit 1
+          fi
+
       - name: Core Payment tests
         shell: bash
         run: |
@@ -337,6 +349,7 @@ jobs:
             ${{ runner.temp }}/v2-core-session-device-trust-tests.log
             ${{ runner.temp }}/v2-core-security-context-gateway-tests.log
             ${{ runner.temp }}/v2-core-order-tests.log
+            ${{ runner.temp }}/v2-core-business-day-cash-tests.log
             ${{ runner.temp }}/v2-core-payment-tests.log
             ${{ runner.temp }}/v2-core-event-durability-tests.log
             ${{ runner.temp }}/v2-core-production-persistence-tests.log
