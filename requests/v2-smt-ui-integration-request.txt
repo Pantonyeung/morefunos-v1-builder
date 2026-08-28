@@ -1,2 +1,2 @@
-source_sha=c4c0b56a1b5f03b621496171711cfa0c1ff2e89a
-request_id=B0190-SMT-OTA-GREEN-20260828
+source_sha=777ee144bee4e05772b79b2f00d3b606d096bdcd
+request_id=B0190-SMT-OTA-UI-GREEN-20260828
