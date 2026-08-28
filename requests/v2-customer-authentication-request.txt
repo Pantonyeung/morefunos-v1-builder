@@ -1,0 +1,4 @@
+source_sha=6eb81e2167b5a161e877da1778467b5c883ef43f
+base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
+branch_name=work/CORE/B0212-customer-authentication-authority
+verification_phase=CANDIDATE
