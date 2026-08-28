@@ -80,6 +80,18 @@ jobs:
         working-directory: source
         run: npm run test:smt-ui-integration
 
+      - name: Install SMT app dependencies
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: SMT app typecheck
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck
+
+      - name: SMT app build
+        working-directory: source/apps/smt-clean
+        run: npm run build
+
       - name: Write evidence
         if: always()
         shell: bash
