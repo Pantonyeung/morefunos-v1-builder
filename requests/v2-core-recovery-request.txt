@@ -1,4 +1,4 @@
-source_sha=d1ad68de7d3c3c55b391c6119a2394e0e2c34c79
+source_sha=5119d10716ce0119798bdcd87ab2ed956d087ac7
 base_sha=d00332391544dc0669547d1fa447ddb07df108a1
 branch_name=work/CORE/B0185-store-configuration-postgresql-production-durability
-request_id=B0185-STORE-CONFIGURATION-POSTGRES-RED-20260828
+request_id=B0185-STORE-CONFIGURATION-POSTGRES-GREEN-20260828
