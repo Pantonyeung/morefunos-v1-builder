@@ -1,4 +1,4 @@
-source_sha=4869fdc5057abbdb17608a762dcc5e3f126656ab
+source_sha=6b298fcc4adcd9f39d31ec53c180a7054512fe29
 base_sha=afbaddba4f1ea02551f33242f6eb4684bb91da65
 branch_name=work/CORE/B0181-payment-postgresql-production-acceptance
-request_id=B0181-PAYMENT-POSTGRESQL-PREFLIGHT-20260828
+request_id=B0181-PAYMENT-POSTGRESQL-PREFLIGHT-2-20260828
