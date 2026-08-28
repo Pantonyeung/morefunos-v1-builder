@@ -1,0 +1,4 @@
+source_sha=9a29447a1e9936aebc91f9ae6d0ae5a25c2ab6f5
+base_sha=31febaf025fbadfa231f75ebecf77b0a0affffb5
+branch_name=work/CORE/B0111-customer-loyalty-canonical-durable-core
+request_id=B0111-CUSTOMER-LOYALTY-CANONICAL-DURABLE-CORE-20260828
