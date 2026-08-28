@@ -1,4 +1,4 @@
-source_sha=9f187b8b92601aad0ac38a24bd7b4de4ac51debc
+source_sha=8053f50ee7e5c53ee89b39a733ee9da4067a92ca
 base_sha=d00332391544dc0669547d1fa447ddb07df108a1
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-FULFILLMENT-MANUAL-ACTION-GREEN-20260828
+request_id=B0210-FULFILLMENT-EGRESS-CONSISTENCY-RED-20260828
