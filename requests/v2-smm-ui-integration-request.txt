@@ -1,2 +1,2 @@
-source_sha=b060639440fa7284ed1c454fb9bc102a651ff9a7
-request_id=B0230-SMM-ORDERS-BODY-GREEN3-20260829
+source_sha=82fe4bcf1ad9b211c9ee2fb8759bca9eb4a0b8f5
+request_id=B0230-SMM-MORE-BODY-RED-20260829
