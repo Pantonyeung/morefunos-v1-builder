@@ -1,0 +1,4 @@
+source_sha=5c63e5ec991e7ecad516fbe3fe790cc0bde5527c
+base_sha=a552c572f7147c4654d0d75e45c036bf8917e2c1
+branch_name=work/CORE/B0112-customer-profile-coupon-contract-alignment
+request_id=B0112-CUSTOMER-PROFILE-COUPON-ISOLATED-SHARED-CORE-PRECLOSURE-20260828
