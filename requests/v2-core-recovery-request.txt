@@ -1,4 +1,4 @@
-source_sha=b69675831021959921ecabb1615ef6644dcfa166
+source_sha=f1e5a2e1c64323a4f85769a17afcc7b66b4beee4
 base_sha=0133b2abff63103716aaf3d430f13b40ca7f6100
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-TERMINAL-SCOPED-READS-20260828
+request_id=B0210-ADMISSION-TERMINAL-20260828
