@@ -1,4 +1,4 @@
-source_sha=f76213cdce5b242384aaf7efb34c7ccd2f4f3dd5
+source_sha=eb9d2b10b1c763d1126d8db002cd833333f9a5a8
 base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
 branch_name=work/SMT/B0190-smt-canonical-ui-integration
-request_id=B0190-SMT-CANONICAL-RUNTIME-BINDING-GREEN3-20260828
+request_id=B0190-SMT-TRUSTED-RUNTIME-CONTEXT-GREEN4-20260828
