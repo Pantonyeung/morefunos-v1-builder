@@ -1,4 +1,4 @@
-source_sha=7dd1e075159d0402b1418851e53d59be6951ba20
-base_sha=063ab66e92440f4a417a8b7637ae3eb2e5253d55
-branch_name=work/CORE/B0181-payment-postgresql-production-acceptance
-request_id=B0181-PAYMENT-POSTGRESQL-TERMINAL-20260828
+source_sha=4d3d8da4eca48797c5ebfe9794167e9928336ab1
+base_sha=53f43d69e625cea28e13d8cd0e4ee07ae51d6c78
+branch_name=work/CORE/B0171-store-order-intake-operational-gate
+request_id=B0171-STORE-ORDER-INTAKE-RECOVERY-PATH-CANDIDATE-20260828
