@@ -1,4 +1,4 @@
-source_sha=04d028cc28084b5ad62d418ab24e37ab7d7dbc31
-base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
-branch_name=work/CORE/B0212-customer-authentication-authority
-verification_phase=FINAL_MERGE_REQUEST
+source_sha=98e25e5f7c8dc724a6469076b07232871369fd2e
+base_sha=bfd598296f6206cfe477b30d917fcb8e06ce0dd0
+branch_name=work/CORE/B0211-customer-self-service-trusted-subject
+verification_phase=CANDIDATE
