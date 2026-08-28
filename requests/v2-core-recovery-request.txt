@@ -1,4 +1,4 @@
-source_sha=bc67f4eec5f281f90d9b24a40c15ddf041332e5f
-base_sha=a552c572f7147c4654d0d75e45c036bf8917e2c1
-branch_name=work/CORE/B0172-availability-runtime-contract-closure
-request_id=B0172-AVAILABILITY-RUNTIME-CONTRACT-CLOSURE-TERMINAL-20260828
+source_sha=9c0c73f9838d2a1bf15a55b715e7405de531955c
+base_sha=eff3f67f6aec391698f1a4d8d29e69d286f9d24e
+branch_name=work/CORE/B0173-business-day-close-readiness
+request_id=B0173-BUSINESS-DAY-CLOSE-READINESS-TERMINAL-20260828
