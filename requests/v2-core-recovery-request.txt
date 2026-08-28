@@ -1,4 +1,4 @@
-source_sha=da81e13b06567462119a8b2b99174833959bde3c
+source_sha=9c10d5ac9bf2a76a5f21d6f2291a38d2428a5127
 base_sha=2eeba451cfd1dcc7ec5c861eaa59cb9ab7a729e0
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-FIVE-PORT-RUNTIME-RED-20260828
+request_id=B0210-FIVE-PORT-RUNTIME-GREEN-20260828
