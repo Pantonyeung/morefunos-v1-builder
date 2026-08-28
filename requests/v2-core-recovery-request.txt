@@ -1,4 +1,4 @@
-source_sha=7dd1e075159d0402b1418851e53d59be6951ba20
-base_sha=063ab66e92440f4a417a8b7637ae3eb2e5253d55
-branch_name=work/CORE/B0181-payment-postgresql-production-acceptance
-request_id=B0181-PAYMENT-POSTGRESQL-TERMINAL-20260828
+source_sha=da81e13b06567462119a8b2b99174833959bde3c
+base_sha=2eeba451cfd1dcc7ec5c861eaa59cb9ab7a729e0
+branch_name=work/CORE/B0210-five-port-contract-foundation
+request_id=B0210-FIVE-PORT-RUNTIME-RED-20260828
