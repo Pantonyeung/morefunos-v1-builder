@@ -1,4 +1,4 @@
-source_sha=d118ce9df020e0a0e8399582d5b20e1f53b26ccf
-base_sha=2eeba451cfd1dcc7ec5c861eaa59cb9ab7a729e0
+source_sha=4e6728ff9c9e2c9ec91fa5e4aa8683d22335e516
+base_sha=d00332391544dc0669547d1fa447ddb07df108a1
 branch_name=work/CORE/B0210-five-port-contract-foundation
-request_id=B0210-AVAILABILITY-SOCKET-TERMINAL-20260828
+request_id=B0210-POST-RECONCILE-AVAILABILITY-TERMINAL-20260828
