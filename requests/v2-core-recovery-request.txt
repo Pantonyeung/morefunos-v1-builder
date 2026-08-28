@@ -1,4 +1,4 @@
-source_sha=3efe4c6c3b5ae69448e089086cd259ab94298023
-base_sha=ba19f636133ed9151a950748adbaefa50340da98
-branch_name=work/CORE/B0175-offline-operations-health
-request_id=B0175-OFFLINE-OPERATIONS-HEALTH-TERMINAL-20260828
+source_sha=d76095e38131956fc967d12afc8e82b5f6131c88
+base_sha=840cc729a7e384bae1f884eddefef1e95748ecc0
+branch_name=work/CORE/B0176-five-port-integration-certification
+request_id=B0176-FIVE-PORT-INTEGRATION-CERTIFICATION-TERMINAL-20260828
