@@ -1,4 +1,4 @@
-source_sha=7e992054578dff4d3bcc468cd72a7d07b7064342
+source_sha=4e2185314f7330fa72ae053679dbb94664a75371
 base_sha=bfd598296f6206cfe477b30d917fcb8e06ce0dd0
 branch_name=work/CORE/B0211-customer-self-service-trusted-subject
 verification_phase=FINAL_MERGE_REQUEST
