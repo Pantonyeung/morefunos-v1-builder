@@ -1,4 +1,4 @@
-source_sha=9a6af2523e80d808904cca1bc59263cf61327a53
-base_sha=05d314f36c9d0e49008371a640a1cc06dd6985ff
-branch_name=work/CORE/B0178-payment-durable-acceptance
-request_id=B0178-PAYMENT-DURABLE-ACCEPTANCE-TERMINAL-20260828
+source_sha=3aa0c85df911b92fe87a8631efecf2613f199ae8
+base_sha=112c0c1890bcc5c1036233267b13ddc9f2570455
+branch_name=work/CORE/B0180-production-persistence-foundation
+request_id=B0180-PRODUCTION-PERSISTENCE-PREFLIGHT-20260828
