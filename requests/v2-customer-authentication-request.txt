@@ -1,4 +1,4 @@
-source_sha=61ea08220393a322d36ba46aa643cb45e174173d
+source_sha=876a60324998bb2b03717b52a9060c5b2c879b82
 base_sha=6631c6fe945b9116b218339bc747fcae440f867c
 branch_name=work/CORE/B0213-merchant-store-listing
 verification_phase=CANDIDATE
