@@ -1,4 +1,4 @@
-source_sha=c3566d5b4d36bdf61f6ae5ef1fc339373ca711fc
+source_sha=7e44e9ecd66b725a3198518dd121436668f6d165
 base_sha=f35875953507342ffd90d2945a2109032d473a3a
 branch_name=work/CORE/B0183-refund-postgresql-production-durability
-request_id=B0183-REFUND-POSTGRES-FINAL-INTEGRATION-20260828
+request_id=B0183-REFUND-POSTGRES-TERMINAL-20260828
