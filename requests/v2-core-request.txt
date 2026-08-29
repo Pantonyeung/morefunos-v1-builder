@@ -1,5 +1,5 @@
-source_sha=adf3dcd699790546f7ab66d1538b226251fab1bf
+source_sha=3acc7877a46489ea8d744f251a6af105970ebede
 base_sha=fb758f42d56680315f439d8609fc8e2fa73618ad
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
-verification_phase=CANDIDATE
-request_id=B0186-ORDER-DURABILITY-RESERVATION-GOVERNANCE-CANDIDATE-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0186-ORDER-DURABILITY-TERMINAL-SEAL-20260829
