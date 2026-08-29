@@ -1,5 +1,5 @@
-source_sha=ab033663d342da00d2a5ea847e6e66c0a508140f
+source_sha=0510299788175d801813e698553b5b756bec9a76
 base_sha=1ebfa6dc3004b36d20eb6215e5901897d8701dae
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0262-CUSTOMER-OWNERSHIP-RED-20260829
+request_id=B0262-CUSTOMER-OWNERSHIP-GREEN-20260829
