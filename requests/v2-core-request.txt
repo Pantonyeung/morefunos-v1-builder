@@ -1,5 +1,5 @@
-source_sha=f4742978fb85241c9cd141a659f0358d6da3a67e
+source_sha=1b23504d52eb7ff3c7bcfc123fe59b7b10ac2b55
 base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
 branch_name=work/INTG/B0165-keeta-cloudflare-sit-runtime
-verification_phase=CANDIDATE
-request_id=B0165-KEETA-CLOUDFLARE-SIT-RUNTIME-CANDIDATE-R2-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0165-KEETA-CLOUDFLARE-SIT-RUNTIME-FINAL-20260829
