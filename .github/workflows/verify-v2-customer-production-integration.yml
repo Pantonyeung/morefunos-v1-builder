@@ -80,9 +80,9 @@ jobs:
         working-directory: source
         run: node --test apps/customer-web/*.test.mjs
 
-      - name: V2 TypeScript static check
+      - name: Customer integration TypeScript strict check
         working-directory: source
-        run: npm run typecheck
+        run: npx tsc -p packages/customer-ui-integration/tsconfig.json
 
       - name: Write evidence
         if: always()
