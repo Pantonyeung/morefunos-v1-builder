@@ -15,6 +15,9 @@ on:
         description: Exact Morefun-v2 branch represented by source SHA
         required: true
         type: string
+  push:
+    paths:
+      - 'requests/v2-self-service-governance-request.txt'
 
 permissions:
   contents: read
@@ -29,15 +32,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate exact request
+      - name: Resolve and validate exact request
         id: request
         shell: bash
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
-          BASE_SHA: ${{ inputs.base_sha }}
-          BRANCH_NAME: ${{ inputs.branch_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
         run: |
           set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$INPUT_SOURCE_SHA"
+            BASE_SHA="${INPUT_BASE_SHA:-}"
+            BRANCH_NAME="$INPUT_BRANCH_NAME"
+          else
+            test -f requests/v2-self-service-governance-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-self-service-governance-request.txt)"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-self-service-governance-request.txt)"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-self-service-governance-request.txt)"
+          fi
           SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           BASE_SHA="$(printf '%s' "${BASE_SHA:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           BRANCH_NAME="$(printf '%s' "$BRANCH_NAME" | tr -d '\r\n')"
