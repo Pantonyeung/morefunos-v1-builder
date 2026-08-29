@@ -1,5 +1,5 @@
-source_sha=c8fa274f4186716e7b6c75cec54122ffb0154b69
+source_sha=0f8f0047fd80a0a6299dcd82d6515e34fc002c19
 base_sha=b685a74c85f6b870cd39bd85703b2520be33b85c
 branch_name=work/INTG/B0161-keeta-standard-api-adapter-foundation
-verification_phase=CANDIDATE
-request_id=B0161-KEETA-STANDARD-API-ADAPTER-FOUNDATION-CANDIDATE-20260829-R5
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0161-KEETA-STANDARD-API-ADAPTER-FOUNDATION-FINAL-20260829
