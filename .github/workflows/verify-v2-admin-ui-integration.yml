@@ -86,7 +86,7 @@ jobs:
         run: |
           mkdir -p ../evidence
           set -o pipefail
-          tsc --noEmit --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --types node packages/admin-ui-integration/runtime-provider.ts packages/admin-ui-integration/runtime-provider.test.ts 2>&1 | tee ../evidence/admin-typecheck.txt
+          tsc --ignoreConfig --noEmit --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --types node packages/admin-ui-integration/runtime-provider.ts packages/admin-ui-integration/runtime-provider.test.ts 2>&1 | tee ../evidence/admin-typecheck.txt
 
       - name: Admin app typecheck
         if: ${{ hashFiles('source/apps/admin-web/package.json') != '' }}
