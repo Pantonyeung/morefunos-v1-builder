@@ -1,5 +1,5 @@
-source_sha=81a35a4df43434f4643de0a5ba6e56fb34c1973f
-base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
-branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
+source_sha=cd4d0c29865a81c81de12d7e8f53a03ad46e0614
+base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
+branch_name=work/CORE/B0220-human-custody-active-work-foundation
 verification_phase=CANDIDATE
-# retrigger=B0186-terminal-completion-manifest
+# retrigger=B0220-red-rollback-client-discard
