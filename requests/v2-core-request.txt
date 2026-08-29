@@ -1,5 +1,5 @@
-source_sha=fdad7e391619aabf6255396422c0bc2316c5c176
+source_sha=7e88930a23b774527b3b1c1448dd70af80c4748f
 base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
 branch_name=work/CORE/B0220-human-custody-active-work-foundation
-verification_phase=CANDIDATE
-request_id=B0220-HUMAN-CUSTODY-GOVERNANCE-GREEN-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0220-HUMAN-CUSTODY-TERMINAL-SEAL-20260829
