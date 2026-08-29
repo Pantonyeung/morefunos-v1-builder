@@ -1,0 +1,3 @@
+source_sha=e099896180164ed2696afa07bcf1f8ac5fb14b96
+branch_name=work/CORE/B0214-internal-port-executable-invocation
+request_id=B0214-INTERNAL-PORT-RUNTIME-RED-20260829
