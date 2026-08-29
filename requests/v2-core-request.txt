@@ -1,5 +1,5 @@
-source_sha=1b07cb36de2c9702531da70b06637287cbff2783
+source_sha=7a02024fa1726ff9391b7b933af26713bb77fe90
 base_sha=3b938cbbe141f1770eec1d9fc374cb268dada4ce
-branch_name=work/CORE/B0221-human-custody-mutation-port-contract
+branch_name=work/INTG/B0164-keeta-formal-sit-execution-readiness
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0221-HUMAN-CUSTODY-MUTATION-FINAL-20260829
+request_id=B0164-KEETA-FORMAL-SIT-READINESS-FINAL-20260829
