@@ -1,5 +1,5 @@
-source_sha=6a7ccd7e56d4e57f6187d917c2be8df72242a559
-base_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
+source_sha=f74ac57e272e2ef19c3096a3797e17ee0a195a40
+base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
 verification_phase=CANDIDATE
-# retrigger=projection-drift-attack
+# retrigger=B0186-terminal-latest-main-reconcile
