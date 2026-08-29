@@ -1,5 +1,5 @@
-source_sha=676e3112f3d4fa3cafcf88385e8da2dfc0aa413a
+source_sha=26e3f14c42a05fae078e32f4ea75f9430f79fc51
 base_sha=b5e4bd3f05ddd015a3651a66c1c2f9d2c60aec61
 branch_name=work/INTG/B0163-keeta-executable-binding-sit-harness
 verification_phase=CANDIDATE
-request_id=B0163-EXACT-REFUND-STORE-BINDING-CANDIDATE-20260829
+request_id=B0163-SELLABILITY-GATE-CANDIDATE-20260829
