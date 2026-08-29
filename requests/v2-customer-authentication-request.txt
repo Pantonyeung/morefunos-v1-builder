@@ -1,4 +1,4 @@
-source_sha=fd8e774cf70c78f9ade8563b81115fe1a97e0d29
-base_sha=6631c6fe945b9116b218339bc747fcae440f867c
-branch_name=work/CORE/B0213-merchant-store-listing
-verification_phase=FINAL_MERGE_REQUEST
+source_sha=52747769b14b3d222006de4ad6cf1074d1c57255
+base_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
+branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
+verification_phase=CANDIDATE
