@@ -1,5 +1,5 @@
 source_sha=a3b28b5bff4592ae63ca19b808db757219fbb6f1
 base_sha=bc8c12605ba949ec5d6964ca188eb2fbd7b00605
 branch_name=work/CORE/B0263-smt-print-physical-port-closure
-verification_phase=RED
+verification_phase=CANDIDATE
 request_id=B0263-RED-20260830
