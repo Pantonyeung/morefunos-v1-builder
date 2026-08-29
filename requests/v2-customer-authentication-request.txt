@@ -1,4 +1,4 @@
-source_sha=dbfeb9e019905e3b268eef572f90697bf712cc44
+source_sha=6a7ccd7e56d4e57f6187d917c2be8df72242a559
 base_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
 verification_phase=CANDIDATE
