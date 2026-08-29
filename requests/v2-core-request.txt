@@ -1,5 +1,5 @@
-source_sha=65c3afa21b9f2f13ecb467d8cea218e58d5513ca
+source_sha=cd360933800a89e8f104e3e77422aa09cacdad83
 base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0262-GREEN-SEAMS-CANDIDATE-20260829
+request_id=B0262-GREEN-FULL-CANDIDATE-20260829
