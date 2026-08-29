@@ -1,5 +1,5 @@
-source_sha=23dd3c0cac903a5cf57f3c376aae77f2ed89bd36
+source_sha=98ccba006b58ac7b7ee6e94cb53b8505ba6d5d06
 base_sha=8738bd7370c336810c94c31705b38e27a4713bd1
 branch_name=work/CORE/B0217-provider-sellability-egress-guard-proof
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0217-PROVIDER-SELLABILITY-EGRESS-GUARD-FINAL-20260829
+request_id=B0217-PROVIDER-SELLABILITY-EGRESS-GUARD-FINAL-R2-20260829
