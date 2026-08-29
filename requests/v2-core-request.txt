@@ -1,5 +1,5 @@
-source_sha=7c6d9e8d644251a5e7be76ba5a21155a34bf33af
-base_sha=88591dce44462830be421cb61b7362a4a3313dd8
-branch_name=work/CORE/B0263-smt-print-physical-port-closure
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0263-FINAL-MERGE-REQUEST-20260830
+source_sha=54814031b6bde470e0851a48dbc880e34216a757
+base_sha=7df5ed31bda6ecb6d837966c59dc46567e464646
+branch_name=work/CORE/B0250-canonical-menu-projection
+verification_phase=CANDIDATE
+request_id=B0250-RED-20260830
