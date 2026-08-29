@@ -1,5 +1,5 @@
-source_sha=6243247d57a1fda9e3d5d377ee1d6847c6b1ceb4
-base_sha=b685a74c85f6b870cd39bd85703b2520be33b85c
-branch_name=work/INTG/B0161-keeta-standard-api-adapter-foundation
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0161-KEETA-STANDARD-API-ADAPTER-FOUNDATION-FINAL-20260829-R2
+source_sha=8eefede702b0a7155a0674b8d8c05d5ea46499ec
+base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
+branch_name=work/INTG/B0162-keeta-webhook-security-ingress
+verification_phase=CANDIDATE
+request_id=B0162-KEETA-WEBHOOK-SECURITY-INGRESS-RED-20260829
