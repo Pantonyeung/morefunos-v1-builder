@@ -117,6 +117,10 @@ jobs:
           grep -Eq '(src|href)="\./assets/' apps/smt-clean/dist/index.html
           ! grep -Eq '(src|href)="/assets/' apps/smt-clean/dist/index.html
 
+      - name: Android runtime persistence regression tests
+        working-directory: source
+        run: gradle -p apps/smt-android :app:testDebugUnitTest --no-daemon
+
       - name: Android Java compile
         working-directory: source
         run: gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon
@@ -141,7 +145,7 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           mkdir -p evidence
-          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-carrier.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-carrier.yml\nruntime_persistence_tests=:app:testDebugUnitTest\n' "$SOURCE_SHA" > evidence/summary.txt
 
       - name: Upload evidence
         if: always()
