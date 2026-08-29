@@ -1,5 +1,5 @@
-source_sha=181d0ed71d0806388840218f8424371d3a4347e3
+source_sha=c561a08d23f3e9e7bcc1fe8987e684cbd55d9e08
 base_sha=96a5fb83b5edfb87fe599b5736b3ad1c76dcc268
 branch_name=work/CORE/B0261-smm-print-job-request-observe-port-contract
 verification_phase=CANDIDATE
-request_id=B0261-EXECUTABLE-RED-20260829
+request_id=B0261-GREEN-CANDIDATE-20260829
