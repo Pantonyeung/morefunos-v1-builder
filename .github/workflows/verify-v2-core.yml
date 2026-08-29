@@ -113,6 +113,13 @@ jobs:
         shell: bash
         run: node --version
 
+      - name: Install source dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
       - name: Core Catalog tests
         shell: bash
         run: |
