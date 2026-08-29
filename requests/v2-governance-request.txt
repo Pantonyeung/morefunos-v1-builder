@@ -1,4 +1,4 @@
-source_sha=27190d1680f3c693c6817e72d980b2bc74fa40d3
-base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
+source_sha=cdb6befe3b393810f13c794bb2f40ebb3acb0d43
+base_sha=f62b99bb3c29cbe20c9d49049eb3da65e8cfdbeb
 branch_name=work/SMM/B0231-smm-residual-canonical-bindings
-request_id=B0231-SMM-TERMINAL-GOVERNANCE-20260829
+request_id=B0231-SMM-TERMINAL-GOVERNANCE-RERUN-20260829
