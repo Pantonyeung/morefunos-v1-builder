@@ -1,5 +1,5 @@
-source_sha=668de1e81bf5f6cc468b52a44b2e877e6dab7296
-base_sha=a5bfb2f10bf3af2548c162bed660af085a647b14
-branch_name=work/CORE/B0218-core-post-b0217-admission-pointer-reconciliation
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0218-POST-B0217-POINTER-RECONCILIATION-FINAL-20260829
+source_sha=40f28895fe727a049f9376631eaeab3ee89a1df3
+base_sha=23d7bbc7c82e0af629e51025035edf8d073c6f4c
+branch_name=reconcile/INTG/B0162-on-main-23d7bbc-r3
+verification_phase=CANDIDATE
+request_id=B0162-KEETA-RECONCILIATION-CANDIDATE-20260829
