@@ -1,5 +1,5 @@
-source_sha=855d990ef6902b38d7c9a07a4831293b59c7c868
+source_sha=9672e30e2b30c193dae539139083595d6730a6d9
 base_sha=3b938cbbe141f1770eec1d9fc374cb268dada4ce
-branch_name=work/CORE/B0221-human-custody-mutation-port-contract
+branch_name=work/INTG/B0164-keeta-formal-sit-execution-readiness
 verification_phase=CANDIDATE
-request_id=B0221-HUMAN-CUSTODY-MUTATION-GREEN-CANDIDATE-20260829
+request_id=B0164-KEETA-FORMAL-SIT-READINESS-RECONCILED-CANDIDATE-20260829
