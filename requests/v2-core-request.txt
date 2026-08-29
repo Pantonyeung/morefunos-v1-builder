@@ -1,5 +1,5 @@
-source_sha=12cc75b9313c36fe8f726f28c4a509f76e5ef168
+source_sha=7caef12b9670d45f62d15782f0d9df67fa9b3e14
 base_sha=8cf7e4d466fa42d3211ece7cb611709681640631
 branch_name=work/CORE/B0216-core-post-admission-pointer-reconciliation
-verification_phase=CANDIDATE
-request_id=B0216-CORE-POST-ADMISSION-POINTER-RECONCILIATION-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0216-CORE-POST-ADMISSION-POINTER-RECONCILIATION-FINAL-20260829
