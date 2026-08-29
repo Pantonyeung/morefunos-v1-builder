@@ -1,5 +1,5 @@
-source_sha=ba8927ce7ab5911836b5d4a89aeb7a3e715a8935
-base_sha=3aab6e7e4cf893b2f77015ef68e800348bab1fb2
-branch_name=work/CORE/B0215-five-port-core-residual-certification
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0215-FIVE-PORT-CORE-RESIDUAL-CERTIFICATION-FINAL-20260829
+source_sha=12cc75b9313c36fe8f726f28c4a509f76e5ef168
+base_sha=8cf7e4d466fa42d3211ece7cb611709681640631
+branch_name=work/CORE/B0216-core-post-admission-pointer-reconciliation
+verification_phase=CANDIDATE
+request_id=B0216-CORE-POST-ADMISSION-POINTER-RECONCILIATION-20260829
