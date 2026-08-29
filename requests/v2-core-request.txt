@@ -1,5 +1,5 @@
-source_sha=69e60007fee7dca43af738438a1370056f94c666
-base_sha=dfe5ec01e221a965c112df9878afcd6d692583d3
+source_sha=efece3db23bb28ee6732f0ff3cd951b62a0d115a
+base_sha=3d1a335f14049f428c6f6a3388b045425ac2c9df
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
-verification_phase=CANDIDATE
-request_id=B0262-REAL-AUTH-GREEN-CANDIDATE-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0262-FINAL-MERGE-REQUEST-20260829
