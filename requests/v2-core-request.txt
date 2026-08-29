@@ -1,5 +1,5 @@
-source_sha=8955d63104c53d223928d980c8711b6eaba315e8
+source_sha=ef5bbf67dde1bf4503f5f6f7b27d132e8943f52d
 base_sha=dfe5ec01e221a965c112df9878afcd6d692583d3
 branch_name=work/INTG/B0166-keeta-cloudflare-security-ingress
-verification_phase=CANDIDATE
-request_id=B0166-KEETA-SECURITY-INGRESS-RECONCILED-CANDIDATE-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0166-KEETA-SECURITY-INGRESS-FINAL-20260829
