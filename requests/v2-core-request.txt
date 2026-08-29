@@ -1,5 +1,5 @@
-source_sha=dbca30e0d9e1b6de7e29fe850370dc310ab6b5f1
+source_sha=4f8569b8e7368a3c17d0f38c386be54d1620f417
 base_sha=fb758f42d56680315f439d8609fc8e2fa73618ad
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
 verification_phase=CANDIDATE
-request_id=B0186-ORDER-DURABILITY-LATEST-MAIN-CANDIDATE-20260829
+request_id=B0186-ORDER-DURABILITY-GOVERNANCE-CANDIDATE-20260829
