@@ -1,5 +1,5 @@
-source_sha=8eefede702b0a7155a0674b8d8c05d5ea46499ec
+source_sha=0bd891c3980ef9f998b25260d97d63af63529e3b
 base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
-branch_name=work/INTG/B0162-keeta-webhook-security-ingress
+branch_name=work/CORE/B0220-human-custody-active-work-foundation
 verification_phase=CANDIDATE
-request_id=B0162-KEETA-WEBHOOK-SECURITY-INGRESS-RED-20260829
+request_id=B0220-HUMAN-CUSTODY-ROLLBACK-FAIL-CLOSED-GREEN-20260829
