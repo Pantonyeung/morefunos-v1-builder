@@ -1,5 +1,5 @@
-source_sha=9d359cf9cb6445943385f77911d3db779a7c9c31
+source_sha=38709e96827bd4d27d77ba92085b8d936cccbe1b
 base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0262-UPSTREAM-CLOSURE-RED-20260829
+request_id=B0262-EXECUTABLE-RED-20260829
