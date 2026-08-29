@@ -1,0 +1,82 @@
+name: V2 SMT Cloudflare Readiness
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-cloudflare-readiness-request.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Wrangler
+        shell: bash
+        run: npm install --global --silent wrangler@4.125.0
+
+      - name: Verify Cloudflare identity read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler whoami >/tmp/cf-whoami.txt
+          grep -F "$CLOUDFLARE_ACCOUNT_ID" /tmp/cf-whoami.txt >/dev/null || true
+
+      - name: Inspect V2 R2 bucket read-only
+        id: r2
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          LIST="$(wrangler r2 bucket list)"
+          if printf '%s\n' "$LIST" | grep -F 'morefunos-v2-smt-ota' >/dev/null; then
+            echo 'v2_r2_bucket=present' >> "$GITHUB_OUTPUT"
+          else
+            echo 'v2_r2_bucket=absent' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Record readiness evidence
+        shell: bash
+        env:
+          R2_STATUS: ${{ steps.r2.outputs.v2_r2_bucket }}
+        run: |
+          mkdir -p evidence
+          printf 'cloudflare_identity=PASS\nv2_r2_bucket=%s\nmutation=NONE\n' "$R2_STATUS" > evidence/summary.txt
+          cat evidence/summary.txt
+
+      - name: Upload readiness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-cloudflare-readiness-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
