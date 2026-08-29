@@ -1,0 +1,153 @@
+name: V2 SMT Android Carrier Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-carrier-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-smt-carrier-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-carrier-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: SMT integration tests
+        working-directory: source
+        run: npm run test:smt-ui-integration
+
+      - name: Install SMT app dependencies
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: SMT app typecheck
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck
+
+      - name: SMT app build
+        working-directory: source/apps/smt-clean
+        run: npm run build
+
+      - name: Verify installed asset base
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test -s apps/smt-clean/dist/index.html
+          grep -Eq '(src|href)="\./assets/' apps/smt-clean/dist/index.html
+          ! grep -Eq '(src|href)="/assets/' apps/smt-clean/dist/index.html
+
+      - name: Android Java compile
+        working-directory: source
+        run: gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon
+
+      - name: Android lint
+        working-directory: source
+        run: gradle -p apps/smt-android :app:lintDebug --no-daemon
+
+      - name: Android assemble
+        working-directory: source
+        run: gradle -p apps/smt-android :app:assembleDebug --no-daemon
+
+      - name: Require APK artifact
+        shell: bash
+        working-directory: source
+        run: test -f apps/smt-android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-carrier.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-carrier-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
