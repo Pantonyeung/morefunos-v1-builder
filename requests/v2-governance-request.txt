@@ -1,4 +1,4 @@
-source_sha=855d0944bdb4f5773b7bf1ce99e75769716bf6a7
-base_sha=3225c6f7a18072e568b8925181cae8574f8275ec
-branch_name=work/PRT/B0049-print-operator-attention-resolution
-request_id=B0049-FINAL-REFRESHED-HEAD-GOVERNANCE-20260827
+source_sha=c8fa274f4186716e7b6c75cec54122ffb0154b69
+base_sha=b685a74c85f6b870cd39bd85703b2520be33b85c
+branch_name=work/INTG/B0161-keeta-standard-api-adapter-foundation
+request_id=B0161-SELF-SERVICE-RESERVATION-GOVERNANCE-20260829
