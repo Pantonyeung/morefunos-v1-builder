@@ -1,5 +1,5 @@
-source_sha=cebd8ea71a39a5416f93294ff2b340a712e62f96
+source_sha=6e08accd4a3994cb077fc9e72597a6a60b6c43c0
 base_sha=b5e4bd3f05ddd015a3651a66c1c2f9d2c60aec61
 branch_name=work/CORE/B0219-multi-port-consumer-contract-gap-proof
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0219-EXECUTABLE-CONSUMER-BINDINGS-FINAL-20260829
+request_id=B0219-EXECUTABLE-CONSUMER-BINDINGS-FINAL-R2-20260829
