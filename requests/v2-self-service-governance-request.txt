@@ -1,3 +1,3 @@
-source_sha=b685a74c85f6b870cd39bd85703b2520be33b85c
-base_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
-branch_name=governance/SYS/B0064-self-service-reservation-guard
+source_sha=9f911f49f7d968466e3dea3d8382083bec8eab3c
+base_sha=803dd3e6ec8f239258dcf9c87627a55b17570e59
+branch_name=governance/SYS/B0065-ui-integration-blocker-closure
