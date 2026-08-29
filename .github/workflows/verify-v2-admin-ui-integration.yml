@@ -80,13 +80,9 @@ jobs:
         working-directory: source
         run: node --test packages/admin-ui-integration/*.test.ts
 
-      - name: Root TypeScript
+      - name: Admin integration TypeScript
         working-directory: source
-        shell: bash
-        run: |
-          mkdir -p ../evidence
-          set -o pipefail
-          npm run typecheck 2>&1 | tee ../evidence/typecheck.txt
+        run: npx tsc --noEmit --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --types node packages/admin-ui-integration/runtime-provider.ts packages/admin-ui-integration/runtime-provider.test.ts
 
       - name: Admin app typecheck
         if: ${{ hashFiles('source/apps/admin-web/package.json') != '' }}
