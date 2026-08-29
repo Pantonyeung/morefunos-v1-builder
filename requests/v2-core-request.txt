@@ -1,5 +1,5 @@
-source_sha=518027571d875f67ca3de45740aaa16ad26a694a
-base_sha=f62b99bb3c29cbe20c9d49049eb3da65e8cfdbeb
-branch_name=work/CORE/B0262-customer-order-smt-port-closure
+source_sha=9d359cf9cb6445943385f77911d3db779a7c9c31
+base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
+branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0262-RED-CUSTOMER-SUBJECT-SMT-ORDER-20260829
+request_id=B0262-UPSTREAM-CLOSURE-RED-20260829
