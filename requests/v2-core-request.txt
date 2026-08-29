@@ -1,5 +1,5 @@
-source_sha=b9748a3dc5469fba5b691fc26d80edc8eadab743
-base_sha=96a5fb83b5edfb87fe599b5736b3ad1c76dcc268
-branch_name=work/CORE/B0261-smm-print-job-request-observe-port-contract
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0261-FINAL-20260829
+source_sha=a3b28b5bff4592ae63ca19b808db757219fbb6f1
+base_sha=bc8c12605ba949ec5d6964ca188eb2fbd7b00605
+branch_name=work/CORE/B0263-smt-print-physical-port-closure
+verification_phase=RED
+request_id=B0263-RED-20260830
