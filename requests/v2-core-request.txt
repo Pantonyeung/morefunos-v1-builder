@@ -1,5 +1,5 @@
-source_sha=a887d61e1fe00de89ebe938d3598322bc9b8f21b
-base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
-branch_name=work/SMT/B0190-smt-canonical-ui-integration
+source_sha=73ff42e6261b41fc10365055d7970f3e1fb28829
+base_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
+branch_name=work/INTG/B0161-keeta-standard-api-adapter-foundation
 verification_phase=CANDIDATE
-request_id=B0190-SMT-CANONICAL-INTEGRATION-CANDIDATE-20260828
+request_id=B0161-KEETA-STANDARD-API-ADAPTER-FOUNDATION-CANDIDATE-20260829
