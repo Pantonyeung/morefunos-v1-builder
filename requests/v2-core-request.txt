@@ -1,5 +1,5 @@
-source_sha=fd2b1e4ad857cb836da6719ce60edf5e0710a874
+source_sha=ab033663d342da00d2a5ea847e6e66c0a508140f
 base_sha=1ebfa6dc3004b36d20eb6215e5901897d8701dae
-branch_name=work/INTG/B0166-keeta-cloudflare-security-ingress
+branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0166-KEETA-CLOUDFLARE-SECURITY-INGRESS-CANDIDATE-R2-20260829
+request_id=B0262-CUSTOMER-OWNERSHIP-RED-20260829
