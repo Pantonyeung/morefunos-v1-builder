@@ -1,4 +1,4 @@
-source_sha=4634ec89ac7305a30fcfa98d44d89cf57a2cb0cd
-base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
-branch_name=main
-request_id=B0240-ADMIN-PR137-MERGE-RESULT-GOVERNANCE-20260829
+source_sha=15aba26a1c59048dd6e970a19ea0ce59a98715e6
+base_sha=96c418af911162b0c4a249d8c232a56ea5522dff
+branch_name=work/ADM/B0240-admin-pwa-canonical-integration
+request_id=B0240-ADMIN-POST-B0065-GOVERNANCE-20260829
