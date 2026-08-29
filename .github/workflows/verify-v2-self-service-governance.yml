@@ -95,7 +95,9 @@ jobs:
           cd source
           python3 -m unittest \
             scripts/test_governance_self_service.py \
-            scripts/test_governance_self_service_guard.py
+            scripts/test_governance_self_service_guard.py \
+            scripts/test_governance_guard_self_service_reservation.py \
+            scripts/test_governance_guard_port_package_ownership.py
 
       - name: Run self-service governance guard
         shell: bash
