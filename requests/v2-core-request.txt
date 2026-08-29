@@ -1,5 +1,5 @@
-source_sha=efece3db23bb28ee6732f0ff3cd951b62a0d115a
+source_sha=8e7f2758268b728cc8f4c8472e45c3a9d452ad49
 base_sha=3d1a335f14049f428c6f6a3388b045425ac2c9df
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0262-FINAL-MERGE-REQUEST-20260829
+request_id=B0262-FINAL-GOVERNANCE-CORRECTION-20260829
