@@ -1,0 +1,206 @@
+name: V2 SMT Signed Runtime Package
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-runtime-package-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      release_channel:
+        description: Runtime channel
+        required: true
+        default: candidate
+        type: choice
+        options: [candidate, stable]
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+  MIN_CARRIER_VERSION_CODE: '24'
+  BRIDGE_VERSION: '1'
+  SMT_RUNTIME_ROOT: source/apps/smt-clean
+
+jobs:
+  package:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact package request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SHA: ${{ inputs.source_sha }}
+          INPUT_CHANNEL: ${{ inputs.release_channel }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            CHANNEL="$INPUT_CHANNEL"
+          else
+            test -s requests/v2-smt-runtime-package-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-runtime-package-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            CHANNEL="$(sed -n 's/^channel=//p' requests/v2-smt-runtime-package-request.txt | tr -d '[:space:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          case "$CHANNEL" in candidate|stable) ;; *) exit 1 ;; esac
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
+      - name: Require source and signing credentials
+        shell: bash
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASS"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASS"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install and verify SMT Runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix source --no-save --ignore-scripts --no-audit --no-fund
+          npm run --prefix source test:smt-ui-integration
+          npm install --prefix "$SMT_RUNTIME_ROOT" --ignore-scripts --no-audit --no-fund
+          npm run --prefix "$SMT_RUNTIME_ROOT" typecheck
+          npm run --prefix "$SMT_RUNTIME_ROOT" build
+          test -s "$SMT_RUNTIME_ROOT/dist/index.html"
+          ! grep -Eio '(src|href)=["'"']https?://[^"'"']+' "$SMT_RUNTIME_ROOT/dist/index.html" | grep -q .
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build and sign exact Runtime package
+        id: package
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          CHANNEL: ${{ steps.request.outputs.channel }}
+          KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/morefunos-app-signing.p12"
+          CERT="$RUNNER_TEMP/morefunos-app-signing.der"
+          MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -exportcert -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -alias "$KEY_ALIAS" -file "$CERT" >/dev/null 2>&1
+          CERT_SHA="$(sha256sum "$CERT" | awk '{print $1}')"
+          test "$CERT_SHA" = "$EXPECTED_APP_SIGNING_CERT_SHA256"
+
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          RELEASE_ID="runtime-${CHANNEL}-${SHORT_SHA}"
+          FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
+          OUT="$GITHUB_WORKSPACE/$FILENAME"
+          cat > "$MANIFEST" <<EOF
+          Manifest-Version: 1.0
+          MoreFun-Release-Id: ${RELEASE_ID}
+          MoreFun-Runtime-Version: ${RELEASE_ID}
+          MoreFun-Channel: ${CHANNEL}
+          MoreFun-Min-Carrier-Version-Code: ${MIN_CARRIER_VERSION_CODE}
+          MoreFun-Bridge-Version: ${BRIDGE_VERSION}
+          MoreFun-Product-Root: apps/smt-clean
+          EOF
+          sed -i 's/^          //' "$MANIFEST"
+          jar cfm "$OUT" "$MANIFEST" -C "$SMT_RUNTIME_ROOT/dist" .
+          jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
+          jarsigner -verify -strict "$OUT" >/dev/null
+          SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+          BYTES="$(stat -c%s "$OUT")"
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "filename=$FILENAME" >> "$GITHUB_OUTPUT"
+          echo "archive_sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "bytes=$BYTES" >> "$GITHUB_OUTPUT"
+          echo "cert_sha256=$CERT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package contract and generate unpublished metadata
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          CHANNEL: ${{ steps.request.outputs.channel }}
+          RELEASE_ID: ${{ steps.package.outputs.release_id }}
+          FILENAME: ${{ steps.package.outputs.filename }}
+          ARCHIVE_SHA: ${{ steps.package.outputs.archive_sha256 }}
+          BYTES: ${{ steps.package.outputs.bytes }}
+          CERT_SHA: ${{ steps.package.outputs.cert_sha256 }}
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/$FILENAME"
+          EXTRACT="$RUNNER_TEMP/runtime-contract"
+          mkdir -p "$EXTRACT"
+          (cd "$EXTRACT" && jar xf "$OUT")
+          test -s "$EXTRACT/index.html"
+          test -s "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -F "MoreFun-Release-Id: $RELEASE_ID" "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -F "MoreFun-Runtime-Version: $RELEASE_ID" "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -F "MoreFun-Channel: $CHANNEL" "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -F "MoreFun-Min-Carrier-Version-Code: $MIN_CARRIER_VERSION_CODE" "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -F "MoreFun-Bridge-Version: $BRIDGE_VERSION" "$EXTRACT/META-INF/MANIFEST.MF"
+          test "$(sha256sum "$OUT" | awk '{print $1}')" = "$ARCHIVE_SHA"
+          export SOURCE_SHA CHANNEL RELEASE_ID FILENAME ARCHIVE_SHA BYTES CERT_SHA MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
+          node <<'NODE'
+          const fs=require('node:fs');
+          const update={releaseId:process.env.RELEASE_ID,runtimeVersion:process.env.RELEASE_ID,channel:process.env.CHANNEL,minCarrierVersionCode:Number(process.env.MIN_CARRIER_VERSION_CODE),bridgeVersion:Number(process.env.BRIDGE_VERSION),bundleUrl:process.env.FILENAME,archiveSha256:process.env.ARCHIVE_SHA};
+          const metadata={sourceRepository:'Pantonyeung/Morefun-v2',sourceSha:process.env.SOURCE_SHA,...update,runtimeBytes:Number(process.env.BYTES),signingCertificateSha256:process.env.CERT_SHA,publicationStatus:'UNPUBLISHED',deviceAcceptance:'NOT_EXECUTED',builderRunId:process.env.GITHUB_RUN_ID};
+          fs.writeFileSync('runtime-update.json',JSON.stringify(update,null,2)+'\n');
+          fs.writeFileSync('runtime-build-metadata.json',JSON.stringify(metadata,null,2)+'\n');
+          fs.writeFileSync('RUNTIME_SHA256SUMS',`${process.env.ARCHIVE_SHA}  ${process.env.FILENAME}\n`);
+          NODE
+
+      - name: Upload private package evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-runtime-${{ steps.package.outputs.release_id }}
+          path: |
+            ${{ steps.package.outputs.filename }}
+            runtime-update.json
+            runtime-build-metadata.json
+            RUNTIME_SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
