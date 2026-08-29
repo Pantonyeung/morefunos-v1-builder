@@ -1,5 +1,5 @@
-source_sha=4f8569b8e7368a3c17d0f38c386be54d1620f417
+source_sha=adf3dcd699790546f7ab66d1538b226251fab1bf
 base_sha=fb758f42d56680315f439d8609fc8e2fa73618ad
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
 verification_phase=CANDIDATE
-request_id=B0186-ORDER-DURABILITY-SERIAL-BUILDER-CANDIDATE-20260829
+request_id=B0186-ORDER-DURABILITY-RESERVATION-GOVERNANCE-CANDIDATE-20260829
