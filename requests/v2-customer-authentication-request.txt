@@ -1,5 +1,5 @@
-source_sha=f74ac57e272e2ef19c3096a3797e17ee0a195a40
+source_sha=81a35a4df43434f4643de0a5ba6e56fb34c1973f
 base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
 branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
 verification_phase=CANDIDATE
-# retrigger=B0186-terminal-latest-main-reconcile
+# retrigger=B0186-terminal-completion-manifest
