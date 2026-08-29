@@ -170,10 +170,10 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          if compgen -G 'packages/order/*.test.ts' > /dev/null; then
-            node --test packages/order/*.test.ts | tee "$RUNNER_TEMP/v2-core-order-tests.log"
+          if npm run | grep -q '^  test:core-order$'; then
+            npm run test:core-order | tee "$RUNNER_TEMP/v2-core-order-tests.log"
           else
-            echo 'no order tests present' | tee "$RUNNER_TEMP/v2-core-order-tests.log"
+            echo 'test:core-order script missing' | tee "$RUNNER_TEMP/v2-core-order-tests.log"
             exit 1
           fi
 
