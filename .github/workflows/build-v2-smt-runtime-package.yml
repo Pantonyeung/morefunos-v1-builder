@@ -105,7 +105,12 @@ jobs:
           npm run --prefix "$SMT_RUNTIME_ROOT" typecheck
           npm run --prefix "$SMT_RUNTIME_ROOT" build
           test -s "$SMT_RUNTIME_ROOT/dist/index.html"
-          ! grep -Eio '(src|href)=["'"']https?://[^"'"']+' "$SMT_RUNTIME_ROOT/dist/index.html" | grep -q .
+          RUNTIME_INDEX="$SMT_RUNTIME_ROOT/dist/index.html" node <<'NODE'
+          const fs=require('node:fs');
+          const html=fs.readFileSync(process.env.RUNTIME_INDEX,'utf8');
+          const remote=[...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)["']/gi)].map(match=>match[1]);
+          if(remote.length){console.error(`REMOTE_CORE_ASSET_FORBIDDEN: ${remote.join(',')}`);process.exit(1);}
+          NODE
 
       - name: Setup JDK 17
         uses: actions/setup-java@v5
