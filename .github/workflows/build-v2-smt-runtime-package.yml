@@ -155,7 +155,7 @@ jobs:
           sed -i 's/^          //' "$MANIFEST"
           jar cfm "$OUT" "$MANIFEST" -C "$SMT_RUNTIME_ROOT/dist" .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
-          jarsigner -verify -strict "$OUT" >/dev/null
+          jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
           SHA="$(sha256sum "$OUT" | awk '{print $1}')"
           BYTES="$(stat -c%s "$OUT")"
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
