@@ -1,3 +1,3 @@
-source_sha=e3a0bbca54703fceb07c71c792fb62de31cbe6bb
-base_sha=dde42a56eb62672585a3a6cd2b031c80cf9039d2
-branch_name=governance/SYS/B0062-automated-governance-control-plane
+source_sha=496b780a745bec86f36359efaa5f42e22b7f10a1
+base_sha=e3a0bbca54703fceb07c71c792fb62de31cbe6bb
+branch_name=governance/SYS/B0063-prepolicy-workspace-adoption
