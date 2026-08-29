@@ -1,5 +1,5 @@
-source_sha=3e944bea6f6f418177b0aa9c675b0864b84174c3
+source_sha=2006c6fdfd457533619b8d59d5063160bffa5d71
 base_sha=b5e4bd3f05ddd015a3651a66c1c2f9d2c60aec61
-branch_name=work/INTG/B0163-keeta-executable-binding-sit-harness
+branch_name=work/CORE/B0219-multi-port-consumer-contract-gap-proof
 verification_phase=CANDIDATE
-request_id=B0163-DELIVERY-EVIDENCE-BINDING-CANDIDATE-20260829
+request_id=B0219-EXECUTABLE-CONSUMER-BINDINGS-CANDIDATE-R2-20260829
