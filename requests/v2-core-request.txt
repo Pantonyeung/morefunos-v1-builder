@@ -1,5 +1,5 @@
-source_sha=3acc7877a46489ea8d744f251a6af105970ebede
-base_sha=fb758f42d56680315f439d8609fc8e2fa73618ad
-branch_name=work/CORE/B0186-order-lifecycle-durability-detail-history
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0186-ORDER-DURABILITY-TERMINAL-SEAL-20260829
+source_sha=e372b335c23c83e61d220a41f3c9c47fd95d63f8
+base_sha=2fc7252229b0d6de89c43f73d734bba7ddb6a9b1
+branch_name=work/CORE/B0214-internal-port-executable-invocation
+verification_phase=CANDIDATE
+request_id=B0214-INTERNAL-PORT-EXECUTABLE-CANDIDATE-20260829
