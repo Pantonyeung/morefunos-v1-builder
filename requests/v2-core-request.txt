@@ -1,5 +1,5 @@
-source_sha=6fac2c9e29356def0b96322a26364009e1a182cc
-base_sha=1ebfa6dc3004b36d20eb6215e5901897d8701dae
+source_sha=fc673ff6592cf0f6cf479680d9e1a484caa63f9e
+base_sha=dfe5ec01e221a965c112df9878afcd6d692583d3
 branch_name=work/CORE/B0262-customer-order-smt-upstream-closure
 verification_phase=CANDIDATE
-request_id=B0262-ATOMIC-CUSTOMER-OWNERSHIP-CLEAN-RED-20260829
+request_id=B0262-ATOMIC-CUSTOMER-OWNERSHIP-GREEN-CANDIDATE-20260829
