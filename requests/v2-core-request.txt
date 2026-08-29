@@ -1,5 +1,5 @@
-source_sha=e15542397398070b488eca88c5a4974e44056518
+source_sha=3e944bea6f6f418177b0aa9c675b0864b84174c3
 base_sha=b5e4bd3f05ddd015a3651a66c1c2f9d2c60aec61
 branch_name=work/INTG/B0163-keeta-executable-binding-sit-harness
 verification_phase=CANDIDATE
-request_id=B0163-EXECUTABLE-BINDING-SIT-HARNESS-CANDIDATE-R2-20260829
+request_id=B0163-DELIVERY-EVIDENCE-BINDING-CANDIDATE-20260829
