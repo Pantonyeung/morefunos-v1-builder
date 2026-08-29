@@ -1,5 +1,5 @@
-source_sha=e372b335c23c83e61d220a41f3c9c47fd95d63f8
+source_sha=f3c3b1e4098ece239e2d9e6abfed813b225f8d6a
 base_sha=2fc7252229b0d6de89c43f73d734bba7ddb6a9b1
 branch_name=work/CORE/B0214-internal-port-executable-invocation
-verification_phase=CANDIDATE
-request_id=B0214-INTERNAL-PORT-EXECUTABLE-CANDIDATE-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0214-INTERNAL-PORT-EXECUTABLE-TERMINAL-SEAL-20260829
