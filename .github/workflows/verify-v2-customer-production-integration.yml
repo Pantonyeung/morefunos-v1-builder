@@ -82,7 +82,7 @@ jobs:
 
       - name: Customer integration TypeScript strict check
         working-directory: source
-        run: npx tsc -p packages/customer-ui-integration/tsconfig.json
+        run: npm exec --yes --package=typescript@5.9.3 -- tsc -p packages/customer-ui-integration/tsconfig.json
 
       - name: Write evidence
         if: always()
