@@ -1,5 +1,5 @@
-source_sha=99cb3f76b7b49618b22e5f76c8f2992ccef14c71
+source_sha=24537947d69e80684c1a131d493cdfa18240295c
 base_sha=bc8c12605ba949ec5d6964ca188eb2fbd7b00605
 branch_name=work/INTG/B0167-keeta-d1-binding-authority
 verification_phase=CANDIDATE
-request_id=B0167-KEETA-D1-BINDING-CANDIDATE-20260830
+request_id=B0167-KEETA-D1-BINDING-CANDIDATE-R2-20260830
