@@ -1,5 +1,5 @@
-source_sha=79aa77df1fb1a5468f58620d753e84003678313a
+source_sha=b9748a3dc5469fba5b691fc26d80edc8eadab743
 base_sha=96a5fb83b5edfb87fe599b5736b3ad1c76dcc268
 branch_name=work/CORE/B0261-smm-print-job-request-observe-port-contract
-verification_phase=CANDIDATE
-request_id=B0261-STORE-SCOPED-CANDIDATE-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0261-FINAL-20260829
