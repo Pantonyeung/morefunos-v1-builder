@@ -1,5 +1,5 @@
-source_sha=2006c6fdfd457533619b8d59d5063160bffa5d71
+source_sha=2c56d1ce932df53f753d2a98be03c4119e32e2dd
 base_sha=b5e4bd3f05ddd015a3651a66c1c2f9d2c60aec61
 branch_name=work/CORE/B0219-multi-port-consumer-contract-gap-proof
 verification_phase=CANDIDATE
-request_id=B0219-EXECUTABLE-CONSUMER-BINDINGS-CANDIDATE-R2-20260829
+request_id=B0219-EXECUTABLE-CONSUMER-BINDINGS-CANDIDATE-R3-20260829
