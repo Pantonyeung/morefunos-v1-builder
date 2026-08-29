@@ -1,5 +1,5 @@
-source_sha=7a02024fa1726ff9391b7b933af26713bb77fe90
-base_sha=3b938cbbe141f1770eec1d9fc374cb268dada4ce
+source_sha=800131181e537c5806d205b138bb12a2004d54ed
+base_sha=db28921c47913037935b88344857f5d39d62e902
 branch_name=work/INTG/B0164-keeta-formal-sit-execution-readiness
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0164-KEETA-FORMAL-SIT-READINESS-FINAL-20260829
+verification_phase=CANDIDATE
+request_id=B0164-KEETA-FORMAL-SIT-READINESS-LATEST-MAIN-CANDIDATE-20260829
