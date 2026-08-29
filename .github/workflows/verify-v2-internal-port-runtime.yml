@@ -1,0 +1,72 @@
+name: V2 Internal Port Runtime Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-internal-port-runtime-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Use Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requests/v2-internal-port-runtime-request.txt
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-internal-port-runtime-request.txt | tr -d '[:space:]')"
+          BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-internal-port-runtime-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Internal Port Runtime tests
+        working-directory: source
+        run: npm run test:core-internal-port-runtime
+
+      - name: TypeScript static check
+        working-directory: source
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund typescript@7.0.2 @types/node@24
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json --types node --jsx react-jsx
