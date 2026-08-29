@@ -1,5 +1,5 @@
-source_sha=ccbfcfcbbc3e041bc3142f756c0430db87e1bbde
-base_sha=db28921c47913037935b88344857f5d39d62e902
-branch_name=work/INTG/B0164-keeta-formal-sit-execution-readiness
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0164-KEETA-FORMAL-SIT-READINESS-LATEST-MAIN-FINAL-20260829
+source_sha=11f3f4275160326af0004550b7b7935ff765f016
+base_sha=4784fbf8f0c7ed5903afe6f97e95c83441703b71
+branch_name=work/CORE/B0260-smm-order-durable-mutation-port-contract
+verification_phase=CANDIDATE
+request_id=B0260-SMM-ORDER-DURABLE-MUTATION-RED-20260829
