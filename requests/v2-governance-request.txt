@@ -1,4 +1,4 @@
-source_sha=15aba26a1c59048dd6e970a19ea0ce59a98715e6
-base_sha=96c418af911162b0c4a249d8c232a56ea5522dff
-branch_name=work/ADM/B0240-admin-pwa-canonical-integration
-request_id=B0240-ADMIN-POST-B0065-GOVERNANCE-20260829
+source_sha=e7e2b29c7338e199f3c588c732c3875a65df1462
+base_sha=4c13ad432c1beb28b2280a6cf86c02692760c819
+branch_name=governance/SYS/B0066-five-port-extension-b0260
+request_id=B0066-B0260-WORKSPACE-EXTENSION-GOVERNANCE-20260829
