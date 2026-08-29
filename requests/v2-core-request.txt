@@ -1,5 +1,5 @@
-source_sha=60b038aba4345239c970a81fc4a6fd7ff67b9ddf
+source_sha=44b3baa7774a19d9a75dd3a5f2d8c1a9270d13db
 base_sha=3aab6e7e4cf893b2f77015ef68e800348bab1fb2
 branch_name=work/CORE/B0215-five-port-core-residual-certification
 verification_phase=CANDIDATE
-request_id=B0215-FIVE-PORT-CORE-RESIDUAL-CERTIFICATION-20260829
+request_id=B0215-FIVE-PORT-CORE-RESIDUAL-CERTIFICATION-R2-20260829
