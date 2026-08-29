@@ -1,4 +1,4 @@
-source_sha=c8fa274f4186716e7b6c75cec54122ffb0154b69
-base_sha=b685a74c85f6b870cd39bd85703b2520be33b85c
-branch_name=work/INTG/B0161-keeta-standard-api-adapter-foundation
-request_id=B0161-SELF-SERVICE-RESERVATION-GOVERNANCE-20260829
+source_sha=4634ec89ac7305a30fcfa98d44d89cf57a2cb0cd
+base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
+branch_name=main
+request_id=B0240-ADMIN-PR137-MERGE-RESULT-GOVERNANCE-20260829
