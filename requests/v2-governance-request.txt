@@ -1,4 +1,4 @@
-source_sha=cdb6befe3b393810f13c794bb2f40ebb3acb0d43
+source_sha=2a1a7bd2335699a66adc2a0bae28481ffeee4575
 base_sha=f62b99bb3c29cbe20c9d49049eb3da65e8cfdbeb
-branch_name=work/SMM/B0231-smm-residual-canonical-bindings
-request_id=B0231-SMM-TERMINAL-GOVERNANCE-RERUN-20260829
+branch_name=work/ADM/B0241-admin-clean-lineage-reconciliation
+request_id=B0241-ADMIN-TERMINAL-GOVERNANCE-RERUN-20260829
