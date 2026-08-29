@@ -1,5 +1,5 @@
-source_sha=f3c3b1e4098ece239e2d9e6abfed813b225f8d6a
-base_sha=2fc7252229b0d6de89c43f73d734bba7ddb6a9b1
-branch_name=work/CORE/B0214-internal-port-executable-invocation
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0214-INTERNAL-PORT-EXECUTABLE-TERMINAL-SEAL-20260829
+source_sha=60b038aba4345239c970a81fc4a6fd7ff67b9ddf
+base_sha=3aab6e7e4cf893b2f77015ef68e800348bab1fb2
+branch_name=work/CORE/B0215-five-port-core-residual-certification
+verification_phase=CANDIDATE
+request_id=B0215-FIVE-PORT-CORE-RESIDUAL-CERTIFICATION-20260829
