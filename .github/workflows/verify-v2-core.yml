@@ -211,6 +211,17 @@ jobs:
             echo 'no fulfillment tests present; domain not yet admitted' | tee "$RUNNER_TEMP/v2-core-fulfillment-tests.log"
           fi
 
+      - name: Core Human Custody tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/human-custody/*.test.ts' > /dev/null; then
+            node --test packages/human-custody/*.test.ts | tee "$RUNNER_TEMP/v2-core-human-custody-tests.log"
+          else
+            echo 'no human-custody tests present' | tee "$RUNNER_TEMP/v2-core-human-custody-tests.log"
+          fi
+
       - name: Integration contract tests
         shell: bash
         run: |
@@ -307,6 +318,7 @@ jobs:
             ${{ runner.temp }}/v2-core-business-day-cash-tests.log
             ${{ runner.temp }}/v2-core-payment-tests.log
             ${{ runner.temp }}/v2-core-fulfillment-tests.log
+            ${{ runner.temp }}/v2-core-human-custody-tests.log
             ${{ runner.temp }}/v2-integration-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
             ${{ runner.temp }}/v2-core-governance.log
