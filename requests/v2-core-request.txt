@@ -2,4 +2,4 @@ source_sha=0bd891c3980ef9f998b25260d97d63af63529e3b
 base_sha=24faf2cb088c86a8425c749b40121f6315ddc9be
 branch_name=work/CORE/B0220-human-custody-active-work-foundation
 verification_phase=CANDIDATE
-request_id=B0220-HUMAN-CUSTODY-ROLLBACK-FAIL-CLOSED-GREEN-20260829
+request_id=B0220-HUMAN-CUSTODY-ROLLBACK-FAIL-CLOSED-GREEN-RERUN-20260829
