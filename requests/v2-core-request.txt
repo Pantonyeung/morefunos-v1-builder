@@ -1,5 +1,5 @@
-source_sha=38a9cd50e443c2e23db16c45de89a847dd911fb0
+source_sha=7c6d9e8d644251a5e7be76ba5a21155a34bf33af
 base_sha=88591dce44462830be421cb61b7362a4a3313dd8
 branch_name=work/CORE/B0263-smt-print-physical-port-closure
-verification_phase=CANDIDATE
-request_id=B0263-STRENGTHENED-ACCEPTANCE-CANDIDATE-20260830
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0263-FINAL-MERGE-REQUEST-20260830
