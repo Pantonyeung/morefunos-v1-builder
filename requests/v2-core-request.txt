@@ -1,5 +1,5 @@
-source_sha=e2976046c48800be5a59c9a9db4d4afd1f5ac0c7
-base_sha=bc8c12605ba949ec5d6964ca188eb2fbd7b00605
+source_sha=6db7baf4dc02dbcaa74843ce45bf0ceb88847186
+base_sha=88591dce44462830be421cb61b7362a4a3313dd8
 branch_name=work/CORE/B0263-smt-print-physical-port-closure
 verification_phase=CANDIDATE
-request_id=B0263-GREEN-CANDIDATE-20260830
+request_id=B0263-GREEN-RECONCILED-20260830
