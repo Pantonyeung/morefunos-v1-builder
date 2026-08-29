@@ -1,5 +1,5 @@
-source_sha=b224eafc40bca780393183d8935601358176aa64
+source_sha=1d0fd427a80ee828672e02e930f9dbbe383bb983
 base_sha=4784fbf8f0c7ed5903afe6f97e95c83441703b71
 branch_name=work/CORE/B0260-smm-order-durable-mutation-port-contract
-verification_phase=CANDIDATE
-request_id=B0260-SMM-ORDER-DURABLE-MUTATION-GREEN-R2-20260829
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0260-SMM-ORDER-DURABLE-MUTATION-FINAL-20260829
