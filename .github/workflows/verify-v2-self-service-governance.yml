@@ -1,0 +1,122 @@
+name: V2 Self-Service Governance Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Optional exact comparison base SHA
+        required: false
+        type: string
+      branch_name:
+        description: Exact Morefun-v2 branch represented by source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate exact request
+        id: request
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(printf '%s' "$SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          BASE_SHA="$(printf '%s' "${BASE_SHA:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          BRANCH_NAME="$(printf '%s' "$BRANCH_NAME" | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
+          [[ "$BRANCH_NAME" =~ ^(work|migration|hotfix|governance)/[A-Z]{3,5}/B[0-9]{4}-[a-z0-9][a-z0-9-]*$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Run self-service governance unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          python3 -m unittest \
+            scripts/test_governance_self_service.py \
+            scripts/test_governance_self_service_guard.py
+
+      - name: Run self-service governance guard
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
+          if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
+          cd source
+          python3 scripts/governance_self_service_guard.py "${ARGS[@]}"
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          cat > "$RUNNER_TEMP/v2-self-service-governance-evidence.txt" <<EOF
+          builder_repo=Pantonyeung/morefunos-v1-builder
+          builder_run_id=${GITHUB_RUN_ID}
+          source_repo=Pantonyeung/Morefun-v2
+          source_sha=${SOURCE_SHA}
+          base_sha=${BASE_SHA:-none}
+          branch_name=${BRANCH_NAME}
+          EOF
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-self-service-governance-${{ steps.request.outputs.source_sha }}
+          path: ${{ runner.temp }}/v2-self-service-governance-evidence.txt
+          retention-days: 30
