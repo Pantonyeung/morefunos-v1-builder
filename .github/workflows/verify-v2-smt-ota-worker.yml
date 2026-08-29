@@ -1,0 +1,107 @@
+name: V2 SMT OTA Worker Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-ota-worker-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-smt-ota-worker-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-ota-worker-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: OTA worker contract tests
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: node --test
+
+      - name: Install pinned Worker dependencies
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Wrangler dry run
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/v2-smt-ota-worker"
+
+      - name: Require dry-run bundle
+        shell: bash
+        run: test -n "$(find "$RUNNER_TEMP/v2-smt-ota-worker" -type f -maxdepth 2 -print -quit)"
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-ota-worker.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-ota-worker-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
