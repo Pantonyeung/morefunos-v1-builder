@@ -1,5 +1,5 @@
-source_sha=1b23504d52eb7ff3c7bcfc123fe59b7b10ac2b55
-base_sha=80eb975edf29f2c434771fbf9232943d23d68d93
-branch_name=work/INTG/B0165-keeta-cloudflare-sit-runtime
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0165-KEETA-CLOUDFLARE-SIT-RUNTIME-FINAL-20260829
+source_sha=518027571d875f67ca3de45740aaa16ad26a694a
+base_sha=f62b99bb3c29cbe20c9d49049eb3da65e8cfdbeb
+branch_name=work/CORE/B0262-customer-order-smt-port-closure
+verification_phase=CANDIDATE
+request_id=B0262-RED-CUSTOMER-SUBJECT-SMT-ORDER-20260829
