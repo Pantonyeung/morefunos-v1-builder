@@ -1,5 +1,5 @@
-source_sha=bf707d9933c66348139f3dce94b5f2f55cb5d842
+source_sha=009956ddeeb2ac286952e3df63c3cc24bc3de243
 base_sha=88591dce44462830be421cb61b7362a4a3313dd8
 branch_name=work/CORE/B0263-smt-print-physical-port-closure
 verification_phase=CANDIDATE
-request_id=B0263-GREEN-TS-CORRECTED-20260830
+request_id=B0263-GOVERNANCE-SYNC-CANDIDATE-20260830
