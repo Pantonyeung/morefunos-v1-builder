@@ -1,4 +1,4 @@
-source_sha=6e73feb7e0bba1991a3fc89ddededf58730bbf31
+source_sha=ed25e92541b932b3e4e028135c698fa16a0eb5cf
 base_sha=773b008811941c99a964873b31a79061b3eb9550
-branch_name=work/ADM/B0242-admin-governance-truth-refresh
-request_id=B0242-ADMIN-GOVERNANCE-TRUTH-REFRESH-20260830
+branch_name=work/CUS/B2501-customer-governance-truth-refresh
+request_id=B2501-CUSTOMER-GOVERNANCE-TRUTH-REFRESH-20260830
