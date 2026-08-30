@@ -1,4 +1,4 @@
-source_sha=97f0756ad3ba7425631478317803413445010a21
-base_sha=020b88b8ebc24e0fabb878dbd9e074ba89b4c17c
-branch_name=work/SMM/B0233-smm-pricing-canonical-binding
-request_id=B0233-SMM-PRICING-TERMINAL-GOVERNANCE-20260830
+source_sha=13100a0801693584bf9048d5413d4c59363c4c7e
+base_sha=cf30d99f5816495e828abe6ab04d9b7bf4bde2ac
+branch_name=work/SMM/B0234-smm-print-request-observe-binding
+request_id=B0234-SMM-PRINT-REQUEST-OBSERVE-TERMINAL-GOVERNANCE-20260830
