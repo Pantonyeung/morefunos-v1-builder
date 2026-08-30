@@ -1,5 +1,5 @@
-source_sha=d37c74d603f7e49248f63c138c51ee86745faa99
-base_sha=020b88b8ebc24e0fabb878dbd9e074ba89b4c17c
+source_sha=176046c038fafc69652304421605fb3fe798c1a9
+base_sha=cf30d99f5816495e828abe6ab04d9b7bf4bde2ac
 branch_name=work/CORE/B0265-five-port-final-canonical-matrix-closure
 verification_phase=CANDIDATE
-request_id=B0265-FIVE-PORT-FINAL-MATRIX-CANDIDATE-20260830
+request_id=B0265-CANONICAL-MATRIX-CANDIDATE-20260830-R2
