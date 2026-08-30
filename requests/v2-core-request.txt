@@ -1,5 +1,5 @@
-source_sha=5b488cb3b46ce40b63297c0276d646942d1eaf1e
+source_sha=58956bcb7fa4ab957973f3d252ec4cc9494eb701
 base_sha=7df5ed31bda6ecb6d837966c59dc46567e464646
-branch_name=work/CORE/B0250-canonical-menu-projection
+branch_name=work/INTG/B0168-keeta-runtime-credential-and-dedup-verification
 verification_phase=CANDIDATE
-request_id=B0250-TRUSTED-SCOPE-CANDIDATE-20260830
+request_id=B0168-RUNTIME-READINESS-CANDIDATE-20260830
