@@ -1,3 +1,4 @@
-source_sha=80eb975edf29f2c434771fbf9232943d23d68d93
-base_sha=bc52c7f425a317ee5d26f0e832a14b2412b71d24
-branch_name=governance/SYS/B0067-catalog-pricing-b0250-allocation
+source_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
+base_sha=18a7e770b3114d9468c7c543ed568690d921ccab
+branch_name=governance/SYS/B0068-pricing-authority-b0270-allocation
+request_id=B0068-B0270-PRICING-AUTHORITY-SELF-SERVICE-GOVERNANCE-20260830
