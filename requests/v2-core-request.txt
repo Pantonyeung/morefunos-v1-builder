@@ -1,5 +1,5 @@
-source_sha=23fc7fe72de91481a464a5d843c0ef3c28015590
-base_sha=ec8f43e7485533d4fbaa8a547fc65ed95e3c82de
-branch_name=work/CORE/B0251-canonical-pricing-quote-projection
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0251-PRICING-QUOTE-FINAL-20260830
+source_sha=d37c74d603f7e49248f63c138c51ee86745faa99
+base_sha=020b88b8ebc24e0fabb878dbd9e074ba89b4c17c
+branch_name=work/CORE/B0265-five-port-final-canonical-matrix-closure
+verification_phase=CANDIDATE
+request_id=B0265-FIVE-PORT-FINAL-MATRIX-CANDIDATE-20260830
