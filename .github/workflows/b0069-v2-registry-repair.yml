@@ -1,0 +1,100 @@
+name: B0069 V2 Registry Repair
+
+on:
+  push:
+    paths:
+      - '.github/workflows/b0069-v2-registry-repair.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SOURCE_REPO: Pantonyeung/Morefun-v2
+      SOURCE_BRANCH: governance/SYS/B0069-owner-b0280-allocation
+      EXPECTED_SOURCE_SHA: b95707496c59e494ffb8ff3a454a45d7bdf913f7
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+      - name: Checkout exact V2 governance head
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.EXPECTED_SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Repair exactly one provenance token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          cd source
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('TOPIC-WORKSPACE-REGISTRY.yaml')
+          s = p.read_text(encoding='utf-8')
+          old = 'B0095_PR32_MERGED_948C9BD6'
+          new = 'B0095_ADMITTED_B4B2CAE9'
+          if s.count(old) != 1:
+              raise SystemExit('EXPECTED_SINGLE_BAD_PROVENANCE_TOKEN_NOT_FOUND')
+          if s.count(new) != 0:
+              raise SystemExit('DESIRED_PROVENANCE_TOKEN_ALREADY_PRESENT')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "TOPIC-WORKSPACE-REGISTRY.yaml"
+          git diff --check
+          git diff -- TOPIC-WORKSPACE-REGISTRY.yaml
+      - name: Commit exact source repair
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd source
+          git switch -c "$SOURCE_BRANCH" "$EXPECTED_SOURCE_SHA"
+          git config user.name 'MoreFunOS V2 Builder'
+          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git add TOPIC-WORKSPACE-REGISTRY.yaml
+          test "$(git diff --cached --name-only)" = "TOPIC-WORKSPACE-REGISTRY.yaml"
+          git commit -m 'B0069: restore B0095 provenance identity'
+          ASKPASS="$RUNNER_TEMP/v2-source-write-askpass.sh"
+          cat > "$ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "x-access-token" ;;
+            *Password*) printf '%s\n' "$TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS"
+          export GIT_TERMINAL_PROMPT=0
+          git push https://github.com/Pantonyeung/Morefun-v2.git "HEAD:refs/heads/${SOURCE_BRANCH}"
+          rm -f "$ASKPASS"
+      - name: Remove one-shot workflow from Builder
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/b0069-v2-registry-repair.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'chore: remove B0069 one-shot V2 repair workflow'
+          git push origin HEAD:main
