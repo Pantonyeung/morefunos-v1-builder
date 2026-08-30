@@ -1,4 +1,4 @@
-source_sha=71014d211aa0d114f411f8e9d4c6a84cdaef58c1
-base_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
-branch_name=work/SMM/B0232-smm-menu-canonical-binding
-request_id=B0232-SMM-CANONICAL-MENU-TERMINAL-GOVERNANCE-20260830
+source_sha=2cc719a5f160a9eff551007f434dec274eeffa17
+base_sha=e58ae02125aeb30c2e05c80563b5296240926928
+branch_name=work/CUS/B2504-customer-same-origin-canonical-api
+request_id=B2504-CUSTOMER-SAME-ORIGIN-API-TERMINAL-GOVERNANCE-20260830
