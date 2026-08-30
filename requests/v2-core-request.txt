@@ -1,5 +1,5 @@
-source_sha=e657bbf46c73ab4756ebc4d773bac4eaef4a1fd3
-base_sha=076f8cd009923d678823fb2c52123cda6861c673
+source_sha=add0b40c43c97d4c5ffe5662a7e211066d1dcc00
+base_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
 branch_name=work/INTG/B0169-keeta-live-webhook-signature-diagnostics-r2
 verification_phase=CANDIDATE
-request_id=B0169-KEETA-LIVE-SIGNATURE-DIAGNOSTICS-R2-GOVERNANCE-REVERIFY-20260830-R2
+request_id=B0169-KEETA-LIVE-SIGNATURE-DIAGNOSTICS-R2-FRESH-MAIN-20260830
