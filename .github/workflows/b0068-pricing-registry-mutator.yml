@@ -1,4 +1,4 @@
-name: B0068 Pricing Registry Mutator
+name: B0068 Pricing Registry Reconcile Once
 
 on:
   push:
@@ -9,12 +9,12 @@ permissions:
   contents: read
 
 jobs:
-  mutate:
+  reconcile:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Checkout exact B0068 branch
+      - name: Checkout B0068 with full history
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
@@ -23,14 +23,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Prove source token write authority without mutation
+      - name: Reconcile latest main once and preserve exact governance scope
         shell: bash
         env:
           V2_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "$V2_TOKEN"
-          ASKPASS="$RUNNER_TEMP/v2-write-check-askpass.sh"
+          git remote set-url origin https://github.com/Pantonyeung/Morefun-v2.git
+          ASKPASS="$RUNNER_TEMP/v2-reconcile-askpass.sh"
           cat > "$ASKPASS" <<'EOF'
           #!/bin/sh
           case "$1" in
@@ -42,57 +42,15 @@ jobs:
           chmod 700 "$ASKPASS"
           export GIT_ASKPASS="$ASKPASS"
           export GIT_TERMINAL_PROMPT=0
-          git push --dry-run https://github.com/Pantonyeung/Morefun-v2.git HEAD:refs/heads/governance/SYS/B0068-pricing-authority-b0270-allocation
-          rm -f "$ASKPASS"
-
-      - name: Deterministically patch registry
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('TOPIC-WORKSPACE-REGISTRY.yaml')
-          t=p.read_text()
-          reps=[
-            ('SOURCE_PROVENANCE: ISSUE_170_B0250_CATALOG_PRICING_ALLOCATION + ISSUE_178_B0260_FIVE_PORT_WORKSPACE_EXTENSION','SOURCE_PROVENANCE: ISSUE_218_B0270_PRICING_AUTHORITY_REPAIR_ALLOCATION + ISSUE_170_B0250_CATALOG_PRICING_ALLOCATION + ISSUE_178_B0260_FIVE_PORT_WORKSPACE_EXTENSION'),
-            ('schema_version: 47\n','schema_version: 48\n'),
-            ('    allocation_note: "Same logical workspace as B0210-B0219. Canonical operation publication/binding only; reuse existing durable domain truth, do not create endpoint-local business truth. First intended Work Item is B0260 SMM Order Durable Mutation Port Contract per Issue #178."\n  B2300-B2309:','    allocation_note: "Same logical workspace as B0210-B0219. Canonical operation publication/binding only; reuse existing durable domain truth, do not create endpoint-local business truth. First intended Work Item is B0260 SMM Order Durable Mutation Port Contract per Issue #178."\n  B0270-B0279:\n    topic: PRICING_CANONICAL_AUTHORITY_REPAIR\n    owner_lane: SYS_MANAGER\n    department: CORE\n    status: ACTIVE\n    first_id: B0270\n    allowed_ids: [B0270, B0271, B0272, B0273, B0274, B0275, B0276, B0277, B0278, B0279]\n    allocation_note: "Issue #218 / SYS exception for minimum provider-neutral canonical Pricing authority persistence, repository and production composition repair. This block owns the missing Pricing authority source only; it must not publish endpoint UI, provider-specific pricing, duplicate calculation engines, Availability/Inventory truth, B0251 quote consumer binding, Dine-In, Print, or Owner App."\n  B2300-B2309:'),
-            ('  B0067:\n    topic: PARALLEL_DELIVERY_CONTROL_PLANE\n    branch: governance/SYS/B0067-catalog-pricing-b0250-allocation\n    department: SYS\n    owner_lane: SYS_MANAGER\n    status: RESERVED\n    manager_scope: CATALOG_PRICING_B0250_TOPIC_ALLOCATION\n    intake_issue: 170\n    restriction: "Registry/workspace authority only. No Catalog/Pricing product implementation in B0067."\n  B0070:','  B0067:\n    topic: PARALLEL_DELIVERY_CONTROL_PLANE\n    branch: governance/SYS/B0067-catalog-pricing-b0250-allocation\n    department: SYS\n    owner_lane: SYS_MANAGER\n    status: RESERVED\n    manager_scope: CATALOG_PRICING_B0250_TOPIC_ALLOCATION\n    intake_issue: 170\n    restriction: "Registry/workspace authority only. No Catalog/Pricing product implementation in B0067."\n  B0068:\n    topic: PARALLEL_DELIVERY_CONTROL_PLANE\n    branch: governance/SYS/B0068-pricing-authority-b0270-allocation\n    department: SYS\n    owner_lane: SYS_MANAGER\n    status: RESERVED\n    manager_scope: PRICING_CANONICAL_AUTHORITY_B0270_TOPIC_ALLOCATION\n    intake_issue: 218\n    restriction: "Registry/workspace authority only. No Pricing product implementation, persistence, repository, quote binding, endpoint UI, or provider semantics in B0068."\n  B0070:'),
-            ('  next_new_topic_block_start: B0270\n','  next_new_topic_block_start: B0280\n'),
-          ]
-          for old,new in reps:
-              c=t.count(old)
-              if c!=1: raise SystemExit(f'exact replacement mismatch count={c}: {old[:100]!r}')
-              t=t.replace(old,new,1)
-          p.write_text(t)
-          PY
-          rm -f .github/workflows/b0068-registry-allocation.yml
-          git diff --check
-          test "$(git diff --name-only | sort)" = $'.github/workflows/b0068-registry-allocation.yml\nTOPIC-WORKSPACE-REGISTRY.yaml'
-
-      - name: Commit and push B0068 candidate
-        shell: bash
-        env:
-          V2_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
-        run: |
-          set -euo pipefail
+          git fetch origin main
           git config user.name 'MoreFunOS SYS Governance'
           git config user.email '107616897+Pantonyeung@users.noreply.github.com'
-          git add TOPIC-WORKSPACE-REGISTRY.yaml .github/workflows/b0068-registry-allocation.yml
-          git commit -m 'B0068 — allocate B0270 Pricing authority repair workspace'
-          NEW_SHA="$(git rev-parse HEAD)"
-          ASKPASS="$RUNNER_TEMP/v2-write-askpass.sh"
-          cat > "$ASKPASS" <<'EOF'
-          #!/bin/sh
-          case "$1" in
-            *Username*) echo "x-access-token" ;;
-            *Password*) printf '%s\n' "$V2_TOKEN" ;;
-            *) exit 1 ;;
-          esac
-          EOF
-          chmod 700 "$ASKPASS"
-          export GIT_ASKPASS="$ASKPASS"
-          export GIT_TERMINAL_PROMPT=0
-          git push https://github.com/Pantonyeung/Morefun-v2.git HEAD:refs/heads/governance/SYS/B0068-pricing-authority-b0270-allocation
+          git merge --no-edit origin/main
+          test -z "$(git status --porcelain)"
+          test -f docs/workflows/workspace-reservations/B0068.yaml
+          grep -q '^  B0270-B0279:$' TOPIC-WORKSPACE-REGISTRY.yaml
+          grep -q '^    topic: PRICING_CANONICAL_AUTHORITY_REPAIR$' TOPIC-WORKSPACE-REGISTRY.yaml
+          grep -q '^  next_new_topic_block_start: B0280$' TOPIC-WORKSPACE-REGISTRY.yaml
+          git push origin HEAD:refs/heads/governance/SYS/B0068-pricing-authority-b0270-allocation
           rm -f "$ASKPASS"
-          echo "b0068_candidate_sha=$NEW_SHA"
+          echo "reconciled_sha=$(git rev-parse HEAD)"
