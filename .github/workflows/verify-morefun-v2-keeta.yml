@@ -1,0 +1,79 @@
+name: Verify Morefun V2 Keeta
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta.sha'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-morefun-v2-keeta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          DISPATCH_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCH_SHA:-}" ]; then
+            SHA="$DISPATCH_SHA"
+          else
+            SHA="$(cat .ci-requests/morefun-v2-keeta.sha)"
+          fi
+          SHA="$(printf '%s' "$SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove exact source identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git -C source rev-parse HEAD)"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+          printf 'verified_exact_sha=%s\n' "$ACTUAL_SHA"
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck Keeta integration and Worker runtime
+        working-directory: source
+        run: npm run typecheck:intg-keeta
+
+      - name: Run full Keeta integration regression
+        working-directory: source
+        run: npm run test:intg-keeta
