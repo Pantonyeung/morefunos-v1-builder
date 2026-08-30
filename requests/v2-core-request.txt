@@ -1,5 +1,5 @@
-source_sha=75ce9f331b79d2a5c6a2245f7fb725798f795fbf
-base_sha=5eb79e3fc0269f1b3ee67ec9cd5377e94f4a8e4b
-branch_name=work/SMT/B2303-smt-runtime-binding-type-baseline-repair
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B2303-SMT-RUNTIME-BINDING-ROOT-FINAL-R2-20260831
+source_sha=20396a49143a61f8d871b00c8e2a0d180f20e802
+base_sha=e9f03f9da92c2cf657f500a5b23a06f1214cd2eb
+branch_name=work/CORE/B0143-member-purchasing-activity-projection-r2
+verification_phase=CANDIDATE
+request_id=B0143-MEMBER-PURCHASING-ACTIVITY-CORE-R2-20260831
