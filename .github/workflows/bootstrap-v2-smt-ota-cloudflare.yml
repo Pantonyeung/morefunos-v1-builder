@@ -79,8 +79,7 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
           node - <<'NODE'
           const fs = require('fs');
-          const raw = fs.readFileSync('source/infra/cloudflare/smt-ota-worker/wrangler.jsonc', 'utf8');
-          const config = JSON.parse(raw);
+          const config = JSON.parse(fs.readFileSync('source/infra/cloudflare/smt-ota-worker/wrangler.jsonc', 'utf8'));
           if (config.name !== 'morefunos-v2-smt-ota') throw new Error('V2_WORKER_NAME_MISMATCH');
           const bindings = config.r2_buckets || [];
           if (bindings.length !== 1 || bindings[0].binding !== 'OTA_BUCKET' || bindings[0].bucket_name !== 'morefunos-v2-smt-ota') {
@@ -157,9 +156,17 @@ jobs:
           ORIGIN: ${{ steps.public.outputs.origin }}
         run: |
           set -euo pipefail
-          STATUS="$(curl --silent --show-error --output "$RUNNER_TEMP/manifest-body.txt" --write-out '%{http_code}' "$ORIGIN/runtime-update.json")"
-          test "$STATUS" = '404'
-          grep -F 'Runtime update not published' "$RUNNER_TEMP/manifest-body.txt" >/dev/null
+          BODY="$RUNNER_TEMP/manifest-body.txt"
+          for attempt in $(seq 1 12); do
+            STATUS="$(curl --silent --show-error --output "$BODY" --write-out '%{http_code}' "$ORIGIN/runtime-update.json" || true)"
+            printf 'attempt=%s status=%s body=%s\n' "$attempt" "$STATUS" "$(tr '\n' ' ' < "$BODY" 2>/dev/null || true)"
+            if [[ "$STATUS" == '404' ]] && grep -Fx 'Runtime update not published' "$BODY" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'V2_OTA_PUBLIC_FAIL_CLOSED_PROOF_FAILED' >&2
+          exit 1
 
       - name: Record bootstrap evidence
         if: always()
