@@ -1,5 +1,5 @@
-source_sha=4f41f41fdd4b53cf1a24b8b5ba63c8d5dfa571e2
+source_sha=eb93969fa2fe37f8ca89a56a447597246ffc5fb6
 base_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
 branch_name=work/CORE/B0270-canonical-pricing-authority-repair
 verification_phase=CANDIDATE
-request_id=B0270-PRICING-AUTHORITY-CANDIDATE-20260830
+request_id=B0270-PRICING-AUTHORITY-CANDIDATE-EXACT-20260830
