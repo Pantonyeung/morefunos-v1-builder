@@ -1,5 +1,5 @@
-source_sha=980201cd30efd5f29ffda281d301e2b49d3471ae
-base_sha=766202b611e179b275ce459d2bf947c2704fffec
-branch_name=work/CORE/B0267-payment-refund-consumer-safe-canonical-port
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0267-PAYMENT-REFUND-FINAL-20260830
+source_sha=79d940ce361621f19908a04cbf7b3402da76458c
+base_sha=f35e47c079c64e6e243581e0222d9a9650d6cbe3
+branch_name=work/CORE/B0268-identity-rbac-clean-admission
+verification_phase=CANDIDATE
+request_id=B0268-IDENTITY-RBAC-CANDIDATE-20260830
