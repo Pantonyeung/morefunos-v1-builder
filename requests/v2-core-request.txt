@@ -1,5 +1,5 @@
-source_sha=c8ba68924d7723a56b0a3a6ef7e51c7f3fc75952
+source_sha=2ce06b54adebe5746b7a2742a36cf326ac576f16
 base_sha=5eb79e3fc0269f1b3ee67ec9cd5377e94f4a8e4b
 branch_name=work/SMT/B2303-smt-runtime-binding-type-baseline-repair
 verification_phase=CANDIDATE
-request_id=B2303-SMT-RUNTIME-BINDING-ROOT-TYPECHECK-20260830
+request_id=B2303-SMT-RUNTIME-BINDING-ROOT-CANDIDATE-R2-20260830
