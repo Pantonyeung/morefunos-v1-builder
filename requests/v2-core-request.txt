@@ -1,5 +1,5 @@
-source_sha=fc40c48a5bda0975ac45cceee350efeb410d6600
-base_sha=773b008811941c99a964873b31a79061b3eb9550
-branch_name=work/CORE/B0251-canonical-pricing-quote-projection
+source_sha=4f41f41fdd4b53cf1a24b8b5ba63c8d5dfa571e2
+base_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
+branch_name=work/CORE/B0270-canonical-pricing-authority-repair
 verification_phase=CANDIDATE
-request_id=B0251-GREEN-CANDIDATE-20260830
+request_id=B0270-PRICING-AUTHORITY-CANDIDATE-20260830
