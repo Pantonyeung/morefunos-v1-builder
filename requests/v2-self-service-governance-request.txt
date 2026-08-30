@@ -1,4 +1,4 @@
-source_sha=3c7d7095896db37710b592cd23869560b0a17a75
-base_sha=f46f2fa3c54652499d6fb0420d8b63db04523b8c
-branch_name=work/SMT/B2302-payment-refund-runtime-closure
-request_id=B2302-SMT-PAYMENT-REFUND-HANDOFF-FIX-SELF-SERVICE-GOVERNANCE-20260830
+source_sha=f5c47accbb4a6e0bc0478605156544cd487f6b05
+base_sha=a5af4357d2b73e106a5abd3296c3136b6e649f24
+branch_name=work/SMT/B2302-payment-refund-runtime-closure-r2
+request_id=B2302-R2-SMT-PAYMENT-REFUND-SELF-SERVICE-GOVERNANCE-20260830
