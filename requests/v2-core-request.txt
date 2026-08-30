@@ -1,5 +1,5 @@
-source_sha=aa147140b06d5612656c05c38accd188ff9e8065
+source_sha=a3dbfb75b335ab4cc21c34b97ebbfbfbc102fb93
 base_sha=e2c86895c73e6b0de2bd4299a162714b1182ff8b
 branch_name=work/CORE/B0266-identity-rbac-consumer-safe-canonical-port
 verification_phase=CANDIDATE
-request_id=B0266-IDENTITY-RBAC-RED-20260830
+request_id=B0266-IDENTITY-RBAC-RED-R2-20260830
