@@ -1,5 +1,5 @@
-source_sha=1a0381951d2c2268cf8bc72fb1eeeaf8ff614de3
-base_sha=cf30d99f5816495e828abe6ab04d9b7bf4bde2ac
+source_sha=9582cf6003051cd408ade3759af666f227e9eafa
+base_sha=c3b0b21fd609639a9b5c7058d6b8aa2b8a3a0547
 branch_name=work/CORE/B0265-five-port-final-canonical-matrix-closure
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0265-CANONICAL-MATRIX-FINAL-20260830-R1
+request_id=B0265-CANONICAL-MATRIX-FINAL-20260830-R2
