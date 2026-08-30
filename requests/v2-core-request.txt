@@ -1,5 +1,5 @@
-source_sha=20396a49143a61f8d871b00c8e2a0d180f20e802
+source_sha=aee63c5b2c40dd54c73002267303452888d32d15
 base_sha=e9f03f9da92c2cf657f500a5b23a06f1214cd2eb
 branch_name=work/CORE/B0143-member-purchasing-activity-projection-r2
 verification_phase=CANDIDATE
-request_id=B0143-MEMBER-PURCHASING-ACTIVITY-CORE-R2-20260831
+request_id=B0143-MEMBER-PURCHASING-ACTIVITY-CORE-R3-20260831
