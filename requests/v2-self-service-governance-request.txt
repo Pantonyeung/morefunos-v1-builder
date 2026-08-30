@@ -1,4 +1,4 @@
-source_sha=244cc92a6d5382dfb2fc9b1a6d3e141a0d3e15ab
+source_sha=5a529f76c535592a9862cece87377a27df158557
 base_sha=d65ea08f5701cd5281a00a5bdcc8a37226df1073
-branch_name=work/SYS/B0067-production-port-truth-refresh-r2
-request_id=B0067-NO-REDO-FINAL-SELF-SERVICE-GOVERNANCE-20260830
+branch_name=governance/SYS/B1001-production-closure-no-redo-governance
+request_id=B1001-NO-REDO-FINAL-SELF-SERVICE-GOVERNANCE-20260830
