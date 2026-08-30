@@ -1,56 +1,14 @@
-name: B0068 Pricing Registry Reconcile Once
+name: B0068 Pricing Registry Helper Retired
 
 on:
-  push:
-    paths:
-      - .github/workflows/b0068-pricing-registry-mutator.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  reconcile:
-    if: github.actor == 'Pantonyeung'
+  retired:
+    if: ${{ false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
     steps:
-      - name: Checkout B0068 with full history
-        uses: actions/checkout@v7
-        with:
-          repository: Pantonyeung/Morefun-v2
-          ref: governance/SYS/B0068-pricing-authority-b0270-allocation
-          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Reconcile latest main once and preserve exact governance scope
-        shell: bash
-        env:
-          V2_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
-        run: |
-          set -euo pipefail
-          git remote set-url origin https://github.com/Pantonyeung/Morefun-v2.git
-          ASKPASS="$RUNNER_TEMP/v2-reconcile-askpass.sh"
-          cat > "$ASKPASS" <<'EOF'
-          #!/bin/sh
-          case "$1" in
-            *Username*) echo "x-access-token" ;;
-            *Password*) printf '%s\n' "$V2_TOKEN" ;;
-            *) exit 1 ;;
-          esac
-          EOF
-          chmod 700 "$ASKPASS"
-          export GIT_ASKPASS="$ASKPASS"
-          export GIT_TERMINAL_PROMPT=0
-          git fetch origin main
-          git config user.name 'MoreFunOS SYS Governance'
-          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
-          git merge --no-edit origin/main
-          test -z "$(git status --porcelain)"
-          test -f docs/workflows/workspace-reservations/B0068.yaml
-          grep -q '^  B0270-B0279:$' TOPIC-WORKSPACE-REGISTRY.yaml
-          grep -q '^    topic: PRICING_CANONICAL_AUTHORITY_REPAIR$' TOPIC-WORKSPACE-REGISTRY.yaml
-          grep -q '^  next_new_topic_block_start: B0280$' TOPIC-WORKSPACE-REGISTRY.yaml
-          git push origin HEAD:refs/heads/governance/SYS/B0068-pricing-authority-b0270-allocation
-          rm -f "$ASKPASS"
-          echo "reconciled_sha=$(git rev-parse HEAD)"
+      - run: echo retired
