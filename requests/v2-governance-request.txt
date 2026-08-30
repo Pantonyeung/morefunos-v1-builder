@@ -1,4 +1,4 @@
-source_sha=ed3cf9d3260dacbd2c06d9b5c5ab3ca2ad81cbbe
-base_sha=a0dfee25abcea249da4073fff523688e660e7dde
-branch_name=work/SMM/B0235-smm-cart-option-selection
-request_id=B0235-SMM-CART-OPTION-SELECTION-SEALED-TERMINAL-GOVERNANCE-20260830
+source_sha=31599efa88a82d4e48024207d3ee140bf97e1f99
+base_sha=076f8cd009923d678823fb2c52123cda6861c673
+branch_name=work/SMT/B2301-fresh-main-production-closure
+request_id=B2301-SMT-SEALED-TERMINAL-GOVERNANCE-20260830
