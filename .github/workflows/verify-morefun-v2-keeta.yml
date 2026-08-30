@@ -46,7 +46,7 @@ jobs:
         with:
           repository: Pantonyeung/Morefun-v2
           ref: ${{ steps.request.outputs.source_sha }}
-          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          token: ${{ secrets.MOREFUN_V2_SOURCE_READ_TOKEN || secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
           fetch-depth: 1
