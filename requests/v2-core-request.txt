@@ -1,5 +1,5 @@
-source_sha=23bb8f31c2ac4ea27fb10595b16b79affd4df1ba
+source_sha=2a4f804ba100f12b11cbf57b96792d1419d9011e
 base_sha=766202b611e179b275ce459d2bf947c2704fffec
 branch_name=work/CORE/B0267-payment-refund-consumer-safe-canonical-port
 verification_phase=CANDIDATE
-request_id=B0267-PAYMENT-REFUND-RED-20260830
+request_id=B0267-PAYMENT-REFUND-CANDIDATE-20260830
