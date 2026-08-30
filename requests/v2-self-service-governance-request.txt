@@ -1,4 +1,4 @@
-source_sha=f46f2fa3c54652499d6fb0420d8b63db04523b8c
-base_sha=6de82bb1d8ca5d1897236fbdded24e9bd46162e4
-branch_name=work/SMT/B2301-fresh-main-production-closure-r2
-request_id=B2301-R2-SMT-SELF-SERVICE-GOVERNANCE-20260830
+source_sha=a5af4357d2b73e106a5abd3296c3136b6e649f24
+base_sha=f46f2fa3c54652499d6fb0420d8b63db04523b8c
+branch_name=work/OWN/B0281-owner-product-performance-consumer
+request_id=B0281-OWNER-PRODUCT-PERFORMANCE-SELF-SERVICE-GOVERNANCE-R2-20260830
