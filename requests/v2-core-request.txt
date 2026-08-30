@@ -1,5 +1,5 @@
-source_sha=48f9b968b7b5472ca1acd2c9d63d571729375eef
-base_sha=f35e47c079c64e6e243581e0222d9a9650d6cbe3
-branch_name=work/CORE/B0268-identity-rbac-clean-admission
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0268-IDENTITY-RBAC-FINAL-20260830
+source_sha=1796c80613d08df75f3e545ad9b922e9dda7a5f3
+base_sha=076f8cd009923d678823fb2c52123cda6861c673
+branch_name=work/INTG/B0169-keeta-live-webhook-signature-diagnostics-r2
+verification_phase=CANDIDATE
+request_id=B0169-KEETA-LIVE-SIGNATURE-DIAGNOSTICS-R2-20260830
