@@ -1,0 +1,136 @@
+name: V2 Dine-In Service Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-dine-in-service-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact comparison base SHA
+        required: false
+        type: string
+      branch_name:
+        description: Source branch name
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(printf '%s' "${INPUT_BASE_SHA:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+          else
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-dine-in-service-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_SHA="$(sed -n 's/^base_sha=//p' requests/v2-dine-in-service-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-dine-in-service-request.txt | tr -d '\r\n')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
+          [[ -n "$BRANCH_NAME" ]]
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "base_sha=$BASE_SHA"
+            echo "branch_name=$BRANCH_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED"
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Dine-In Service tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f packages/dine-in-service/dine-in-service.test.ts
+          node --test packages/dine-in-service/*.test.ts | tee "$RUNNER_TEMP/v2-dine-in-service-tests.log"
+
+      - name: TypeScript static check
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund typescript@7.0.2 @types/node@24
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json --types node --jsx react-jsx | tee "$RUNNER_TEMP/v2-dine-in-service-typecheck.log"
+
+      - name: Governance guard
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
+          if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
+          (cd source && python3 scripts/governance_guard.py "${ARGS[@]}") | tee "$RUNNER_TEMP/v2-dine-in-service-governance.log"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-dine-in-service-evidence-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-dine-in-service-tests.log
+            ${{ runner.temp }}/v2-dine-in-service-typecheck.log
+            ${{ runner.temp }}/v2-dine-in-service-governance.log
+          if-no-files-found: warn
+          retention-days: 30
