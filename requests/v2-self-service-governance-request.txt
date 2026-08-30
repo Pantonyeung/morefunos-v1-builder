@@ -1,4 +1,4 @@
-source_sha=5eb79e3fc0269f1b3ee67ec9cd5377e94f4a8e4b
-base_sha=f5c47accbb4a6e0bc0478605156544cd487f6b05
-branch_name=work/ADM/B0245-availability-manage-runtime-closure
-request_id=B0245-ADMIN-AVAILABILITY-SELF-SERVICE-GOVERNANCE-R2-20260830
+source_sha=ee155c06345a8a434e35e856b9c176035abf9cff
+base_sha=9813f12b4969f18fe2d8d3e582af352783bb8542
+branch_name=work/OWN/B0282-owner-member-activity-consumer
+request_id=B0282-OWNER-MEMBER-ACTIVITY-SELF-SERVICE-GOVERNANCE-FINAL-20260831
