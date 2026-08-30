@@ -1,4 +1,4 @@
-source_sha=5ec8c2396bf6137be68e7ef15b99a587e6ba9de3
+source_sha=5eb79e3fc0269f1b3ee67ec9cd5377e94f4a8e4b
 base_sha=f5c47accbb4a6e0bc0478605156544cd487f6b05
 branch_name=work/ADM/B0245-availability-manage-runtime-closure
-request_id=B0245-ADMIN-AVAILABILITY-V2-GOVERNANCE-20260830
+request_id=B0245-ADMIN-AVAILABILITY-V2-GOVERNANCE-R2-20260830
