@@ -1,0 +1,102 @@
+name: V2 Core Identity RBAC Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      branch_name:
+        description: V2 branch name represented by source SHA
+        required: true
+        type: string
+  push:
+    paths:
+      - 'requests/v2-core-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-identity-rbac:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
+          else
+            test -f requests/v2-core-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$BRANCH_NAME" ]]
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "branch_name=$BRANCH_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED"
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Core Identity RBAC tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          test -d packages/identity-rbac
+          compgen -G 'packages/identity-rbac/*.test.ts' > /dev/null
+          node --test packages/identity-rbac/*.test.ts
