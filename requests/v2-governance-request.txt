@@ -1,4 +1,4 @@
-source_sha=3b6c1dc9a3cfbc561a9fa729a21afd37f13ce62b
+source_sha=3d9f60bb075fae336e49366d0469473949c5c347
 base_sha=f3bd7a0deba5a27f8ab16930105889e621af54f9
 branch_name=work/CUS/B2503-customer-product-clean-lineage
-request_id=B2503-CUSTOMER-PRODUCT-CLEAN-LINEAGE-GOVERNANCE-20260830
+request_id=B2503-CUSTOMER-TERMINAL-GOVERNANCE-20260830
