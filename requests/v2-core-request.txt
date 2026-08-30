@@ -1,5 +1,5 @@
-source_sha=bfdb96d74962c1c065cb9908c1be440afb751394
+source_sha=48821de91c4aca4d28f5d5b94329a0522a8bc754
 base_sha=8611d442aa9b33fb87317f5896f68d93911c7b39
 branch_name=work/CORE/B0142-owner-product-performance-projection
 verification_phase=FINAL_MERGE_REQUEST
-request_id=B0142-OWNER-PRODUCT-PERFORMANCE-FINAL-20260830
+request_id=B0142-OWNER-PRODUCT-PERFORMANCE-FINAL-R2-20260830
