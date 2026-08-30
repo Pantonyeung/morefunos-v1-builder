@@ -1,4 +1,4 @@
-source_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
-base_sha=076f8cd009923d678823fb2c52123cda6861c673
-branch_name=governance/SYS/B0069-owner-b0280-allocation
-request_id=B0069-B0280-OWNER-SELF-SERVICE-GOVERNANCE-20260830-R2
+source_sha=92e42848a0f0bd7f8f73ce7075b5812c16e46631
+base_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
+branch_name=work/OWN/B0280-owner-mobile-daily-intelligence-ui
+request_id=B0280-OWNER-FINAL-SELF-SERVICE-GOVERNANCE-20260830
