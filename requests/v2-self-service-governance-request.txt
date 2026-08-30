@@ -1,4 +1,4 @@
-source_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
-base_sha=18a7e770b3114d9468c7c543ed568690d921ccab
-branch_name=governance/SYS/B0068-pricing-authority-b0270-allocation
-request_id=B0068-B0270-PRICING-AUTHORITY-SELF-SERVICE-GOVERNANCE-20260830
+source_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
+base_sha=076f8cd009923d678823fb2c52123cda6861c673
+branch_name=governance/SYS/B0069-owner-b0280-allocation
+request_id=B0069-B0280-OWNER-SELF-SERVICE-GOVERNANCE-20260830
