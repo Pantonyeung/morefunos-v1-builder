@@ -1,4 +1,4 @@
-source_sha=6137744a20b9867194e01719d57f535a473c1767
-base_sha=f3bd7a0deba5a27f8ab16930105889e621af54f9
-branch_name=work/CUS/B2503-customer-product-clean-lineage
-request_id=B2503-CUSTOMER-COMPLETION-SEAL-GOVERNANCE-20260830
+source_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
+base_sha=18a7e770b3114d9468c7c543ed568690d921ccab
+branch_name=governance/SYS/B0068-pricing-authority-b0270-allocation
+request_id=B0068-B0270-PRICING-AUTHORITY-GOVERNANCE-20260830
