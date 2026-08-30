@@ -1,4 +1,4 @@
-source_sha=79e63ba5f172fec70220674042c965ca6c02f57d
+source_sha=8611d442aa9b33fb87317f5896f68d93911c7b39
 base_sha=5a529f76c535592a9862cece87377a27df158557
-branch_name=work/ADM/B0244-clean-lineage-payment-refund-reconcile
-request_id=B0244-ADMIN-RECONCILE-FINAL-GOVERNANCE-20260830
+branch_name=governance/SYS/B1002-constitution-gate-marker-regression-repair
+request_id=B1002-CONSTITUTION-GATE-TERMINAL-GOVERNANCE-20260830
