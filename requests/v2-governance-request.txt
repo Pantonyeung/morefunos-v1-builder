@@ -1,4 +1,4 @@
-source_sha=1418151117138d8c1f8c7e624e055b590fc9f119
-base_sha=05912e167858afdba7fdcd8c21a9549d4a160b5a
-branch_name=work/CUS/B2502-customer-governance-truth-reconcile
-request_id=B2502-CUSTOMER-GOVERNANCE-TRUTH-RECONCILE-20260830
+source_sha=3b6c1dc9a3cfbc561a9fa729a21afd37f13ce62b
+base_sha=f3bd7a0deba5a27f8ab16930105889e621af54f9
+branch_name=work/CUS/B2503-customer-product-clean-lineage
+request_id=B2503-CUSTOMER-PRODUCT-CLEAN-LINEAGE-GOVERNANCE-20260830
