@@ -1,5 +1,5 @@
-source_sha=a040a26440ac56b30d2f52627ad6b96650b998a2
-base_sha=7df5ed31bda6ecb6d837966c59dc46567e464646
-branch_name=work/INTG/B0168-keeta-runtime-credential-and-dedup-verification
+source_sha=1e52207ffd2c31bf7c21bad95176e088ef2e2ba8
+base_sha=773b008811941c99a964873b31a79061b3eb9550
+branch_name=work/CORE/B0251-canonical-pricing-quote-projection
 verification_phase=CANDIDATE
-request_id=B0168-RUNTIME-READINESS-CANDIDATE-R2-20260830
+request_id=B0251-RED-20260830
