@@ -45,12 +45,12 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/morefun_test
     steps:
       - name: Checkout Builder definition
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -92,7 +92,7 @@ jobs:
           test -n "$TOKEN"
 
       - name: Checkout exact Morefun-v2 source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
           ref: ${{ steps.request.outputs.source_sha }}
@@ -322,7 +322,7 @@ jobs:
 
       - name: Upload recovery evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-core-recovery-evidence-${{ steps.request.outputs.source_sha }}
           path: |

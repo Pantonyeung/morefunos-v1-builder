@@ -20,25 +20,25 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CORE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: core
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CUSTOMER_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: customer
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
 
       - name: Verify exact identities
@@ -117,7 +117,7 @@ jobs:
           git -C builder commit -m "ci(result): Customer Pages live boundary PASS $CUSTOMER_SHA"
           git -C builder push origin HEAD:main
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: v2-customer-pages-live-boundary-${{ env.CUSTOMER_SHA }}
           path: evidence

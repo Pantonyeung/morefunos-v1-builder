@@ -19,17 +19,17 @@ jobs:
       SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
       - name: Checkout Builder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Checkout exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
@@ -101,7 +101,7 @@ jobs:
           cp "$RUNNER_TEMP/v2-core.log" evidence/v2-core.log
 
       - name: Upload evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-rules-authority-q-order-03-${{ env.SOURCE_SHA }}
           path: evidence

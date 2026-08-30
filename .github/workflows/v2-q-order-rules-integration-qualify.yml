@@ -16,18 +16,18 @@ jobs:
     env:
       SOURCE_SHA: 3f5c3e394e158ba153f6842ee13b9cfa84e012e0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
 
       - name: Qualify exact source with persistent phase evidence
@@ -92,7 +92,7 @@ jobs:
 
           PHASE=complete
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-q-order-rules-integration-${{ env.SOURCE_SHA }}

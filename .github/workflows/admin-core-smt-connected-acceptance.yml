@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload connected acceptance evidence
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: admin-core-smt-connected-${{ env.ADMIN_SHA }}-${{ env.SMT_SHA }}
           path: connected-evidence

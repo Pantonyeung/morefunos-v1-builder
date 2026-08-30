@@ -16,18 +16,18 @@ jobs:
     env:
       SOURCE_SHA: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
       - name: Qualify with persistent phase evidence
         shell: bash
@@ -47,7 +47,7 @@ jobs:
           PHASE=typescript; (cd source && npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json) 2>&1 | tee "$RUNNER_TEMP/ts.log"
           PHASE=pages-build; rm -rf /tmp/order-firebase-pages; (cd source && npm exec --yes --package=wrangler@4.125.0 -- wrangler pages functions build --outdir=/tmp/order-firebase-pages) 2>&1 | tee "$RUNNER_TEMP/pages.log"; grep -q 'Compiled Worker successfully' "$RUNNER_TEMP/pages.log"
           PHASE=complete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-canonical-order-firebase-${{ env.SOURCE_SHA }}

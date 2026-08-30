@@ -21,9 +21,9 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { path: builder, persist-credentials: true }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
@@ -31,7 +31,7 @@ jobs:
           path: source
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
       - name: Run Payment live with runtime business date
         shell: bash
@@ -138,7 +138,7 @@ jobs:
           PHASE=cleanup-verify
           POST_CODE="$(curl --silent --show-error -X POST -H 'content-type: application/json' --data '{}' -o "$RUNNER_TEMP/operator-after-clean.txt" -w '%{http_code}' "$CLEAN_URL/api/operator/payment-live")"; test "$POST_CODE" != 200; ! grep -Eq 'UNAUTHORIZED|NAMESPACE_MISMATCH|PAYMENT_' "$RUNNER_TEMP/operator-after-clean.txt"
           PHASE=complete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-payment-live-dynamic-date-${{ env.SOURCE_SHA }}

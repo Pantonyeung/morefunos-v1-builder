@@ -16,16 +16,16 @@ jobs:
     env:
       SOURCE_SHA: d5988f750037148e6a10bed161a1741585d23229
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { path: builder, persist-credentials: true }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
       - name: Qualify Payment durable authority with persistent phase evidence
         shell: bash
@@ -45,7 +45,7 @@ jobs:
           PHASE=durability-regression; (cd source && node --experimental-strip-types --test packages/durability/durability.test.ts) 2>&1 | tee "$RUNNER_TEMP/durability.log"
           PHASE=typescript; (cd source && npm exec --yes --package=typescript@5.9.2 -- tsc --noEmit -p tsconfig.json) 2>&1 | tee "$RUNNER_TEMP/ts.log"
           PHASE=complete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-payment-durable-${{ env.SOURCE_SHA }}
