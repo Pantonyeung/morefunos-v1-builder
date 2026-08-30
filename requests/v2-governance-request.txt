@@ -1,4 +1,4 @@
-source_sha=8aceda9ed715eb11267dcc624567a0c33b788647
+source_sha=3cf8fafee484b0aefd4019c82539b3695a102cd9
 base_sha=a0dfee25abcea249da4073fff523688e660e7dde
 branch_name=work/SMM/B0235-smm-cart-option-selection
-request_id=B0235-SMM-CART-OPTION-SELECTION-TERMINAL-GOVERNANCE-20260830
+request_id=B0235-SMM-CART-OPTION-SELECTION-TERMINAL-GOVERNANCE-R2-20260830
