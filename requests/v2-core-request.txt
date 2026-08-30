@@ -1,5 +1,5 @@
-source_sha=8fa045b3e3264e0cf1afea977ee73e91e6520938
+source_sha=5d2d06b1bea745942a971ddee40eac188843f950
 base_sha=7c95037615596fa0932c532eecb16d20c4f038c9
 branch_name=work/INTG/B0168-keeta-runtime-credential-and-dedup-verification
-verification_phase=CANDIDATE
-request_id=B0168-KEETA-RUNTIME-TERMINAL-CANDIDATE-20260830
+verification_phase=FINAL_MERGE_REQUEST
+request_id=B0168-KEETA-RUNTIME-FINAL-20260830
