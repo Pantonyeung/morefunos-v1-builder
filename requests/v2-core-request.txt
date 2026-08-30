@@ -1,5 +1,5 @@
-source_sha=8611d442aa9b33fb87317f5896f68d93911c7b39
-base_sha=5a529f76c535592a9862cece87377a27df158557
-branch_name=governance/SYS/B1002-constitution-gate-marker-regression-repair
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B1002-CONSTITUTION-GATE-MARKER-REPAIR-FINAL-20260830
+source_sha=2e5abac53e778bc229cf229400a35bb251b614f9
+base_sha=8611d442aa9b33fb87317f5896f68d93911c7b39
+branch_name=work/CORE/B0142-owner-product-performance-projection
+verification_phase=CANDIDATE
+request_id=B0142-OWNER-PRODUCT-PERFORMANCE-CANDIDATE-R2-20260830
