@@ -1,4 +1,4 @@
-source_sha=92e42848a0f0bd7f8f73ce7075b5812c16e46631
-base_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
-branch_name=work/OWN/B0280-owner-mobile-daily-intelligence-ui
-request_id=B0280-OWNER-FINAL-SELF-SERVICE-GOVERNANCE-20260830
+source_sha=244cc92a6d5382dfb2fc9b1a6d3e141a0d3e15ab
+base_sha=d65ea08f5701cd5281a00a5bdcc8a37226df1073
+branch_name=work/SYS/B0067-production-port-truth-refresh-r2
+request_id=B0067-NO-REDO-FINAL-SELF-SERVICE-GOVERNANCE-20260830
