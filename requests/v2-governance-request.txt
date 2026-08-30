@@ -1,4 +1,4 @@
-source_sha=468c90b055a78f77d531f9176ca21bc585d597f2
-base_sha=e532c3c98e5b742401cec9d07066b770df47c7ab
-branch_name=work/CUS/B2505-customer-availability-pricing-consumers
-request_id=B2505-CUSTOMER-AVAILABILITY-PRICING-TERMINAL-GOVERNANCE-R2-20260830
+source_sha=97f0756ad3ba7425631478317803413445010a21
+base_sha=020b88b8ebc24e0fabb878dbd9e074ba89b4c17c
+branch_name=work/SMM/B0233-smm-pricing-canonical-binding
+request_id=B0233-SMM-PRICING-TERMINAL-GOVERNANCE-20260830
