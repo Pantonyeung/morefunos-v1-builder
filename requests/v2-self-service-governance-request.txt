@@ -1,4 +1,4 @@
-source_sha=a5af4357d2b73e106a5abd3296c3136b6e649f24
+source_sha=3436860029f702495e33ae265d00ede80588847a
 base_sha=f46f2fa3c54652499d6fb0420d8b63db04523b8c
-branch_name=work/OWN/B0281-owner-product-performance-consumer
-request_id=B0281-OWNER-PRODUCT-PERFORMANCE-SELF-SERVICE-GOVERNANCE-R2-20260830
+branch_name=work/SMT/B2302-payment-refund-runtime-closure
+request_id=B2302-SMT-PAYMENT-REFUND-SELF-SERVICE-GOVERNANCE-20260830
