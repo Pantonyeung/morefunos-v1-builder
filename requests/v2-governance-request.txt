@@ -1,4 +1,4 @@
-source_sha=fb07b88ca24e0fb2ccc9730af14c182ac0c6f83e
+source_sha=e17b8e0c21107df04aefb240bd1afd51025e21bd
 base_sha=076f8cd009923d678823fb2c52123cda6861c673
-branch_name=work/SMT/B2301-fresh-main-production-closure
-request_id=B2301-SMT-SEALED-R2-GOVERNANCE-20260830
+branch_name=governance/SYS/B0069-owner-b0280-allocation
+request_id=B0069-B0280-OWNER-GOVERNANCE-20260830
