@@ -1,0 +1,184 @@
+name: V2 SMT OTA Cloudflare Bootstrap
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-ota-cloudflare-bootstrap-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 B2300 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-smt-ota-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WORKER_NAME: morefunos-v2-smt-ota
+      BUCKET_NAME: morefunos-v2-smt-ota
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-smt-ota-cloudflare-bootstrap-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-ota-cloudflare-bootstrap-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        shell: bash
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact V2-only Cloudflare contract
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = fs.readFileSync('source/infra/cloudflare/smt-ota-worker/wrangler.jsonc', 'utf8');
+          const config = JSON.parse(raw);
+          if (config.name !== 'morefunos-v2-smt-ota') throw new Error('V2_WORKER_NAME_MISMATCH');
+          const bindings = config.r2_buckets || [];
+          if (bindings.length !== 1 || bindings[0].binding !== 'OTA_BUCKET' || bindings[0].bucket_name !== 'morefunos-v2-smt-ota') {
+            throw new Error('V2_R2_BINDING_MISMATCH');
+          }
+          NODE
+          ! grep -R -F 'morefunos-v1' source/infra/cloudflare/smt-ota-worker
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Worker dependencies
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify Cloudflare identity
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --prefix source/infra/cloudflare/smt-ota-worker wrangler whoami > /tmp/cf-whoami.txt
+          test -s /tmp/cf-whoami.txt
+
+      - name: Create V2 R2 bucket only when absent
+        id: bucket
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          LIST="$(npx --prefix source/infra/cloudflare/smt-ota-worker wrangler r2 bucket list)"
+          if printf '%s\n' "$LIST" | grep -F "$BUCKET_NAME" >/dev/null; then
+            echo 'action=preserved-existing' >> "$GITHUB_OUTPUT"
+          else
+            npx --prefix source/infra/cloudflare/smt-ota-worker wrangler r2 bucket create "$BUCKET_NAME"
+            echo 'action=created' >> "$GITHUB_OUTPUT"
+          fi
+          npx --prefix source/infra/cloudflare/smt-ota-worker wrangler r2 bucket list | grep -F "$BUCKET_NAME" >/dev/null
+
+      - name: Deploy exact V2 OTA Worker
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx wrangler deploy | tee "$RUNNER_TEMP/wrangler-deploy.txt"
+
+      - name: Resolve workers.dev origin
+        id: public
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+            > "$RUNNER_TEMP/workers-subdomain.json"
+          SUBDOMAIN="$(node -e "const r=require(process.argv[1]); if(!r.success||!r.result?.subdomain) process.exit(1); process.stdout.write(r.result.subdomain)" "$RUNNER_TEMP/workers-subdomain.json")"
+          ORIGIN="https://$WORKER_NAME.$SUBDOMAIN.workers.dev"
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+
+      - name: Prove empty V2 feed fails closed publicly
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.public.outputs.origin }}
+        run: |
+          set -euo pipefail
+          STATUS="$(curl --silent --show-error --output "$RUNNER_TEMP/manifest-body.txt" --write-out '%{http_code}' "$ORIGIN/runtime-update.json")"
+          test "$STATUS" = '404'
+          grep -F 'Runtime update not published' "$RUNNER_TEMP/manifest-body.txt" >/dev/null
+
+      - name: Record bootstrap evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BUCKET_ACTION: ${{ steps.bucket.outputs.action }}
+          ORIGIN: ${{ steps.public.outputs.origin }}
+        run: |
+          mkdir -p evidence
+          printf 'scope=v2-smt-ota-cloudflare-bootstrap\nsource_sha=%s\nworker_name=%s\nbucket_name=%s\nbucket_action=%s\npublic_origin=%s\nrelease_published=NO\nmanifest_mutated=NO\n' \
+            "$SOURCE_SHA" "$WORKER_NAME" "$BUCKET_NAME" "$BUCKET_ACTION" "$ORIGIN" > evidence/summary.txt
+          cat evidence/summary.txt
+
+      - name: Upload bootstrap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-ota-cloudflare-bootstrap-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
