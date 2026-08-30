@@ -1,4 +1,4 @@
-source_sha=22383767f493558582a067a6e4810bc2b930b87b
+source_sha=06b12c496720287722e5ec7eaedcf7304aaa416f
 base_sha=6de82bb1d8ca5d1897236fbdded24e9bd46162e4
 branch_name=work/SMT/B2301-fresh-main-production-closure-r2
-request_id=B2301-R2-SELF-SERVICE-GOVERNANCE-20260830
+request_id=B2301-R2-ROOT-NULLABILITY-FIX-SELF-SERVICE-GOVERNANCE-20260830
