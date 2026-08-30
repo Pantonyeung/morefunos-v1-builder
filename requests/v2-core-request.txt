@@ -1,5 +1,5 @@
-source_sha=63672fa5294e6333e9f2d2e0a36c2abff9fb4cd6
+source_sha=a040a26440ac56b30d2f52627ad6b96650b998a2
 base_sha=7df5ed31bda6ecb6d837966c59dc46567e464646
-branch_name=work/CORE/B0250-canonical-menu-projection
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0250-FINAL-20260830
+branch_name=work/INTG/B0168-keeta-runtime-credential-and-dedup-verification
+verification_phase=CANDIDATE
+request_id=B0168-RUNTIME-READINESS-CANDIDATE-R2-20260830
