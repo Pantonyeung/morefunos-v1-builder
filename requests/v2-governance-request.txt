@@ -1,4 +1,4 @@
-source_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
-base_sha=18a7e770b3114d9468c7c543ed568690d921ccab
-branch_name=governance/SYS/B0068-pricing-authority-b0270-allocation
-request_id=B0068-B0270-PRICING-AUTHORITY-GOVERNANCE-20260830
+source_sha=71014d211aa0d114f411f8e9d4c6a84cdaef58c1
+base_sha=7b5122f48acd9e59d3299954fa2b3a6025ec9b94
+branch_name=work/SMM/B0232-smm-menu-canonical-binding
+request_id=B0232-SMM-CANONICAL-MENU-TERMINAL-GOVERNANCE-20260830
