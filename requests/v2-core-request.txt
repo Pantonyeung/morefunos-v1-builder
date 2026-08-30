@@ -1,5 +1,5 @@
-source_sha=b6d07a08b1f1d0d94efd42d95bb4d87c9f958701
+source_sha=5b488cb3b46ce40b63297c0276d646942d1eaf1e
 base_sha=7df5ed31bda6ecb6d837966c59dc46567e464646
 branch_name=work/CORE/B0250-canonical-menu-projection
 verification_phase=CANDIDATE
-request_id=B0250-GREEN-20260830
+request_id=B0250-TRUSTED-SCOPE-CANDIDATE-20260830
