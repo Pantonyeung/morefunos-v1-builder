@@ -1,5 +1,5 @@
-source_sha=f8b81a769481d29bb9e4154dd766b924d96a9f8e
+source_sha=4175af56b8a2d4080c604631bd63ee2bc1dbcd53
 base_sha=929a616002a1b453020a057a9960ae28b53295be
 branch_name=work/INTG/B0169-keeta-live-webhook-signature-diagnostics-r2
 verification_phase=CANDIDATE
-request_id=B0169-KEETA-STANDARD-OAUTH-REDIRECT-ONLY-POST-B0077-20260831
+request_id=B0169-KEETA-STANDARD-OAUTH-SIT-CONFIG-AUTH-SCOPE-EVENTS-20260831
