@@ -1,5 +1,5 @@
-source_sha=a8645fd3903e2af99fab6d4c0bba6138da2736b6
-base_sha=d65ea08f5701cd5281a00a5bdcc8a37226df1073
-branch_name=work/INTG/B0169-keeta-live-webhook-signature-diagnostics-r2
-verification_phase=FINAL_MERGE_REQUEST
-request_id=B0169-KEETA-LIVE-SIGNATURE-DIAGNOSTICS-R2-FINAL-LATEST-LINEAGE-20260830
+source_sha=ed09d7c50455a6b793a751fbfd0f1d3aa66410c1
+base_sha=5a529f76c535592a9862cece87377a27df158557
+branch_name=work/CORE/B0142-owner-product-performance-projection
+verification_phase=CANDIDATE
+request_id=B0142-OWNER-PRODUCT-PERFORMANCE-CANDIDATE-20260830
