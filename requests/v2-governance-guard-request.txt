@@ -1,4 +1,4 @@
-source_sha=818c111ea95ee9970d233f2117718e2c4acac31b
-base_sha=af86859b19c5f0e9e94365d523bb19be5fbeea84
-branch_name=work/CORE/B0090-merchant-store-recovery
-request_id=B0090-RESERVED-RECOVERY-GOVERNANCE-20260827
+source_sha=3c91e86780f0e07e50f8b775d1fac7450ff2883c
+base_sha=9813f12b4969f18fe2d8d3e582af352783bb8542
+branch_name=work/OWN/B0282-owner-member-activity-consumer
+request_id=B0282-OWNER-MEMBER-ACTIVITY-GOVERNANCE-CANDIDATE-20260831
