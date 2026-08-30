@@ -1,4 +1,4 @@
-source_sha=31599efa88a82d4e48024207d3ee140bf97e1f99
+source_sha=fb07b88ca24e0fb2ccc9730af14c182ac0c6f83e
 base_sha=076f8cd009923d678823fb2c52123cda6861c673
 branch_name=work/SMT/B2301-fresh-main-production-closure
-request_id=B2301-SMT-SEALED-TERMINAL-GOVERNANCE-20260830
+request_id=B2301-SMT-SEALED-R2-GOVERNANCE-20260830
