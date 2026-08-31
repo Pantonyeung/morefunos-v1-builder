@@ -1,5 +1,5 @@
-source_sha=cc1a5cee865dd1aeaebb7308b405f5a159a9931c
+source_sha=abdcd0afb6156b9a6c31eddfc1f37f7ae68984d5
 base_sha=3511111851b49a4a7975d1edf214f8a8d8e23343
 branch_name=work/CORE/B0145-owner-channel-performance-source-authority-r2
 verification_phase=CANDIDATE
-request_id=B0145-OWNER-CHANNEL-PERFORMANCE-CORE-CANDIDATE-20260831-R2
+request_id=B0145-OWNER-CHANNEL-PERFORMANCE-CORE-CANDIDATE-20260831-R3
