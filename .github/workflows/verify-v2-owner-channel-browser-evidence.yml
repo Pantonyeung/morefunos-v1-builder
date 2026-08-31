@@ -57,6 +57,10 @@ jobs:
         working-directory: source
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
+      - name: Install Owner app dependencies
+        working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Install browser driver
         run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
 
