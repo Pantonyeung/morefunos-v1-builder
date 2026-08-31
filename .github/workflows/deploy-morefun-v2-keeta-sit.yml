@@ -1,0 +1,180 @@
+name: Deploy Morefun V2 Keeta SIT
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-sit.sha'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefun-v2-keeta-sit
+  cancel-in-progress: false
+
+jobs:
+  deploy-keeta-sit:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-sit.sha | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require Builder credentials
+        shell: bash
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove exact source identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -f source/workers/keeta/wrangler.jsonc
+          test -f source/workers/keeta/migrations/0004_keeta_store_status.sql
+          printf 'verified_exact_sha=%s\n' "$EXPECTED_SHA"
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck Keeta before deployment
+        working-directory: source
+        run: npm run typecheck:intg-keeta
+
+      - name: Run Keeta regression before deployment
+        working-directory: source
+        run: npm run test:intg-keeta
+
+      - name: Verify existing Keeta runtime secrets
+        id: runtime-secrets
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets.json"
+          node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          if (!names.has('KEETA_APP_SECRET')) {
+            console.error('KEETA_APP_SECRET_MISSING');
+            process.exit(1);
+          }
+          if (names.has('KEETA_TOKEN_ENCRYPTION_KEY')) process.stdout.write('encryption_present=true\n');
+          else process.stdout.write('encryption_present=false\n');
+          NODE
+          PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          process.stdout.write(rows.some((row) => row.name === 'KEETA_TOKEN_ENCRYPTION_KEY') ? 'true' : 'false');
+          NODE
+          )"
+          echo "encryption_present=$PRESENT" >> "$GITHUB_OUTPUT"
+
+      - name: Provision token encryption secret when absent
+        if: steps.runtime-secrets.outputs.encryption_present != 'true'
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
+
+      - name: Apply Keeta SIT D1 migrations
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply KEETA_INGRESS_DB --remote --config wrangler.jsonc
+
+      - name: Deploy exact Keeta SIT Worker
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
+
+      - name: Smoke deployed health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            https://morefun-v2-keeta-sit.pantonyeung.workers.dev/health \
+            | tee "$RUNNER_TEMP/keeta-health.json"
+          node - "$RUNNER_TEMP/keeta-health.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body.service !== 'morefun-v2-keeta-sit' || body.status !== 'ok') process.exit(1);
+          NODE
+
+      - name: Record deployment evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          printf 'builder_run_id=%s\nsource_sha=%s\nworker=morefun-v2-keeta-sit\n' "$GITHUB_RUN_ID" "$SOURCE_SHA"
