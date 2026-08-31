@@ -1,9 +1,6 @@
 name: Keeta Live 1102 Closure
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/keeta-live-1102-closure.yml']
   workflow_dispatch:
 
 permissions:
@@ -75,31 +72,22 @@ jobs:
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-live-secrets.env"
 
-      - name: Wait for protected runtime and lock OPEN baseline
-        id: baseline
+      - name: Require official OPEN baseline status 3
         shell: bash
         run: |
           set -euo pipefail
           for attempt in $(seq 1 20); do
-            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/baseline.json" -w '%{http_code}' \
-              -H "Authorization: Bearer $PROBE_KEY" \
-              "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/baseline.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
             if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/baseline.json" <<'NODE'
-          const fs = require('fs');
-          const b = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          if (b.code !== 0 || Number(b.data?.shopId) !== 721517434 || b.data.status !== 4) process.exit(1);
-          console.log(`baseline_status=${b.data.status}`);
-          console.log(`baseline_delivery_rest_status=${b.data.deliveryRestStatus}`);
-          console.log(`baseline_pickup_rest_status=${b.data.pickupRestStatus}`);
-          console.log(`baseline_available_for_order=${b.data.availableForOrder}`);
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(b.code!==0||Number(b.data?.shopId)!==721517434) process.exit(1);
+          if(b.data.status!==3){ console.error(`KEETA_TEST_STORE_NOT_OPEN status=${b.data.status}`); process.exit(1); }
+          console.log(`baseline_status=${b.data.status}`); console.log(`baseline_delivery_rest_status=${b.data.deliveryRestStatus}`); console.log(`baseline_pickup_rest_status=${b.data.pickupRestStatus}`); console.log(`baseline_available_for_order=${b.data.availableForOrder}`);
           NODE
-            then
-              exit 0
-            fi
-            echo "waiting_for_new_worker_version_attempt=$attempt http=$STATUS"
+            then exit 0; fi
             sleep 2
           done
-          echo 'PROTECTED_RUNTIME_NOT_READY_OR_BASELINE_NOT_OPEN' >&2
+          echo 'LIVE_1102_BLOCKED_TEST_STORE_MUST_BE_STATUS_3' >&2
           exit 1
 
       - name: Capture D1 watermark
@@ -110,37 +98,33 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
-            --command "SELECT updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/d1-base.json"
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/d1-base.json"
           VALUE="$(node - "$RUNNER_TEMP/d1-base.json" <<'NODE'
           const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r) process.exit(1); process.stdout.write(String(r.updated_at));
           NODE
           )"
           echo "BASELINE_UPDATED_AT=$VALUE" >> "$GITHUB_ENV"
-          echo "baseline_d1_updated_at=$VALUE"
 
-      - name: Configure live SIT 1102 callback
+      - name: Configure test-store 1102 callback
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" \
-            "$WORKER_URL/sit/configure-webhook-1102" > "$RUNNER_TEMP/config.json"
+          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1102" > "$RUNNER_TEMP/config.json"
           node - "$RUNNER_TEMP/config.json" <<'NODE'
           const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0||b.data?.eventId!==1102||b.data?.isTest!==1) throw new Error(JSON.stringify(b)); console.log(`webhook_1102_configured=${b.data.url}`);
           NODE
 
-      - name: Trigger OPEN to REST
+      - name: Trigger OPEN 3 to SUSPENDED 4
         id: rest
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" \
-            "$WORKER_URL/sit/store-rest?shopId=$SHOP_ID" > "$RUNNER_TEMP/rest.json"
+          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-rest?shopId=$SHOP_ID" > "$RUNNER_TEMP/rest.json"
           node - "$RUNNER_TEMP/rest.json" <<'NODE'
           const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0) throw new Error(JSON.stringify(b)); console.log('store_rest_request=accepted');
           NODE
 
-      - name: Prove REST 1102 in D1
+      - name: Prove SUSPENDED 4 webhook in D1
         id: rest_webhook
         working-directory: source/workers/keeta
         shell: bash
@@ -150,30 +134,28 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 18); do
-            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
-              --command "SELECT status,delivery_rest_status,pickup_rest_status,source,provider_timestamp,updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/rest-d1.json"
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT status,delivery_rest_status,pickup_rest_status,source,provider_timestamp,updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/rest-d1.json"
             if node - "$RUNNER_TEMP/rest-d1.json" "$BASELINE_UPDATED_AT" <<'NODE'
-          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const base=Number(process.argv[3]); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r||r.source!=='WEBHOOK_1102'||r.status!==3||Number(r.updated_at)<=base) process.exit(1); console.log(`rest_1102_status=${r.status}`); console.log(`rest_1102_delivery=${r.delivery_rest_status}`); console.log(`rest_1102_pickup=${r.pickup_rest_status}`); console.log(`rest_1102_provider_timestamp=${r.provider_timestamp}`); console.log(`rest_1102_updated_at=${r.updated_at}`);
+          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const base=Number(process.argv[3]); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r||r.source!=='WEBHOOK_1102'||r.status!==4||Number(r.updated_at)<=base) process.exit(1); console.log(`suspend_1102_status=${r.status}`); console.log(`suspend_1102_provider_timestamp=${r.provider_timestamp}`);
           NODE
             then exit 0; fi
             sleep 5
           done
-          echo REST_1102_NOT_OBSERVED >&2
+          echo SUSPEND_1102_NOT_OBSERVED >&2
           exit 1
 
-      - name: Restore test store to OPEN
+      - name: Restore SUSPENDED 4 to OPEN 3
         id: restore
         if: always() && steps.rest.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" \
-            "$WORKER_URL/sit/store-open?shopId=$SHOP_ID" > "$RUNNER_TEMP/open.json"
+          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-open?shopId=$SHOP_ID" > "$RUNNER_TEMP/open.json"
           node - "$RUNNER_TEMP/open.json" <<'NODE'
           const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0) throw new Error(JSON.stringify(b)); console.log('store_restore_request=accepted');
           NODE
 
-      - name: Prove OPEN 1102 in D1
+      - name: Prove OPEN 3 webhook in D1
         id: open_webhook
         if: always() && steps.restore.outcome == 'success'
         working-directory: source/workers/keeta
@@ -184,10 +166,9 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 18); do
-            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
-              --command "SELECT status,delivery_rest_status,pickup_rest_status,source,provider_timestamp,updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/open-d1.json"
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT status,source,provider_timestamp,updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/open-d1.json"
             if node - "$RUNNER_TEMP/open-d1.json" <<'NODE'
-          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r||r.source!=='WEBHOOK_1102'||r.status!==4) process.exit(1); console.log(`open_1102_status=${r.status}`); console.log(`open_1102_delivery=${r.delivery_rest_status}`); console.log(`open_1102_pickup=${r.pickup_rest_status}`); console.log(`open_1102_provider_timestamp=${r.provider_timestamp}`); console.log(`open_1102_updated_at=${r.updated_at}`);
+          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r||r.source!=='WEBHOOK_1102'||r.status!==3) process.exit(1); console.log(`open_1102_status=${r.status}`); console.log(`open_1102_provider_timestamp=${r.provider_timestamp}`);
           NODE
             then exit 0; fi
             sleep 5
@@ -195,26 +176,17 @@ jobs:
           echo OPEN_1102_NOT_OBSERVED >&2
           exit 1
 
-      - name: Final provider state must be OPEN
+      - name: Final provider state must be OPEN 3
         if: always() && steps.restore.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 10); do
-            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/final.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
-            if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/final.json" <<'NODE'
-          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0||Number(b.data?.shopId)!==721517434||b.data.status!==4) process.exit(1); console.log(`final_status=${b.data.status}`); console.log(`final_delivery_rest_status=${b.data.deliveryRestStatus}`); console.log(`final_pickup_rest_status=${b.data.pickupRestStatus}`); console.log(`final_available_for_order=${b.data.availableForOrder}`);
+          curl --fail-with-body --silent --show-error -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" > "$RUNNER_TEMP/final.json"
+          node - "$RUNNER_TEMP/final.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0||Number(b.data?.shopId)!==721517434||b.data.status!==3) throw new Error(`FINAL_STORE_NOT_OPEN ${JSON.stringify(b)}`); console.log(`final_status=${b.data.status}`);
           NODE
-            then exit 0; fi
-            sleep 3
-          done
-          echo FINAL_STORE_NOT_OPEN >&2
-          exit 1
 
       - name: Evidence summary
         if: always()
         shell: bash
-        env:
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        run: |
-          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nrest=%s\nrest_webhook=%s\nrestore=%s\nopen_webhook=%s\n' "$GITHUB_RUN_ID" "$SOURCE_SHA" "$SHOP_ID" '${{ steps.rest.outcome }}' '${{ steps.rest_webhook.outcome }}' '${{ steps.restore.outcome }}' '${{ steps.open_webhook.outcome }}'
+        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nrest=%s\nrest_webhook=%s\nrestore=%s\nopen_webhook=%s\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID" '${{ steps.rest.outcome }}' '${{ steps.rest_webhook.outcome }}' '${{ steps.restore.outcome }}' '${{ steps.open_webhook.outcome }}'
