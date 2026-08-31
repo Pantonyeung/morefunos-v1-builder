@@ -1,0 +1,67 @@
+name: Verify V2 B0187 Keeta Durable Delivery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/v2-b0187-keeta-durable-delivery.sha'
+      - '.github/workflows/verify-v2-b0187-keeta-durable-delivery.yml'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+      - name: Resolve exact source
+        id: source
+        shell: bash
+        env:
+          DISPATCH_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          SHA="${DISPATCH_SHA:-}"
+          if [ -z "$SHA" ]; then SHA="$(cat .ci-requests/v2-b0187-keeta-durable-delivery.sha)"; fi
+          SHA="$(printf '%s' "$SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.source.outputs.sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install exact source
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Root TypeScript gate
+        working-directory: source
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Keeta ingress regression
+        working-directory: source
+        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-order-binding.test.ts
+      - name: B0187 durable delivery gate
+        working-directory: source
+        run: node --test packages/integration/keeta-durable-delivery.test.ts
