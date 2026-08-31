@@ -1,0 +1,67 @@
+name: Keeta V2 Menu 1202 Readonly Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-menu-1202-readonly.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: ab58a9b1039ca70b94d1f4ccb78a729a27fdee00
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Guard exact request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUESTED="$(tr -d '[:space:]' < .ci-requests/keeta-v2-menu-1202-readonly.sha | tr '[:upper:]' '[:lower:]')"
+          test "$REQUESTED" = "$SOURCE_SHA"
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Read latest 1202 evidence only
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message,received_at FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY received_at DESC LIMIT 20" --json > "$RUNNER_TEMP/evidence.json"
+          node - "$RUNNER_TEMP/evidence.json" <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const rows=(Array.isArray(raw)?raw[0]?.results:raw?.results)??[];
+          console.log(`matching_1202_rows=${rows.length}`);
+          for (const row of rows) {
+            let m; try { m=JSON.parse(row.message); } catch { continue; }
+            const errors=Array.isArray(m.errorSpuDTOList)?m.errorSpuDTOList:[];
+            console.log(`task_id=${Number(m.taskId)||0}`);
+            console.log(`shop_id=${Number(m.shopId)||0}`);
+            console.log(`received_at=${Number(row.received_at)||0}`);
+            console.log(`message_id_present=${typeof row.message_id==='string'&&row.message_id.length>0}`);
+            console.log(`error_count=${errors.length}`);
+            for (const e of errors) console.log(`error=${JSON.stringify({openItemCode:e?.openItemCode??null,code:e?.code??null,message:e?.message??null})}`);
+          }
+          NODE
+          echo 'mutation_request_count=0'
