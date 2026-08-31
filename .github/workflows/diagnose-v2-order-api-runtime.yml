@@ -1,0 +1,86 @@
+name: Diagnose V2 Order API Runtime
+
+on:
+  push:
+    paths:
+      - 'requests/v2-order-api-runtime-diagnostic.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Inspect existing morefun-order-api read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -u
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          api(){ curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$1"; }
+          BASE="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          NAME='morefun-order-api'
+
+          api "$BASE/workers/scripts/$NAME/settings" > evidence/settings.json 2>evidence/settings.err || true
+          api "$BASE/workers/scripts/$NAME/deployments" > evidence/deployments.json 2>evidence/deployments.err || true
+          api "$BASE/workers/scripts/$NAME/content/v2" > evidence/content.raw 2>evidence/content.err || true
+          api "$BASE/workers/subdomain" > evidence/account-subdomain.json 2>evidence/account-subdomain.err || true
+          api "$BASE/workers/scripts/$NAME/subdomain" > evidence/subdomain.json 2>evidence/subdomain.err || true
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const pj=(p,f)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return f}};
+          const rd=(p)=>{try{return fs.readFileSync(p,'utf8')}catch{return ''}};
+          const settings=pj('evidence/settings.json',{result:{}});
+          const deps=pj('evidence/deployments.json',{result:{deployments:[]}});
+          const acc=pj('evidence/account-subdomain.json',{result:{}});
+          const sub=pj('evidence/subdomain.json',{result:{}});
+          const content=rd('evidence/content.raw');
+          const bindings=Array.isArray(settings.result?.bindings)?settings.result.bindings.map(x=>`${x.name}:${x.type}`):[];
+          const latest=deps.result?.deployments?.[0]||{};
+          const lines=[
+            `bindings=${bindings.join(',')||'NONE'}`,
+            `latest_deployment_id=${latest.id||'UNKNOWN'}`,
+            `latest_version_id=${latest.versions?.[0]?.version_id||'UNKNOWN'}`,
+            `workers_dev_enabled=${sub.result?.enabled===true?'YES':sub.result?.enabled===false?'NO':'UNKNOWN'}`,
+            `account_subdomain=${acc.result?.subdomain||'UNKNOWN'}`,
+            `has_smt_login=${content.includes('/api/smt/session/login')?'YES':'NO'}`,
+            `has_smt_orders=${content.includes('/api/smt/orders')?'YES':'NO'}`,
+            `has_order_api=${/order/i.test(content)?'YES':'NO'}`,
+            'mutation=NONE'
+          ];
+          fs.writeFileSync('evidence/summary.txt',lines.join('\n')+'\n');
+          process.stdout.write(lines.join('\n')+'\n');
+          NODE
+
+          SUB="$(node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('evidence/account-subdomain.json','utf8'));process.stdout.write(x.result?.subdomain||'')}catch{}")"
+          if [ -n "$SUB" ]; then
+            URL="https://$NAME.$SUB.workers.dev"
+            printf '%s' "$URL" > evidence/url.txt
+            for PATHNAME in / /api/smt/session/login /api/smt/orders; do
+              KEY="$(printf '%s' "$PATHNAME" | tr '/-' '__')"
+              curl --silent --show-error --max-time 10 -D "evidence/${KEY}.headers" -o "evidence/${KEY}.body" -w '%{http_code}' "$URL$PATHNAME" > "evidence/${KEY}.code" 2>"evidence/${KEY}.err" || true
+            done
+          fi
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-order-api-runtime-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
