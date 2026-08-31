@@ -1,4 +1,4 @@
-source_sha=79005811ccd8585111088bf77655807b7d443726
-base_sha=abdcd0afb6156b9a6c31eddfc1f37f7ae68984d5
-branch_name=work/OWN/B0286-owner-channel-performance-consumer
-request_id=B0286-OWNER-CHANNEL-PERFORMANCE-GOVERNANCE-20260831-R1
+source_sha=3207ce4c81ed2b2745d7864ed94c9a00f2e4d8c8
+base_sha=79005811ccd8585111088bf77655807b7d443726
+branch_name=work/OWN/B0287-owner-final-production-authority-runtime-closure
+request_id=B0287-OWNER-AUTHORITY-DINEIN-GOVERNANCE-20260831-R1
