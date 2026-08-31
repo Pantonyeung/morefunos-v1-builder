@@ -16,6 +16,10 @@ on:
         default: candidate
         type: choice
         options: [candidate, stable]
+      api_base_url:
+        description: Public HTTPS SMT API base URL (never a secret)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -44,20 +48,25 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SHA: ${{ inputs.source_sha }}
           INPUT_CHANNEL: ${{ inputs.release_channel }}
+          INPUT_API_BASE_URL: ${{ inputs.api_base_url }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             CHANNEL="$INPUT_CHANNEL"
+            API_BASE_URL="$(printf '%s' "$INPUT_API_BASE_URL" | tr -d '\r\n')"
           else
             test -s requests/v2-smt-runtime-package-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-runtime-package-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             CHANNEL="$(sed -n 's/^channel=//p' requests/v2-smt-runtime-package-request.txt | tr -d '[:space:]')"
+            API_BASE_URL="$(sed -n 's/^api_base_url=//p' requests/v2-smt-runtime-package-request.txt | tr -d '\r\n')"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           case "$CHANNEL" in candidate|stable) ;; *) exit 1 ;; esac
+          API_BASE_URL="$(API_BASE_URL="$API_BASE_URL" node -e "const u=new URL(process.env.API_BASE_URL);if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash)process.exit(1);process.stdout.write(u.origin)")"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Require source and signing credentials
         shell: bash
@@ -97,6 +106,8 @@ jobs:
 
       - name: Install and verify SMT Runtime
         shell: bash
+        env:
+          VITE_SMT_API_BASE_URL: ${{ steps.request.outputs.api_base_url }}
         run: |
           set -euo pipefail
           npm install --prefix source --no-save --ignore-scripts --no-audit --no-fund
@@ -105,6 +116,7 @@ jobs:
           npm run --prefix "$SMT_RUNTIME_ROOT" typecheck
           npm run --prefix "$SMT_RUNTIME_ROOT" build
           test -s "$SMT_RUNTIME_ROOT/dist/index.html"
+          grep -R -F -- "$VITE_SMT_API_BASE_URL" "$SMT_RUNTIME_ROOT/dist" >/dev/null
           RUNTIME_INDEX="$SMT_RUNTIME_ROOT/dist/index.html" node <<'NODE'
           const fs=require('node:fs');
           const html=fs.readFileSync(process.env.RUNTIME_INDEX,'utf8');
@@ -174,6 +186,7 @@ jobs:
           ARCHIVE_SHA: ${{ steps.package.outputs.archive_sha256 }}
           BYTES: ${{ steps.package.outputs.bytes }}
           CERT_SHA: ${{ steps.package.outputs.cert_sha256 }}
+          API_BASE_URL: ${{ steps.request.outputs.api_base_url }}
         run: |
           set -euo pipefail
           OUT="$GITHUB_WORKSPACE/$FILENAME"
@@ -187,12 +200,13 @@ jobs:
           grep -F "MoreFun-Channel: $CHANNEL" "$EXTRACT/META-INF/MANIFEST.MF"
           grep -F "MoreFun-Min-Carrier-Version-Code: $MIN_CARRIER_VERSION_CODE" "$EXTRACT/META-INF/MANIFEST.MF"
           grep -F "MoreFun-Bridge-Version: $BRIDGE_VERSION" "$EXTRACT/META-INF/MANIFEST.MF"
+          grep -R -F -- "$API_BASE_URL" "$EXTRACT" >/dev/null
           test "$(sha256sum "$OUT" | awk '{print $1}')" = "$ARCHIVE_SHA"
-          export SOURCE_SHA CHANNEL RELEASE_ID FILENAME ARCHIVE_SHA BYTES CERT_SHA MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
+          export SOURCE_SHA CHANNEL RELEASE_ID FILENAME ARCHIVE_SHA BYTES CERT_SHA API_BASE_URL MIN_CARRIER_VERSION_CODE BRIDGE_VERSION
           node <<'NODE'
           const fs=require('node:fs');
           const update={releaseId:process.env.RELEASE_ID,runtimeVersion:process.env.RELEASE_ID,channel:process.env.CHANNEL,minCarrierVersionCode:Number(process.env.MIN_CARRIER_VERSION_CODE),bridgeVersion:Number(process.env.BRIDGE_VERSION),bundleUrl:process.env.FILENAME,archiveSha256:process.env.ARCHIVE_SHA};
-          const metadata={sourceRepository:'Pantonyeung/Morefun-v2',sourceSha:process.env.SOURCE_SHA,...update,runtimeBytes:Number(process.env.BYTES),signingCertificateSha256:process.env.CERT_SHA,publicationStatus:'UNPUBLISHED',deviceAcceptance:'NOT_EXECUTED',builderRunId:process.env.GITHUB_RUN_ID};
+          const metadata={sourceRepository:'Pantonyeung/Morefun-v2',sourceSha:process.env.SOURCE_SHA,...update,runtimeBytes:Number(process.env.BYTES),signingCertificateSha256:process.env.CERT_SHA,smtApiBaseUrl:process.env.API_BASE_URL,publicationStatus:'UNPUBLISHED',deviceAcceptance:'NOT_EXECUTED',builderRunId:process.env.GITHUB_RUN_ID};
           fs.writeFileSync('runtime-update.json',JSON.stringify(update,null,2)+'\n');
           fs.writeFileSync('runtime-build-metadata.json',JSON.stringify(metadata,null,2)+'\n');
           fs.writeFileSync('RUNTIME_SHA256SUMS',`${process.env.ARCHIVE_SHA}  ${process.env.FILENAME}\n`);
