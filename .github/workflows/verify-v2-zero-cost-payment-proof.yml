@@ -51,7 +51,12 @@ jobs:
           node --test "${TESTS[@]}"
       - name: Order D1 regression
         working-directory: source
-        run: npm run test:core-order
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TESTS < <(find packages/order -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' | sort)
+          ((${#TESTS[@]} > 0))
+          node --test --test-concurrency=1 "${TESTS[@]}"
       - name: Integration Firebase signal regression
         working-directory: source
         run: node --test packages/integration/firebase-rtdb-signal.test.ts packages/integration/google-service-account-token.test.ts
