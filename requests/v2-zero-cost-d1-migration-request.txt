@@ -1,0 +1,4 @@
+source_sha=b7c457d5af6a77dc1df4e3be4bbcf9ea86f3b5c1
+database_id=1ed17fcb-7e7a-4e13-a922-ae141aff4142
+mode=APPLY_EXACT_SOURCE_MIGRATION
+request_id=TEAM2-B2305-ZERO-COST-D1-MIGRATION-20260831
