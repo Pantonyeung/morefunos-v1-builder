@@ -1,3 +1,4 @@
-source_sha=4b6e3ee8118ccb4d9b3b03c18b56bcd3f95359ee
+source_sha=bc55daac790a84ecc801f5aac1161117f98c8dc4
 channel=candidate
-request_id=B2300-SMT-V2-RUNTIME-PACKAGE-FINAL-20260830
+api_base_url=
+request_id=TEAM2-B2304-S10-RUNTIME-PACKAGE-API-ORIGIN-RED-20260831
