@@ -1,0 +1,100 @@
+name: Keeta SIT Restore Exact Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-sit-restore-exact.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-sit-restore-exact-worker
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      EXPECTED_APP_ID: '3419700273'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-sit-restore-exact.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard exact canonical source without diagnostic patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq '"KEETA_APP_ID": "3419700273"' source/workers/keeta/wrangler.jsonc
+          grep -Fq '/webhooks/keeta' source/workers/keeta/src/index.ts
+          if grep -Fq 'keeta_webhook_reject code=' source/workers/keeta/src/index.ts; then
+            echo 'DIAGNOSTIC_PATCH_PRESENT_IN_SOURCE' >&2
+            exit 1
+          fi
+
+      - name: Require retained Cloudflare secret names
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/secrets.json"
+          node - "$RUNNER_TEMP/secrets.json" <<'NODE'
+          const fs=require('fs'); const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const names=new Set(rows.map(x=>x.name));
+          for(const name of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY']) if(!names.has(name)) throw new Error(`${name}_MISSING`);
+          NODE
+
+      - name: Deploy unmodified exact source with fresh ephemeral probe key
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/restore.env"
+          chmod 600 "$RUNNER_TEMP/restore.env"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/restore.env"
+
+      - name: Verify public health only
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$WORKER_URL/health")"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/health.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(b.service!=='morefun-v2-keeta-sit' || b.status!=='ok') process.exit(1);
+          console.log('exact_worker_health=PASS');
+          NODE
