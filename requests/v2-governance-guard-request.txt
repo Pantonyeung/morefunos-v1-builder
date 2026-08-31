@@ -1,4 +1,4 @@
-source_sha=ee155c06345a8a434e35e856b9c176035abf9cff
-base_sha=9813f12b4969f18fe2d8d3e582af352783bb8542
-branch_name=work/OWN/B0282-owner-member-activity-consumer
-request_id=B0282-OWNER-MEMBER-ACTIVITY-V2-GOVERNANCE-FINAL-20260831
+source_sha=79005811ccd8585111088bf77655807b7d443726
+base_sha=abdcd0afb6156b9a6c31eddfc1f37f7ae68984d5
+branch_name=work/OWN/B0286-owner-channel-performance-consumer
+request_id=B0286-OWNER-CHANNEL-PERFORMANCE-GOVERNANCE-20260831-R1
