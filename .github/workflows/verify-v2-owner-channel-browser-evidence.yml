@@ -1,0 +1,154 @@
+name: V2 Owner Channel Browser Evidence
+
+on:
+  push:
+    paths:
+      - 'requests/v2-owner-channel-browser-evidence-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requests/v2-owner-channel-browser-evidence-request.txt
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-channel-browser-evidence-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+
+      - name: Create controlled exact-source runtime harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > source/apps/owner-web/src/browser-evidence-runtime.ts <<'EOF'
+          import {InternalPortCompositionResolver} from '../../../packages/internal-port-runtime/composition.ts';
+          import {REPORTING_SNAPSHOT_READ_V1} from '../../../packages/reporting-projection/reporting-port-contract.ts';
+          import {PRODUCT_PERFORMANCE_READ_V1} from '../../../packages/reporting-projection/product-performance-port-contract.ts';
+          import {MEMBER_PURCHASING_ACTIVITY_READ_V1} from '../../../packages/reporting-projection/member-purchasing-activity-port-contract.ts';
+          import {CHANNEL_PERFORMANCE_READ_V1} from '../../../packages/reporting-projection/channel-performance-port-contract.ts';
+
+          const resolver=new InternalPortCompositionResolver();
+          const now=Date.now();
+          const generatedAt=new Date(now-30_000).toISOString();
+          const freshUntil=new Date(now+3_600_000).toISOString();
+          const latestSourceAt=new Date(now-60_000).toISOString();
+          const period={from:new Date(now-86_400_000).toISOString(),to:new Date(now+86_400_000).toISOString()};
+          const previousPeriod={from:new Date(now-8*86_400_000).toISOString(),to:new Date(now-7*86_400_000).toISOString()};
+          const activityPeriod={from:new Date(now-30*86_400_000).toISOString(),to:new Date(now+86_400_000).toISOString()};
+
+          resolver.register({adapterId:'browser-owner-reporting',port:'OWN',operation:REPORTING_SNAPSHOT_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({projectionKey:'store-1:HKD',storeId:'store-1',currency:'HKD',generatedAt,freshUntil,sourceWatermark:{latestSourceAt,maxOrderRevision:4,maxPaymentRevision:6,sourceFactCount:10},metrics:{turnoverMinor:1006700,orderCount:123,averageOrderValueMinor:8185,completedPaymentMinor:1006700,completedRefundMinor:1000,paymentNetMinor:1005700},tenderBreakdown:[{tenderMethod:'CASH',completedPaymentMinor:423100,completedRefundMinor:0,netMinor:423100},{tenderMethod:'FPS',completedPaymentMinor:271500,completedRefundMinor:1000,netMinor:270500}],projectionRevision:1})}});
+          resolver.register({adapterId:'browser-owner-products',port:'OWN',operation:PRODUCT_PERFORMANCE_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({storeId:'store-1',currency:'HKD',currentPeriod:period,previousPeriod,generatedAt,freshUntil,sourceWatermark:{sourceOrderCount:20,latestSourceAt},rows:[{productId:'p-1',displayName:'招牌紫米飯團',unitsSold:18,salesMinor:81000,previousUnitsSold:14,previousSalesMinor:63000,unitsDelta:4,salesDelta:18000,salesDeltaPercent:28.5714285714}]})}});
+          resolver.register({adapterId:'browser-owner-members',port:'OWN',operation:MEMBER_PURCHASING_ACTIVITY_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({storeId:'store-1',currency:'HKD',currentPeriod:period,activityPeriod,generatedAt,freshUntil,totalMembers:null,newMembers:null,dormantMembers:null,metrics:{purchasingMembers:2,memberOrderCount:2,completedOrderCount:3,memberOrderShareBasisPoints:6667,memberSalesMinor:9200,repeatPurchasingMembers:1,activePurchasingMembers30d:4},sourceWatermark:{sourceOrderCount:3,sourceOwnershipCount:2,latestSourceAt}})}});
+          resolver.register({adapterId:'browser-owner-channels',port:'OWN',operation:CHANNEL_PERFORMANCE_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({storeId:'store-1',currency:'HKD',period,generatedAt,freshUntil,sourceWatermark:{sourceOrderCount:3,sourceRefundCount:1,latestSourceAt},rows:[{channel:'store',orderCount:2,grossSalesMinor:10000,discountMinor:1000,salesAfterDiscountMinor:9000,refundMinor:0,netSalesMinor:9000,averageOrderValueMinor:4500,grossSalesSharePercent:62.5},{channel:'delivery-platform',orderCount:1,grossSalesMinor:6000,discountMinor:0,salesAfterDiscountMinor:6000,refundMinor:1000,netSalesMinor:5000,averageOrderValueMinor:6000,grossSalesSharePercent:37.5}]})}});
+
+          (globalThis as typeof globalThis & {__MOREFUNOS_V2_OWNER_RUNTIME__?:unknown}).__MOREFUNOS_V2_OWNER_RUNTIME__={resolver,storeId:'store-1',currency:'HKD',authorization:()=>({actorId:'owner-1',authorizationContextRef:'browser-evidence-auth',scopeRef:'store-1'}),nextRequestId:()=>`browser-evidence-${Date.now()}`,productPerformancePeriods:()=>({currentPeriod:period,previousPeriod}),memberActivityPeriods:()=>({currentPeriod:period,activityPeriod}),channelPerformancePeriod:()=>period};
+          await import('./main.tsx');
+          EOF
+          sed -i 's#/src/main.tsx#/src/browser-evidence-runtime.ts#' source/apps/owner-web/index.html
+
+      - name: Launch exact Owner source
+        working-directory: source/apps/owner-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 127.0.0.1 --port 4180 > "$RUNNER_TEMP/owner-vite.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/owner-vite.pid"
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4180/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/owner-vite.log"
+          exit 1
+
+      - name: Capture desktop and mobile browser evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          cat > "$RUNNER_TEMP/capture-owner.mjs" <<'EOF'
+          import {chromium} from 'playwright-core';
+          import fs from 'node:fs';
+          const [chrome,sourceSha]=process.argv.slice(2);
+          const browser=await chromium.launch({headless:true,executablePath:chrome});
+          const cases=[['desktop',1440,1000],['mobile',390,844]];
+          const results=[];
+          for(const [name,width,height] of cases){
+            const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:name==='mobile'?2:1,isMobile:name==='mobile',hasTouch:name==='mobile'});
+            const errors=[];
+            page.on('pageerror',error=>errors.push(String(error)));
+            await page.goto('http://127.0.0.1:4180/',{waitUntil:'networkidle'});
+            await page.getByText('渠道表現',{exact:true}).waitFor({state:'visible',timeout:15000});
+            await page.getByText('門店',{exact:true}).waitFor({state:'visible',timeout:15000});
+            await page.getByText('外賣平台',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const body=(await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
+            for(const required of ['渠道表現','門店','$90','2 張 · 62.5%','外賣平台','$50','1 張 · 37.5%','3 張完成訂單 · 1 筆退款']){
+              if(!body.includes(required))throw new Error(`${name}:MISSING:${required}`);
+            }
+            if(errors.length)throw new Error(`${name}:PAGE_ERROR:${errors.join('|')}`);
+            await page.screenshot({path:`evidence/owner-channel-${name}.png`,fullPage:true});
+            fs.writeFileSync(`evidence/owner-channel-${name}.txt`,body+'\n');
+            results.push({name,width,height,requiredChannelTruth:'PASS',pageErrors:errors});
+            await page.close();
+          }
+          await browser.close();
+          fs.writeFileSync('evidence/browser-summary.json',JSON.stringify({sourceSha,results},null,2)+'\n');
+          EOF
+          node "$RUNNER_TEMP/capture-owner.mjs" "$CHROME" "$SOURCE_SHA"
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-owner-channel-browser-evidence.yml\nresult=PASS\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-owner-channel-browser-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
