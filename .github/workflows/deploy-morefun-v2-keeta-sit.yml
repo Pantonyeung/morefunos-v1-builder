@@ -99,8 +99,7 @@ jobs:
         working-directory: source
         run: npm run test:intg-keeta
 
-      - name: Verify existing Keeta runtime secrets
-        id: runtime-secrets
+      - name: Require existing Keeta runtime secrets
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -113,19 +112,10 @@ jobs:
           const fs = require('fs');
           const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const names = new Set(rows.map((row) => row.name));
-          if (!names.has('KEETA_APP_SECRET')) {
-            console.error('KEETA_APP_SECRET_MISSING');
-            process.exit(1);
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING`);
           }
-          console.log(`encryption_present=${names.has('KEETA_TOKEN_ENCRYPTION_KEY')}`);
           NODE
-          ENCRYPTION_PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
-          const fs = require('fs');
-          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          process.stdout.write(rows.some((row) => row.name === 'KEETA_TOKEN_ENCRYPTION_KEY') ? 'true' : 'false');
-          NODE
-          )"
-          echo "encryption_present=$ENCRYPTION_PRESENT" >> "$GITHUB_OUTPUT"
 
       - name: Verify Keeta D1 database identity
         working-directory: source/workers/keeta
@@ -160,39 +150,25 @@ jobs:
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply KEETA_INGRESS_DB --remote --config wrangler.jsonc
 
-      - name: Deploy exact Keeta SIT Worker
-        working-directory: source/workers/keeta
+      - name: Prepare protected SIT probe secret for same-version deployment
         shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
-
-      - name: Provision token encryption secret when absent
-        if: steps.runtime-secrets.outputs.encryption_present != 'true'
-        working-directory: source/workers/keeta
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
-
-      - name: Rotate protected SIT probe secret
-        working-directory: source/workers/keeta
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           PROBE_KEY="$(openssl rand -hex 32)"
           echo "::add-mask::$PROBE_KEY"
-          printf '%s' "$PROBE_KEY" | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-deploy-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-deploy-secrets.env"
           echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Keeta SIT Worker with probe secret
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-deploy-secrets.env"
 
       - name: Smoke deployed health endpoint
         shell: bash
