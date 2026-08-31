@@ -1,0 +1,177 @@
+name: Keeta Store Item 04 Profile Image Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-04.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  store-item-04:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      SHOP_ID: '721517434'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-04.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard handbook Store Item 04 and exact routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_04_MAIN_PICTURE_UPDATE`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/store-profile-image-upload' source/workers/keeta/src/index.ts
+          grep -Fq '/sit/store-profile-image-update' source/workers/keeta/src/index.ts
+          grep -Fq 'https://open.mykeeta.com/api/open/base/image/upload' source/packages/integration/keeta-image-upload.ts
+          grep -Fq 'https://open.mykeeta.com/api/open/scm/shop/picture/main/update' source/packages/integration/keeta-store-provider-requests.ts
+
+      - name: Prepare ephemeral SIT probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item04-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item04-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker with ephemeral probe secret
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item04-secrets.env"
+
+      - name: Generate deterministic 1024x1024 PNG test-store asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import struct, zlib
+          W = H = 1024
+          rows = []
+          for y in range(H):
+              row = bytearray([0])
+              for x in range(W):
+                  # Warm rice background + purple geometric M mark; deterministic and test-only.
+                  if (180 <= y <= 844 and ((220 <= x <= 320) or (704 <= x <= 804) or (320 <= x <= 512 and abs(y - (180 + (x-320)*2)) < 42) or (512 <= x <= 704 and abs(y - (564 - (x-512)*2)) < 42)):
+                      row += bytes((112, 73, 180, 255))
+                  else:
+                      row += bytes((255, 246, 235, 255))
+              rows.append(bytes(row))
+          raw = b''.join(rows)
+          def chunk(kind, data):
+              return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+          png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', W, H, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
+          open('/tmp/morefun-keeta-store-item04.png', 'wb').write(png)
+          PY
+          python3 - <<'PY'
+          import os, struct
+          p='/tmp/morefun-keeta-store-item04.png'
+          b=open(p,'rb').read()
+          assert b[:8] == b'\x89PNG\r\n\x1a\n'
+          w,h=struct.unpack('>II', b[16:24])
+          assert w > 900 and h > 900
+          assert len(b) < 5*1024*1024
+          print(f'test_asset_format=png')
+          print(f'test_asset_width={w}')
+          print(f'test_asset_height={h}')
+          print(f'test_asset_bytes={len(b)}')
+          PY
+
+      - name: Upload image through official Keeta multipart endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/upload.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              -F 'imageName=morefun-keeta-store-item04.png' \
+              -F 'imageData=@/tmp/morefun-keeta-store-item04.png;type=image/png' \
+              "$WORKER_URL/sit/store-profile-image-upload?shopId=$SHOP_ID" || true)"
+            if [[ "$HTTP" == '200' ]]; then break; fi
+            sleep 2
+          done
+          node - "$RUNNER_TEMP/upload.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (b.code !== 0 || typeof b.data !== 'string' || !/^https?:\/\/.+\.(?:jpe?g|png|webp)$/i.test(b.data)) {
+            console.error(`KEETA_IMAGE_UPLOAD_FAILED code=${b.code} message=${b.message ?? ''}`);
+            process.exit(1);
+          }
+          console.log(`keeta_image_upload_code=${b.code}`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `PICTURE_URL=${b.data}\n`);
+          NODE
+
+      - name: Update test-store primary image exactly once
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({pictureUrl:process.env.PICTURE_URL}))')"
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/update.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $PROBE_KEY" \
+            -H 'Content-Type: application/json' \
+            --data "$BODY" \
+            "$WORKER_URL/sit/store-profile-image-update?shopId=$SHOP_ID")"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/update.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`keeta_profile_update_code=${b.code}`);
+          console.log(`keeta_profile_update_message=${String(b.message ?? '').replace(/[\r\n]/g,' ')}`);
+          if (b.code !== 0) process.exit(1);
+          NODE
+
+      - name: Read post-submit profile image state without assuming approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/post-state.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-profile-image-state?shopId=$SHOP_ID")"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/post-state.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (b.code !== 0 || !b.data || typeof b.data !== 'object') process.exit(1);
+          console.log(`post_submit_main_pictures=${JSON.stringify(b.data.mainPictures ?? null)}`);
+          console.log(`post_submit_logo_url=${JSON.stringify(b.data.logoUrl ?? null)}`);
+          NODE
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nhandbook_store_item=04\nimage_upload=PASS\nprofile_image_update_submission=PASS\napproval_state=OBSERVED_NOT_INFERRED\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
