@@ -70,26 +70,46 @@ jobs:
           ACCOUNT_SUBDOMAIN_STATUS=PASS
           api "$BASE/workers/subdomain" > evidence/account-subdomain.json 2>evidence/account-subdomain.err || ACCOUNT_SUBDOMAIN_STATUS=DENIED
 
-          SMT_SOURCE_STATUS=PASS
-          api "$BASE/workers/scripts/morefun-smt" > evidence/morefun-smt-source.raw 2>evidence/morefun-smt-source.err || SMT_SOURCE_STATUS=DENIED
+          SMT_CONTENT_STATUS=PASS
+          api "$BASE/workers/scripts/morefun-smt/content/v2" > evidence/morefun-smt-content.json 2>evidence/morefun-smt-content.err || SMT_CONTENT_STATUS=DENIED
 
-          WORKERS_STATUS="$WORKERS_STATUS" PAGES_STATUS="$PAGES_STATUS" HYPERDRIVE_STATUS="$HYPERDRIVE_STATUS" SMT_SETTINGS_STATUS="$SMT_SETTINGS_STATUS" SMT_DEPLOYMENTS_STATUS="$SMT_DEPLOYMENTS_STATUS" SMT_SUBDOMAIN_STATUS="$SMT_SUBDOMAIN_STATUS" ACCOUNT_SUBDOMAIN_STATUS="$ACCOUNT_SUBDOMAIN_STATUS" SMT_SOURCE_STATUS="$SMT_SOURCE_STATUS" node - <<'NODE'
+          LATEST_VERSION_ID="$(node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('evidence/morefun-smt-deployments.json','utf8'));process.stdout.write(x.result?.deployments?.[0]?.versions?.[0]?.version_id||'')}catch{}")"
+          SMT_VERSION_STATUS=UNKNOWN
+          if [ -n "$LATEST_VERSION_ID" ]; then
+            SMT_VERSION_STATUS=PASS
+            api "$BASE/workers/scripts/morefun-smt/versions/$LATEST_VERSION_ID" > evidence/morefun-smt-version.json 2>evidence/morefun-smt-version.err || SMT_VERSION_STATUS=DENIED
+          fi
+
+          ACCOUNT_SUBDOMAIN="$(node -e "const fs=require('fs');try{const x=JSON.parse(fs.readFileSync('evidence/account-subdomain.json','utf8'));process.stdout.write(x.result?.subdomain||'')}catch{}")"
+          SMT_WORKERS_DEV_URL=''
+          SMT_LIVE_PROBE_STATUS=UNKNOWN
+          if [ -n "$ACCOUNT_SUBDOMAIN" ]; then
+            SMT_WORKERS_DEV_URL="https://morefun-smt.$ACCOUNT_SUBDOMAIN.workers.dev"
+            SMT_LIVE_PROBE_STATUS=PASS
+            curl --silent --show-error --max-time 10 -D evidence/live-orders.headers -o evidence/live-orders.body -w '%{http_code}' "$SMT_WORKERS_DEV_URL/api/smt/orders" > evidence/live-orders.code 2>evidence/live-orders.err || SMT_LIVE_PROBE_STATUS=FAILED
+          fi
+
+          WORKERS_STATUS="$WORKERS_STATUS" PAGES_STATUS="$PAGES_STATUS" HYPERDRIVE_STATUS="$HYPERDRIVE_STATUS" SMT_SETTINGS_STATUS="$SMT_SETTINGS_STATUS" SMT_DEPLOYMENTS_STATUS="$SMT_DEPLOYMENTS_STATUS" SMT_SUBDOMAIN_STATUS="$SMT_SUBDOMAIN_STATUS" ACCOUNT_SUBDOMAIN_STATUS="$ACCOUNT_SUBDOMAIN_STATUS" SMT_CONTENT_STATUS="$SMT_CONTENT_STATUS" SMT_VERSION_STATUS="$SMT_VERSION_STATUS" SMT_LIVE_PROBE_STATUS="$SMT_LIVE_PROBE_STATUS" SMT_WORKERS_DEV_URL="$SMT_WORKERS_DEV_URL" node - <<'NODE'
           const fs = require('fs');
           const parseJson = (path, fallback) => { try { return JSON.parse(fs.readFileSync(path,'utf8')); } catch { return fallback; } };
+          const read = (path) => { try { return fs.readFileSync(path,'utf8'); } catch { return ''; } };
           const workers = parseJson('evidence/workers.json', {result:[]});
           const pages = parseJson('evidence/pages.json', []);
           const settings = parseJson('evidence/morefun-smt-settings.json', {result:{}});
           const deployments = parseJson('evidence/morefun-smt-deployments.json', {result:{deployments:[]}});
           const smtSub = parseJson('evidence/morefun-smt-subdomain.json', {result:{}});
           const accountSub = parseJson('evidence/account-subdomain.json', {result:{}});
-          const source = (()=>{try{return fs.readFileSync('evidence/morefun-smt-source.raw','utf8')}catch{return ''}})();
+          const content = read('evidence/morefun-smt-content.json');
+          const version = parseJson('evidence/morefun-smt-version.json', {result:{resources:{}}});
           const workerNames = Array.isArray(workers.result) ? workers.result.map(x=>x.id).filter(Boolean) : [];
           const pageNames = Array.isArray(pages) ? pages.map(x=>x.name).filter(Boolean) : [];
-          const bindings = Array.isArray(settings.result?.bindings) ? settings.result.bindings.map(x=>`${x.name}:${x.type}`).filter(Boolean) : [];
+          const settingsBindings = Array.isArray(settings.result?.bindings) ? settings.result.bindings.map(x=>`${x.name}:${x.type}`).filter(Boolean) : [];
+          const versionBindings = Array.isArray(version.result?.resources?.bindings) ? version.result.resources.bindings.map(x=>`${x.name}:${x.type}`).filter(Boolean) : [];
           const deps = Array.isArray(deployments.result?.deployments) ? deployments.result.deployments : [];
           const latest = deps[0] || {};
-          const hasLogin = source.includes('/api/smt/session/login');
-          const hasOrders = source.includes('/api/smt/orders');
+          const hasLogin = content.includes('/api/smt/session/login');
+          const hasOrders = content.includes('/api/smt/orders');
+          const liveCode = read('evidence/live-orders.code').trim() || 'UNKNOWN';
           const summary = [
             `workers_status=${process.env.WORKERS_STATUS}`,
             `workers=${workerNames.join(',') || 'NONE'}`,
@@ -97,16 +117,22 @@ jobs:
             `pages=${pageNames.join(',') || 'NONE'}`,
             `hyperdrive_status=${process.env.HYPERDRIVE_STATUS}`,
             `smt_settings_status=${process.env.SMT_SETTINGS_STATUS}`,
-            `smt_bindings=${bindings.join(',') || 'NONE_OR_UNREADABLE'}`,
+            `smt_settings_bindings=${settingsBindings.join(',') || 'NONE'}`,
             `smt_deployments_status=${process.env.SMT_DEPLOYMENTS_STATUS}`,
             `smt_latest_deployment_id=${latest.id || 'UNKNOWN'}`,
+            `smt_latest_version_id=${latest.versions?.[0]?.version_id || 'UNKNOWN'}`,
             `smt_subdomain_status=${process.env.SMT_SUBDOMAIN_STATUS}`,
             `smt_workers_dev_enabled=${smtSub.result?.enabled === true ? 'YES' : smtSub.result?.enabled === false ? 'NO' : 'UNKNOWN'}`,
             `account_subdomain_status=${process.env.ACCOUNT_SUBDOMAIN_STATUS}`,
             `account_subdomain=${accountSub.result?.subdomain || 'UNKNOWN'}`,
-            `smt_source_status=${process.env.SMT_SOURCE_STATUS}`,
-            `smt_source_has_login_route=${hasLogin ? 'YES' : 'NO'}`,
-            `smt_source_has_orders_route=${hasOrders ? 'YES' : 'NO'}`,
+            `smt_content_status=${process.env.SMT_CONTENT_STATUS}`,
+            `smt_content_has_login_route=${hasLogin ? 'YES' : 'NO'}`,
+            `smt_content_has_orders_route=${hasOrders ? 'YES' : 'NO'}`,
+            `smt_version_status=${process.env.SMT_VERSION_STATUS}`,
+            `smt_version_bindings=${versionBindings.join(',') || 'NONE'}`,
+            `smt_live_probe_status=${process.env.SMT_LIVE_PROBE_STATUS}`,
+            `smt_workers_dev_url=${process.env.SMT_WORKERS_DEV_URL || 'UNKNOWN'}`,
+            `smt_live_orders_http=${liveCode}`,
             'mutation=NONE',
           ].join('\n')+'\n';
           fs.writeFileSync('evidence/summary.txt', summary);
