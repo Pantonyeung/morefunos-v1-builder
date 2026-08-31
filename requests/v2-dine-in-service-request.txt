@@ -1,4 +1,4 @@
-source_sha=8aa9aeaf04aabae932bbb177c87542a4aa785f2c
+source_sha=cf1a372bf60a62cd9c1df67fa8ebbb9dacaf5aa7
 base_sha=bbab0046eb287cb7c6c2aace172512fbdf95fbe9
 branch_name=work/CORE/B0291-dine-in-service-postgresql-durability
-request_id=B0291-DINE-IN-POSTGRES-GREEN-R3-20260831
+request_id=B0291-DINE-IN-POSTGRES-GREEN-R4-20260831
