@@ -1,0 +1,305 @@
+name: Keeta Store Item 10 Webhook 1101 Tail Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-10-tail-diag.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-store-item-10-webhook-1101-tail-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  diagnose-1101-delivery:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-10-tail-diag.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard Item 10 authority and runtime identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_10_WEBHOOK_1101`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq 'LAST_PASSED_STORE_API_ITEM: `STORE_ITEM_09_SPECIAL_BUSINESS_HOUR_EFFECTIVE_UPDATE`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/configure-webhook-1101' source/workers/keeta/src/index.ts
+          grep -Fq 'INSERT INTO keeta_webhook_evidence' source/workers/keeta/src/store-status-runtime.ts
+          test -f source/workers/keeta/migrations/0005_keeta_webhook_evidence.sql
+          grep -Fq '"KEETA_APP_ID": "3419700273"' source/workers/keeta/wrangler.jsonc
+
+      - name: Apply deterministic diagnostic-only rejection log
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source/workers/keeta/src/index.ts')
+          s=p.read_text()
+          old='''      } catch (error) {\n        const code = errorCode(error);\n        return json({ code }, errorStatus(code));\n      }\n    }\n\n    return json({ code: "NOT_FOUND" }, 404);'''
+          new='''      } catch (error) {\n        const code = errorCode(error);\n        console.warn(`keeta_webhook_reject code=${code} path=${url.pathname}`);\n        return json({ code }, errorStatus(code));\n      }\n    }\n\n    return json({ code: "NOT_FOUND" }, 404);'''
+          if s.count(old) != 1:
+              raise SystemExit('WEBHOOK_CATCH_PATTERN_NOT_UNIQUE')
+          p.write_text(s.replace(old,new))
+          PY
+          grep -Fq 'keeta_webhook_reject code=${code} path=${url.pathname}' source/workers/keeta/src/index.ts
+          if grep -Eq 'rawBody|AppSecret|accessToken|refreshToken|preimage|sig=' <(grep 'keeta_webhook_reject' source/workers/keeta/src/index.ts); then
+            echo 'DIAGNOSTIC_LOG_NOT_SANITIZED' >&2
+            exit 1
+          fi
+
+      - name: Verify runtime secret names and migrations
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/secrets.json"
+          node - "$RUNNER_TEMP/secrets.json" <<'NODE'
+          const fs=require('fs');
+          const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const names=new Set(rows.map(row=>row.name));
+          for(const name of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY']) if(!names.has(name)) throw new Error(`${name}_MISSING`);
+          NODE
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply "$D1_DATABASE" --remote --config wrangler.jsonc
+
+      - name: Prepare ephemeral probe key and deploy diagnostic-only Worker
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/item10-tail.env"
+          chmod 600 "$RUNNER_TEMP/item10-tail.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/item10-tail.env"
+
+      - name: Configure genuine Keeta event 1101
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1101" || true)"
+          echo "configure_1101_http=$HTTP"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/config.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`configure_1101_code=${b.code}`);
+          if(b.code!==0 || b.data?.eventId!==1101 || b.data?.isTest!==1) process.exit(1);
+          NODE
+
+      - name: Capture provider baseline and reversible 60-second change
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-before.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/hours-before.json" "$RUNNER_TEMP/restore.json" "$RUNNER_TEMP/temp.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(b.code!==0) throw new Error(`BASELINE_READ_FAILED:${b.code}`);
+          const src=b.data?.businessHourOfTheWeek ?? b.data;
+          const days=['mon','tue','wed','thu','fri','sat','sun'];
+          const baseline={};
+          for(const day of days){
+            if(!Array.isArray(src?.[day])) throw new Error(`BASELINE_${day}_INVALID`);
+            baseline[day]=src[day].map(({startTime,endTime})=>({startTime:Number(startTime),endTime:Number(endTime)}));
+          }
+          const changed=JSON.parse(JSON.stringify(baseline));
+          let chosen=null;
+          for(const day of days){
+            for(let i=0;i<changed[day].length;i++){
+              const x=changed[day][i];
+              if(x.startTime===0&&x.endTime===0) continue;
+              if(Number.isSafeInteger(x.startTime)&&Number.isSafeInteger(x.endTime)&&x.endTime-x.startTime>=120){
+                x.endTime-=60; chosen={day,index:i}; break;
+              }
+            }
+            if(chosen) break;
+          }
+          if(!chosen) throw new Error('NO_SAFE_REVERSIBLE_INTERVAL');
+          fs.writeFileSync(process.argv[3],JSON.stringify({businessHourOfTheWeek:baseline}));
+          fs.writeFileSync(process.argv[4],JSON.stringify({businessHourOfTheWeek:changed}));
+          console.log(`temporary_change=${chosen.day}:${chosen.index}:minus60s`);
+          NODE
+
+      - name: Read durable 1101 baseline
+        id: evidence
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1101 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/before.json"
+          COUNT="$(node - "$RUNNER_TEMP/before.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const r=Array.isArray(b)?b[0]?.results?.[0]:b?.results?.[0];
+          if(!Number.isFinite(Number(r?.count))) process.exit(1); process.stdout.write(String(Number(r.count)));
+          NODE
+          )"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "baseline_1101_count=$COUNT"
+
+      - name: Start sanitized Cloudflare real-time tail
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          (timeout 230s npx --yes "wrangler@$WRANGLER_VERSION" tail --config wrangler.jsonc --format json > "$RUNNER_TEMP/tail.jsonl" 2> "$RUNNER_TEMP/tail.err" || true) &
+          echo "TAIL_PID=$!" >> "$GITHUB_ENV"
+          sleep 6
+
+      - name: Apply one temporary provider-hours mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/temp-result.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/temp.json" "$WORKER_URL/sit/store-business-hours-update?shopId=$SHOP_ID" || true)"
+          echo "temporary_change_http=$HTTP"
+          if [[ "$HTTP" != '200' ]]; then echo 'TEMP_CHANGE_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2; exit 1; fi
+          node - "$RUNNER_TEMP/temp-result.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`temporary_change_provider_code=${b.code}`); if(b.code!==0) process.exit(1);
+          NODE
+          echo 'TEMP_APPLIED=1' >> "$GITHUB_ENV"
+
+      - name: Observe first delivery window without mutation retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 80
+          echo 'first_delivery_window_seconds=80'
+
+      - name: Restore exact provider baseline once and prove readback
+        if: always() && env.TEMP_APPLIED == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/restore-result.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/restore.json" "$WORKER_URL/sit/store-business-hours-update?shopId=$SHOP_ID" || true)"
+          echo "restore_http=$HTTP"
+          if [[ "$HTTP" != '200' ]]; then echo 'RESTORE_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2; exit 1; fi
+          node - "$RUNNER_TEMP/restore-result.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`restore_provider_code=${b.code}`); if(b.code!==0) process.exit(1);
+          NODE
+          MATCH=0
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/after.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+            if [[ "$HTTP" == '200' ]] && node - "$RUNNER_TEMP/after.json" "$RUNNER_TEMP/restore.json" <<'NODE'
+          const fs=require('fs'); const a=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const e=JSON.parse(fs.readFileSync(process.argv[3],'utf8')).businessHourOfTheWeek;
+          if(a.code!==0) process.exit(1); const src=a.data?.businessHourOfTheWeek ?? a.data; const days=['mon','tue','wed','thu','fri','sat','sun']; const c={};
+          for(const day of days){ if(!Array.isArray(src?.[day])) process.exit(1); c[day]=src[day].map(({startTime,endTime})=>({startTime:Number(startTime),endTime:Number(endTime)})); }
+          if(JSON.stringify(c)!==JSON.stringify(e)) process.exit(1);
+          NODE
+            then MATCH=1; echo "restore_readback_attempt=$attempt"; break; fi
+            sleep 2
+          done
+          test "$MATCH" = '1'
+          echo 'provider_hours_restored=PASS'
+
+      - name: Observe restoration and retry window
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 70
+          echo 'second_delivery_window_seconds=70'
+
+      - name: Stop tail and classify 1101 delivery safely
+        if: always()
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${TAIL_PID:-}" ]]; then kill "$TAIL_PID" 2>/dev/null || true; fi
+          sleep 2
+          node - "$RUNNER_TEMP/tail.jsonl" "$RUNNER_TEMP/classification.env" <<'NODE'
+          const fs=require('fs');
+          const path=process.argv[2]; let requests=0; const rejects=[];
+          if(fs.existsSync(path)) for(const line of fs.readFileSync(path,'utf8').split(/\r?\n/)){
+            if(!line.trim()) continue; let row; try{row=JSON.parse(line);}catch{continue;}
+            const u=row?.event?.request?.url; if(typeof u==='string'){try{if(new URL(u).pathname==='/webhooks/keeta') requests++;}catch{}}
+            for(const l of row?.logs ?? []){
+              const parts=Array.isArray(l?.message)?l.message:[l?.message];
+              for(const part of parts){ if(typeof part==='string' && part.startsWith('keeta_webhook_reject code=')) rejects.push(part); }
+            }
+          }
+          const codes=[...new Set(rejects.map(x=>(x.match(/code=([^ ]+)/)||[])[1]).filter(Boolean))];
+          console.log(`tail_webhook_requests=${requests}`);
+          console.log(`tail_reject_count=${rejects.length}`);
+          console.log(`tail_reject_codes=${codes.join(',')||'none'}`);
+          fs.writeFileSync(process.argv[3],`TAIL_REQUESTS=${requests}\nTAIL_REJECT_CODES=${codes.join(',')}\n`);
+          NODE
+          cat "$RUNNER_TEMP/classification.env" >> "$GITHUB_ENV"
+
+      - name: Read durable 1101 result and emit final classification
+        if: always()
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BASELINE_COUNT: ${{ steps.evidence.outputs.count }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1101 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/after-evidence.json"
+          AFTER="$(node - "$RUNNER_TEMP/after-evidence.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const r=Array.isArray(b)?b[0]?.results?.[0]:b?.results?.[0]; process.stdout.write(String(Number(r?.count ?? -1)));
+          NODE
+          )"
+          echo "post_1101_count=$AFTER"
+          if [[ "$AFTER" =~ ^[0-9]+$ ]] && (( AFTER > BASELINE_COUNT )); then
+            echo 'ITEM10_CLASSIFICATION=PASS_DURABLE_PROVIDER_1101'
+            exit 0
+          fi
+          if [[ "${TAIL_REQUESTS:-0}" -gt 0 ]] && [[ ",${TAIL_REJECT_CODES:-}," == *",KEETA_WEBHOOK_SIGNATURE_INVALID,"* ]]; then
+            echo 'ITEM10_CLASSIFICATION=BLOCKED_EXTERNAL_LIVE_SIGNATURE_MISMATCH'
+            exit 2
+          fi
+          if [[ "${TAIL_REQUESTS:-0}" -eq 0 ]]; then
+            echo 'ITEM10_CLASSIFICATION=PROVIDER_CLARIFICATION_REQUIRED_NO_1101_DELIVERY'
+            exit 3
+          fi
+          echo 'ITEM10_CLASSIFICATION=UNRESOLVED_PROVIDER_1101_INGRESS'
+          exit 4
