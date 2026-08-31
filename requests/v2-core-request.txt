@@ -1,5 +1,5 @@
-source_sha=7b09233f217d8ecb62b18bde9ef7a3b9634b7945
+source_sha=9a26132f881f298ac2e62996661f9261032a377d
 base_sha=b385e169318413ca7dd905b274d205abe1bb65ca
-branch_name=work/CORE/B0269-port-authority-matrix-five-port-admission-correction
+branch_name=work/CORE/B0179-v1-order-source-channel-donor-recovery
 verification_phase=CANDIDATE
-request_id=B0269-PORT-AUTHORITY-MATRIX-CORE-CANDIDATE-20260831-R2
+request_id=B0179-V1-ORDER-SOURCE-CHANNEL-DONOR-CANDIDATE-20260831-R1
