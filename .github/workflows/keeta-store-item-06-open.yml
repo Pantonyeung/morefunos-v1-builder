@@ -17,7 +17,8 @@ jobs:
     timeout-minutes: 10
     env:
       WRANGLER_VERSION: '4.125.0'
-      SHOP_ID: '721517434'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
       WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
     steps:
       - name: Checkout Builder request
@@ -50,11 +51,30 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
           grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_06_STATUS_OPEN`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '"KEETA_APP_ID": "3419700273"' source/workers/keeta/wrangler.jsonc
           grep -Fq '/sit/store-details' source/workers/keeta/src/index.ts
           grep -Fq '/sit/store-open' source/workers/keeta/src/index.ts
           grep -Fq 'https://open.mykeeta.com/api/open/scm/shop/status/open' source/packages/integration/keeta-store-provider-requests.ts
           grep -Fq 'buildKeetaStoreReactivateRequest' source/packages/integration/keeta-store-provider-requests.ts
           test -f source/packages/integration/keeta-store-item-06-open-contract.test.ts
+
+      - name: Require existing Keeta runtime secret names
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets.json"
+          node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
+          const fs=require('fs');
+          const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const names=new Set(rows.map((row)=>row.name));
+          for (const required of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING`);
+          }
+          NODE
 
       - name: Prepare ephemeral SIT probe secret
         shell: bash
@@ -162,5 +182,5 @@ jobs:
       - name: Evidence summary
         shell: bash
         run: |
-          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nhandbook_store_item=06\ntest_store_identity=PROVEN_OUTSIDE_WORKFLOW\nstatus_open_provider_call=PASS\npre_status=4\npost_status=3\nmutation_request_count=1\nhidden_status_rest_rollback=false\nservice_line_availability_inferred=false\n' \
-            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
+          printf 'builder_run_id=%s\nsource_sha=%s\napp_id=%s\nshop_id=%s\nhandbook_store_item=06\ntest_store_identity=FRESH_RESET_STORE\nstatus_open_provider_call=PASS\npre_status=4\npost_status=3\nmutation_request_count=1\nhidden_status_rest_rollback=false\nservice_line_availability_inferred=false\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$EXPECTED_APP_ID" "$SHOP_ID"
