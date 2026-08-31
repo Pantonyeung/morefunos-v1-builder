@@ -1,3 +1,3 @@
-source_sha=a9e29c22ec9139859a2ba23462c3279b5876c2e1
+source_sha=dd5a5eb3e6942342f65b00ca5c3ff252f13ff03e
 branch_name=work/CORE/B0144-owner-dine-in-daily-aggregate-projection-r2
-request_id=B0144-DINE-IN-DAILY-AGGREGATE-RED-20260831
+request_id=B0144-DINE-IN-DAILY-AGGREGATE-GREEN-20260831
