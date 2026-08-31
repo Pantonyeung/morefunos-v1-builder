@@ -1,0 +1,97 @@
+name: V2 Owner Final Browser Evidence V2
+
+on:
+  push:
+    paths:
+      - 'requests/v2-owner-final-browser-evidence-v2-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve exact source
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-final-browser-evidence-v2-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact V2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify admitted current main
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          MAIN_SHA="$(curl -fsSL -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
+          test "$MAIN_SHA" = "$EXPECTED"
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+      - name: Install Owner dependencies
+        working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install Playwright core
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+      - name: Create canonical runtime harness
+        shell: bash
+        run: |
+          cat > source/apps/owner-web/src/browser-evidence-runtime.ts <<'EOF'
+          import {InternalPortCompositionResolver} from '../../../packages/internal-port-runtime/composition.ts';
+          import {REPORTING_SNAPSHOT_READ_V1} from '../../../packages/reporting-projection/reporting-port-contract.ts';
+          import {OPERATIONAL_HEALTH_READ_V1} from '../../../packages/offline-operations/operational-health-port-contract.ts';
+          const resolver=new InternalPortCompositionResolver(); const now=Date.now(); const generatedAt=new Date(now-30000).toISOString(); const freshUntil=new Date(now+3600000).toISOString(); const latestSourceAt=new Date(now-60000).toISOString();
+          resolver.register({adapterId:'browser-owner-reporting',port:'OWN',operation:REPORTING_SNAPSHOT_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:r=>r},executor:{execute:()=>({projectionKey:'store-1:HKD',storeId:'store-1',currency:'HKD',generatedAt,freshUntil,sourceWatermark:{latestSourceAt,maxOrderRevision:4,maxPaymentRevision:6,sourceFactCount:10},metrics:{turnoverMinor:1006700,orderCount:123,averageOrderValueMinor:8185,completedPaymentMinor:1006700,completedRefundMinor:1000,paymentNetMinor:1005700},tenderBreakdown:[{tenderMethod:'CASH',completedPaymentMinor:423100,completedRefundMinor:0,netMinor:423100},{tenderMethod:'FPS',completedPaymentMinor:271500,completedRefundMinor:1000,netMinor:270500}],projectionRevision:1})}});
+          resolver.register({adapterId:'browser-owner-health',port:'OWN',operation:OPERATIONAL_HEALTH_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:r=>r},executor:{execute:()=>({connectivity:'OFFLINE',pendingOfflineOperations:2,failedOfflineOperations:1,pendingOutbox:3,failedEventDeliveries:1,printAttentionCount:2,closeBlockerCount:1,status:'ACTION_REQUIRED',operatorActionRequired:true})}});
+          (globalThis as typeof globalThis & {__MOREFUNOS_V2_OWNER_RUNTIME__?:unknown}).__MOREFUNOS_V2_OWNER_RUNTIME__={resolver,storeId:'store-1',currency:'HKD',authorization:()=>({actorId:'owner-1',authorizationContextRef:'browser-evidence-auth',scopeRef:'store-1'}),nextRequestId:()=>`browser-${Date.now()}`}; await import('./main.tsx');
+          EOF
+          sed -i 's#/src/main.tsx#/src/browser-evidence-runtime.ts#' source/apps/owner-web/index.html
+      - name: Launch Owner
+        working-directory: source/apps/owner-web
+        shell: bash
+        run: |
+          nohup npm run dev -- --host 127.0.0.1 --port 4180 > "$RUNNER_TEMP/owner-vite.log" 2>&1 &
+          for i in {1..60}; do curl --fail --silent http://127.0.0.1:4180/ >/dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/owner-vite.log"; exit 1
+      - name: Verify desktop and mobile Owner pages
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p evidence
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"; test -n "$CHROME"
+          cat > capture-owner-final.mjs <<'EOF'
+          import {chromium} from 'playwright-core'; import fs from 'node:fs'; const [chrome,sourceSha]=process.argv.slice(2); const browser=await chromium.launch({headless:true,executablePath:chrome}); const results=[];
+          for(const [name,width,height] of [['desktop',1440,1000],['mobile',390,844]]){ const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:name==='mobile'?2:1,isMobile:name==='mobile',hasTouch:name==='mobile'}); const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e))); await page.goto('http://127.0.0.1:4180/',{waitUntil:'networkidle'}); await page.getByText('今日實收',{exact:true}).waitFor({timeout:15000}); const today=(await page.locator('body').innerText()).replace(/\s+/g,' '); for(const x of ['今日實收','$10,057','訂單數','123','平均客單','$81.85','退款','$10']) if(!today.includes(x)) throw new Error(`${name}:TODAY:${x}`); await page.screenshot({path:`evidence/${name}-today.png`,fullPage:true}); await page.locator('nav.bottom-nav button').filter({hasText:'通知'}).click(); await page.getByText('需要你處理',{exact:true}).waitFor({timeout:15000}); const alerts=(await page.locator('body').innerText()).replace(/\s+/g,' '); for(const x of ['離線操作失敗 1 項','事件同步失敗 1 項','打印需要處理 2 項','關帳阻塞 1 項','待同步離線操作 2 項','待送出事件 3 項','門店目前離線運作']) if(!alerts.includes(x)) throw new Error(`${name}:ALERT:${x}`); if(alerts.includes('資料未接通')) throw new Error(`${name}:ALERTS_DISCONNECTED`); if(errors.length) throw new Error(`${name}:PAGE_ERROR:${errors.join('|')}`); await page.screenshot({path:`evidence/${name}-alerts.png`,fullPage:true}); fs.writeFileSync(`evidence/${name}.txt`,`TODAY\n${today}\nALERTS\n${alerts}\n`); results.push({name,width,height,today:'PASS',alerts:'PASS'}); await context.close(); }
+          await browser.close(); fs.writeFileSync('evidence/browser-summary.json',JSON.stringify({sourceSha,currentMain:true,results},null,2));
+          EOF
+          node capture-owner-final.mjs "$CHROME" "$SOURCE_SHA"
+          printf 'source_sha=%s\ncurrent_main=true\ndesktop=PASS\nmobile=PASS\nalerts=PASS\nresult=PASS\n' "$SOURCE_SHA" > evidence/summary.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-owner-final-browser-v2-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
