@@ -1,0 +1,101 @@
+name: Keeta Store Item 10 Baseline Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/keeta-store-item-10-baseline-diagnostic.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-store-item-10-baseline-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      SHOP_ID: '721578302'
+
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact Item 10 source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-10.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prepare fresh ephemeral probe without exposing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item10-diagnostic-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item10-diagnostic-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker preserving provider secrets
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item10-diagnostic-secrets.env"
+
+      - name: Read regular-hours provider response metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+          echo "diagnostic_http=$HTTP"
+          node - "$RUNNER_TEMP/hours.json" <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync(process.argv[2],'utf8');
+          let body;
+          try { body=JSON.parse(raw); } catch { console.log('diagnostic_json_valid=false'); process.exit(1); }
+          console.log('diagnostic_json_valid=true');
+          console.log(`diagnostic_code_type=${typeof body.code}`);
+          console.log(`diagnostic_code=${String(body.code)}`);
+          console.log(`diagnostic_message=${String(body.message ?? '').replace(/[\r\n]/g,' ').slice(0,240)}`);
+          const data=body.data;
+          console.log(`diagnostic_data_type=${data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data}`);
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.log(`diagnostic_data_keys=${Object.keys(data).sort().join(',')}`);
+            const nested=data.businessHourOfTheWeek;
+            if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+              console.log(`diagnostic_nested_keys=${Object.keys(nested).sort().join(',')}`);
+            }
+          }
+          NODE
+
+      - name: Confirm diagnostic was read only
+        shell: bash
+        run: |
+          printf 'source_sha=%s\nshop_id=%s\nread_only=true\nbusiness_mutation_count=0\n' '${{ steps.source.outputs.sha }}' "$SHOP_ID"
