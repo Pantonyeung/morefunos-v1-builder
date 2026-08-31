@@ -1,4 +1,4 @@
-source_sha=2b4aeb842badde9d7103c7b66882eceb25b6914e
-base_sha=b385e169318413ca7dd905b274d205abe1bb65ca
-branch_name=work/CORE/B0269-port-authority-matrix-five-port-admission-correction
-request_id=B0269-PORT-AUTHORITY-MATRIX-GOVERNANCE-20260831
+source_sha=1877d342d7972e72fa84c27bffb56f6ae9ee6115
+base_sha=79005811ccd8585111088bf77655807b7d443726
+branch_name=work/OWN/B0283-owner-dine-in-consumer-r2
+request_id=B0283-OWNER-DINE-IN-GOVERNANCE-20260831-R1
