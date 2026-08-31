@@ -117,7 +117,7 @@ jobs:
           mkdir -p evidence
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
-          cat > "$RUNNER_TEMP/capture-owner.mjs" <<'EOF'
+          cat > capture-owner.mjs <<'EOF'
           import {chromium} from 'playwright-core';
           import fs from 'node:fs';
           const [chrome,sourceSha]=process.argv.slice(2);
@@ -145,7 +145,7 @@ jobs:
           await browser.close();
           fs.writeFileSync('evidence/browser-summary.json',JSON.stringify({sourceSha,results},null,2)+'\n');
           EOF
-          node "$RUNNER_TEMP/capture-owner.mjs" "$CHROME" "$SOURCE_SHA"
+          node capture-owner.mjs "$CHROME" "$SOURCE_SHA"
           printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-owner-channel-browser-evidence.yml\nresult=PASS\n' "$SOURCE_SHA" > evidence/summary.txt
 
       - name: Upload browser evidence
