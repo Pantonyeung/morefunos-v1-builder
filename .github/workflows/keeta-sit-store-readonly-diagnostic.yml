@@ -49,6 +49,7 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
           grep -q '/sit/store-business-hours' source/workers/keeta/src/index.ts
+          grep -q '/sit/store-special-business-hours' source/workers/keeta/src/index.ts
 
       - name: Prepare read-only probe secret
         shell: bash
@@ -112,6 +113,32 @@ jobs:
           cat "$RUNNER_TEMP/business-hours.json" >&2 || true
           exit 1
 
+      - name: Read current Keeta Store Special Business Hours
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/special-business-hours.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-special-business-hours?shopId=$SHOP_ID" || true)"
+            if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/special-business-hours.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body.code !== 0 || !Array.isArray(body.data)) process.exit(1);
+          for (const special of body.data) {
+            if (!special || !Number.isInteger(special.startDate) || !Number.isInteger(special.endDate) || !Array.isArray(special.businessHour)) process.exit(1);
+            for (const period of special.businessHour) {
+              if (!period || !Number.isInteger(period.startTime) || !Number.isInteger(period.endTime)) process.exit(1);
+            }
+          }
+          console.log(`special_business_hours=${JSON.stringify(body.data)}`);
+          NODE
+            then exit 0; fi
+            echo "waiting_for_special_business_hours_attempt=$attempt http=$STATUS"
+            sleep 2
+          done
+          echo SPECIAL_BUSINESS_HOURS_READ_FAILED >&2
+          cat "$RUNNER_TEMP/special-business-hours.json" >&2 || true
+          exit 1
+
       - name: Read current D1 store snapshot
         working-directory: source/workers/keeta
         shell: bash
@@ -140,4 +167,4 @@ jobs:
 
       - name: Evidence summary
         shell: bash
-        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nbusiness_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
+        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nbusiness_hours=PASS\nspecial_business_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
