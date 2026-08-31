@@ -1,0 +1,194 @@
+name: Deploy V2 SMT Cloudflare API
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-cloudflare-api-deploy-request.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact deployment request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requests/v2-smt-cloudflare-api-deploy-request.txt
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-cloudflare-api-deploy-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          WORKER_NAME="$(sed -n 's/^worker_name=//p' requests/v2-smt-cloudflare-api-deploy-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-smt-cloudflare-api-deploy-request.txt | tr -d '\r')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$WORKER_NAME" =~ ^[a-z0-9-]+$ ]]
+          test -n "$REQUEST_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "worker_name=$WORKER_NAME" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Fail closed unless production provisioning exists
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          V2_SOURCE_READ_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SMT_HYPERDRIVE_ID: ${{ secrets.SMT_HYPERDRIVE_ID }}
+          SMT_ALLOWED_ORIGIN: ${{ secrets.SMT_ALLOWED_ORIGIN }}
+          SMT_TRUSTED_DEVICE_ID: ${{ secrets.SMT_TRUSTED_DEVICE_ID }}
+          SMT_TRUSTED_SCOPE_REF: ${{ secrets.SMT_TRUSTED_SCOPE_REF }}
+          SMT_STAFF_POS_PEPPER: ${{ secrets.SMT_STAFF_POS_PEPPER }}
+          SMT_LIVE_TEST_STAFF_PIN: ${{ secrets.SMT_LIVE_TEST_STAFF_PIN }}
+        run: |
+          set -euo pipefail
+          for NAME in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID V2_SOURCE_READ_TOKEN SMT_HYPERDRIVE_ID SMT_ALLOWED_ORIGIN SMT_TRUSTED_DEVICE_ID SMT_TRUSTED_SCOPE_REF SMT_STAFF_POS_PEPPER SMT_LIVE_TEST_STAFF_PIN; do
+            test -n "${!NAME:-}" || { echo "$NAME=UNSET"; exit 1; }
+          done
+          [[ "$SMT_HYPERDRIVE_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+          test "$SMT_ALLOWED_ORIGIN" = 'https://appassets.androidplatform.net'
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          test -f source/infra/cloudflare/smt-api-worker/src/index.ts
+          test -f source/packages/smt-ui-integration/production-cloudflare-api.ts
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Re-run SMT contract gate
+        working-directory: source
+        run: npm run test:smt-ui-integration
+
+      - name: Generate ephemeral Wrangler config
+        shell: bash
+        env:
+          WORKER_NAME: ${{ steps.request.outputs.worker_name }}
+          SMT_HYPERDRIVE_ID: ${{ secrets.SMT_HYPERDRIVE_ID }}
+        run: |
+          set -euo pipefail
+          cat > source/infra/cloudflare/smt-api-worker/wrangler.generated.jsonc <<EOF
+          {
+            "$schema": "node_modules/wrangler/config-schema.json",
+            "name": "$WORKER_NAME",
+            "main": "src/index.ts",
+            "compatibility_date": "2026-08-31",
+            "compatibility_flags": ["nodejs_compat"],
+            "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "$SMT_HYPERDRIVE_ID" }]
+          }
+          EOF
+
+      - name: Bundle Worker before mutation
+        working-directory: source/infra/cloudflare/smt-api-worker
+        run: npx --yes wrangler@4.125.0 deploy --dry-run --outdir=dist --config=wrangler.generated.jsonc
+
+      - name: Deploy exact Worker source
+        working-directory: source/infra/cloudflare/smt-api-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.125.0 deploy --config=wrangler.generated.jsonc
+
+      - name: Install server-only Worker secrets
+        working-directory: source/infra/cloudflare/smt-api-worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SMT_ALLOWED_ORIGIN: ${{ secrets.SMT_ALLOWED_ORIGIN }}
+          SMT_TRUSTED_DEVICE_ID: ${{ secrets.SMT_TRUSTED_DEVICE_ID }}
+          SMT_TRUSTED_SCOPE_REF: ${{ secrets.SMT_TRUSTED_SCOPE_REF }}
+          SMT_STAFF_POS_PEPPER: ${{ secrets.SMT_STAFF_POS_PEPPER }}
+        run: |
+          set -euo pipefail
+          for NAME in SMT_ALLOWED_ORIGIN SMT_TRUSTED_DEVICE_ID SMT_TRUSTED_SCOPE_REF SMT_STAFF_POS_PEPPER; do
+            printf '%s' "${!NAME}" | npx --yes wrangler@4.125.0 secret put "$NAME" --config=wrangler.generated.jsonc >/dev/null
+          done
+
+      - name: Resolve real HTTPS Worker URL and probe CORS/auth
+        id: live
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_NAME: ${{ steps.request.outputs.worker_name }}
+          ALLOWED_ORIGIN: ${{ secrets.SMT_ALLOWED_ORIGIN }}
+          STAFF_PIN: ${{ secrets.SMT_LIVE_TEST_STAFF_PIN }}
+        run: |
+          set -euo pipefail
+          SUBDOMAIN="$(curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain')"
+          test -n "$SUBDOMAIN"; test "$SUBDOMAIN" != null
+          API_URL="https://$WORKER_NAME.$SUBDOMAIN.workers.dev"
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+          printf 'api_url=%s\n' "$API_URL" > evidence/live.txt
+
+          LOGIN_OPTIONS="$(curl --silent --show-error -X OPTIONS -H "Origin: $ALLOWED_ORIGIN" -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type' -o evidence/login-options.body -D evidence/login-options.headers -w '%{http_code}' "$API_URL/api/smt/session/login")"
+          test "$LOGIN_OPTIONS" = 204
+          grep -Fi "access-control-allow-origin: $ALLOWED_ORIGIN" evidence/login-options.headers >/dev/null
+
+          ORDERS_OPTIONS="$(curl --silent --show-error -X OPTIONS -H "Origin: $ALLOWED_ORIGIN" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization' -o evidence/orders-options.body -D evidence/orders-options.headers -w '%{http_code}' "$API_URL/api/smt/orders")"
+          test "$ORDERS_OPTIONS" = 204
+          grep -Fi "access-control-allow-origin: $ALLOWED_ORIGIN" evidence/orders-options.headers >/dev/null
+
+          LOGIN_CODE="$(curl --silent --show-error -X POST -H "Origin: $ALLOWED_ORIGIN" -H 'content-type: application/json' --data "{\"pin\":\"$STAFF_PIN\"}" -o evidence/login.json -D evidence/login.headers -w '%{http_code}' "$API_URL/api/smt/session/login")"
+          test "$LOGIN_CODE" = 200
+          SESSION_REF="$(jq -r '.sessionRef // empty' evidence/login.json)"
+          test -n "$SESSION_REF"
+          echo '::add-mask::'"$SESSION_REF"
+
+          ORDERS_CODE="$(curl --silent --show-error -H "Origin: $ALLOWED_ORIGIN" -H "Authorization: Bearer $SESSION_REF" -o evidence/orders.json -D evidence/orders.headers -w '%{http_code}' "$API_URL/api/smt/orders")"
+          test "$ORDERS_CODE" = 200
+          jq -e . evidence/orders.json >/dev/null
+
+          UNAUTH_CODE="$(curl --silent --show-error -H "Origin: $ALLOWED_ORIGIN" -o evidence/orders-unauth.json -w '%{http_code}' "$API_URL/api/smt/orders")"
+          test "$UNAUTH_CODE" = 401
+
+      - name: Record deployment evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          WORKER_NAME: ${{ steps.request.outputs.worker_name }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          API_URL: ${{ steps.live.outputs.api_url }}
+        run: |
+          mkdir -p evidence
+          printf 'source_sha=%s\nworker_name=%s\nrequest_id=%s\napi_url=%s\nrun_id=%s\n' "$SOURCE_SHA" "$WORKER_NAME" "$REQUEST_ID" "$API_URL" "$GITHUB_RUN_ID" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-cloudflare-api-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
