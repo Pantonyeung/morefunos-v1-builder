@@ -1,0 +1,210 @@
+name: Keeta Store Item 08 Business Hours Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-08.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-store-item-08-business-hours
+  cancel-in-progress: false
+
+jobs:
+  store-item-08:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-08.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard Item 08 exact contract and fresh reset identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_08_BUSINESS_HOUR_EFFECTIVE_UPDATE`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq 'LAST_PASSED_STORE_API_ITEM: `STORE_ITEM_07_STATUS_REST`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/store-business-hours' source/workers/keeta/src/index.ts
+          grep -Fq '/sit/store-business-hours-update' source/workers/keeta/src/index.ts
+          grep -Fq 'https://open.mykeeta.com/api/open/scm/shop/business/hour/effective/update' source/packages/integration/keeta-store-provider-requests.ts
+          grep -Fq 'buildKeetaStoreBusinessHoursUpdateRequest' source/packages/integration/keeta-store-provider-requests.ts
+          test -f source/packages/integration/keeta-store-item-08-business-hours-contract.test.ts
+          node - <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('source/workers/keeta/wrangler.jsonc', 'utf8');
+          const expected = process.env.EXPECTED_APP_ID;
+          if (!text.includes(`\"KEETA_APP_ID\": \"${expected}\"`)) throw new Error(`EXPECTED_APP_ID_NOT_FOUND:${expected}`);
+          NODE
+
+      - name: Require existing Keeta runtime secret names
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-before.json"
+          node - "$RUNNER_TEMP/keeta-secrets-before.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_BEFORE_DEPLOY`);
+          }
+          NODE
+
+      - name: Prepare ephemeral SIT probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item08-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item08-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker preserving existing runtime secrets
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item08-secrets.env"
+
+      - name: Prove runtime secret names survived deployment
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-after.json"
+          node - "$RUNNER_TEMP/keeta-secrets-after.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY', 'KEETA_SIT_PROBE_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_AFTER_DEPLOY`);
+          }
+          NODE
+
+      - name: Read provider baseline and build exact idempotent payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-before.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/hours-before.json" "$RUNNER_TEMP/hours-update.json" "$RUNNER_TEMP/hours-canonical-before.json" <<'NODE'
+          const fs=require('fs');
+          const input=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (input.code !== 0) throw new Error(`KEETA_STORE_ITEM_08_BASELINE_READ_FAILED:${input.code}`);
+          const candidate=input.data?.businessHourOfTheWeek ?? input.data;
+          const days=['mon','tue','wed','thu','fri','sat','sun'];
+          if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) throw new Error('KEETA_STORE_ITEM_08_BASELINE_SHAPE_INVALID');
+          const canonical={};
+          for (const day of days) {
+            if (!Array.isArray(candidate[day])) throw new Error(`KEETA_STORE_ITEM_08_BASELINE_${day.toUpperCase()}_INVALID`);
+            canonical[day]=candidate[day].map(({startTime,endTime}) => ({startTime:Number(startTime),endTime:Number(endTime)}));
+          }
+          fs.writeFileSync(process.argv[3], JSON.stringify({businessHourOfTheWeek:canonical}));
+          fs.writeFileSync(process.argv[4], JSON.stringify(canonical));
+          console.log(`baseline_business_hours=PASS`);
+          console.log(`baseline_days=${days.length}`);
+          NODE
+
+      - name: Reapply exact provider baseline exactly once
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-update-result.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/hours-update.json" "$WORKER_URL/sit/store-business-hours-update?shopId=$SHOP_ID" || true)"
+          echo "business_hours_update_transport_http=$HTTP"
+          if [[ "$HTTP" != '200' ]]; then
+            echo 'KEETA_STORE_ITEM_08_MUTATION_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2
+            exit 1
+          fi
+          node - "$RUNNER_TEMP/hours-update-result.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`keeta_business_hours_update_code=${body.code}`);
+          console.log(`keeta_business_hours_update_message=${String(body.message ?? '').replace(/[\r\n]/g,' ')}`);
+          if (body.code !== 0) process.exit(1);
+          NODE
+
+      - name: Read back and prove effective hours unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          MATCH=0
+          LAST_HTTP=000
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-after.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+            LAST_HTTP="$HTTP"
+            if [[ "$HTTP" == '200' ]] && node - "$RUNNER_TEMP/hours-after.json" "$RUNNER_TEMP/hours-canonical-before.json" <<'NODE'
+          const fs=require('fs');
+          const input=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const before=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          if (input.code !== 0) process.exit(1);
+          const candidate=input.data?.businessHourOfTheWeek ?? input.data;
+          const days=['mon','tue','wed','thu','fri','sat','sun'];
+          const after={};
+          for (const day of days) {
+            if (!Array.isArray(candidate?.[day])) process.exit(1);
+            after[day]=candidate[day].map(({startTime,endTime}) => ({startTime:Number(startTime),endTime:Number(endTime)}));
+          }
+          if (JSON.stringify(after) !== JSON.stringify(before)) process.exit(1);
+          console.log('post_business_hours_match=PASS');
+          NODE
+            then
+              MATCH=1
+              echo "post_business_hours_read_attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$MATCH" != '1' ]]; then
+            echo "KEETA_STORE_ITEM_08_POST_READ_MISMATCH http=$LAST_HTTP" >&2
+            exit 1
+          fi
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\napp_id=%s\nshop_id=%s\nhandbook_store_item=08\ntest_store_identity=FRESH_RESET_STORE\nbusiness_hours_provider_call=PASS\nbaseline_source=PROVIDER_READBACK\npost_read_exact_match=PASS\nmutation_request_count=1\nautomatic_mutation_retry=false\nprovider_hours_invented=false\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$EXPECTED_APP_ID" "$SHOP_ID"
