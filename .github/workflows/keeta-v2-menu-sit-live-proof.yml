@@ -1,0 +1,283 @@
+name: Keeta V2 Menu SIT Live Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-menu-sit-live.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-v2-menu-sit-live
+  cancel-in-progress: false
+
+jobs:
+  menu-live-proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: ab58a9b1039ca70b94d1f4ccb78a729a27fdee00
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Guard exact request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUESTED="$(tr -d '[:space:]' < .ci-requests/keeta-v2-menu-sit-live.sha | tr '[:upper:]' '[:lower:]')"
+          test "$REQUESTED" = "$SOURCE_SHA"
+
+      - name: Require Builder credentials
+        shell: bash
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove source and Menu contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          grep -F '"main": "src/router.ts"' source/workers/keeta/wrangler.jsonc
+          grep -F '"KEETA_APP_ID": "3419700273"' source/workers/keeta/wrangler.jsonc
+          grep -F 'url.pathname === "/sit/menu-sync"' source/workers/keeta/src/router.ts
+          grep -F 'url.pathname === "/sit/configure-webhook-1202"' source/workers/keeta/src/router.ts
+          grep -F 'submitKeetaOpenItemCodeMenuSync' source/workers/keeta/src/menu-runtime.ts
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify exact source before live deployment
+        working-directory: source
+        run: |
+          npm run typecheck:intg-keeta
+          npm run test:intg-keeta
+
+      - name: Require existing secret names before deploy
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/secrets-before.json"
+          node - "$RUNNER_TEMP/secrets-before.json" <<'NODE'
+          const fs=require('fs'); const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const names=new Set(rows.map(x=>x.name));
+          for(const n of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY']) if(!names.has(n)) throw new Error(`${n}_MISSING`);
+          console.log('required_secret_names_before=PASS');
+          NODE
+
+      - name: Apply D1 migrations
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply KEETA_INGRESS_DB --remote --config wrangler.jsonc
+
+      - name: Generate ephemeral protected probe key
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/deploy-secrets.env"
+          chmod 600 "$RUNNER_TEMP/deploy-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Menu-capable Worker
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/deploy-secrets.env"
+
+      - name: Verify secret names survived deployment
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/secrets-after.json"
+          node - "$RUNNER_TEMP/secrets-after.json" <<'NODE'
+          const fs=require('fs'); const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const names=new Set(rows.map(x=>x.name));
+          for(const n of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY','KEETA_SIT_PROBE_KEY']) if(!names.has(n)) throw new Error(`${n}_MISSING_AFTER_DEPLOY`);
+          console.log('required_secret_names_after=PASS');
+          NODE
+
+      - name: Smoke health and configure mandatory 1202 callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error "$WORKER_URL/health" > "$RUNNER_TEMP/health.json"
+          node - "$RUNNER_TEMP/health.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.status!=='ok') process.exit(1);
+          NODE
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config1202.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1202" || true)"
+          echo "configure_1202_http=$HTTP"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/config1202.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`configure_1202_provider_code=${b.code}`); if(b.code!==0) process.exit(1);
+          NODE
+
+      - name: Record durable 1202 baseline
+        id: baseline
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/baseline.json"
+          COUNT="$(node - "$RUNNER_TEMP/baseline.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const r=Array.isArray(b)?b[0]?.results?.[0]:b?.results?.[0]; process.stdout.write(String(Number(r?.count ?? -1)));
+          NODE
+          )"
+          [[ "$COUNT" =~ ^[0-9]+$ ]]
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "baseline_1202_count=$COUNT"
+
+      - name: Build controlled mandatory SIT baseline menu
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/menu.json" <<'JSON'
+          {
+            "shopCategoryList": [
+              {"openItemCode":"MF-SIT-CAT-01","name":"SIT 主餐","sourceLanguageType":"zh-HK","type":0},
+              {"openItemCode":"MF-SIT-CAT-02","name":"SIT 飲品","sourceLanguageType":"zh-HK","type":0}
+            ],
+            "choiceGroupList": [
+              {
+                "openItemCode":"MF-SIT-GRP-01","name":"SIT 加配","sourceLanguageType":"zh-HK","minNumber":0,"maxNumber":2,"repeatable":0,
+                "choiceGroupSkuList":[
+                  {"openItemCode":"MF-SIT-OPT-01","name":"加配 A","sourceLanguageType":"zh-HK","status":1,"price":"0.00","currency":"HKD"},
+                  {"openItemCode":"MF-SIT-OPT-02","name":"加配 B","sourceLanguageType":"zh-HK","status":1,"price":"5.00","currency":"HKD"},
+                  {"openItemCode":"MF-SIT-OPT-03","name":"加配 C","sourceLanguageType":"zh-HK","status":1,"price":"8.00","currency":"HKD"}
+                ]
+              }
+            ],
+            "spuList": [
+              {
+                "openItemCode":"MF-SIT-SPU-01","name":"SIT 測試餐 A","description":"MoreFun Keeta SIT business-critical menu test A","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,
+                "shopCategoryOpenItemCodeList":["MF-SIT-CAT-01"],"userGetModeList":["delivery"],
+                "skuList":[{"openItemCode":"MF-SIT-SKU-01","price":"20.00","currency":"HKD","choiceGroupOpenItemCodeList":["MF-SIT-GRP-01"]}]
+              },
+              {
+                "openItemCode":"MF-SIT-SPU-02","name":"SIT 測試餐 B","description":"MoreFun Keeta SIT business-critical menu test B","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,
+                "shopCategoryOpenItemCodeList":["MF-SIT-CAT-01"],"userGetModeList":["delivery"],
+                "skuList":[{"openItemCode":"MF-SIT-SKU-02","price":"25.00","currency":"HKD","choiceGroupOpenItemCodeList":["MF-SIT-GRP-01"]}]
+              }
+            ],
+            "spuSequenceCodeMap":{"MF-SIT-CAT-01":["MF-SIT-SPU-01","MF-SIT-SPU-02"],"MF-SIT-CAT-02":[]}
+          }
+          JSON
+          node -e "const p=require(process.argv[1]); if(p.shopCategoryList.length!==2||p.choiceGroupList[0].choiceGroupSkuList.length!==3||p.spuList.length!==2) process.exit(1)" "$RUNNER_TEMP/menu.json"
+          echo 'controlled_menu_shape=PASS'
+
+      - name: Submit exactly one full-store menu sync
+        id: submit
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/submit.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/menu.json" "$WORKER_URL/sit/menu-sync?shopId=$SHOP_ID" || true)"
+          echo "menu_submit_http=$HTTP"
+          if [[ "$HTTP" != '200' ]]; then echo 'MENU_SUBMIT_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2; exit 1; fi
+          TASK_ID="$(node - "$RUNNER_TEMP/submit.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`menu_submit_provider_code=${b.code}`); if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1); process.stdout.write(String(b.data.taskId));
+          NODE
+          )"
+          [[ "$TASK_ID" =~ ^[0-9]+$ ]]
+          echo "task_id=$TASK_ID" >> "$GITHUB_OUTPUT"
+          echo "menu_task_id=$TASK_ID"
+          echo 'menu_mutation_request_count=1'
+
+      - name: Await matching provider 1202 completion
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TASK_ID: ${{ steps.submit.outputs.task_id }}
+          BASELINE_COUNT: ${{ steps.baseline.outputs.count }}
+        run: |
+          set -euo pipefail
+          FOUND=0
+          for attempt in $(seq 1 30); do
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY received_at DESC LIMIT 20" --json > "$RUNNER_TEMP/evidence.json"
+            if node - "$RUNNER_TEMP/evidence.json" "$TASK_ID" "$RUNNER_TEMP/matched.json" <<'NODE'
+          const fs=require('fs'); const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const taskId=Number(process.argv[3]); const rows=(Array.isArray(raw)?raw[0]?.results:raw?.results)??[];
+          for(const row of rows){ let m; try{m=JSON.parse(row.message)}catch{continue} if(Number(m.shopId)===721578302 && Number(m.taskId)===taskId){ fs.writeFileSync(process.argv[4],JSON.stringify({messageId:row.message_id,payload:m})); process.exit(0); } }
+          process.exit(1);
+          NODE
+            then FOUND=1; echo "menu_1202_match_attempt=$attempt"; break; fi
+            sleep 4
+          done
+          test "$FOUND" = '1'
+          node - "$RUNNER_TEMP/matched.json" <<'NODE'
+          const fs=require('fs'); const m=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const errors=m.payload?.errorSpuDTOList;
+          if(errors!=null && (!Array.isArray(errors) || errors.length!==0)){ console.error(`menu_1202_errors=${JSON.stringify(errors)}`); process.exit(1); }
+          console.log(`menu_1202_message_id_present=${typeof m.messageId==='string'&&m.messageId.length>0}`);
+          console.log(`menu_1202_task_id=${m.payload.taskId}`);
+          console.log(`menu_1202_picture_task_id=${m.payload.pictureTaskId ?? 'none'}`);
+          console.log('menu_1202_errors=0');
+          NODE
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/after.json"
+          AFTER="$(node - "$RUNNER_TEMP/after.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const r=Array.isArray(b)?b[0]?.results?.[0]:b?.results?.[0]; process.stdout.write(String(Number(r?.count ?? -1)));
+          NODE
+          )"
+          echo "post_1202_count=$AFTER"
+          [[ "$AFTER" =~ ^[0-9]+$ ]]
+          (( AFTER > BASELINE_COUNT ))
+          echo 'MENU_BASELINE_LIVE_PROOF=PASS'
+
+      - name: Record business-critical evidence
+        shell: bash
+        env:
+          TASK_ID: ${{ steps.submit.outputs.task_id }}
+        run: |
+          set -euo pipefail
+          printf 'source_sha=%s\napp_id=%s\nshop_id=%s\nmenu_task_id=%s\nmenu_sync=PASS_PROVIDER_1202\nmutation_request_count=1\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID" "$TASK_ID"
