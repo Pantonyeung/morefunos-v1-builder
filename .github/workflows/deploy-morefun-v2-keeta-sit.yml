@@ -117,15 +117,23 @@ jobs:
             console.error('KEETA_APP_SECRET_MISSING');
             process.exit(1);
           }
-          process.stdout.write(names.has('KEETA_TOKEN_ENCRYPTION_KEY') ? 'encryption_present=true\n' : 'encryption_present=false\n');
+          console.log(`encryption_present=${names.has('KEETA_TOKEN_ENCRYPTION_KEY')}`);
+          console.log(`probe_present=${names.has('KEETA_SIT_PROBE_KEY')}`);
           NODE
-          PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
+          ENCRYPTION_PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
           const fs = require('fs');
           const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           process.stdout.write(rows.some((row) => row.name === 'KEETA_TOKEN_ENCRYPTION_KEY') ? 'true' : 'false');
           NODE
           )"
-          echo "encryption_present=$PRESENT" >> "$GITHUB_OUTPUT"
+          PROBE_PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          process.stdout.write(rows.some((row) => row.name === 'KEETA_SIT_PROBE_KEY') ? 'true' : 'false');
+          NODE
+          )"
+          echo "encryption_present=$ENCRYPTION_PRESENT" >> "$GITHUB_OUTPUT"
+          echo "probe_present=$PROBE_PRESENT" >> "$GITHUB_OUTPUT"
 
       - name: Provision token encryption secret when absent
         if: steps.runtime-secrets.outputs.encryption_present != 'true'
@@ -137,6 +145,17 @@ jobs:
         run: |
           set -euo pipefail
           openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
+
+      - name: Provision protected SIT probe secret when absent
+        if: steps.runtime-secrets.outputs.probe_present != 'true'
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          openssl rand -hex 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
 
       - name: Verify Keeta D1 database identity
         working-directory: source/workers/keeta
