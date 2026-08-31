@@ -127,31 +127,6 @@ jobs:
           )"
           echo "encryption_present=$ENCRYPTION_PRESENT" >> "$GITHUB_OUTPUT"
 
-      - name: Provision token encryption secret when absent
-        if: steps.runtime-secrets.outputs.encryption_present != 'true'
-        working-directory: source/workers/keeta
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
-
-      - name: Rotate protected SIT probe secret
-        id: sit-probe-secret
-        working-directory: source/workers/keeta
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          PROBE_KEY="$(openssl rand -hex 32)"
-          echo "::add-mask::$PROBE_KEY"
-          printf '%s' "$PROBE_KEY" | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
-          echo "probe_key=$PROBE_KEY" >> "$GITHUB_OUTPUT"
-
       - name: Verify Keeta D1 database identity
         working-directory: source/workers/keeta
         shell: bash
@@ -194,6 +169,31 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
+
+      - name: Provision token encryption secret when absent
+        if: steps.runtime-secrets.outputs.encryption_present != 'true'
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
+
+      - name: Rotate protected SIT probe secret
+        id: sit-probe-secret
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf '%s' "$PROBE_KEY" | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
+          echo "probe_key=$PROBE_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Smoke deployed health endpoint
         shell: bash
