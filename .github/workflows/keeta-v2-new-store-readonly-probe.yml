@@ -2,6 +2,10 @@ name: Keeta V2 New Store Read-only Probe
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-new-store-readonly-probe.sha'
 
 permissions:
   contents: read
@@ -17,7 +21,7 @@ jobs:
     timeout-minutes: 10
     env:
       WRANGLER_VERSION: '4.125.0'
-      SOURCE_SHA: '26b80044dd6cd47faa3727944502ecba9207f75a'
+      SOURCE_SHA: '3326897e8f3a3a606e1efd9b5478375dcc9a1c14'
       EXPECTED_APP_ID: '3419700273'
       SHOP_ID: '721578302'
       WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
@@ -51,7 +55,7 @@ jobs:
             throw new Error(`EXPECTED_APP_ID_NOT_FOUND:${expected}`);
           }
           NODE
-          grep -q '/sit/store-details' source/workers/keeta/src/index.ts
+          grep -q '/sit/store-status-state' source/workers/keeta/src/index.ts
           printf 'source_sha=%s\napp_id=%s\nshop_id=%s\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
 
       - name: Prepare ephemeral read-only probe secret
@@ -74,33 +78,33 @@ jobs:
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-readonly-secrets.env"
 
-      - name: Read new Keeta Test Store Details only
+      - name: Read raw-safe Keeta Store Status fields
         shell: bash
         run: |
           set -euo pipefail
           for attempt in $(seq 1 20); do
-            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-status-state?shopId=$SHOP_ID" || true)"
             if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/store.json" <<'NODE'
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const expectedShopId = Number(process.env.SHOP_ID);
           if (body.code !== 0 || Number(body.data?.shopId) !== expectedShopId) process.exit(1);
-          console.log(`store_details=PASS`);
+          console.log(`store_status_state=PASS`);
           console.log(`provider_shop_id=${body.data.shopId}`);
-          console.log(`provider_status=${body.data.status}`);
-          console.log(`provider_delivery_rest_status=${body.data.deliveryRestStatus}`);
-          console.log(`provider_pickup_rest_status=${body.data.pickupRestStatus}`);
-          console.log(`provider_available_for_order=${body.data.availableForOrder}`);
+          console.log(`provider_status=${JSON.stringify(body.data.status)}`);
+          console.log(`provider_delivery_rest_status=${JSON.stringify(body.data.deliveryRestStatus)}`);
+          console.log(`provider_pickup_rest_status=${JSON.stringify(body.data.pickupRestStatus)}`);
+          console.log(`provider_available_for_order=${JSON.stringify(body.data.availableForOrder)}`);
           NODE
             then exit 0; fi
-            echo "waiting_for_store_details_attempt=$attempt http=$STATUS"
+            echo "waiting_for_store_status_state_attempt=$attempt http=$STATUS"
             sleep 2
           done
-          echo STORE_DETAILS_READ_FAILED >&2
+          echo STORE_STATUS_STATE_READ_FAILED >&2
           node -e "const fs=require('fs'); try { const b=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/store.json','utf8')); console.error(JSON.stringify({code:b.code,message:b.message})); } catch {}"
           exit 1
 
       - name: Evidence summary
         shell: bash
         run: |
-          printf 'mode=READ_ONLY_PROVIDER_PROBE\nsource_sha=%s\napp_id=%s\nshop_id=%s\nstore_details=PASS\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
+          printf 'mode=READ_ONLY_PROVIDER_DIAGNOSTIC\nsource_sha=%s\napp_id=%s\nshop_id=%s\nstore_status_state=PASS\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
