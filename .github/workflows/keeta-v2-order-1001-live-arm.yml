@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SOURCE_SHA: '321dc5790d03989fb145a7936916c7c5770eb7a1'
+      SOURCE_SHA: 'b5f11b0af9ebd0e15e5580728e2fab29453a7002'
       EXPECTED_APP_ID: '3419700273'
       SHOP_ID: '721578302'
       WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
