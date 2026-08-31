@@ -50,6 +50,7 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
           grep -q '/sit/store-business-hours' source/workers/keeta/src/index.ts
           grep -q '/sit/store-special-business-hours' source/workers/keeta/src/index.ts
+          grep -q '/sit/store-profile-image-state' source/workers/keeta/src/index.ts
 
       - name: Prepare read-only probe secret
         shell: bash
@@ -84,6 +85,28 @@ jobs:
             sleep 2
           done
           echo PROVIDER_READ_FAILED >&2
+          exit 1
+
+      - name: Read current Keeta Store Profile Image State
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/profile-image-state.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-profile-image-state?shopId=$SHOP_ID" || true)"
+            if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/profile-image-state.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body.code !== 0 || !body.data || typeof body.data !== 'object' || Array.isArray(body.data)) process.exit(1);
+          if (!Object.hasOwn(body.data, 'mainPictures') || !Object.hasOwn(body.data, 'logoUrl')) process.exit(1);
+          console.log(`profile_main_pictures=${JSON.stringify(body.data.mainPictures)}`);
+          console.log(`profile_logo_url=${JSON.stringify(body.data.logoUrl)}`);
+          NODE
+            then exit 0; fi
+            echo "waiting_for_profile_image_state_attempt=$attempt http=$STATUS"
+            sleep 2
+          done
+          echo PROFILE_IMAGE_STATE_READ_FAILED >&2
+          cat "$RUNNER_TEMP/profile-image-state.json" >&2 || true
           exit 1
 
       - name: Read current Keeta Store Business Hours
@@ -167,4 +190,4 @@ jobs:
 
       - name: Evidence summary
         shell: bash
-        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nbusiness_hours=PASS\nspecial_business_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
+        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nprofile_image_state=PASS\nbusiness_hours=PASS\nspecial_business_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
