@@ -1,0 +1,275 @@
+name: Keeta Store Item 10 Webhook 1101 Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-10.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-store-item-10-webhook-1101
+  cancel-in-progress: false
+
+jobs:
+  store-item-10:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-10.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard Item 10 exact contract and fresh reset identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_10_WEBHOOK_1101`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq 'LAST_PASSED_STORE_API_ITEM: `STORE_ITEM_09_SPECIAL_BUSINESS_HOUR_EFFECTIVE_UPDATE`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/configure-webhook-1101' source/workers/keeta/src/index.ts
+          grep -Fq 'INSERT INTO keeta_webhook_evidence' source/workers/keeta/src/store-status-runtime.ts
+          test -f source/workers/keeta/migrations/0005_keeta_webhook_evidence.sql
+          test -f source/packages/integration/keeta-store-item-10-webhook-evidence-contract.test.ts
+          node - <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('source/workers/keeta/wrangler.jsonc', 'utf8');
+          const expected = process.env.EXPECTED_APP_ID;
+          if (!text.includes(`\"KEETA_APP_ID\": \"${expected}\"`)) throw new Error(`EXPECTED_APP_ID_NOT_FOUND:${expected}`);
+          NODE
+
+      - name: Require existing Keeta runtime secret names
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-before.json"
+          node - "$RUNNER_TEMP/keeta-secrets-before.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_BEFORE_DEPLOY`);
+          }
+          NODE
+
+      - name: Apply durable webhook evidence migration remotely
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply "$D1_DATABASE" --remote --config wrangler.jsonc
+
+      - name: Prepare ephemeral SIT probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item10-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item10-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker preserving existing runtime secrets
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item10-secrets.env"
+
+      - name: Prove runtime secret names survived deployment
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-after.json"
+          node - "$RUNNER_TEMP/keeta-secrets-after.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY', 'KEETA_SIT_PROBE_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_AFTER_DEPLOY`);
+          }
+          NODE
+
+      - name: Configure real Keeta webhook event 1101
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config-1101.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1101" || true)"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/config-1101.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (body.code !== 0 || body.data?.eventId !== 1101 || body.data?.isTest !== 1) throw new Error(`KEETA_1101_CONFIG_REJECTED:${body.code}`);
+          console.log('configure_webhook_1101=PASS');
+          NODE
+
+      - name: Read durable 1101 evidence baseline
+        id: evidence_before
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1101 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/evidence-before.json"
+          COUNT="$(node - "$RUNNER_TEMP/evidence-before.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const row=Array.isArray(body) ? body[0]?.results?.[0] : body?.results?.[0];
+          if (!row || !Number.isFinite(Number(row.count))) process.exit(1);
+          process.stdout.write(String(Number(row.count)));
+          NODE
+          )"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "baseline_1101_evidence_count=$COUNT"
+
+      - name: Read provider regular-hours baseline and build exact trigger payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-before.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-business-hours?shopId=$SHOP_ID" || true)"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/hours-before.json" "$RUNNER_TEMP/hours-trigger.json" <<'NODE'
+          const fs=require('fs');
+          const input=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (input.code !== 0) throw new Error(`KEETA_STORE_ITEM_10_BASELINE_READ_FAILED:${input.code}`);
+          const candidate=input.data?.businessHourOfTheWeek ?? input.data;
+          const days=['mon','tue','wed','thu','fri','sat','sun'];
+          if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) throw new Error('KEETA_STORE_ITEM_10_BASELINE_SHAPE_INVALID');
+          const canonical={};
+          for (const day of days) {
+            if (!Array.isArray(candidate[day])) throw new Error(`KEETA_STORE_ITEM_10_BASELINE_${day.toUpperCase()}_INVALID`);
+            canonical[day]=candidate[day].map(({startTime,endTime}) => ({startTime:Number(startTime),endTime:Number(endTime)}));
+          }
+          fs.writeFileSync(process.argv[3], JSON.stringify({businessHourOfTheWeek:canonical}));
+          console.log('provider_hours_trigger_baseline=PASS');
+          NODE
+
+      - name: Trigger 1101 through one real provider hours operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/hours-trigger-result.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/hours-trigger.json" "$WORKER_URL/sit/store-business-hours-update?shopId=$SHOP_ID" || true)"
+          echo "item10_trigger_transport_http=$HTTP"
+          if [[ "$HTTP" != '200' ]]; then
+            echo 'KEETA_STORE_ITEM_10_TRIGGER_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2
+            exit 1
+          fi
+          node - "$RUNNER_TEMP/hours-trigger-result.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`item10_trigger_provider_code=${body.code}`);
+          if (body.code !== 0) process.exit(1);
+          NODE
+
+      - name: Wait for genuine Keeta 1101 durable evidence
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BASELINE_COUNT: ${{ steps.evidence_before.outputs.count }}
+        run: |
+          set -euo pipefail
+          FOUND=0
+          for attempt in $(seq 1 30); do
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_evidence WHERE event_id=1101 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID" --json > "$RUNNER_TEMP/evidence-poll.json"
+            COUNT="$(node - "$RUNNER_TEMP/evidence-poll.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const row=Array.isArray(body) ? body[0]?.results?.[0] : body?.results?.[0];
+          process.stdout.write(String(Number(row?.count ?? -1)));
+          NODE
+          )"
+            if [[ "$COUNT" =~ ^[0-9]+$ ]] && (( COUNT > BASELINE_COUNT )); then
+              FOUND=1
+              echo "genuine_1101_received_attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$FOUND" != '1' ]]; then
+            echo 'KEETA_STORE_ITEM_10_NO_PROVIDER_1101_AFTER_SINGLE_TRIGGER=true' >&2
+            exit 1
+          fi
+
+      - name: Prove latest 1101 envelope and dedup identity
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,event_id,app_id,shop_id,provider_timestamp,LENGTH(message) AS message_length FROM keeta_webhook_evidence WHERE event_id=1101 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY provider_timestamp DESC, received_at DESC LIMIT 1" --json > "$RUNNER_TEMP/evidence-latest.json"
+          MESSAGE_ID="$(node - "$RUNNER_TEMP/evidence-latest.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const row=Array.isArray(body) ? body[0]?.results?.[0] : body?.results?.[0];
+          if (!row || row.event_id !== 1101 || Number(row.app_id) !== 3419700273 || Number(row.shop_id) !== 721578302 || !row.message_id || Number(row.provider_timestamp) <= 0 || Number(row.message_length) <= 0) process.exit(1);
+          console.log('genuine_1101_envelope=PASS');
+          process.stdout.write(String(row.message_id));
+          NODE
+          )"
+          MESSAGE_ID="$(printf '%s' "$MESSAGE_ID" | tail -n 1)"
+          SAFE_ID="${MESSAGE_ID//\'/\'\'}"
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT COUNT(*) AS count FROM keeta_webhook_dedup WHERE dedup_key='KEETA:$SAFE_ID'" --json > "$RUNNER_TEMP/dedup-latest.json"
+          node - "$RUNNER_TEMP/dedup-latest.json" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const row=Array.isArray(body) ? body[0]?.results?.[0] : body?.results?.[0];
+          if (Number(row?.count) !== 1) throw new Error('KEETA_STORE_ITEM_10_DEDUP_IDENTITY_MISSING');
+          console.log('genuine_1101_dedup=PASS');
+          NODE
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\napp_id=%s\nshop_id=%s\nhandbook_store_item=10\ntest_store_identity=FRESH_RESET_STORE\nwebhook_event_id=1101\nprovider_configuration=PASS\nprovider_originated_webhook_required=true\nsignature_gate=PASS_BY_DURABLE_POST_VERIFY_EVIDENCE\ndurable_evidence=PASS\ndurable_dedup=PASS\nprovider_trigger_request_count=1\nautomatic_mutation_retry=false\nself_generated_webhook=false\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$EXPECTED_APP_ID" "$SHOP_ID"
