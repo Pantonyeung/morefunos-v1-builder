@@ -1,0 +1,59 @@
+name: Diagnose V2 Cloudflare Backend Candidates
+
+on:
+  push:
+    paths:
+      - 'requests/v2-cloudflare-backend-candidates.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Inspect candidate Workers read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -u
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          api(){ curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$1"; }
+          BASE="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          NAMES='morefun-order-api morefun-smt morefunos-platform-b morefunos-platform-b-api-staging morefunos-acceptance-layout-api'
+          : > evidence/summary.txt
+          for NAME in $NAMES; do
+            api "$BASE/workers/scripts/$NAME/settings" > "evidence/$NAME-settings.json" 2>"evidence/$NAME-settings.err" || true
+            api "$BASE/workers/scripts/$NAME/content/v2" > "evidence/$NAME-content.raw" 2>"evidence/$NAME-content.err" || true
+            NAME="$NAME" node - <<'NODE' >> evidence/summary.txt
+            const fs=require('fs'); const n=process.env.NAME;
+            const pj=(p)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return {result:{}}}};
+            const rd=(p)=>{try{return fs.readFileSync(p,'utf8')}catch{return ''}};
+            const s=pj(`evidence/${n}-settings.json`); const c=rd(`evidence/${n}-content.raw`);
+            const bs=Array.isArray(s.result?.bindings)?s.result.bindings.map(x=>`${x.name}:${x.type}`):[];
+            console.log(`[${n}]`);
+            console.log(`bindings=${bs.join(',')||'NONE'}`);
+            console.log(`has_postgres=${/postgres|database_url|pghost|hyperdrive/i.test(JSON.stringify(s.result)||'')||/postgres|hyperdrive/i.test(c)?'YES':'NO'}`);
+            console.log(`has_firebase=${/firebase/i.test(JSON.stringify(s.result)||'')||/firebase/i.test(c)?'YES':'NO'}`);
+            console.log(`has_smt_login=${c.includes('/api/smt/session/login')?'YES':'NO'}`);
+            console.log(`has_smt_orders=${c.includes('/api/smt/orders')?'YES':'NO'}`);
+            NODE
+          done
+          cat evidence/summary.txt
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-cloudflare-backend-candidates-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
