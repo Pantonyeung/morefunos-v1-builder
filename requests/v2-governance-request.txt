@@ -1,4 +1,4 @@
-source_sha=5d6d880ab601424d5dfb31cf6afe154fee20c2fd
-base_sha=cf1a372bf60a62cd9c1df67fa8ebbb9dacaf5aa7
-branch_name=work/CORE/B0292-dine-in-reporting-read-model
-request_id=B0292-DINE-IN-REPORTING-V2-GOVERNANCE-20260831
+source_sha=7b13e54d9d9a3941fda95aa7e3078cfd4d4e9461
+base_sha=0e3d5fafe860707c7acb392d0b0793a311a7a2f2
+branch_name=work/CORE/B0144-owner-dine-in-daily-aggregate-projection-r3
+request_id=B0144-DINE-IN-DAILY-V2-GOVERNANCE-20260831
