@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.ci-requests/morefun-v2-keeta.sha'
+      - '.github/workflows/verify-morefun-v2-keeta.yml'
   workflow_dispatch:
     inputs:
       source_sha:
@@ -41,12 +42,20 @@ jobs:
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
       - name: Checkout exact Morefun-v2 source
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
           ref: ${{ steps.request.outputs.source_sha }}
-          token: ${{ secrets.MOREFUN_V2_SOURCE_READ_TOKEN || secrets.V1_SOURCE_READ_TOKEN }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
           fetch-depth: 1
