@@ -1,4 +1,4 @@
-source_sha=3b6c47a8aedb1de04c4fd6daf0a1cc09fc425f78
-base_sha=929a616002a1b453020a057a9960ae28b53295be
-branch_name=governance/SYS/B1101-reporting-dine-in-allocation-handoff
-request_id=B1101-DINE-IN-ALLOCATION-V2-GOVERNANCE-20260831
+source_sha=bbab0046eb287cb7c6c2aace172512fbdf95fbe9
+base_sha=e5f676490835985d1ed2b46c53e8bdd628d16900
+branch_name=work/CORE/B0290-dine-in-service-canonical-foundation
+request_id=B0290-DINE-IN-SERVICE-V2-GOVERNANCE-20260831
