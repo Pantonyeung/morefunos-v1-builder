@@ -1,4 +1,4 @@
-source_sha=bbab0046eb287cb7c6c2aace172512fbdf95fbe9
-base_sha=e5f676490835985d1ed2b46c53e8bdd628d16900
-branch_name=work/CORE/B0290-dine-in-service-canonical-foundation
-request_id=B0290-DINE-IN-SERVICE-GREEN-R2-20260831
+source_sha=574afea14d2adf9321fe37d65203fa313920b64c
+base_sha=bbab0046eb287cb7c6c2aace172512fbdf95fbe9
+branch_name=work/CORE/B0291-dine-in-service-postgresql-durability
+request_id=B0291-DINE-IN-POSTGRES-RED-20260831
