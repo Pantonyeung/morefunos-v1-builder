@@ -1,0 +1,73 @@
+name: Provision V2 Zero-Cost D1
+
+on:
+  push:
+    paths:
+      - 'requests/v2-zero-cost-d1-provision-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve controlled request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB_NAME="$(sed -n 's/^database_name=//p' requests/v2-zero-cost-d1-provision-request.txt | tr -d '[:space:]')"
+          MODE="$(sed -n 's/^mode=//p' requests/v2-zero-cost-d1-provision-request.txt | tr -d '[:space:]')"
+          [[ "$DB_NAME" == 'morefun-v2-production' ]]
+          [[ "$MODE" == 'CREATE_IF_ABSENT_ZERO_COST_ONLY' ]]
+          [[ -n "${CLOUDFLARE_API_TOKEN:-}" && -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]
+          echo "database_name=$DB_NAME" >> "$GITHUB_OUTPUT"
+      - name: Create dedicated D1 only if absent
+        id: d1
+        shell: bash
+        env:
+          DB_NAME: ${{ steps.req.outputs.database_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database"
+          curl -fsS "$BASE?name=${DB_NAME}&per_page=100" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" > /tmp/list.json
+          EXISTING_ID="$(node -e "const x=require('/tmp/list.json');const r=(x.result||[]).find(v=>v.name===process.env.DB_NAME);process.stdout.write(r?.uuid||'')")"
+          if [[ -n "$EXISTING_ID" ]]; then
+            echo 'action=REUSED_EXISTING' | tee evidence/d1.txt
+            echo "database_name=${DB_NAME}" | tee -a evidence/d1.txt
+            echo "database_id=${EXISTING_ID}" | tee -a evidence/d1.txt
+            exit 0
+          fi
+          HTTP_CODE="$(curl -sS -o /tmp/create.json -w '%{http_code}' -X POST "$BASE" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H 'content-type: application/json' \
+            --data "{\"name\":\"${DB_NAME}\"}")"
+          echo "create_http=${HTTP_CODE}" | tee evidence/d1.txt
+          if [[ "$HTTP_CODE" != 200 ]]; then
+            node -e "const x=require('/tmp/create.json');console.log('cloudflare_error='+(x.errors?.map(e=>e.message).join(';')||'UNKNOWN'))" | tee -a evidence/d1.txt
+            exit 1
+          fi
+          DB_ID="$(node -e "const x=require('/tmp/create.json');process.stdout.write(x.result?.uuid||'')")"
+          [[ "$DB_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+          echo 'action=CREATED' | tee -a evidence/d1.txt
+          echo "database_name=${DB_NAME}" | tee -a evidence/d1.txt
+          echo "database_id=${DB_ID}" | tee -a evidence/d1.txt
+          echo 'paid_resource_created=NO' | tee -a evidence/d1.txt
+          rm -f /tmp/list.json /tmp/create.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-zero-cost-d1-provision-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
