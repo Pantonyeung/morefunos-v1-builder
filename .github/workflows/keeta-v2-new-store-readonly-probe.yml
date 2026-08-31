@@ -1,0 +1,106 @@
+name: Keeta V2 New Store Read-only Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-v2-new-store-readonly-probe
+  cancel-in-progress: false
+
+jobs:
+  readonly-probe:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      SOURCE_SHA: '26b80044dd6cd47faa3727944502ecba9207f75a'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove exact source and new App ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          node - <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('source/workers/keeta/wrangler.jsonc', 'utf8');
+          const expected = process.env.EXPECTED_APP_ID;
+          if (!text.includes(`\"KEETA_APP_ID\": \"${expected}\"`)) {
+            throw new Error(`EXPECTED_APP_ID_NOT_FOUND:${expected}`);
+          }
+          NODE
+          grep -q '/sit/store-details' source/workers/keeta/src/index.ts
+          printf 'source_sha=%s\napp_id=%s\nshop_id=%s\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
+
+      - name: Prepare ephemeral read-only probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-readonly-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-readonly-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker preserving other Worker secrets
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-readonly-secrets.env"
+
+      - name: Read new Keeta Test Store Details only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
+            if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/store.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expectedShopId = Number(process.env.SHOP_ID);
+          if (body.code !== 0 || Number(body.data?.shopId) !== expectedShopId) process.exit(1);
+          console.log(`store_details=PASS`);
+          console.log(`provider_shop_id=${body.data.shopId}`);
+          console.log(`provider_status=${body.data.status}`);
+          console.log(`provider_delivery_rest_status=${body.data.deliveryRestStatus}`);
+          console.log(`provider_pickup_rest_status=${body.data.pickupRestStatus}`);
+          console.log(`provider_available_for_order=${body.data.availableForOrder}`);
+          NODE
+            then exit 0; fi
+            echo "waiting_for_store_details_attempt=$attempt http=$STATUS"
+            sleep 2
+          done
+          echo STORE_DETAILS_READ_FAILED >&2
+          node -e "const fs=require('fs'); try { const b=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/store.json','utf8')); console.error(JSON.stringify({code:b.code,message:b.message})); } catch {}"
+          exit 1
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'mode=READ_ONLY_PROVIDER_PROBE\nsource_sha=%s\napp_id=%s\nshop_id=%s\nstore_details=PASS\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
