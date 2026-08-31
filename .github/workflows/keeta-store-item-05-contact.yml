@@ -1,0 +1,148 @@
+name: Keeta Store Item 05 Contact Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-05.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  store-item-05:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      SHOP_ID: '721517434'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-05.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard handbook Store Item 05 and exact contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_05_CONTACT_UPDATE`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/store-contact-state' source/workers/keeta/src/index.ts
+          grep -Fq '/sit/store-contact-update' source/workers/keeta/src/index.ts
+          grep -Fq 'https://open.mykeeta.com/api/open/scm/shop/contact/update' source/packages/integration/keeta-store-provider-requests.ts
+          grep -Fq 'buildKeetaStoreContactUpdateRequest' source/packages/integration/keeta-store-provider-requests.ts
+
+      - name: Prepare ephemeral SIT probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item05-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item05-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker with ephemeral probe secret
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item05-secrets.env"
+
+      - name: Read current test-store contact baseline without exposing phone values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/pre-contact.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              "$WORKER_URL/sit/store-contact-state?shopId=$SHOP_ID" || true)"
+            if [[ "$HTTP" == '200' ]]; then break; fi
+            sleep 2
+          done
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/pre-contact.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const phones=b?.data?.phones;
+          if (b.code !== 0 || !Array.isArray(phones) || phones.length < 1 || phones.length > 3 || !phones.every(p => typeof p === 'string' && /^\d+-\d+$/.test(p))) {
+            console.error(`KEETA_CONTACT_BASELINE_INVALID code=${b.code} count=${Array.isArray(phones) ? phones.length : 'not-array'}`);
+            process.exit(1);
+          }
+          console.log(`baseline_contact_read_code=${b.code}`);
+          console.log(`baseline_phone_count=${phones.length}`);
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/contact-update-body.json', JSON.stringify({phones}));
+          NODE
+
+      - name: Exercise official contact update idempotently with exact baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/contact-update.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $PROBE_KEY" \
+            -H 'Content-Type: application/json' \
+            --data-binary "@$RUNNER_TEMP/contact-update-body.json" \
+            "$WORKER_URL/sit/store-contact-update?shopId=$SHOP_ID")"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/contact-update.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`keeta_contact_update_code=${b.code}`);
+          console.log(`keeta_contact_update_message=${String(b.message ?? '').replace(/[\r\n]/g,' ')}`);
+          if (b.code !== 0) process.exit(1);
+          NODE
+
+      - name: Read back and prove contact baseline remained intact
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/post-contact.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $PROBE_KEY" \
+            "$WORKER_URL/sit/store-contact-state?shopId=$SHOP_ID")"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/contact-update-body.json" "$RUNNER_TEMP/post-contact.json" <<'NODE'
+          const fs=require('fs');
+          const expected=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).phones;
+          const b=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          const actual=b?.data?.phones;
+          if (b.code !== 0 || !Array.isArray(actual) || JSON.stringify(actual) !== JSON.stringify(expected)) {
+            console.error(`KEETA_CONTACT_POST_READ_MISMATCH code=${b.code} expected_count=${expected.length} actual_count=${Array.isArray(actual) ? actual.length : 'not-array'}`);
+            process.exit(1);
+          }
+          console.log(`post_contact_read_code=${b.code}`);
+          console.log(`post_phone_count=${actual.length}`);
+          console.log('post_read_exact_baseline_match=true');
+          NODE
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nhandbook_store_item=05\ncontact_baseline_read=PASS\ncontact_update_provider_call=PASS\ncontact_update_mode=IDEMPOTENT_BASELINE_REAPPLY\npost_read_exact_baseline_match=PASS\nphone_values_logged=false\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
