@@ -104,11 +104,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/contact-update.json" -w '%{http_code}' \
-            -H "Authorization: Bearer $PROBE_KEY" \
-            -H 'Content-Type: application/json' \
-            --data-binary "@$RUNNER_TEMP/contact-update-body.json" \
-            "$WORKER_URL/sit/store-contact-update?shopId=$SHOP_ID")"
+          HTTP=000
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/contact-update.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              -H 'Content-Type: application/json' \
+              --data-binary "@$RUNNER_TEMP/contact-update-body.json" \
+              "$WORKER_URL/sit/store-contact-update?shopId=$SHOP_ID" || true)"
+            if [[ "$HTTP" == '200' ]]; then
+              echo "contact_update_transport_attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
           test "$HTTP" = '200'
           node - "$RUNNER_TEMP/contact-update.json" <<'NODE'
           const fs=require('fs');
