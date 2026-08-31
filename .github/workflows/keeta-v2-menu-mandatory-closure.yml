@@ -1,0 +1,210 @@
+name: Keeta V2 Menu Mandatory Closure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-menu-mandatory-closure.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-v2-menu-mandatory-closure
+  cancel-in-progress: false
+
+jobs:
+  close-menu-mandatory:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ab58a9b1039ca70b94d1f4ccb78a729a27fdee00
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Guard exact request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUESTED="$(tr -d '[:space:]' < .ci-requests/keeta-v2-menu-mandatory-closure.sha | tr '[:upper:]' '[:lower:]')"
+          test "$REQUESTED" = "$SOURCE_SHA"
+      - name: Checkout exact source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify exact source
+        working-directory: source
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck:intg-keeta
+          npm run test:intg-keeta
+      - name: Generate protected probe and deploy same exact source
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/deploy-secrets.env"
+          chmod 600 "$RUNNER_TEMP/deploy-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/deploy-secrets.env"
+      - name: Prove 1202 callback remains configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1202" || true)"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/config.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`configure_1202_code=${b.code}`); if(b.code!==0) process.exit(1);
+          NODE
+      - name: Generate valid 600x450 PNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/menu.png" <<'PY'
+          import struct,zlib,sys
+          w,h=600,450
+          raw=b''.join(b'\x00'+bytes([245,245,245])*w for _ in range(h))
+          def chunk(t,d):
+              return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+          png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
+          open(sys.argv[1],'wb').write(png)
+          PY
+          file "$RUNNER_TEMP/menu.png"
+      - name: Upload product image through official Keeta image endpoint wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/image.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -F 'imageName=morefun-sit-menu.png' -F "imageData=@$RUNNER_TEMP/menu.png;type=image/png" "$WORKER_URL/sit/store-profile-image-upload?shopId=$SHOP_ID" || true)"
+          echo "image_upload_http=$HTTP"
+          test "$HTTP" = '200'
+          IMAGE_URL="$(node - "$RUNNER_TEMP/image.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0||typeof b.data!=='string'||!b.data.startsWith('https://')) process.exit(1); process.stdout.write(b.data);
+          NODE
+          )"
+          echo "IMAGE_URL=$IMAGE_URL" >> "$GITHUB_ENV"
+          echo 'image_upload_provider=PASS'
+      - name: Build UPDATE snapshot covering mandatory Menu cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$IMAGE_URL" "$RUNNER_TEMP/update.json" <<'NODE'
+          const fs=require('fs'); const imageUrl=process.argv[2];
+          const menu={
+            shopCategoryList:[
+              {openItemCode:'MF-SIT-CAT-01',name:'SIT 主餐更新',sourceLanguageType:'zh-HK',type:0},
+              {openItemCode:'MF-SIT-CAT-02',name:'SIT 飲品更新',sourceLanguageType:'zh-HK',type:0}
+            ],
+            choiceGroupList:[{
+              openItemCode:'MF-SIT-GRP-01',name:'SIT 加配更新',sourceLanguageType:'zh-HK',minNumber:1,maxNumber:2,repeatable:0,
+              choiceGroupSkuList:[
+                {openItemCode:'MF-SIT-OPT-01',name:'加配 A',sourceLanguageType:'zh-HK',status:0,price:'0.00',currency:'HKD'},
+                {openItemCode:'MF-SIT-OPT-02',name:'加配 B',sourceLanguageType:'zh-HK',status:1,price:'5.00',currency:'HKD'},
+                {openItemCode:'MF-SIT-OPT-03',name:'加配 C',sourceLanguageType:'zh-HK',status:1,price:'8.00',currency:'HKD'}
+              ]
+            }],
+            spuList:[
+              {openItemCode:'MF-SIT-SPU-01',name:'SIT 測試餐 A 更新',description:'已更新描述 A',descSourceLanguageType:'zh-HK',sourceLanguageType:'zh-HK',status:1,availableTime:{code:1,values:Array(7).fill('11:00-20:00')},isSpecialty:0,pictureList:[{url:imageUrl}],shopCategoryOpenItemCodeList:['MF-SIT-CAT-01'],userGetModeList:['delivery'],skuList:[{openItemCode:'MF-SIT-SKU-01',price:'21.00',currency:'HKD',choiceGroupOpenItemCodeList:['MF-SIT-GRP-01']}]},
+              {openItemCode:'MF-SIT-SPU-02',name:'SIT 測試餐 B 更新',description:'已更新描述 B',descSourceLanguageType:'zh-HK',sourceLanguageType:'zh-HK',status:1,availableTime:{code:0},isSpecialty:0,shopCategoryOpenItemCodeList:['MF-SIT-CAT-01'],userGetModeList:['delivery'],skuList:[{openItemCode:'MF-SIT-SKU-02',price:'26.00',currency:'HKD',choiceGroupOpenItemCodeList:['MF-SIT-GRP-01']}]}
+            ],
+            spuSequenceCodeMap:{'MF-SIT-CAT-01':['MF-SIT-SPU-02','MF-SIT-SPU-01'],'MF-SIT-CAT-02':[]}
+          };
+          fs.writeFileSync(process.argv[3],JSON.stringify(menu));
+          NODE
+          echo 'update_snapshot=READY'
+      - name: Submit UPDATE snapshot once
+        id: update
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/update-submit.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/update.json" "$WORKER_URL/sit/menu-sync?shopId=$SHOP_ID" || true)"
+          echo "update_submit_http=$HTTP"; test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/update-submit.json" "$GITHUB_OUTPUT" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`update_provider_code=${b.code}`); if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1); fs.appendFileSync(process.argv[3],`task_id=${b.data.taskId}\n`); console.log(`update_task_id=${b.data.taskId}`);
+          NODE
+      - name: Await UPDATE 1202 success
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TASK_ID: ${{ steps.update.outputs.task_id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 35); do
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY received_at DESC LIMIT 30" --json > "$RUNNER_TEMP/evidence.json"
+            if node - "$RUNNER_TEMP/evidence.json" "$TASK_ID" <<'NODE'
+          const fs=require('fs'); const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const id=Number(process.argv[3]); const rows=(Array.isArray(raw)?raw[0]?.results:raw?.results)??[];
+          for(const r of rows){let m;try{m=JSON.parse(r.message)}catch{continue} if(Number(m.taskId)===id){const e=Array.isArray(m.errorSpuDTOList)?m.errorSpuDTOList:[]; console.log(`update_1202_error_count=${e.length}`); if(e.length) console.log(JSON.stringify(e)); process.exit(e.length?2:0)}} process.exit(1);
+          NODE
+            then echo "update_1202_attempt=$attempt"; echo 'MENU_UPDATE_MANDATORY=PASS'; break; fi
+            test "$attempt" != '35'; sleep 4
+          done
+      - name: Build DELETE snapshot while preserving one orderable product
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/delete.json" <<'JSON'
+          {
+            "shopCategoryList":[{"openItemCode":"MF-SIT-CAT-01","name":"SIT 主餐更新","sourceLanguageType":"zh-HK","type":0}],
+            "choiceGroupList":[],
+            "spuList":[{"openItemCode":"MF-SIT-SPU-01","name":"SIT 測試餐 A 更新","description":"已更新描述 A","descSourceLanguageType":"zh-HK","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,"shopCategoryOpenItemCodeList":["MF-SIT-CAT-01"],"userGetModeList":["delivery"],"skuList":[{"openItemCode":"MF-SIT-SKU-01","price":"21.00","currency":"HKD","choiceGroupOpenItemCodeList":[]}]}],
+            "spuSequenceCodeMap":{"MF-SIT-CAT-01":["MF-SIT-SPU-01"]}
+          }
+          JSON
+      - name: Submit DELETE snapshot once
+        id: delete
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/delete-submit.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/delete.json" "$WORKER_URL/sit/menu-sync?shopId=$SHOP_ID" || true)"
+          echo "delete_submit_http=$HTTP"; test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/delete-submit.json" "$GITHUB_OUTPUT" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`delete_provider_code=${b.code}`); if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1); fs.appendFileSync(process.argv[3],`task_id=${b.data.taskId}\n`); console.log(`delete_task_id=${b.data.taskId}`);
+          NODE
+      - name: Await DELETE 1202 success
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TASK_ID: ${{ steps.delete.outputs.task_id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 35); do
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY received_at DESC LIMIT 30" --json > "$RUNNER_TEMP/evidence.json"
+            if node - "$RUNNER_TEMP/evidence.json" "$TASK_ID" <<'NODE'
+          const fs=require('fs'); const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const id=Number(process.argv[3]); const rows=(Array.isArray(raw)?raw[0]?.results:raw?.results)??[];
+          for(const r of rows){let m;try{m=JSON.parse(r.message)}catch{continue} if(Number(m.taskId)===id){const e=Array.isArray(m.errorSpuDTOList)?m.errorSpuDTOList:[]; console.log(`delete_1202_error_count=${e.length}`); if(e.length) console.log(JSON.stringify(e)); process.exit(e.length?2:0)}} process.exit(1);
+          NODE
+            then echo "delete_1202_attempt=$attempt"; echo 'MENU_DELETE_MANDATORY=PASS'; break; fi
+            test "$attempt" != '35'; sleep 4
+          done
+      - name: Emit mandatory Menu closure evidence
+        shell: bash
+        env:
+          UPDATE_TASK_ID: ${{ steps.update.outputs.task_id }}
+          DELETE_TASK_ID: ${{ steps.delete.outputs.task_id }}
+        run: |
+          set -euo pipefail
+          printf 'source_sha=%s\napp_id=%s\nshop_id=%s\nimage_upload=PASS\nupdate_task_id=%s\ndelete_task_id=%s\nmandatory_update_cases=PASS\nmandatory_delete_cases=PASS\nfinal_orderable_spu=MF-SIT-SPU-01\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID" "$UPDATE_TASK_ID" "$DELETE_TASK_ID"
