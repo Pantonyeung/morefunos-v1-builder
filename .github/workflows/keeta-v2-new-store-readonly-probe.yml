@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
     env:
       WRANGLER_VERSION: '4.125.0'
-      SOURCE_SHA: '3326897e8f3a3a606e1efd9b5478375dcc9a1c14'
+      SOURCE_SHA: '0c773cdf33d91b02064d4d179e4ce01de9efd99e'
       EXPECTED_APP_ID: '3419700273'
       SHOP_ID: '721578302'
       WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
@@ -55,8 +55,26 @@ jobs:
             throw new Error(`EXPECTED_APP_ID_NOT_FOUND:${expected}`);
           }
           NODE
-          grep -q '/sit/store-status-state' source/workers/keeta/src/index.ts
+          grep -q '/sit/store-details' source/workers/keeta/src/index.ts
           printf 'source_sha=%s\napp_id=%s\nshop_id=%s\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
+
+      - name: Require existing Keeta runtime secret names
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-before.json"
+          node - "$RUNNER_TEMP/keeta-secrets-before.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_BEFORE_DEPLOY`);
+          }
+          NODE
 
       - name: Prepare ephemeral read-only probe secret
         shell: bash
@@ -68,7 +86,7 @@ jobs:
           chmod 600 "$RUNNER_TEMP/keeta-readonly-secrets.env"
           echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
 
-      - name: Deploy exact Worker preserving other Worker secrets
+      - name: Deploy exact Worker preserving existing runtime secrets
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -78,18 +96,36 @@ jobs:
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-readonly-secrets.env"
 
-      - name: Read raw-safe Keeta Store Status fields
+      - name: Prove runtime secret names survived deployment
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets-after.json"
+          node - "$RUNNER_TEMP/keeta-secrets-after.json" <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['KEETA_APP_SECRET', 'KEETA_TOKEN_ENCRYPTION_KEY', 'KEETA_SIT_PROBE_KEY']) {
+            if (!names.has(required)) throw new Error(`${required}_MISSING_AFTER_DEPLOY`);
+          }
+          NODE
+
+      - name: Read normalized Keeta Store Details through protected runtime
         shell: bash
         run: |
           set -euo pipefail
           for attempt in $(seq 1 20); do
-            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-status-state?shopId=$SHOP_ID" || true)"
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
             if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/store.json" <<'NODE'
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const expectedShopId = Number(process.env.SHOP_ID);
-          if (body.code !== 0 || Number(body.data?.shopId) !== expectedShopId) process.exit(1);
-          console.log(`store_status_state=PASS`);
+          if (body.code !== 0 || body.message !== 'success' || Number(body.data?.shopId) !== expectedShopId) process.exit(1);
+          console.log('normalized_store_details=PASS');
           console.log(`provider_shop_id=${body.data.shopId}`);
           console.log(`provider_status=${JSON.stringify(body.data.status)}`);
           console.log(`provider_delivery_rest_status=${JSON.stringify(body.data.deliveryRestStatus)}`);
@@ -97,14 +133,14 @@ jobs:
           console.log(`provider_available_for_order=${JSON.stringify(body.data.availableForOrder)}`);
           NODE
             then exit 0; fi
-            echo "waiting_for_store_status_state_attempt=$attempt http=$STATUS"
+            echo "waiting_for_normalized_store_details_attempt=$attempt http=$STATUS"
             sleep 2
           done
-          echo STORE_STATUS_STATE_READ_FAILED >&2
+          echo NORMALIZED_STORE_DETAILS_READ_FAILED >&2
           node -e "const fs=require('fs'); try { const b=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/store.json','utf8')); console.error(JSON.stringify({code:b.code,message:b.message})); } catch {}"
           exit 1
 
       - name: Evidence summary
         shell: bash
         run: |
-          printf 'mode=READ_ONLY_PROVIDER_DIAGNOSTIC\nsource_sha=%s\napp_id=%s\nshop_id=%s\nstore_status_state=PASS\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
+          printf 'mode=READ_ONLY_NORMALIZED_PROVIDER_PROOF\nsource_sha=%s\napp_id=%s\nshop_id=%s\nnormalized_store_details=PASS\nmutation_request_count=0\n' "$SOURCE_SHA" "$EXPECTED_APP_ID" "$SHOP_ID"
