@@ -43,7 +43,12 @@ jobs:
         run: npm run typecheck
       - name: Payment proof and payment regression
         working-directory: source
-        run: npm run test:core-payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TESTS < <(find packages/payment -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' | sort)
+          ((${#TESTS[@]} > 0))
+          node --test "${TESTS[@]}"
       - name: Order D1 regression
         working-directory: source
         run: npm run test:core-order
