@@ -1,0 +1,44 @@
+name: Keeta V2 Order 1001 Runtime GREEN
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-order-1001-runtime-green.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  green:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: '83eb41db6c2cef2837994056393458bbfb35a04d'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Guard exact request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '[:space:]' < .ci-requests/keeta-v2-order-1001-runtime-green.sha)" = "$SOURCE_SHA"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install and run exact Keeta regression
+        working-directory: source
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck:intg-keeta
+          npm run test:intg-keeta
