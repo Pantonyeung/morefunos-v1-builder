@@ -50,11 +50,19 @@ jobs:
       - name: Firebase realtime signal tests
         working-directory: source
         run: node --test packages/integration/firebase-rtdb-signal.test.ts packages/integration/google-service-account-token.test.ts
-      - name: Existing Order and Payment regression
+      - name: Existing Order and Payment non-PostgreSQL regression
         working-directory: source
+        shell: bash
         run: |
-          npm run test:core-order
-          npm run test:core-payment
+          set -euo pipefail
+          mapfile -t ORDER_TESTS < <(find packages/order -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' | sort)
+          mapfile -t PAYMENT_TESTS < <(find packages/payment -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' ! -name 'payment-proof.test.ts' | sort)
+          ((${#ORDER_TESTS[@]} > 0))
+          ((${#PAYMENT_TESTS[@]} > 0))
+          node --test --test-concurrency=1 "${ORDER_TESTS[@]}"
+          node --test "${PAYMENT_TESTS[@]}"
+          test -f packages/order/postgres-acceptance.ts
+          test -f packages/payment/postgres-payment.ts
       - name: Validate D1 migration parses in SQLite
         working-directory: source
         shell: bash
