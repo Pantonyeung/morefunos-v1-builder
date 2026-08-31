@@ -1,0 +1,91 @@
+name: Keeta V2 Order 1001 Live Arm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-order-1001-live-arm.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-v2-order-1001-live-arm
+  cancel-in-progress: false
+
+jobs:
+  arm:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: '83eb41db6c2cef2837994056393458bbfb35a04d'
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Guard exact request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '[:space:]' < .ci-requests/keeta-v2-order-1001-live-arm.sha)" = "$SOURCE_SHA"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify exact source
+        working-directory: source
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck:intg-keeta
+          npm run test:intg-keeta
+      - name: Require existing secrets, deploy exact Worker
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/secrets.json"
+          node - "$RUNNER_TEMP/secrets.json" <<'NODE'
+          const fs=require('fs');const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));const names=new Set(rows.map(x=>x.name));for(const n of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY'])if(!names.has(n))throw new Error(`${n}_MISSING`);
+          NODE
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/deploy-secrets.env"
+          chmod 600 "$RUNNER_TEMP/deploy-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/deploy-secrets.env"
+      - name: Configure mandatory 1001 callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1001" || true)"
+          echo "configure_1001_http=$HTTP"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/config.json" <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(`configure_1001_provider_code=${b.code}`);if(b.code!==0)process.exit(1);
+          NODE
+      - name: Read sanitized 1001 baseline only
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/evidence.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/order-1001-evidence?shopId=$SHOP_ID" || true)"
+          echo "evidence_http=$HTTP"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/evidence.json" <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(`baseline_1001_found=${b.found===true}`);console.log(`baseline_shop_id=${b.shopId}`);if(Number(b.shopId)!==721578302)process.exit(1);
+          NODE
+          echo 'provider_order_mutation_request_count=0'
