@@ -46,13 +46,11 @@ jobs:
         run: |
           set -u
           mkdir -p evidence
+          api(){ curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$1"; }
+          BASE="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
 
           WORKERS_STATUS=PASS
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H 'Content-Type: application/json' \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" \
-            > evidence/workers.json 2>evidence/workers.err || WORKERS_STATUS=DENIED
+          api "$BASE/workers/scripts" > evidence/workers.json 2>evidence/workers.err || WORKERS_STATUS=DENIED
 
           PAGES_STATUS=PASS
           wrangler pages project list --json > evidence/pages.json 2>evidence/pages.err || PAGES_STATUS=DENIED
@@ -60,25 +58,57 @@ jobs:
           HYPERDRIVE_STATUS=PASS
           wrangler hyperdrive list > evidence/hyperdrive.txt 2>evidence/hyperdrive.err || HYPERDRIVE_STATUS=DENIED
 
-          WORKERS_STATUS="$WORKERS_STATUS" PAGES_STATUS="$PAGES_STATUS" HYPERDRIVE_STATUS="$HYPERDRIVE_STATUS" node - <<'NODE'
+          SMT_SETTINGS_STATUS=PASS
+          api "$BASE/workers/scripts/morefun-smt/settings" > evidence/morefun-smt-settings.json 2>evidence/morefun-smt-settings.err || SMT_SETTINGS_STATUS=DENIED
+
+          SMT_DEPLOYMENTS_STATUS=PASS
+          api "$BASE/workers/scripts/morefun-smt/deployments" > evidence/morefun-smt-deployments.json 2>evidence/morefun-smt-deployments.err || SMT_DEPLOYMENTS_STATUS=DENIED
+
+          SMT_SUBDOMAIN_STATUS=PASS
+          api "$BASE/workers/scripts/morefun-smt/subdomain" > evidence/morefun-smt-subdomain.json 2>evidence/morefun-smt-subdomain.err || SMT_SUBDOMAIN_STATUS=DENIED
+
+          ACCOUNT_SUBDOMAIN_STATUS=PASS
+          api "$BASE/workers/subdomain" > evidence/account-subdomain.json 2>evidence/account-subdomain.err || ACCOUNT_SUBDOMAIN_STATUS=DENIED
+
+          SMT_SOURCE_STATUS=PASS
+          api "$BASE/workers/scripts/morefun-smt" > evidence/morefun-smt-source.raw 2>evidence/morefun-smt-source.err || SMT_SOURCE_STATUS=DENIED
+
+          WORKERS_STATUS="$WORKERS_STATUS" PAGES_STATUS="$PAGES_STATUS" HYPERDRIVE_STATUS="$HYPERDRIVE_STATUS" SMT_SETTINGS_STATUS="$SMT_SETTINGS_STATUS" SMT_DEPLOYMENTS_STATUS="$SMT_DEPLOYMENTS_STATUS" SMT_SUBDOMAIN_STATUS="$SMT_SUBDOMAIN_STATUS" ACCOUNT_SUBDOMAIN_STATUS="$ACCOUNT_SUBDOMAIN_STATUS" SMT_SOURCE_STATUS="$SMT_SOURCE_STATUS" node - <<'NODE'
           const fs = require('fs');
-          const parseJson = (path, fallback) => {
-            try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch { return fallback; }
-          };
-          const workers = parseJson('evidence/workers.json', { result: [] });
+          const parseJson = (path, fallback) => { try { return JSON.parse(fs.readFileSync(path,'utf8')); } catch { return fallback; } };
+          const workers = parseJson('evidence/workers.json', {result:[]});
           const pages = parseJson('evidence/pages.json', []);
-          const workerNames = Array.isArray(workers.result) ? workers.result.map(x => x.id).filter(Boolean) : [];
-          const pageNames = Array.isArray(pages) ? pages.map(x => x.name).filter(Boolean) : [];
-          const hyperdrive = (() => { try { return fs.readFileSync('evidence/hyperdrive.txt','utf8').trim(); } catch { return ''; } })();
+          const settings = parseJson('evidence/morefun-smt-settings.json', {result:{}});
+          const deployments = parseJson('evidence/morefun-smt-deployments.json', {result:{deployments:[]}});
+          const smtSub = parseJson('evidence/morefun-smt-subdomain.json', {result:{}});
+          const accountSub = parseJson('evidence/account-subdomain.json', {result:{}});
+          const source = (()=>{try{return fs.readFileSync('evidence/morefun-smt-source.raw','utf8')}catch{return ''}})();
+          const workerNames = Array.isArray(workers.result) ? workers.result.map(x=>x.id).filter(Boolean) : [];
+          const pageNames = Array.isArray(pages) ? pages.map(x=>x.name).filter(Boolean) : [];
+          const bindings = Array.isArray(settings.result?.bindings) ? settings.result.bindings.map(x=>`${x.name}:${x.type}`).filter(Boolean) : [];
+          const deps = Array.isArray(deployments.result?.deployments) ? deployments.result.deployments : [];
+          const latest = deps[0] || {};
+          const hasLogin = source.includes('/api/smt/session/login');
+          const hasOrders = source.includes('/api/smt/orders');
           const summary = [
             `workers_status=${process.env.WORKERS_STATUS}`,
             `workers=${workerNames.join(',') || 'NONE'}`,
             `pages_status=${process.env.PAGES_STATUS}`,
             `pages=${pageNames.join(',') || 'NONE'}`,
             `hyperdrive_status=${process.env.HYPERDRIVE_STATUS}`,
-            `hyperdrive_present=${hyperdrive && !/no hyperdrive/i.test(hyperdrive) ? 'YES' : 'NO_OR_UNKNOWN'}`,
+            `smt_settings_status=${process.env.SMT_SETTINGS_STATUS}`,
+            `smt_bindings=${bindings.join(',') || 'NONE_OR_UNREADABLE'}`,
+            `smt_deployments_status=${process.env.SMT_DEPLOYMENTS_STATUS}`,
+            `smt_latest_deployment_id=${latest.id || 'UNKNOWN'}`,
+            `smt_subdomain_status=${process.env.SMT_SUBDOMAIN_STATUS}`,
+            `smt_workers_dev_enabled=${smtSub.result?.enabled === true ? 'YES' : smtSub.result?.enabled === false ? 'NO' : 'UNKNOWN'}`,
+            `account_subdomain_status=${process.env.ACCOUNT_SUBDOMAIN_STATUS}`,
+            `account_subdomain=${accountSub.result?.subdomain || 'UNKNOWN'}`,
+            `smt_source_status=${process.env.SMT_SOURCE_STATUS}`,
+            `smt_source_has_login_route=${hasLogin ? 'YES' : 'NO'}`,
+            `smt_source_has_orders_route=${hasOrders ? 'YES' : 'NO'}`,
             'mutation=NONE',
-          ].join('\n') + '\n';
+          ].join('\n')+'\n';
           fs.writeFileSync('evidence/summary.txt', summary);
           process.stdout.write(summary);
           NODE
