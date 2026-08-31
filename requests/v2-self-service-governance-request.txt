@@ -1,4 +1,4 @@
-source_sha=1877d342d7972e72fa84c27bffb56f6ae9ee6115
-base_sha=79005811ccd8585111088bf77655807b7d443726
-branch_name=work/OWN/B0283-owner-dine-in-consumer-r2
-request_id=B0283-OWNER-DINE-IN-SELF-SERVICE-20260831-R1
+source_sha=d1ac739a3b3f2498b0aedea37f84dbcb9300cd81
+base_sha=517067986bd1edef14e7567319c299a24f0d57cc
+branch_name=work/OWN/B0287-owner-freshness-status
+request_id=B0287-OWNER-FRESHNESS-SELF-SERVICE-20260831-R1
