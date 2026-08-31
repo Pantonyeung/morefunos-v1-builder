@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.ci-requests/morefun-v2-keeta-oauth-proof.txt'
+      - '.github/workflows/verify-morefun-v2-keeta-oauth-sit.yml'
   workflow_dispatch:
 
 permissions:
@@ -39,6 +40,29 @@ jobs:
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+
+      - name: Diagnose OAuth state lifecycle without exposing state value
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc \
+            --command "SELECT connection_id, created_at, CASE WHEN consumed_at IS NULL THEN 0 ELSE 1 END AS consumed FROM keeta_oauth_state ORDER BY created_at DESC LIMIT 5" \
+            --json > "$RUNNER_TEMP/oauth-state-proof.json"
+          node - "$RUNNER_TEMP/oauth-state-proof.json" <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const rows = payload.flatMap((entry) => entry.results ?? []);
+          console.log(`oauth_state_rows=${rows.length}`);
+          rows.forEach((row, index) => {
+            console.log(`oauth_state_${index}_connection_id=${row.connection_id}`);
+            console.log(`oauth_state_${index}_created_at=${row.created_at}`);
+            console.log(`oauth_state_${index}_consumed=${Boolean(Number(row.consumed))}`);
+          });
+          NODE
 
       - name: Prove encrypted OAuth token exists without exposing credential material
         working-directory: source/workers/keeta
