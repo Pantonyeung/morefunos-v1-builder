@@ -1,4 +1,4 @@
-source_sha=669471b01f534ba4ced1af4aa208311500e8a864
+source_sha=5d6d880ab601424d5dfb31cf6afe154fee20c2fd
 base_sha=cf1a372bf60a62cd9c1df67fa8ebbb9dacaf5aa7
 branch_name=work/CORE/B0292-dine-in-reporting-read-model
-request_id=B0292-DINE-IN-REPORTING-READ-MODEL-GREEN-20260831
+request_id=B0292-DINE-IN-REPORTING-READ-MODEL-FINAL-20260831
