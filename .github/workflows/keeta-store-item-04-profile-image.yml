@@ -86,11 +86,12 @@ jobs:
           for y in range(H):
               row = bytearray([0])
               for x in range(W):
-                  # Warm rice background + purple geometric M mark; deterministic and test-only.
-                  if (180 <= y <= 844 and ((220 <= x <= 320) or (704 <= x <= 804) or (320 <= x <= 512 and abs(y - (180 + (x-320)*2)) < 42) or (512 <= x <= 704 and abs(y - (564 - (x-512)*2)) < 42)):
-                      row += bytes((112, 73, 180, 255))
-                  else:
-                      row += bytes((255, 246, 235, 255))
+                  left_bar = 220 <= x <= 320 and 180 <= y <= 844
+                  right_bar = 704 <= x <= 804 and 180 <= y <= 844
+                  left_diag = 320 <= x <= 512 and abs(y - (180 + (x - 320) * 2)) < 42
+                  right_diag = 512 <= x <= 704 and abs(y - (564 - (x - 512) * 2)) < 42
+                  mark = left_bar or right_bar or left_diag or right_diag
+                  row += bytes((112, 73, 180, 255) if mark else (255, 246, 235, 255))
               rows.append(bytes(row))
           raw = b''.join(rows)
           def chunk(kind, data):
@@ -99,14 +100,14 @@ jobs:
           open('/tmp/morefun-keeta-store-item04.png', 'wb').write(png)
           PY
           python3 - <<'PY'
-          import os, struct
+          import struct
           p='/tmp/morefun-keeta-store-item04.png'
           b=open(p,'rb').read()
           assert b[:8] == b'\x89PNG\r\n\x1a\n'
           w,h=struct.unpack('>II', b[16:24])
           assert w > 900 and h > 900
           assert len(b) < 5*1024*1024
-          print(f'test_asset_format=png')
+          print('test_asset_format=png')
           print(f'test_asset_width={w}')
           print(f'test_asset_height={h}')
           print(f'test_asset_bytes={len(b)}')
