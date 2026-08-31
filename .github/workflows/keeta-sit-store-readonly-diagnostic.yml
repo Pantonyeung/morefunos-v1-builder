@@ -3,7 +3,9 @@ name: Keeta SIT Store Read-only Diagnostic
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/keeta-sit-store-readonly-diagnostic.yml']
+    paths:
+      - '.ci-requests/morefun-v2-keeta-sit.sha'
+      - '.github/workflows/keeta-sit-store-readonly-diagnostic.yml'
   workflow_dispatch:
 
 permissions:
