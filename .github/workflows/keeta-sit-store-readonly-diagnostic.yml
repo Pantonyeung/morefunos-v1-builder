@@ -109,6 +109,42 @@ jobs:
           cat "$RUNNER_TEMP/profile-image-state.json" >&2 || true
           exit 1
 
+      - name: Inspect current profile image asset
+        id: profile_asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_URL="$(node - "$RUNNER_TEMP/profile-image-state.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const url = body.data?.mainPictures?.[0]?.url;
+          if (typeof url !== 'string' || !/^https?:\/\//.test(url)) process.exit(1);
+          process.stdout.write(url);
+          NODE
+          )"
+          curl --fail --location --silent --show-error "$IMAGE_URL" -o "$RUNNER_TEMP/current-profile-image"
+          node - "$RUNNER_TEMP/current-profile-image" <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const file = fs.readFileSync(process.argv[2]);
+          const bytes = file.length;
+          let width = null;
+          let height = null;
+          let format = 'unknown';
+          if (bytes >= 24 && file.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) {
+            format = 'png';
+            width = file.readUInt32BE(16);
+            height = file.readUInt32BE(20);
+          }
+          const eligible = bytes < 5 * 1024 * 1024 && width !== null && height !== null && width > 900 && height > 900;
+          console.log(`profile_asset_format=${format}`);
+          console.log(`profile_asset_bytes=${bytes}`);
+          console.log(`profile_asset_width=${width ?? 'unknown'}`);
+          console.log(`profile_asset_height=${height ?? 'unknown'}`);
+          console.log(`profile_asset_sha256=${crypto.createHash('sha256').update(file).digest('hex')}`);
+          console.log(`profile_asset_reuse_eligible=${eligible}`);
+          NODE
+
       - name: Read current Keeta Store Business Hours
         shell: bash
         run: |
@@ -190,4 +226,4 @@ jobs:
 
       - name: Evidence summary
         shell: bash
-        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nprofile_image_state=PASS\nbusiness_hours=PASS\nspecial_business_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
+        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\nstore_details=PASS\nprofile_image_state=PASS\nprofile_asset_inspection=PASS\nbusiness_hours=PASS\nspecial_business_hours=PASS\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
