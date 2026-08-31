@@ -1,0 +1,79 @@
+name: Migrate V2 Zero-Cost D1
+
+on:
+  push:
+    paths:
+      - 'requests/v2-zero-cost-d1-migration-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-zero-cost-d1-migration-request.txt | tr -d '[:space:]')"
+          DATABASE_ID="$(sed -n 's/^database_id=//p' requests/v2-zero-cost-d1-migration-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DATABASE_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+          [[ "$DATABASE_ID" == '1ed17fcb-7e7a-4e13-a922-ae141aff4142' ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "database_id=$DATABASE_ID" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Apply exact D1 schema and verify required tables
+        shell: bash
+        env:
+          DATABASE_ID: ${{ steps.req.outputs.database_id }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          SQL_FILE='source/infra/cloudflare/d1/migrations/0001-zero-cost-order-payment-proof.sql'
+          test -s "$SQL_FILE"
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          HTTP_CODE="$(curl -sS -o /tmp/migrate.json -w '%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H 'content-type: application/json' --data-binary @/tmp/body.json)"
+          echo "migration_http=${HTTP_CODE}" | tee evidence/migration.txt
+          [[ "$HTTP_CODE" == 200 ]]
+          node -e "const x=require('/tmp/migrate.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
+          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_state','mfos_customer_order_ownership','mfos_outbox','mfos_payment_proof','mfos_payment_state') ORDER BY name\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
+          node - <<'NODE' | tee -a evidence/migration.txt
+          const x=require('/tmp/verify-result.json');
+          const names=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=['mfos_customer_order_ownership','mfos_order_state','mfos_outbox','mfos_payment_proof','mfos_payment_state'].sort();
+          if(JSON.stringify(names)!==JSON.stringify(expected)){console.error('D1_REQUIRED_TABLES_MISSING',names);process.exit(1)}
+          console.log('database_name=morefun-v2-production');
+          console.log('required_tables=PASS');
+          console.log('source_sha='+process.env.SOURCE_SHA);
+          console.log('paid_resource_created=NO');
+          NODE
+          rm -f /tmp/body.json /tmp/migrate.json /tmp/verify.json /tmp/verify-result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-zero-cost-d1-migration-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
