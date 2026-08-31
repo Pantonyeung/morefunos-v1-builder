@@ -91,6 +91,28 @@ jobs:
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-1102-secrets.env"
 
+      - name: Wait for protected Worker version readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 15); do
+            STATUS="$(curl --silent --output "$RUNNER_TEMP/readiness.json" --write-out '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              "$WORKER_URL/sit/store-details?shopId=$SHOP_ID")"
+            if [[ "$STATUS" == "200" ]]; then
+              node - "$RUNNER_TEMP/readiness.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body.code !== 0 || Number(body.data?.shopId) !== 721517434) process.exit(1);
+          NODE
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'KEETA_PROTECTED_RUNTIME_NOT_READY' >&2
+          cat "$RUNNER_TEMP/readiness.json" >&2 || true
+          exit 1
+
       - name: Configure Keeta test webhook event 1102
         shell: bash
         run: |
@@ -179,7 +201,7 @@ jobs:
           exit 1
 
       - name: Restore API test store to rest
-        if: always()
+        if: always() && env.BASE_UPDATED_AT != ''
         shell: bash
         run: |
           set -euo pipefail
