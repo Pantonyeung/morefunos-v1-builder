@@ -1,0 +1,157 @@
+name: V2 Owner Final Browser Evidence
+
+on:
+  push:
+    paths:
+      - 'requests/v2-owner-final-browser-evidence-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-final-browser-evidence-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify admitted current main identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          MAIN_SHA="$(git ls-remote https://github.com/Pantonyeung/Morefun-v2.git refs/heads/main | cut -f1)"
+          test "$MAIN_SHA" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Install Owner app dependencies
+        working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+
+      - name: Create controlled canonical runtime harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > source/apps/owner-web/src/browser-evidence-runtime.ts <<'EOF'
+          import {InternalPortCompositionResolver} from '../../../packages/internal-port-runtime/composition.ts';
+          import {REPORTING_SNAPSHOT_READ_V1} from '../../../packages/reporting-projection/reporting-port-contract.ts';
+          import {OPERATIONAL_HEALTH_READ_V1} from '../../../packages/offline-operations/operational-health-port-contract.ts';
+
+          const resolver=new InternalPortCompositionResolver();
+          const now=Date.now();
+          const generatedAt=new Date(now-30_000).toISOString();
+          const freshUntil=new Date(now+3_600_000).toISOString();
+          const latestSourceAt=new Date(now-60_000).toISOString();
+
+          resolver.register({adapterId:'browser-owner-reporting',port:'OWN',operation:REPORTING_SNAPSHOT_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({projectionKey:'store-1:HKD',storeId:'store-1',currency:'HKD',generatedAt,freshUntil,sourceWatermark:{latestSourceAt,maxOrderRevision:4,maxPaymentRevision:6,sourceFactCount:10},metrics:{turnoverMinor:1006700,orderCount:123,averageOrderValueMinor:8185,completedPaymentMinor:1006700,completedRefundMinor:1000,paymentNetMinor:1005700},tenderBreakdown:[{tenderMethod:'CASH',completedPaymentMinor:423100,completedRefundMinor:0,netMinor:423100},{tenderMethod:'FPS',completedPaymentMinor:271500,completedRefundMinor:1000,netMinor:270500}],projectionRevision:1})}});
+          resolver.register({adapterId:'browser-owner-health',port:'OWN',operation:OPERATIONAL_HEALTH_READ_V1,requirements:{authorizationContextRequired:true},translator:{translate:request=>request},executor:{execute:()=>({connectivity:'OFFLINE',pendingOfflineOperations:2,failedOfflineOperations:1,pendingOutbox:3,failedEventDeliveries:1,printAttentionCount:2,closeBlockerCount:1,status:'ACTION_REQUIRED',operatorActionRequired:true})}});
+
+          (globalThis as typeof globalThis & {__MOREFUNOS_V2_OWNER_RUNTIME__?:unknown}).__MOREFUNOS_V2_OWNER_RUNTIME__={resolver,storeId:'store-1',currency:'HKD',authorization:()=>({actorId:'owner-1',authorizationContextRef:'browser-evidence-auth',scopeRef:'store-1'}),nextRequestId:()=>`browser-evidence-${Date.now()}`};
+          await import('./main.tsx');
+          EOF
+          sed -i 's#/src/main.tsx#/src/browser-evidence-runtime.ts#' source/apps/owner-web/index.html
+
+      - name: Launch exact Owner current main
+        working-directory: source/apps/owner-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm run dev -- --host 127.0.0.1 --port 4180 > "$RUNNER_TEMP/owner-vite.log" 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4180/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/owner-vite.log"
+          exit 1
+
+      - name: Capture desktop and mobile full-page evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          cat > capture-owner-final.mjs <<'EOF'
+          import {chromium} from 'playwright-core';
+          import fs from 'node:fs';
+          const [chrome,sourceSha]=process.argv.slice(2);
+          const browser=await chromium.launch({headless:true,executablePath:chrome});
+          const cases=[['desktop',1440,1000],['mobile',390,844]];
+          const results=[];
+          for(const [name,width,height] of cases){
+            const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:name==='mobile'?2:1,isMobile:name==='mobile',hasTouch:name==='mobile'});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',error=>errors.push(String(error)));
+            await page.goto('http://127.0.0.1:4180/',{waitUntil:'networkidle'});
+            await page.getByText('今日實收',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const today=(await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
+            for(const required of ['今日實收','$10,057','訂單數','123','平均客單','$81.85','退款','$10'])if(!today.includes(required))throw new Error(`${name}:TODAY_MISSING:${required}`);
+            await page.screenshot({path:`evidence/owner-final-${name}-today.png`,fullPage:true});
+            await page.getByRole('button',{name:/通知/}).last().click();
+            await page.getByText('需要你處理',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const alerts=(await page.locator('body').innerText()).replace(/\s+/g,' ').trim();
+            for(const required of ['需要你處理','離線操作失敗 1 項','事件同步失敗 1 項','打印需要處理 2 項','關帳阻塞 1 項','待同步離線操作 2 項','待送出事件 3 項','門店目前離線運作'])if(!alerts.includes(required))throw new Error(`${name}:ALERT_MISSING:${required}`);
+            if(alerts.includes('資料未接通'))throw new Error(`${name}:ALERTS_DISCONNECTED`);
+            if(errors.length)throw new Error(`${name}:PAGE_ERROR:${errors.join('|')}`);
+            await page.screenshot({path:`evidence/owner-final-${name}-alerts.png`,fullPage:true});
+            fs.writeFileSync(`evidence/owner-final-${name}.txt`,`TODAY\n${today}\n\nALERTS\n${alerts}\n`);
+            results.push({name,width,height,today:'PASS',alerts:'PASS',pageErrors:errors});
+            await context.close();
+          }
+          await browser.close();
+          fs.writeFileSync('evidence/browser-summary.json',JSON.stringify({sourceSha,currentMain:true,results},null,2)+'\n');
+          EOF
+          node capture-owner-final.mjs "$CHROME" "$SOURCE_SHA"
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\ncurrent_main=true\ndesktop=PASS\nmobile=PASS\nalerts=PASS\nresult=PASS\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload final Owner browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-owner-final-browser-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
