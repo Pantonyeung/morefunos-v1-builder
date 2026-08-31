@@ -1,0 +1,81 @@
+name: Diagnose V2 SMT Cloudflare Runtime
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-cloudflare-runtime-diagnostic.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Wrangler
+        run: npm install --global --silent wrangler@4.125.0
+
+      - name: Inventory Cloudflare resources read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" \
+            > evidence/workers.json
+
+          wrangler pages project list --json > evidence/pages.json
+          wrangler hyperdrive list > evidence/hyperdrive.txt
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const workers = JSON.parse(fs.readFileSync('evidence/workers.json','utf8'));
+          const pages = JSON.parse(fs.readFileSync('evidence/pages.json','utf8'));
+          const workerNames = Array.isArray(workers.result) ? workers.result.map(x => x.id).filter(Boolean) : [];
+          const pageNames = Array.isArray(pages) ? pages.map(x => x.name).filter(Boolean) : [];
+          const summary = [
+            `workers=${workerNames.join(',') || 'NONE'}`,
+            `pages=${pageNames.join(',') || 'NONE'}`,
+            'hyperdrive_file=evidence/hyperdrive.txt',
+            'mutation=NONE',
+          ].join('\n') + '\n';
+          fs.writeFileSync('evidence/summary.txt', summary);
+          process.stdout.write(summary);
+          NODE
+
+      - name: Upload read-only evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-cloudflare-runtime-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
