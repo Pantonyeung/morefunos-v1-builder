@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.ci-requests/morefun-v2-keeta-sit.sha'
+      - '.github/workflows/deploy-morefun-v2-keeta-sit.yml'
   workflow_dispatch:
     inputs:
       source_sha:
@@ -116,8 +117,7 @@ jobs:
             console.error('KEETA_APP_SECRET_MISSING');
             process.exit(1);
           }
-          if (names.has('KEETA_TOKEN_ENCRYPTION_KEY')) process.stdout.write('encryption_present=true\n');
-          else process.stdout.write('encryption_present=false\n');
+          process.stdout.write(names.has('KEETA_TOKEN_ENCRYPTION_KEY') ? 'encryption_present=true\n' : 'encryption_present=false\n');
           NODE
           PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
           const fs = require('fs');
@@ -137,6 +137,29 @@ jobs:
         run: |
           set -euo pipefail
           openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
+
+      - name: Verify Keeta D1 database identity
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 list --json > "$RUNNER_TEMP/d1-list.json"
+          node - "$RUNNER_TEMP/d1-list.json" wrangler.jsonc <<'NODE'
+          const fs = require('fs');
+          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const config = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+          const expected = config.d1_databases.find((row) => row.binding === 'KEETA_INGRESS_DB');
+          if (!expected) throw new Error('KEETA_D1_BINDING_CONFIG_MISSING');
+          const live = rows.find((row) => row.name === expected.database_name);
+          if (!live) throw new Error(`KEETA_D1_DATABASE_NOT_VISIBLE name=${expected.database_name}`);
+          console.log(`keeta_d1_name=${live.name}`);
+          console.log(`keeta_d1_live_id=${live.uuid}`);
+          console.log(`keeta_d1_config_id=${expected.database_id}`);
+          if (live.uuid !== expected.database_id) throw new Error('KEETA_D1_DATABASE_ID_MISMATCH');
+          NODE
 
       - name: Apply Keeta SIT D1 migrations
         working-directory: source/workers/keeta
