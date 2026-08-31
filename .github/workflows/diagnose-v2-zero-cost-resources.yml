@@ -1,0 +1,64 @@
+name: Diagnose V2 Zero-Cost Resources
+
+on:
+  push:
+    paths:
+      - 'requests/v2-zero-cost-resource-discovery-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+      FIREBASE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EMAIL }}
+      FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read-only D1 R2 and Firebase secret discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          : > evidence/resources.txt
+          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            echo 'cloudflare_api=UNAVAILABLE' | tee -a evidence/resources.txt
+          else
+            for resource in d1 r2; do
+              if [[ "$resource" == d1 ]]; then
+                URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database?per_page=100"
+              else
+                URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets?per_page=100"
+              fi
+              HTTP_CODE="$(curl -sS -o "evidence/${resource}.json" -w '%{http_code}' "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")"
+              echo "${resource}_http=${HTTP_CODE}" | tee -a evidence/resources.txt
+              if [[ "$HTTP_CODE" == 200 ]]; then
+                node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('evidence/${resource}.json','utf8'));const rows=Array.isArray(x.result)?x.result:(x.result?.buckets||[]);for(const r of rows) console.log('${resource}_resource='+(r.name||r.uuid||r.id||'UNKNOWN'));" | tee -a evidence/resources.txt
+              fi
+            done
+          fi
+          [[ -n "${FIREBASE_DATABASE_URL:-}" ]] && echo 'FIREBASE_DATABASE_URL=SET' || echo 'FIREBASE_DATABASE_URL=UNSET'
+          [[ -n "${FIREBASE_SERVICE_ACCOUNT_EMAIL:-}" ]] && echo 'FIREBASE_SERVICE_ACCOUNT_EMAIL=SET' || echo 'FIREBASE_SERVICE_ACCOUNT_EMAIL=UNSET'
+          [[ -n "${FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY:-}" ]] && echo 'FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY=SET' || echo 'FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY=UNSET'
+          {
+            [[ -n "${FIREBASE_DATABASE_URL:-}" ]] && echo 'FIREBASE_DATABASE_URL=SET' || echo 'FIREBASE_DATABASE_URL=UNSET'
+            [[ -n "${FIREBASE_SERVICE_ACCOUNT_EMAIL:-}" ]] && echo 'FIREBASE_SERVICE_ACCOUNT_EMAIL=SET' || echo 'FIREBASE_SERVICE_ACCOUNT_EMAIL=UNSET'
+            [[ -n "${FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY:-}" ]] && echo 'FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY=SET' || echo 'FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY=UNSET'
+            echo 'secret_values_exposed=NO'
+            echo 'cloudflare_mutation=NONE'
+          } >> evidence/resources.txt
+          rm -f evidence/d1.json evidence/r2.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-zero-cost-resource-discovery-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
