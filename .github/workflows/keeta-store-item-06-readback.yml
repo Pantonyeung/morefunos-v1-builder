@@ -1,0 +1,103 @@
+name: Keeta Store Item 06 Readback
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-store-item-06-readback.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      SHOP_ID: '721517434'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+    steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-store-item-06-readback.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Guard Item 06 remains current
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
+          grep -Fq 'CURRENT_STORE_API_ITEM: `STORE_ITEM_06_STATUS_OPEN`' source/docs/rooms/integration/INTG-CUR.md
+          grep -Fq '/sit/store-details' source/workers/keeta/src/index.ts
+
+      - name: Prepare ephemeral read-only probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-item06-readback-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-item06-readback-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker for read-only evidence
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-item06-readback-secrets.env"
+
+      - name: Read current provider state without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP=000
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/readback.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
+            if [[ "$HTTP" == '200' ]]; then break; fi
+            sleep 2
+          done
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/readback.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`readback_code=${b.code}`);
+          console.log(`readback_status=${b?.data?.status}`);
+          console.log(`readback_delivery_rest_status=${b?.data?.deliveryRestStatus ?? 'not-present'}`);
+          console.log(`readback_pickup_rest_status=${b?.data?.pickupRestStatus ?? 'not-present'}`);
+          console.log(`readback_available_for_order=${b?.data?.availableForOrder ?? 'not-present'}`);
+          if (b.code !== 0) process.exit(1);
+          NODE
+
+      - name: Evidence summary
+        shell: bash
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nhandbook_store_item=06\nmode=READ_ONLY_POST_FAILURE_STATE_PROOF\nmutation_request_count=0\n' \
+            "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
