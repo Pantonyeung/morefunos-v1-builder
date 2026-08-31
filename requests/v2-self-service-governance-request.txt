@@ -1,4 +1,4 @@
-source_sha=0c608516c3638c7be1cc11d4a569bec086e7da4b
-base_sha=ab1783b720cbc6932a7e17ecbacf30ae27f028e6
-branch_name=work/OWN/B0288-owner-analysis-safe-summary
-request_id=B0288-OWNER-ANALYSIS-SELF-SERVICE-20260831-R1
+source_sha=c51940dffbc238bcbd25ec8ea483bd39c657d981
+base_sha=f7e63928a1dd3f0fefff07722adc4d4368756ba1
+branch_name=work/OWN/B0289-owner-operational-alerts
+request_id=B0289-OWNER-OPERATIONAL-ALERTS-SELF-SERVICE-20260901-R1
