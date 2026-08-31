@@ -44,28 +44,39 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          set -euo pipefail
+          set -u
           mkdir -p evidence
 
+          WORKERS_STATUS=PASS
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H 'Content-Type: application/json' \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" \
-            > evidence/workers.json
+            > evidence/workers.json 2>evidence/workers.err || WORKERS_STATUS=DENIED
 
-          wrangler pages project list --json > evidence/pages.json
-          wrangler hyperdrive list > evidence/hyperdrive.txt
+          PAGES_STATUS=PASS
+          wrangler pages project list --json > evidence/pages.json 2>evidence/pages.err || PAGES_STATUS=DENIED
 
-          node - <<'NODE'
+          HYPERDRIVE_STATUS=PASS
+          wrangler hyperdrive list > evidence/hyperdrive.txt 2>evidence/hyperdrive.err || HYPERDRIVE_STATUS=DENIED
+
+          WORKERS_STATUS="$WORKERS_STATUS" PAGES_STATUS="$PAGES_STATUS" HYPERDRIVE_STATUS="$HYPERDRIVE_STATUS" node - <<'NODE'
           const fs = require('fs');
-          const workers = JSON.parse(fs.readFileSync('evidence/workers.json','utf8'));
-          const pages = JSON.parse(fs.readFileSync('evidence/pages.json','utf8'));
+          const parseJson = (path, fallback) => {
+            try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch { return fallback; }
+          };
+          const workers = parseJson('evidence/workers.json', { result: [] });
+          const pages = parseJson('evidence/pages.json', []);
           const workerNames = Array.isArray(workers.result) ? workers.result.map(x => x.id).filter(Boolean) : [];
           const pageNames = Array.isArray(pages) ? pages.map(x => x.name).filter(Boolean) : [];
+          const hyperdrive = (() => { try { return fs.readFileSync('evidence/hyperdrive.txt','utf8').trim(); } catch { return ''; } })();
           const summary = [
+            `workers_status=${process.env.WORKERS_STATUS}`,
             `workers=${workerNames.join(',') || 'NONE'}`,
+            `pages_status=${process.env.PAGES_STATUS}`,
             `pages=${pageNames.join(',') || 'NONE'}`,
-            'hyperdrive_file=evidence/hyperdrive.txt',
+            `hyperdrive_status=${process.env.HYPERDRIVE_STATUS}`,
+            `hyperdrive_present=${hyperdrive && !/no hyperdrive/i.test(hyperdrive) ? 'YES' : 'NO_OR_UNKNOWN'}`,
             'mutation=NONE',
           ].join('\n') + '\n';
           fs.writeFileSync('evidence/summary.txt', summary);
@@ -73,6 +84,7 @@ jobs:
           NODE
 
       - name: Upload read-only evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v2-smt-cloudflare-runtime-${{ github.run_id }}
