@@ -1,4 +1,4 @@
-source_sha=f24db6246fd7eeb10855733852b4df19de21dd04
+source_sha=7b13e54d9d9a3941fda95aa7e3078cfd4d4e9461
 base_sha=0e3d5fafe860707c7acb392d0b0793a311a7a2f2
 branch_name=work/CORE/B0144-owner-dine-in-daily-aggregate-projection-r3
-request_id=B0144-DINE-IN-DAILY-SELF-SERVICE-GOVERNANCE-20260831
+request_id=B0144-DINE-IN-DAILY-SELF-SERVICE-GOVERNANCE-R2-20260831
