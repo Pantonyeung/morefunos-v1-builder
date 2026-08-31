@@ -1,4 +1,4 @@
-source_sha=75572a1f5af9f2ba0b261ea8871c820e50d3b9c1
+source_sha=c08ce407002fe23b7fa525d626aac1b2a608e23f
 base_sha=e5f676490835985d1ed2b46c53e8bdd628d16900
 branch_name=work/CORE/B0290-dine-in-service-canonical-foundation
-request_id=B0290-DINE-IN-SERVICE-RED-20260831
+request_id=B0290-DINE-IN-SERVICE-GREEN-20260831
