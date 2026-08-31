@@ -1,0 +1,75 @@
+name: Keeta 1102 Configuration Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/morefun-v2-keeta-1102-config-diag.sha'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-1102-config-diag.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Deploy exact source with ephemeral probe key
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/diag-secrets.env"
+          chmod 600 "$RUNNER_TEMP/diag-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/diag-secrets.env" >/dev/null
+
+      - name: Capture safe 1102 configuration result
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1102" || true)"
+          echo "configure_1102_transport_http=$HTTP"
+          node - "$RUNNER_TEMP/config.json" <<'NODE'
+          const fs=require('fs');
+          const path=process.argv[2];
+          if (!fs.existsSync(path)) { console.log('configure_1102_body_missing=true'); process.exit(0); }
+          let body; try { body=JSON.parse(fs.readFileSync(path,'utf8')); } catch { console.log('configure_1102_body_json=false'); process.exit(0); }
+          const code=typeof body.code==='string'||typeof body.code==='number' ? String(body.code) : 'unknown';
+          const message=typeof body.message==='string' ? body.message.replace(/[\r\n]/g,' ').slice(0,240) : '';
+          console.log(`configure_1102_code=${code}`);
+          console.log(`configure_1102_message=${message}`);
+          console.log(`configure_1102_event_id=${body.data?.eventId ?? 'none'}`);
+          NODE
