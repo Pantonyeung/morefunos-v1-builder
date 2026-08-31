@@ -55,10 +55,10 @@ jobs:
           node-version: '24'
       - name: Install exact source
         working-directory: source
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
       - name: Root TypeScript gate
         working-directory: source
-        run: npx tsc --noEmit -p tsconfig.json
+        run: npm run typecheck
       - name: Keeta ingress regression
         working-directory: source
         run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-order-binding.test.ts
