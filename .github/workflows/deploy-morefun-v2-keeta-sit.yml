@@ -118,7 +118,6 @@ jobs:
             process.exit(1);
           }
           console.log(`encryption_present=${names.has('KEETA_TOKEN_ENCRYPTION_KEY')}`);
-          console.log(`probe_present=${names.has('KEETA_SIT_PROBE_KEY')}`);
           NODE
           ENCRYPTION_PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
           const fs = require('fs');
@@ -126,14 +125,7 @@ jobs:
           process.stdout.write(rows.some((row) => row.name === 'KEETA_TOKEN_ENCRYPTION_KEY') ? 'true' : 'false');
           NODE
           )"
-          PROBE_PRESENT="$(node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
-          const fs = require('fs');
-          const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          process.stdout.write(rows.some((row) => row.name === 'KEETA_SIT_PROBE_KEY') ? 'true' : 'false');
-          NODE
-          )"
           echo "encryption_present=$ENCRYPTION_PRESENT" >> "$GITHUB_OUTPUT"
-          echo "probe_present=$PROBE_PRESENT" >> "$GITHUB_OUTPUT"
 
       - name: Provision token encryption secret when absent
         if: steps.runtime-secrets.outputs.encryption_present != 'true'
@@ -146,8 +138,8 @@ jobs:
           set -euo pipefail
           openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
 
-      - name: Provision protected SIT probe secret when absent
-        if: steps.runtime-secrets.outputs.probe_present != 'true'
+      - name: Rotate protected SIT probe secret
+        id: sit-probe-secret
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -155,7 +147,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          openssl rand -hex 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf '%s' "$PROBE_KEY" | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
+          echo "probe_key=$PROBE_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Verify Keeta D1 database identity
         working-directory: source/workers/keeta
@@ -211,6 +206,28 @@ jobs:
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (body.service !== 'morefun-v2-keeta-sit' || body.status !== 'ok') process.exit(1);
+          NODE
+
+      - name: Probe live Keeta Store Details through protected runtime
+        shell: bash
+        env:
+          PROBE_KEY: ${{ steps.sit-probe-secret.outputs.probe_key }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $PROBE_KEY" \
+            "https://morefun-v2-keeta-sit.pantonyeung.workers.dev/sit/store-details?shopId=721517434" \
+            > "$RUNNER_TEMP/keeta-store-details.json"
+          node - "$RUNNER_TEMP/keeta-store-details.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body.code !== 0 || body.message !== 'success') throw new Error(`KEETA_STORE_DETAILS_PROBE_FAILED ${JSON.stringify(body)}`);
+          if (Number(body.data?.shopId) !== 721517434) throw new Error('KEETA_STORE_DETAILS_SHOP_ID_MISMATCH');
+          console.log(`keeta_store_shop_id=${body.data.shopId}`);
+          console.log(`keeta_store_status=${body.data.status}`);
+          console.log(`keeta_store_delivery_rest_status=${body.data.deliveryRestStatus}`);
+          console.log(`keeta_store_pickup_rest_status=${body.data.pickupRestStatus}`);
+          console.log(`keeta_store_available_for_order=${body.data.availableForOrder}`);
           NODE
 
       - name: Record deployment evidence
