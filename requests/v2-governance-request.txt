@@ -1,4 +1,4 @@
-source_sha=c51940dffbc238bcbd25ec8ea483bd39c657d981
+source_sha=d89023938767d2a47b4f2520ddf902ae14030ab1
 base_sha=f7e63928a1dd3f0fefff07722adc4d4368756ba1
 branch_name=work/OWN/B0289-owner-operational-alerts
-request_id=B0289-OWNER-OPERATIONAL-ALERTS-GOVERNANCE-20260901-R1
+request_id=B0289-OWNER-OPERATIONAL-ALERTS-GOVERNANCE-20260901-R2
