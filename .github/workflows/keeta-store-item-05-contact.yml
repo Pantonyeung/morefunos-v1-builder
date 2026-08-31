@@ -122,24 +122,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sleep 2
-          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/post-contact.json" -w '%{http_code}' \
-            -H "Authorization: Bearer $PROBE_KEY" \
-            "$WORKER_URL/sit/store-contact-state?shopId=$SHOP_ID")"
-          test "$HTTP" = '200'
-          node - "$RUNNER_TEMP/contact-update-body.json" "$RUNNER_TEMP/post-contact.json" <<'NODE'
+          MATCH=0
+          LAST_HTTP=000
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/post-contact.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $PROBE_KEY" \
+              "$WORKER_URL/sit/store-contact-state?shopId=$SHOP_ID" || true)"
+            LAST_HTTP="$HTTP"
+            if [[ "$HTTP" == '200' ]] && node - "$RUNNER_TEMP/contact-update-body.json" "$RUNNER_TEMP/post-contact.json" <<'NODE'
           const fs=require('fs');
           const expected=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).phones;
           const b=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
           const actual=b?.data?.phones;
-          if (b.code !== 0 || !Array.isArray(actual) || JSON.stringify(actual) !== JSON.stringify(expected)) {
-            console.error(`KEETA_CONTACT_POST_READ_MISMATCH code=${b.code} expected_count=${expected.length} actual_count=${Array.isArray(actual) ? actual.length : 'not-array'}`);
-            process.exit(1);
-          }
+          if (b.code !== 0 || !Array.isArray(actual) || JSON.stringify(actual) !== JSON.stringify(expected)) process.exit(1);
           console.log(`post_contact_read_code=${b.code}`);
           console.log(`post_phone_count=${actual.length}`);
           console.log('post_read_exact_baseline_match=true');
           NODE
+            then
+              MATCH=1
+              echo "post_read_attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$MATCH" != '1' ]]; then
+            echo "KEETA_CONTACT_POST_READ_NOT_STABLE http=$LAST_HTTP" >&2
+            exit 1
+          fi
 
       - name: Evidence summary
         shell: bash
