@@ -34,19 +34,16 @@ jobs:
           for NAME in $NAMES; do
             api "$BASE/workers/scripts/$NAME/settings" > "evidence/$NAME-settings.json" 2>"evidence/$NAME-settings.err" || true
             api "$BASE/workers/scripts/$NAME/content/v2" > "evidence/$NAME-content.raw" 2>"evidence/$NAME-content.err" || true
-            NAME="$NAME" node - <<'NODE' >> evidence/summary.txt
-            const fs=require('fs'); const n=process.env.NAME;
-            const pj=(p)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return {result:{}}}};
-            const rd=(p)=>{try{return fs.readFileSync(p,'utf8')}catch{return ''}};
-            const s=pj(`evidence/${n}-settings.json`); const c=rd(`evidence/${n}-content.raw`);
-            const bs=Array.isArray(s.result?.bindings)?s.result.bindings.map(x=>`${x.name}:${x.type}`):[];
-            console.log(`[${n}]`);
-            console.log(`bindings=${bs.join(',')||'NONE'}`);
-            console.log(`has_postgres=${/postgres|database_url|pghost|hyperdrive/i.test(JSON.stringify(s.result)||'')||/postgres|hyperdrive/i.test(c)?'YES':'NO'}`);
-            console.log(`has_firebase=${/firebase/i.test(JSON.stringify(s.result)||'')||/firebase/i.test(c)?'YES':'NO'}`);
-            console.log(`has_smt_login=${c.includes('/api/smt/session/login')?'YES':'NO'}`);
-            console.log(`has_smt_orders=${c.includes('/api/smt/orders')?'YES':'NO'}`);
-            NODE
+            printf '[%s]\n' "$NAME" >> evidence/summary.txt
+            if jq -e '.result.bindings' "evidence/$NAME-settings.json" >/dev/null 2>&1; then
+              jq -r '[.result.bindings[]? | "\(.name):\(.type)"] | "bindings=" + (if length==0 then "NONE" else join(",") end)' "evidence/$NAME-settings.json" >> evidence/summary.txt
+            else
+              printf 'bindings=UNREADABLE\n' >> evidence/summary.txt
+            fi
+            if grep -Eiq 'postgres|database_url|pghost|hyperdrive' "evidence/$NAME-settings.json" "evidence/$NAME-content.raw" 2>/dev/null; then printf 'has_postgres=YES\n' >> evidence/summary.txt; else printf 'has_postgres=NO\n' >> evidence/summary.txt; fi
+            if grep -Eiq 'firebase' "evidence/$NAME-settings.json" "evidence/$NAME-content.raw" 2>/dev/null; then printf 'has_firebase=YES\n' >> evidence/summary.txt; else printf 'has_firebase=NO\n' >> evidence/summary.txt; fi
+            if grep -Fq '/api/smt/session/login' "evidence/$NAME-content.raw" 2>/dev/null; then printf 'has_smt_login=YES\n' >> evidence/summary.txt; else printf 'has_smt_login=NO\n' >> evidence/summary.txt; fi
+            if grep -Fq '/api/smt/orders' "evidence/$NAME-content.raw" 2>/dev/null; then printf 'has_smt_orders=YES\n' >> evidence/summary.txt; else printf 'has_smt_orders=NO\n' >> evidence/summary.txt; fi
           done
           cat evidence/summary.txt
       - name: Upload evidence
