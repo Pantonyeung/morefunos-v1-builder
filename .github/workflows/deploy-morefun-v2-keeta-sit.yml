@@ -182,7 +182,6 @@ jobs:
           openssl rand -base64 32 | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_TOKEN_ENCRYPTION_KEY --config wrangler.jsonc
 
       - name: Rotate protected SIT probe secret
-        id: sit-probe-secret
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -193,7 +192,7 @@ jobs:
           PROBE_KEY="$(openssl rand -hex 32)"
           echo "::add-mask::$PROBE_KEY"
           printf '%s' "$PROBE_KEY" | npx --yes "wrangler@$WRANGLER_VERSION" secret put KEETA_SIT_PROBE_KEY --config wrangler.jsonc
-          echo "probe_key=$PROBE_KEY" >> "$GITHUB_OUTPUT"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
 
       - name: Smoke deployed health endpoint
         shell: bash
@@ -210,8 +209,6 @@ jobs:
 
       - name: Probe live Keeta Store Details through protected runtime
         shell: bash
-        env:
-          PROBE_KEY: ${{ steps.sit-probe-secret.outputs.probe_key }}
         run: |
           set -euo pipefail
           curl --fail-with-body --silent --show-error \
