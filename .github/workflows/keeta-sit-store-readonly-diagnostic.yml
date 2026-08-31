@@ -1,0 +1,107 @@
+name: Keeta SIT Store Read-only Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/keeta-sit-store-readonly-diagnostic.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-diagnostic:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      SHOP_ID: '721517434'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/morefun-v2-keeta-sit.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prepare read-only probe secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-read-secrets.env"
+          chmod 600 "$RUNNER_TEMP/keeta-read-secrets.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy exact Worker with read-only probe secret
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-read-secrets.env"
+
+      - name: Read current Keeta Store Details
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            STATUS="$(curl --silent --show-error -o "$RUNNER_TEMP/store.json" -w '%{http_code}' -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/store-details?shopId=$SHOP_ID" || true)"
+            if [[ "$STATUS" == '200' ]] && node - "$RUNNER_TEMP/store.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(b.code!==0||Number(b.data?.shopId)!==721517434) process.exit(1); console.log(`provider_status=${b.data.status}`); console.log(`provider_delivery_rest_status=${b.data.deliveryRestStatus}`); console.log(`provider_pickup_rest_status=${b.data.pickupRestStatus}`); console.log(`provider_available_for_order=${b.data.availableForOrder}`);
+          NODE
+            then exit 0; fi
+            sleep 2
+          done
+          echo PROVIDER_READ_FAILED >&2
+          exit 1
+
+      - name: Read current D1 store snapshot
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT shop_id,status,delivery_rest_status,pickup_rest_status,available_for_order,source,provider_timestamp,updated_at FROM keeta_store_status WHERE shop_id=$SHOP_ID" > "$RUNNER_TEMP/store-d1.json"
+          node - "$RUNNER_TEMP/store-d1.json" <<'NODE'
+          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]; if(!r) throw new Error('D1_STORE_ROW_MISSING'); console.log(`d1_status=${r.status}`); console.log(`d1_delivery_rest_status=${r.delivery_rest_status}`); console.log(`d1_pickup_rest_status=${r.pickup_rest_status}`); console.log(`d1_available_for_order=${r.available_for_order}`); console.log(`d1_source=${r.source}`); console.log(`d1_provider_timestamp=${r.provider_timestamp}`); console.log(`d1_updated_at=${r.updated_at}`);
+          NODE
+
+      - name: Read recent webhook dedup metadata
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT COUNT(*) AS total, MAX(created_at) AS latest_created_at FROM keeta_webhook_dedup" > "$RUNNER_TEMP/dedup.json"
+          node - "$RUNNER_TEMP/dedup.json" <<'NODE'
+          const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const a=Array.isArray(p)?p:[p]; const r=a.flatMap(x=>x.results||[])[0]||{}; console.log(`dedup_total=${r.total ?? 0}`); console.log(`dedup_latest_created_at=${r.latest_created_at ?? 'null'}`);
+          NODE
+
+      - name: Evidence summary
+        shell: bash
+        run: printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmode=READ_ONLY\n' "$GITHUB_RUN_ID" '${{ steps.source.outputs.sha }}' "$SHOP_ID"
