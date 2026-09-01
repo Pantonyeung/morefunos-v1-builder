@@ -1,4 +1,4 @@
-source_sha=433dd782a9335f7178c30f9daf9bd55107b919ee
-request_id=TEAM2-B2309-S01-S03-GREEN-20260901
+source_sha=229c2a646314c3620a43a80951a8884137f547ff
+request_id=TEAM2-B2309-S01-S03-GUARDED-GREEN-20260901
 branch=work/SMT/B2309-smm-order-production-binding-closure
-purpose=verify SMM canonical order projection detail mutation and unknown-outcome reconcile
+purpose=verify canonical order binding plus deterministic idempotency and unknown-outcome reconcile gates
