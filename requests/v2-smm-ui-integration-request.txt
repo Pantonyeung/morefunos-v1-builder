@@ -1,4 +1,4 @@
-source_sha=fc256e9b0076a8452b4353edd55ddc722e370e7f
-request_id=TEAM2-B2309-S01-S03-TDD-RED-20260901
+source_sha=433dd782a9335f7178c30f9daf9bd55107b919ee
+request_id=TEAM2-B2309-S01-S03-GREEN-20260901
 branch=work/SMT/B2309-smm-order-production-binding-closure
-purpose=prove SMM Orders production binding is RED before implementation
+purpose=verify SMM canonical order projection detail mutation and unknown-outcome reconcile
