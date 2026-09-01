@@ -1,4 +1,4 @@
-source_sha=08e0b72eab3db70d5728a5cfbb9be5a8a78c16e6
+source_sha=e01792c756be0f2572440794a507978ae78aed9e
 base_sha=1796848222141f17223b2ab518c086f61099e872
-branch_name=work/SMT/B2307-live-zero-cost-worker-runtime
-request_id=B2307-IMPLEMENTATION-GOVERNANCE-LOCKSTEP-GOVERNANCE-R2-20260901
+branch_name=work/SMT/B2309-smm-order-production-binding-closure
+request_id=TEAM2-B2309-FINAL-V2-GOVERNANCE-20260901
