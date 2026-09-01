@@ -1,0 +1,106 @@
+name: Deploy V2 Admin Worker
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-worker-deploy-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-worker-deploy-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install and build exact Admin source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/admin-ui-integration/*.test.ts
+          npx tsc --noEmit --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --types node packages/admin-ui-integration/*.ts
+          cd apps/admin-web
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+      - name: Deploy Admin Worker and assets
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          test -s "$CONFIG"
+          npx --yes wrangler@4 deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Apply Admin session secret when configured
+        env:
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" ]; then
+            printf '%s' "$ADMIN_SESSION_BOOTSTRAP_JSON" | npx --yes wrangler@4 secret put ADMIN_SESSION_BOOTSTRAP_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+            echo 'admin_session_secret=CONFIGURED' > "$GITHUB_WORKSPACE/evidence/session.txt"
+          else
+            echo 'admin_session_secret=MISSING_FAIL_CLOSED' > "$GITHUB_WORKSPACE/evidence/session.txt"
+          fi
+      - name: Verify live host fail-closed and bindings
+        env:
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          curl -fsS "$URL/" >/dev/null
+          CODE="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/admin/session")"
+          test "$CODE" = 401
+          echo "anonymous_session_http=$CODE" > evidence/runtime.txt
+          if [ -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" ]; then
+            TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
+            AUTH_CODE="$(curl -sS -o /tmp/auth-session.json -w '%{http_code}' -H "Cookie: mf_admin_session=${TOKEN}" "$URL/api/admin/session")"
+            test "$AUTH_CODE" = 200
+            echo "authenticated_session_http=$AUTH_CODE" >> evidence/runtime.txt
+          else
+            echo 'authenticated_session_http=BLOCKED_MISSING_SECRET' >> evidence/runtime.txt
+          fi
+          rm -f /tmp/session.json /tmp/auth-session.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-worker-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
