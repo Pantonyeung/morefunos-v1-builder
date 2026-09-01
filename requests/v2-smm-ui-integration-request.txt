@@ -1,4 +1,4 @@
-source_sha=e01792c756be0f2572440794a507978ae78aed9e
-request_id=TEAM2-B2309-FINAL-SMM-EXACT-SOURCE-20260901
+source_sha=d8c83b0b4893ec92a7124431f5e822fe16e1d585
+request_id=TEAM2-B2309-FINAL-R2-SMM-20260901
 branch=work/SMT/B2309-smm-order-production-binding-closure
-purpose=verify final exact source including synchronized governance manifest
+purpose=final exact-source SMM verification after governance-only reservation correction
