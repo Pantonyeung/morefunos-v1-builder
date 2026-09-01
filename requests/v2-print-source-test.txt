@@ -1,3 +1,3 @@
-source_sha=6a75af4425e4c475e2f71fb1c77245efbb5b4c57
+source_sha=3e6f2e4385edb9f9d5d1ca96543caa3d74508d57
 branch_name=landing/L0002-store-edge-recovery
-request_id=FINAL-RECOVERY-S015-RECEIPT-CANONICAL-FACTS-20260902
+request_id=FINAL-RECOVERY-S015-NODE-TEST-GATE-FIX-20260902
