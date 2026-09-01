@@ -1,4 +1,4 @@
-source_sha=5138da5eb2042daa71b40d0e5d21fea4615f5fc6
-base_sha=a55acd36ff0ef90746f39a884def23ee82222f80
-branch_name=work/SMT/B2306-admit-zero-cost-runtime-to-five-port-main
-request_id=B2306-FIVE-PORT-ZERO-COST-SELF-SERVICE-R2-20260901
+source_sha=f5ad7bff3d2a645f5346012ea138625f27dde747
+base_sha=1796848222141f17223b2ab518c086f61099e872
+branch_name=work/SMT/B2307-live-zero-cost-worker-runtime
+request_id=B2307-IMPLEMENTATION-GOVERNANCE-LOCKSTEP-SELF-SERVICE-20260901
