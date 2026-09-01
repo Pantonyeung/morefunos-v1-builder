@@ -39,7 +39,7 @@ jobs:
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - name: Apply exact D1 schema and verify required tables
+      - name: Apply exact D1 migrations and verify required tables
         shell: bash
         env:
           DATABASE_ID: ${{ steps.req.outputs.database_id }}
@@ -47,24 +47,28 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p evidence
-          SQL_FILE='source/infra/cloudflare/d1/migrations/0001-zero-cost-order-payment-proof.sql'
-          test -s "$SQL_FILE"
-          node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
           URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
-          HTTP_CODE="$(curl -sS -o /tmp/migrate.json -w '%{http_code}' -X POST "$URL" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -H 'content-type: application/json' --data-binary @/tmp/body.json)"
-          echo "migration_http=${HTTP_CODE}" | tee evidence/migration.txt
-          [[ "$HTTP_CODE" == 200 ]]
-          node -e "const x=require('/tmp/migrate.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
-          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_state','mfos_customer_order_ownership','mfos_outbox','mfos_payment_proof','mfos_payment_state') ORDER BY name\"}))"
+          mapfile -t SQL_FILES < <(find source/infra/cloudflare/d1/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          ((${#SQL_FILES[@]} > 0))
+          for SQL_FILE in "${SQL_FILES[@]}"; do
+            test -s "$SQL_FILE"
+            node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
+            HTTP_CODE="$(curl -sS -o /tmp/migrate.json -w '%{http_code}' -X POST "$URL" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H 'content-type: application/json' --data-binary @/tmp/body.json)"
+            printf 'migration=%s http=%s\n' "$(basename "$SQL_FILE")" "$HTTP_CODE" | tee -a evidence/migration.txt
+            [[ "$HTTP_CODE" == 200 ]]
+            node -e "const x=require('/tmp/migrate.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
+          done
+          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_state','mfos_customer_order_ownership','mfos_outbox','mfos_payment_proof','mfos_payment_state','mfos_catalog_state','mfos_business_day_state','mfos_availability_state') ORDER BY name\"}))"
           curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
           node - <<'NODE' | tee -a evidence/migration.txt
           const x=require('/tmp/verify-result.json');
           const names=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
-          const expected=['mfos_customer_order_ownership','mfos_order_state','mfos_outbox','mfos_payment_proof','mfos_payment_state'].sort();
+          const expected=['mfos_availability_state','mfos_business_day_state','mfos_catalog_state','mfos_customer_order_ownership','mfos_order_state','mfos_outbox','mfos_payment_proof','mfos_payment_state'].sort();
           if(JSON.stringify(names)!==JSON.stringify(expected)){console.error('D1_REQUIRED_TABLES_MISSING',names);process.exit(1)}
           console.log('database_name=morefun-v2-production');
+          console.log('database_id='+process.env.DATABASE_ID);
           console.log('required_tables=PASS');
           console.log('source_sha='+process.env.SOURCE_SHA);
           console.log('paid_resource_created=NO');
