@@ -60,12 +60,12 @@ jobs:
             [[ "$HTTP_CODE" == 200 ]]
             node -e "const x=require('/tmp/migrate.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
           done
-          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_state','mfos_customer_order_ownership','mfos_outbox','mfos_payment_proof','mfos_payment_state','mfos_catalog_state','mfos_business_day_state','mfos_availability_state') ORDER BY name\"}))"
+          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_state','mfos_customer_order_ownership','mfos_outbox','mfos_payment_proof','mfos_payment_state','mfos_catalog_state','mfos_business_day_state','mfos_availability_state','mfos_merchants','mfos_stores','mfos_identity_idempotency','mfos_identity_audit','mfos_repository_assertion') ORDER BY name\"}))"
           curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
           node - <<'NODE' | tee -a evidence/migration.txt
           const x=require('/tmp/verify-result.json');
           const names=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
-          const expected=['mfos_availability_state','mfos_business_day_state','mfos_catalog_state','mfos_customer_order_ownership','mfos_order_state','mfos_outbox','mfos_payment_proof','mfos_payment_state'].sort();
+          const expected=['mfos_availability_state','mfos_business_day_state','mfos_catalog_state','mfos_customer_order_ownership','mfos_identity_audit','mfos_identity_idempotency','mfos_merchants','mfos_order_state','mfos_outbox','mfos_payment_proof','mfos_payment_state','mfos_repository_assertion','mfos_stores'].sort();
           if(JSON.stringify(names)!==JSON.stringify(expected)){console.error('D1_REQUIRED_TABLES_MISSING',names);process.exit(1)}
           console.log('database_name=morefun-v2-production');
           console.log('database_id='+process.env.DATABASE_ID);
