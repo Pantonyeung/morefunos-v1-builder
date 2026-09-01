@@ -1,4 +1,4 @@
-source_sha=d8c83b0b4893ec92a7124431f5e822fe16e1d585
+source_sha=f6da918d78bb95fff65dd7141a5b583ed2d8225e
 base_sha=1796848222141f17223b2ab518c086f61099e872
 branch_name=work/SMT/B2309-smm-order-production-binding-closure
-request_id=TEAM2-B2309-FINAL-R2-V2-GOVERNANCE-20260901
+request_id=TEAM2-B2309-FINAL-R3-V2-GOVERNANCE-20260901
