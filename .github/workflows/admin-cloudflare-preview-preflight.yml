@@ -11,8 +11,8 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: fe6a38f58dbeb8a8a3be259f906858e60ea728a7
-  PREFLIGHT_REVISION: '2'
+  SOURCE_SHA: 873eb228a35ad9379059aaf3bcda070a72948a0c
+  PREFLIGHT_REVISION: '3'
 
 jobs:
   preflight:
