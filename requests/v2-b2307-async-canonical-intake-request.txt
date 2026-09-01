@@ -1,2 +1,2 @@
-source_sha=756c43650f9c969593bb507b9e91071c28ebd2e0
-retrigger=d1-operational-state-red
+source_sha=f64bb13b51a26606e039c56f803e19393aae6fd5
+retrigger=d1-operational-state-red-v2
