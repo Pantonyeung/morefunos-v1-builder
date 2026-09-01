@@ -1,3 +1,3 @@
-source_sha=3e6f2e4385edb9f9d5d1ca96543caa3d74508d57
+source_sha=c60f11cc2ef8a4c95dbcee020534c1a581308943
 branch_name=landing/L0002-store-edge-recovery
-request_id=FINAL-RECOVERY-S015-NODE-TEST-GATE-FIX-20260902
+request_id=FINAL-RECOVERY-S016-CONDITIONAL-VISIBILITY-RED-20260902
