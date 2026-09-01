@@ -1,0 +1,5 @@
+source_repo=Pantonyeung/Morefun-v2
+source_sha=5a29eb1e7b5001a0d72a3c00a1dd4238bf369a82
+request_id=L0002-PRINT-TEMPLATE-SELECTION-20260901
+scope=SMT
+reason=Verify Admin template publication vs SMT store selection, safe deletion guard, and production summary OFF/AUTO/ON slice.
