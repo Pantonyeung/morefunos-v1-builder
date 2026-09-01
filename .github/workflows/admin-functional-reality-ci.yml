@@ -1,0 +1,137 @@
+name: Admin Functional Reality CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/admin-functional-reality-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  statuses: write
+
+env:
+  SOURCE_SHA: f7a0b38eb2832e3723fe59301a9b86cffd959116
+
+jobs:
+  functional-reality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Initialize diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/admin-functional-reality.log"
+          echo 'workflow=STARTED' >> "$RUNNER_TEMP/admin-functional-reality.log"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact V1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          echo 'exact_source=PASS' >> "$RUNNER_TEMP/admin-functional-reality.log"
+      - name: Verify Admin domain and cross-runtime contracts
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'admin_domain_tests=STARTED'
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-a-admin-to-smt.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-a2-availability-printing.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst06-smt-cash-overview.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst07-dinein-payme-table-link.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst08-table-merge-lifecycle.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst09-smm-intake-overview.test.ts
+            node --experimental-strip-types --test test-data/cross-port/v1/phase-b-tst10-customer-web-intake.test.ts
+            node --experimental-strip-types --test packages/staff/staff-authentication-service.test.ts
+            node --experimental-strip-types --test packages/staff/staff-status-toggle-regression.test.ts
+            node --experimental-strip-types --test packages/runtime/staff-auth-http.test.ts
+            node --experimental-strip-types --test packages/contracts/infrastructure-capacity.test.ts
+            node --experimental-strip-types --test packages/catalog/product-interaction-contract.test.ts
+            node --experimental-strip-types --test packages/catalog/product-catalog.test.ts
+            node --experimental-strip-types --test packages/policy/business-policy-durable-authority.test.ts
+            node --experimental-strip-types --test packages/table/dine-in-configuration.test.ts
+            node --experimental-strip-types --test packages/store-settings/payment-channel-configuration.test.ts
+            node --experimental-strip-types --test packages/printing/print-routing.test.ts
+            node --experimental-strip-types --test packages/native/hardware-route-configuration.test.ts
+            node --experimental-strip-types --test packages/admin/port-exposure-projection.test.ts
+            node --experimental-strip-types --test packages/admin/admin-overview-projection.test.ts
+            node --experimental-strip-types --test packages/reporting/admin-live-operational-projection.test.ts
+            node --experimental-strip-types --test packages/reporting/business-date-financial-progress.test.ts
+            node --experimental-strip-types --test packages/facts/operational-facts-durable-journal.test.ts
+            node --experimental-strip-types --test packages/runtime/operational-fact-durable-flush.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-dine-in.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-payment-channel.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-print-routing.test.ts
+            node --experimental-strip-types --test packages/store-settings/print-presentation-config.test.ts
+            node --experimental-strip-types --test packages/store-settings/store-settings-durable-authority.test.ts
+            node --experimental-strip-types --test packages/runtime/store-settings-payment-channel-projection.test.ts
+            node --experimental-strip-types --test packages/runtime/store-settings-dine-in-bootstrap.test.ts
+            node --experimental-strip-types --test packages/runtime/store-settings-printing-projection.test.ts
+            node --experimental-strip-types --test packages/runtime/smt-runtime-device-gate-provider.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-overview-durable-operations.test.ts
+            node --experimental-strip-types --test packages/availability/availability-authority.test.ts
+            node --experimental-strip-types --test packages/availability/availability-durable-authority.test.ts
+            node --experimental-strip-types --test packages/business-day/admin-business-day-durable-control.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-policy-http.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-policy-http-prefix.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-availability-http.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-port-exposure-http.test.ts
+            node --experimental-strip-types --test packages/runtime/admin-overview-http.test.ts
+            node --experimental-strip-types --test packages/durability/google-service-account-token-provider.test.ts
+            node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/worker.test.ts
+            node --experimental-strip-types --test infra/cloudflare/admin-policy-worker/entry.test.ts
+            echo 'admin_domain_tests=PASS'
+          } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
+      - name: Verify Admin Web interaction and build
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'admin_web=STARTED'
+            npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+            npm test
+            npm run build
+            echo 'admin_web=PASS'
+          } 2>&1 | tee -a "$RUNNER_TEMP/admin-functional-reality.log"
+      - name: Persist diagnostics
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          path='diagnostics/admin-functional-reality-latest.log'
+          { printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"; cat "$RUNNER_TEMP/admin-functional-reality.log" 2>/dev/null || true; } > /tmp/admin-functional-reality-latest.log
+          content="$(base64 -w0 /tmp/admin-functional-reality-latest.log)"
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${GITHUB_REF_NAME}" --jq '.sha' 2>/dev/null || true)"
+          args=(--method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message='ci: refresh Admin Functional Reality diagnostic' -f content="$content" -f branch="$GITHUB_REF_NAME")
+          if [ -n "$current_sha" ]; then args+=(-f sha="$current_sha"); fi
+          gh api "${args[@]}" >/dev/null
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=success -f context=admin-functional-reality -f description='TST-01-10 + Staff AUTH-01 backend PASS' >/dev/null
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" -f state=failure -f context=admin-functional-reality -f description='Cross-port or Staff AUTH exact-SHA gate failed' >/dev/null
