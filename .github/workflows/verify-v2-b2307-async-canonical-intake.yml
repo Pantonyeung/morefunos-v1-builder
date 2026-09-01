@@ -62,3 +62,6 @@ jobs:
       - name: Keeta durable canonical delivery gate
         working-directory: source
         run: node --test packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-canonical-order-delivery.test.ts
+      - name: Keeta D1 canonical delivery composition gate
+        working-directory: source
+        run: node --test packages/integration/keeta-d1-canonical-delivery-runtime.test.ts
