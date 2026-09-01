@@ -1,0 +1,5 @@
+source_repo=Pantonyeung/Morefun-v2
+source_sha=e8077e95c78809fb09fcc4bcf3dc1e7af81ca7a9
+request_id=L0002-PACKING-CHECKLIST-COMPLETENESS-20260901
+scope=SMT
+reason=Verify packing checklist preserves zero-price canonical order items, accepted option snapshots, and rendered checklist details without inventing fulfillment facts.
