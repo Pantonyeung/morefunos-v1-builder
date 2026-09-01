@@ -1,0 +1,5 @@
+source_repo=Pantonyeung/Morefun-v2
+source_sha=a403168ed6514767b763760a924c6ae595ecb9f6
+request_id=L0002-RECEIPT-PAYMENT-FACTS-20260901
+scope=SMT
+reason=Verify canonical completed-payment to receipt facts boundary; pending proof must never print as paid.
