@@ -1,2 +1,2 @@
-source_sha=38155062bd5d5d1bc0f96de0545c40c87497edfa
-retrigger=keeta-d1-canonical-delivery-red
+source_sha=996249722323b82e72f63e69b375a6dad7349010
+retrigger=keeta-d1-canonical-delivery-green
