@@ -1,0 +1,5 @@
+source_repo=Pantonyeung/Morefun-v2
+source_sha=6be06f3bd2353121e5966043875e75919564ec1e
+request_id=L0002-RECEIPT-PAYMENT-PRESENTATION-20260902
+scope=SMT
+reason=Verify canonical completed-payment receipt presentation, payment renderer fields, and existing L0002 print tests. No V2 Actions.
