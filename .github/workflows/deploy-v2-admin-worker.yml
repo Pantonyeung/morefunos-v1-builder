@@ -47,8 +47,9 @@ jobs:
           set -euo pipefail
           npm install --no-save --ignore-scripts --no-audit --no-fund
           node --test packages/admin-ui-integration/*.test.ts
-          npx tsc --noEmit --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --types node packages/admin-ui-integration/*.ts
+          npm run typecheck
           cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
           npm run typecheck
           npm run build
           test -f dist/index.html
