@@ -1,2 +1,4 @@
-source_sha=f4326cc857543cde0315412eda8ca0d1e6b3df8e
-request_id=TEAM2-B2506-S09-SMM-HUMAN-CUSTODY-20260831
+source_sha=fc256e9b0076a8452b4353edd55ddc722e370e7f
+request_id=TEAM2-B2309-S01-S03-TDD-RED-20260901
+branch=work/SMT/B2309-smm-order-production-binding-closure
+purpose=prove SMM Orders production binding is RED before implementation
