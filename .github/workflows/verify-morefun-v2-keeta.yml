@@ -79,10 +79,14 @@ jobs:
         working-directory: source
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Typecheck Keeta integration and Worker runtime
+      - name: Root TypeScript gate
         working-directory: source
-        run: npm run typecheck:intg-keeta
+        run: npm run typecheck
 
-      - name: Run full Keeta integration regression
+      - name: Keeta canonical order binding gate
         working-directory: source
-        run: npm run test:intg-keeta
+        run: node --test packages/integration/keeta-order-binding.test.ts
+
+      - name: Keeta ingress and durable delivery regression
+        working-directory: source
+        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
