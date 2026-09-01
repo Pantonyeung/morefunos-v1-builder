@@ -44,6 +44,9 @@ jobs:
       - name: Merchant-store D1 repository contract
         working-directory: source
         run: node --test packages/merchant-store/d1-merchant-store-repository.test.ts
+      - name: Identity RBAC D1 repository contract
+        working-directory: source
+        run: node --test packages/identity-rbac/d1-identity-rbac-repository.test.ts
       - name: Root TypeScript gate
         working-directory: source
         run: npm run typecheck
