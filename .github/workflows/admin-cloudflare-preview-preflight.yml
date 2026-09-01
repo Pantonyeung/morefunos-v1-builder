@@ -11,48 +11,53 @@ permissions:
   statuses: write
 
 env:
-  SOURCE_SHA: 873eb228a35ad9379059aaf3bcda070a72948a0c
-  PREFLIGHT_REVISION: '3'
+  ADMIN_D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+  ADMIN_D1_DATABASE_NAME: morefun-v2-production
+  PREFLIGHT_REVISION: '4'
 
 jobs:
   preflight:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check required secrets without exposing values
+      - name: Check A01 required secrets without exposing values
         id: check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          STAFF_SESSIONS_JSON: ${{ secrets.STAFF_SESSIONS_JSON }}
-          ADMIN_STAFF_BOOTSTRAP_JSON: ${{ secrets.ADMIN_STAFF_BOOTSTRAP_JSON }}
-          V1_SOURCE_READ_TOKEN: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
         shell: bash
         run: |
           set -euo pipefail
-          required=(
-            CLOUDFLARE_API_TOKEN
-            CLOUDFLARE_ACCOUNT_ID
-            FIREBASE_DATABASE_URL
-            GOOGLE_CLIENT_EMAIL
-            GOOGLE_PRIVATE_KEY
-            STAFF_SESSIONS_JSON
-            ADMIN_STAFF_BOOTSTRAP_JSON
-            V1_SOURCE_READ_TOKEN
-          )
+          required=(CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ADMIN_SESSION_BOOTSTRAP_JSON)
           missing=()
           for key in "${required[@]}"; do
             if [ -z "${!key:-}" ]; then missing+=("$key"); fi
           done
           if [ "${#missing[@]}" -gt 0 ]; then
             printf 'missing=%s\n' "$(IFS=,; echo "${missing[*]}")" >> "$GITHUB_OUTPUT"
-            printf 'MISSING_REQUIRED_SECRETS=%s\n' "$(IFS=,; echo "${missing[*]}")"
+            printf 'MISSING_A01_SECRETS=%s\n' "$(IFS=,; echo "${missing[*]}")"
             exit 1
           fi
           echo 'missing=' >> "$GITHUB_OUTPUT"
-          echo 'ADMIN_CLOUDFLARE_PREVIEW_PREFLIGHT=PASS'
+
+      - name: Verify admitted launch D1 resource
+        if: success()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${ADMIN_D1_DATABASE_ID}"
+          curl -fsS "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" > /tmp/d1.json
+          node - <<'NODE'
+          const x=require('/tmp/d1.json');
+          if(!x.success) process.exit(1);
+          if(x.result?.uuid!==process.env.ADMIN_D1_DATABASE_ID) process.exit(1);
+          if(x.result?.name!==process.env.ADMIN_D1_DATABASE_NAME) process.exit(1);
+          console.log('ADMIN_A01_D1_RESOURCE=PASS');
+          NODE
+          rm -f /tmp/d1.json
 
       - name: Report success
         if: success()
@@ -62,7 +67,7 @@ jobs:
         run: |
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success -f context=admin-cloudflare-preview-preflight \
-            -f description='Cloudflare Preview required secrets are present' >/dev/null
+            -f description='Admin A01 Cloudflare, launch D1 and session inputs are present' >/dev/null
 
       - name: Report failure
         if: failure()
@@ -71,8 +76,8 @@ jobs:
           MISSING: ${{ steps.check.outputs.missing }}
         shell: bash
         run: |
-          desc='Cloudflare Preview secrets missing'
-          if [ -n "$MISSING" ]; then desc="$desc: $MISSING"; fi
+          desc='Admin A01 preflight failed'
+          if [ -n "$MISSING" ]; then desc="$desc: missing $MISSING"; fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=failure -f context=admin-cloudflare-preview-preflight \
             -f description="$desc" >/dev/null
