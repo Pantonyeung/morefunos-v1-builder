@@ -1,0 +1,5 @@
+source_repo=Pantonyeung/Morefun-v2
+source_sha=6a75af4425e4c475e2f71fb1c77245efbb5b4c57
+request_id=L0002-RECEIPT-CANONICAL-FACTS-20260902
+scope=SMT
+reason=Verify completed canonical Payment facts plus channel/store references are frozen into receipt output and historical print snapshots without print-owned payment truth.
