@@ -1,0 +1,64 @@
+name: Diagnose V2 Admin D1 State
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-d1-diagnostic-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Query non-sensitive launch state summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          node - <<'NODE'
+          const fs=require('fs');
+          const sql=`
+          SELECT 'catalog' AS domain, COUNT(*) AS row_count FROM mfos_catalog_state
+          UNION ALL SELECT 'business_day', COUNT(*) FROM mfos_business_day_state
+          UNION ALL SELECT 'availability', COUNT(*) FROM mfos_availability_state
+          UNION ALL SELECT 'customer_order_ownership', COUNT(*) FROM mfos_customer_order_ownership
+          UNION ALL SELECT 'payment_state', COUNT(*) FROM mfos_payment_state;
+          SELECT store_id, COUNT(*) AS row_count FROM mfos_customer_order_ownership GROUP BY store_id ORDER BY row_count DESC LIMIT 10;
+          SELECT store_id, COUNT(*) AS row_count FROM mfos_payment_state GROUP BY store_id ORDER BY row_count DESC LIMIT 10;
+          `;
+          fs.writeFileSync('/tmp/query.json',JSON.stringify({sql}));
+          NODE
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > /tmp/result.json
+          node - <<'NODE' | tee evidence/d1-state.txt
+          const x=require('/tmp/result.json');
+          if(!x.success || !(x.result||[]).every(r=>r.success!==false)) process.exit(1);
+          const counts=x.result?.[0]?.results||[];
+          console.log('database_name=morefun-v2-production');
+          for(const row of counts) console.log(`${row.domain}_rows=${row.row_count}`);
+          const ownership=x.result?.[1]?.results||[];
+          const payments=x.result?.[2]?.results||[];
+          console.log('ownership_store_ids='+ownership.map(r=>`${r.store_id}:${r.row_count}`).join(','));
+          console.log('payment_store_ids='+payments.map(r=>`${r.store_id}:${r.row_count}`).join(','));
+          NODE
+          rm -f /tmp/query.json /tmp/result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-d1-state-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
