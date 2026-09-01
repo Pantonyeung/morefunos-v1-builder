@@ -53,6 +53,9 @@ jobs:
       - name: D1-backed canonical Order acceptance gate
         working-directory: source
         run: node --test packages/order/d1-store-order-acceptance.test.ts
+      - name: D1 Keeta durable ingress gate
+        working-directory: source
+        run: node --test packages/integration/d1-keeta-durable-runtime.test.ts
       - name: Keeta durable canonical delivery gate
         working-directory: source
         run: node --test packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-canonical-order-delivery.test.ts
