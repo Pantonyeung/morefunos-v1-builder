@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout Builder definition
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -69,7 +69,7 @@ jobs:
           test -n "$TOKEN"
 
       - name: Checkout exact Morefun-v2 source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
           ref: ${{ steps.request.outputs.source_sha }}
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload governance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-governance-guard-${{ steps.request.outputs.source_sha }}
           path: |

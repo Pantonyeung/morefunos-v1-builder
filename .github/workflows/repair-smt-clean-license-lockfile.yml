@@ -19,12 +19,12 @@ jobs:
       SOURCE_SHA: 6fbb81c14ed980c02857881604663adce93803da
     steps:
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
       - name: Checkout exact private V2 source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
@@ -60,7 +60,7 @@ jobs:
           test "$UNTRACKED" = "apps/smt-clean/package-lock.json"
 
       - name: Upload reviewed evidence candidate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smt-clean-lockfile-review-${{ env.SOURCE_SHA }}
           path: |

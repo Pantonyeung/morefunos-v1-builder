@@ -17,18 +17,18 @@ jobs:
       CORE_SHA: 39e3ae537ee1bc6e69e81d7a12b135c44c14856c
       CLEAN_URL: https://12d982c3.morefunos-v1.pages.dev
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CORE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
       - name: Prove one-shot operator capability is absent
         shell: bash
@@ -85,7 +85,7 @@ jobs:
           ! grep -Eq 'METHOD_NOT_ALLOWED|UNAUTHORIZED|NAMESPACE_MISMATCH|ACTION_INVALID|Q_ORDER_03_' "$RUNNER_TEMP/operator-get.txt" "$RUNNER_TEMP/operator-post.txt"
 
           PHASE=complete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-q-order-03-cleanup-only-${{ env.CORE_SHA }}

@@ -16,9 +16,9 @@ jobs:
       SOURCE_SHA: ba340d14ef4fb0acfaf2d59198e03b8d714f6825
       BASE_APPLY_ACK: 6b5674c11e03588a359c6be2dea1ea11384bb792
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { path: builder, persist-credentials: true }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SOURCE_SHA }}
@@ -26,7 +26,7 @@ jobs:
           path: source
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
       - name: Qualify Print exact source
         shell: bash
@@ -69,7 +69,7 @@ jobs:
           PHASE=typescript
           (cd source && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22 && ./node_modules/.bin/tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck packages/printing/print-authority.ts packages/printing/durable-print-job-repository.ts packages/printing/durable-print-job-repository.test.ts packages/runtime-v2/print-runtime-dispatch.ts packages/runtime-v2/order-fulfillment-execution-plan.ts packages/durability/durability.ts) | tee evidence/typescript.log
           PHASE=complete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-print-connected-${{ env.SOURCE_SHA }}

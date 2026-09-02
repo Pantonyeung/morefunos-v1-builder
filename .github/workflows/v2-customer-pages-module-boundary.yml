@@ -16,18 +16,18 @@ jobs:
     env:
       CUSTOMER_SHA: 31100dae325f43d5ceaeddd53a270b85aef75be2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CUSTOMER_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: customer
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
 
       - name: Verify exact Customer source and replaceable boundary
@@ -79,7 +79,7 @@ jobs:
           git -C builder commit -m "ci(result): Customer Pages module boundary PASS $CUSTOMER_SHA"
           git -C builder push origin HEAD:main
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: v2-customer-pages-module-boundary-${{ env.CUSTOMER_SHA }}
           path: evidence

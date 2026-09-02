@@ -100,7 +100,7 @@ jobs:
           printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-ui-integration.yml\ngates=core-catalog,core-pricing,smt-ui-integration,smt-app-tests,smt-typecheck,smt-build\n' "$SOURCE_SHA" > evidence/summary.txt
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-smt-ui-integration-${{ steps.request.outputs.source_sha }}
           path: evidence

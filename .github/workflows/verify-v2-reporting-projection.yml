@@ -81,7 +81,7 @@ jobs:
           echo "source-identity=PASS sha=$EXPECTED"
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload Reporting Projection evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-reporting-projection-evidence-${{ steps.request.outputs.source_sha }}
           path: |

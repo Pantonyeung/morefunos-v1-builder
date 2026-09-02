@@ -131,7 +131,7 @@ jobs:
 
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-self-service-governance-${{ steps.request.outputs.source_sha }}
           path: ${{ runner.temp }}/v2-self-service-governance-evidence.txt

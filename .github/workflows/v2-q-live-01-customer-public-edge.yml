@@ -35,12 +35,12 @@ jobs:
           echo "core_sha=$CORE" >> "$GITHUB_OUTPUT"
           echo "customer_sha=$CUSTOMER" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Checkout exact Core/Edge source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ steps.req.outputs.core_sha }}
@@ -49,7 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout exact Customer browser source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ steps.req.outputs.customer_sha }}
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2-q-live-01-${{ steps.req.outputs.core_sha }}-${{ steps.req.outputs.customer_sha }}
           path: evidence

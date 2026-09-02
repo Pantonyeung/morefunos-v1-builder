@@ -21,32 +21,32 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: builder
           persist-credentials: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CORE_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: core
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.CUSTOMER_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: customer
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/morefunos-v1
           ref: ${{ env.SMT_SHA }}
           token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
           path: smt
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: '22' }
 
       - name: Diagnose build deploy and Rules provisioning with persistent failure phase
@@ -147,7 +147,7 @@ jobs:
 
           PHASE=complete
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: v2-q-order-03-live-diagnostic-${{ env.CORE_SHA }}
