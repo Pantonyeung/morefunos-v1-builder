@@ -1,4 +1,4 @@
-source_sha=ea268ba6d4a440cc55deb9bdb85a61de19979411
-request_id=CMD-022-KEETA-SMM-MERCHANT-INBOX-ADAPTER-GREEN-01
+source_sha=6f62dec1890f62f88b635d6017c16348bb84110f
+request_id=CMD-022-KEETA-SMM-MERCHANT-INBOX-ADAPTER-GREEN-02
 branch=landing/CMD-022-keeta-smm-merchant-inbox-adapter
-purpose=exact-source SMM Keeta merchant inbox consumer seam verification
+purpose=exact-source SMM Keeta merchant inbox consumer seam verification after preserving accepted active-work body
