@@ -51,12 +51,15 @@ jobs:
       - name: Keeta canonical delivery gate
         working-directory: source
         run: node --test packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-canonical-order-delivery.test.ts
-      - name: Canonical D1 Order authority gate
+      - name: Canonical D1 Order authority and replay gate
         working-directory: source
-        run: node --test packages/order/d1-store-order-acceptance.test.ts
+        run: node --test packages/order/d1-store-order-acceptance.test.ts packages/order/d1-acceptance-replay.test.ts
       - name: Keeta D1 durable ingress gate
         working-directory: source
         run: node --test packages/integration/d1-keeta-durable-runtime.test.ts
       - name: Keeta ingress regression gate
         working-directory: source
         run: node --test packages/integration/keeta-webhook-ingress.test.ts
+      - name: Firebase post-commit retry gate
+        working-directory: source
+        run: node --test packages/integration/d1-firebase-order-signal.test.ts
