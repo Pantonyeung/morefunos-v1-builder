@@ -1,4 +1,4 @@
-source_sha=f6da918d78bb95fff65dd7141a5b583ed2d8225e
-request_id=TEAM2-B2309-FINAL-R3-SMM-20260901
-branch=work/SMT/B2309-smm-order-production-binding-closure
-purpose=final exact-source SMM verification after full SMM and root truth synchronization
+source_sha=5c23ffb6e729bf060139b1b7f5955492ca92a7c9
+request_id=CMD-022-KEETA-SMM-MERCHANT-INBOX-ADAPTER-RED
+branch=landing/CMD-022-keeta-smm-merchant-inbox-adapter
+purpose=RED-first exact-source SMM Keeta merchant inbox consumer seam
