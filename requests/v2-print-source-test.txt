@@ -1,3 +1,3 @@
-source_sha=fd6e6e0a04f13f6cb2421d2b4d51c19a16689239
+source_sha=27e659aef956f40981e808379f8f3ec2d6754b49
 branch_name=landing/CMD-038-print-auto-pipeline-uat
-request_id=CMD-038-GREEN-PRESENTATION-POLICY
+request_id=CMD-038-GREEN-PRESENTATION-POLICY-R2
