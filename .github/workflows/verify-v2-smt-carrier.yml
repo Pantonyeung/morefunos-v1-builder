@@ -138,6 +138,15 @@ jobs:
         working-directory: source
         run: test -f apps/smt-android/app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Upload TEST APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-test-apk-${{ steps.request.outputs.source_sha }}
+          path: source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Write evidence
         if: always()
         shell: bash
@@ -145,7 +154,7 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           mkdir -p evidence
-          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-carrier.yml\nruntime_persistence_tests=:app:testDebugUnitTest\n' "$SOURCE_SHA" > evidence/summary.txt
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-carrier.yml\nruntime_persistence_tests=:app:testDebugUnitTest\napk_kind=DEBUG_TEST_ONLY\n' "$SOURCE_SHA" > evidence/summary.txt
 
       - name: Upload evidence
         if: always()
