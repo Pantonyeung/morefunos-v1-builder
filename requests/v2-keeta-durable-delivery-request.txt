@@ -1,2 +1,2 @@
-source_sha=c91c9c6a2069ad7eb08f67b091cb4ffc4f2e15ca
-run_reason=cmd026_order_get_reconciliation_green
+source_sha=36897ae7d570ce7b3a7bad9669144409f97317dc
+run_reason=cmd026_order_get_reconciliation_green_typefix
