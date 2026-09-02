@@ -81,6 +81,9 @@ jobs:
       - name: Install SMT app dependencies
         working-directory: source/apps/smt-clean
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: SMT app tests
+        working-directory: source/apps/smt-clean
+        run: npm test
       - name: SMT app typecheck
         working-directory: source/apps/smt-clean
         run: npm run typecheck
@@ -94,7 +97,7 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           mkdir -p evidence
-          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-ui-integration.yml\ngates=core-catalog,core-pricing,smt-ui-integration,smt-typecheck,smt-build\n' "$SOURCE_SHA" > evidence/summary.txt
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-ui-integration.yml\ngates=core-catalog,core-pricing,smt-ui-integration,smt-app-tests,smt-typecheck,smt-build\n' "$SOURCE_SHA" > evidence/summary.txt
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
