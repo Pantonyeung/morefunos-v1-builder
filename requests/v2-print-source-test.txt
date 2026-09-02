@@ -1,3 +1,3 @@
-source_sha=c28e20bfe6a47611d13e12a508e01f067c58d753
+source_sha=872f3380ec339f8a7efac99d42b8514158fda49b
 branch_name=landing/CMD-038-print-auto-pipeline-uat
-request_id=CMD-038-GREEN-AUTO-ORDER-PRINT-ADMISSION-R2
+request_id=CMD-038-RED-D1-PRINT-DURABILITY
