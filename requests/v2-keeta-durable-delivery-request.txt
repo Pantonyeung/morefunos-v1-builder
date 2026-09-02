@@ -1,2 +1,2 @@
-source_sha=af04c81e4920c489e9644f7aa5313fabd42ca951
-run_reason=cmd030_restart_d1_and_trusted_wrappers_red
+source_sha=4306cb54ae2e7248b75d08d938401b610c12fe8c
+run_reason=cmd030_restart_d1_and_trusted_wrappers_green
