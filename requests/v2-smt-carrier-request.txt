@@ -1,2 +1,2 @@
-source_sha=f6fd540f53d007f6fec8c27b8b0ab51981aef022
-request_id=CMD-046-SMT-TEST-APK-R2
+source_sha=016dae23fa37987748a4f62432d16ec730976280
+request_id=CMD-046-SMT-TEST-APK-R3
