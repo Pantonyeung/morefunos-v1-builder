@@ -38,9 +38,9 @@ jobs:
       - name: Install exact source
         working-directory: source
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
-      - name: Keeta ingress + durable delivery + reconciliation TDD gate
+      - name: Keeta ingress + durable delivery + reconciliation + READY TDD gate
         working-directory: source
-        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-order-get-reconciliation.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
+        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-order-get-reconciliation.test.ts packages/integration/fulfillment-ready-keeta-prepare.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
       - name: Root TypeScript gate
         working-directory: source
         run: npm run typecheck
