@@ -50,6 +50,18 @@ jobs:
       - name: Root TypeScript gate
         working-directory: source
         run: npm run typecheck
+      - name: SMT typecheck
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck
+      - name: SMT build
+        working-directory: source/apps/smt-clean
+        run: npm run build
+      - name: SMM typecheck
+        working-directory: source/apps/smm-web
+        run: npm run typecheck
+      - name: SMM build
+        working-directory: source/apps/smm-web
+        run: npm run build
       - name: Record evidence
         if: always()
         shell: bash
