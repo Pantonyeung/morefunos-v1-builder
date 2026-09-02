@@ -55,6 +55,9 @@ jobs:
       - name: Run PRINT tests
         working-directory: source
         run: node --test --experimental-strip-types packages/print/*.test.ts
+      - name: Run accepted-order projection tests
+        working-directory: source
+        run: node --test --experimental-strip-types packages/order/d1-accepted-order-projection.test.ts packages/order/d1-store-order-acceptance.test.ts
       - name: Run full TypeScript typecheck
         working-directory: source
         run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
