@@ -1,3 +1,3 @@
-source_sha=c2b847c0d48c6e3334aee07befe39558bda3bbc3
+source_sha=69f80282b09f6773986bcc50c400b152341a2c41
 branch_name=landing/CMD-038-print-auto-pipeline-uat
-request_id=CMD-038-PRINT-FINAL-R5
+request_id=CMD-038-PRINT-FINAL-R6
