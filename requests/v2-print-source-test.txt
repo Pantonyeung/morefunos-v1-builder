@@ -1,3 +1,3 @@
-source_sha=81e43b413f4e15a8e85570097a253dd2d76ef38c
+source_sha=c2b847c0d48c6e3334aee07befe39558bda3bbc3
 branch_name=landing/CMD-038-print-auto-pipeline-uat
-request_id=CMD-038-NATIVE-SUNMI-LAN-R4
+request_id=CMD-038-PRINT-FINAL-R5
