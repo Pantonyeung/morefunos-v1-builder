@@ -1,2 +1,2 @@
 source_sha=f6fd540f53d007f6fec8c27b8b0ab51981aef022
-request_id=CMD-046-SMT-CARRIER-APK-R1
+request_id=CMD-046-SMT-TEST-APK-R2
