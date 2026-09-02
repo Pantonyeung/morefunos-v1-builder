@@ -1,4 +1,4 @@
-source_sha=51dff3c72b3c2045f26e35847ea999e24716a4f9
-request_id=CMD-022-KEETA-SMM-MERCHANT-INBOX-ADAPTER-GREEN-03
-branch=landing/CMD-022-keeta-smm-merchant-inbox-adapter
-purpose=exact-source final SMM Keeta merchant inbox verification after typed binding fix
+source_sha=24495628251d449abfead4d3c2a78f9ca847bfb7
+request_id=CMD-022-KEETA-SMM-MERCHANT-INBOX-ADAPTER-FINAL-R2
+branch=landing/CMD-022-keeta-smm-merchant-inbox-adapter-r2
+purpose=final exact-source latest-main SMM Keeta merchant inbox adapter verification
