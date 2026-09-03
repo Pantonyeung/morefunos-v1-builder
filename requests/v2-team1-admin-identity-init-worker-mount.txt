@@ -1,2 +1,2 @@
-source_sha=6ca485e6786f0aa405b5494b1bd32a450bd0e7f5
-phase=GREEN-2
+source_sha=278806e201970f550053bc6e10fda4d223ea44d9
+phase=GREEN-3
