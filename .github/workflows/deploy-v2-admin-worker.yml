@@ -83,6 +83,29 @@ jobs:
           console.log('admin_session_tables=PASS');
           NODE
           rm -f /tmp/d1-body.json /tmp/d1-result.json /tmp/d1-verify.json /tmp/d1-verify-result.json
+      - name: Read-only production authority preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          node - <<'NODE'
+          const fs=require('fs');
+          const sql=`SELECT 'store' AS authority, COUNT(*) AS row_count FROM mfos_store_operational_state
+          UNION ALL SELECT 'pricing', COUNT(*) FROM mfos_pricing_profile
+          UNION ALL SELECT 'availability', COUNT(*) FROM mfos_availability_state
+          UNION ALL SELECT 'business_day', COUNT(*) FROM mfos_business_day
+          UNION ALL SELECT 'direct_bootstrap_idempotency', COUNT(*) FROM mfos_d1_idempotency WHERE scope='direct.authority.bootstrap';`;
+          fs.writeFileSync('/tmp/authority-preflight.json', JSON.stringify({sql}));
+          NODE
+          HTTP_CODE="$(curl -sS -o /tmp/authority-preflight-result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/authority-preflight.json)"
+          echo "authority_preflight_http=$HTTP_CODE" | tee evidence/authority-preflight.txt
+          test "$HTTP_CODE" = 200
+          node - <<'NODE' | tee -a evidence/authority-preflight.txt
+          const x=require('/tmp/authority-preflight-result.json');
+          if(!x.success || !x.result?.[0]?.success) process.exit(1);
+          for (const row of x.result[0].results || []) console.log(`${row.authority}=${row.row_count}`);
+          NODE
+          rm -f /tmp/authority-preflight.json /tmp/authority-preflight-result.json
       - name: Apply formal Admin login secret when configured
         env:
           ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
