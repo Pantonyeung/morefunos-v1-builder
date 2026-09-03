@@ -1,3 +1,3 @@
-source_sha=c6f6d6a78defe3d3527f47d61a6b1bb8b589d43a
-branch_name=landing/CMD-053-shared-direct-final-gate-r6
-verification_scope=pricing+catalog+business-day-unit+direct-final-gate+consumer-bindings+staff-runtime+typecheck
+source_sha=e186e02cbff84dd04916277d81ebd451f72cdf00
+branch_name=landing/CMD-053-shared-direct-final-gate-r8
+verification_scope=recovered-r8+pricing+catalog+business-day+shared-direct-gate+cross-port+typecheck
