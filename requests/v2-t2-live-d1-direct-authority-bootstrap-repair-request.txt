@@ -1,3 +1,3 @@
-source_sha=090b551de608afef367568ec68201b7eb8a0c3ba
+source_sha=e8de9286b69067acca75d5553c387b8d65d4fb56
 scope=T2-P0-LIVE-CATALOG-BOOTSTRAP-ADAPTER
-attempt=4-candidate
+attempt=5-fresh-main-admission-candidate
