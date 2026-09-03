@@ -1,0 +1,50 @@
+name: Resolve V2 SMT API Origin
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-api-origin-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKER_NAME="$(sed -n 's/^worker_name=//p' requests/v2-smt-api-origin-request.txt | tr -d '[:space:]')"
+          [[ "$WORKER_NAME" =~ ^[a-z0-9-]+$ ]]
+          echo "worker_name=$WORKER_NAME" >> "$GITHUB_OUTPUT"
+      - name: Resolve exact Cloudflare workers.dev origin
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_NAME: ${{ steps.request.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          SUBDOMAIN="$(curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r '.result.subdomain')"
+          test -n "$SUBDOMAIN"; test "$SUBDOMAIN" != null
+          API_URL="https://$WORKER_NAME.$SUBDOMAIN.workers.dev"
+          CODE="$(curl --silent --show-error -o /dev/null -w '%{http_code}' "$API_URL/api/smt/orders")"
+          case "$CODE" in 200|401|403|405) ;; *) echo "SMT_API_ORIGIN_UNREACHABLE:$CODE"; exit 1 ;; esac
+          mkdir -p evidence
+          printf 'worker_name=%s\napi_url=%s\nprobe_http_code=%s\nrun_id=%s\n' "$WORKER_NAME" "$API_URL" "$CODE" "$GITHUB_RUN_ID" | tee evidence/summary.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-api-origin
+          path: evidence/summary.txt
+          if-no-files-found: error
+          retention-days: 7
