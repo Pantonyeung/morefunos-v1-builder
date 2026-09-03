@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Inspect store-related production tables read-only
+      - name: Inspect merchant/store production tables read-only
         shell: bash
         run: |
           set -euo pipefail
@@ -29,14 +29,14 @@ jobs:
           URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
           node - <<'NODE'
           const fs=require('fs');
-          fs.writeFileSync('/tmp/q.json',JSON.stringify({sql:"SELECT name FROM sqlite_master WHERE type='table' AND lower(name) LIKE '%store%' ORDER BY name"}));
+          fs.writeFileSync('/tmp/q.json',JSON.stringify({sql:"SELECT name FROM sqlite_master WHERE type='table' AND (lower(name) LIKE '%store%' OR lower(name) LIKE '%merchant%') ORDER BY name"}));
           NODE
           curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > /tmp/tables.json
           node - <<'NODE' | tee evidence/store-identity-preflight.txt
           const x=require('/tmp/tables.json');
           if(!x.success || !x.result?.[0]?.success) process.exit(1);
           const names=(x.result[0].results||[]).map(r=>r.name);
-          console.log(`store_tables=${names.join(',')}`);
+          console.log(`identity_tables=${names.join(',')}`);
           NODE
           node - <<'NODE' >/tmp/store-queries.json
           const x=require('/tmp/tables.json');
@@ -53,7 +53,7 @@ jobs:
           const fs=require('fs');
           const {execFileSync}=require('child_process');
           const qs=JSON.parse(fs.readFileSync('/tmp/store-queries.json','utf8'));
-          const url=process.env.URL_OVERRIDE||`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${process.env.D1_DATABASE_ID}/query`;
+          const url=`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${process.env.D1_DATABASE_ID}/query`;
           const token=process.env.CLOUDFLARE_API_TOKEN;
           let out='';
           for(const q of qs){
