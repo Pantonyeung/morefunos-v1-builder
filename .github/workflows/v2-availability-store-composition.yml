@@ -12,7 +12,7 @@ jobs:
   verify:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout Builder definition
         uses: actions/checkout@v7
@@ -51,8 +51,9 @@ jobs:
           EXPECTED: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
+          mkdir -p evidence
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
-          echo "source-identity=PASS sha=$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED" | tee evidence/source-identity.log
 
       - uses: actions/setup-node@v4
         with:
@@ -64,16 +65,69 @@ jobs:
 
       - name: Run Availability tests
         working-directory: source
-        run: node --test --experimental-strip-types packages/availability/*.test.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/availability/*.test.ts 2>&1 | tee ../evidence/availability-tests.log
+
+      - name: Run Store operational tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/merchant-store/*.test.ts 2>&1 | tee ../evidence/store-tests.log
+
+      - name: Run Keeta Store operational binding tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/integration/keeta-store-operational-binding.test.ts 2>&1 | tee ../evidence/keeta-store-binding-tests.log
+
+      - name: Run Customer runtime tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test apps/customer-web/*.test.mjs 2>&1 | tee ../evidence/customer-runtime-tests.log
 
       - name: Run root TypeScript typecheck
         working-directory: source
-        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
 
       - name: Admin app typecheck and build
         if: ${{ hashFiles('source/apps/admin-web/package.json') != '' }}
         working-directory: source/apps/admin-web
-        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck 2>&1 | tee ../../evidence/admin-typecheck.log
+          npm run build 2>&1 | tee ../../evidence/admin-build.log
+
+      - name: SMT app tests typecheck and build
+        if: ${{ hashFiles('source/apps/smt-clean/package.json') != '' }}
+        working-directory: source/apps/smt-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test 2>&1 | tee ../../evidence/smt-tests.log
+          npm run typecheck 2>&1 | tee ../../evidence/smt-typecheck.log
+          npm run build 2>&1 | tee ../../evidence/smt-build.log
+
+      - name: SMM app typecheck and build
+        if: ${{ hashFiles('source/apps/smm-web/package.json') != '' }}
+        working-directory: source/apps/smm-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck 2>&1 | tee ../../evidence/smm-typecheck.log
+          npm run build 2>&1 | tee ../../evidence/smm-build.log
 
       - name: Write evidence
         if: always()
