@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: v2-team2-smt-production-order-read
+  cancel-in-progress: true
+
 jobs:
   live:
     if: github.actor == 'Pantonyeung'
