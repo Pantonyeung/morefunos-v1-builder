@@ -1,0 +1,131 @@
+name: V2 T3 MOL Live Inventory
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-t3-mol-live-inventory-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-t3-mol-live-inventory-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          test -n "$CF_TOKEN"
+          test -n "$CF_ACCOUNT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact source
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Read Cloudflare runtime inventory
+        shell: bash
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          API_ROOT="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT"
+          curl --fail --silent --show-error "$API_ROOT/workers/scripts" -H "Authorization: Bearer $CF_TOKEN" > evidence/workers.json
+          jq -e '.success == true' evidence/workers.json >/dev/null
+          jq '{success, workers:[.result[]? | {id, modified_on, created_on}]}' evidence/workers.json > evidence/workers-redacted.json
+          rm evidence/workers.json
+          curl --fail --silent --show-error "$API_ROOT/pages/projects" -H "Authorization: Bearer $CF_TOKEN" > evidence/pages.json || true
+          if jq -e '.success == true' evidence/pages.json >/dev/null 2>&1; then
+            jq '{success, projects:[.result[]? | {name, subdomain, production_branch, created_on}]}' evidence/pages.json > evidence/pages-redacted.json
+          else
+            printf '{"success":false,"projects":[]}' > evidence/pages-redacted.json
+          fi
+          rm -f evidence/pages.json
+          cat evidence/workers-redacted.json
+          cat evidence/pages-redacted.json
+
+      - name: Read canonical D1 operational inventory
+        shell: bash
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/d1/database/$D1_DATABASE_ID/query"
+          mkdir -p evidence
+          query() {
+            local sql="$1" out="$2"
+            jq -n --arg sql "$sql" '{sql:$sql}' > "$RUNNER_TEMP/query.json"
+            curl --fail --silent --show-error -X POST "$API" \
+              -H "Authorization: Bearer $CF_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data @"$RUNNER_TEMP/query.json" > "$out"
+            jq -e '.success == true' "$out" >/dev/null
+          }
+          query "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'mfos_%' ORDER BY name;" evidence/tables.json
+          query "SELECT store_id, operational_status, revision, changed_at FROM mfos_store_operational_state ORDER BY changed_at DESC LIMIT 20;" evidence/store-operational.json
+          query "SELECT business_day_id, store_id, business_date, timezone, lifecycle_status, revision, opened_at FROM mfos_business_day ORDER BY business_date DESC, revision DESC LIMIT 20;" evidence/business-day.json
+          query "SELECT pricing_profile_id, store_id, subject_type, subject_id, sales_price_context, pricing_mode, currency, fixed_price_minor, lifecycle_status, revision, effective_from, effective_to FROM mfos_pricing_profile WHERE sales_price_context='DIRECT' AND lifecycle_status='ACTIVE' ORDER BY updated_at DESC LIMIT 50;" evidence/pricing.json
+          query "SELECT availability_id, store_id, target_type, target_id, status, revision, changed_at FROM mfos_availability_state WHERE status='AVAILABLE' ORDER BY changed_at DESC LIMIT 100;" evidence/availability.json
+          query "SELECT order_id, store_id, lifecycle_status, revision, created_at, updated_at FROM mfos_order_state ORDER BY updated_at DESC LIMIT 20;" evidence/order-state.json
+          jq '{tables:[.result[]?.results[]?.name]}' evidence/tables.json
+          jq '{store_operational:[.result[]?.results[]?]}' evidence/store-operational.json
+          jq '{business_days:[.result[]?.results[]?]}' evidence/business-day.json
+          jq '{direct_active_pricing:[.result[]?.results[]?]}' evidence/pricing.json
+          jq '{available:[.result[]?.results[]?]}' evidence/availability.json
+          jq '{recent_orders:[.result[]?.results[]?]}' evidence/order-state.json
+
+      - name: Record identity
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbuilder_sha=%s\nrun_id=%s\nd1_database_id=%s\ncloudflare_mutation=NONE\nworkflow=v2-t3-mol-live-inventory.yml\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$D1_DATABASE_ID" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-t3-mol-live-inventory-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
