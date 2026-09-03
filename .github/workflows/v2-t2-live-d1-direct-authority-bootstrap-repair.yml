@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths: ['requests/v2-t2-live-d1-direct-authority-bootstrap-repair-request.txt']
+  pull_request:
+    branches: [main]
+    paths: ['requests/v2-t2-live-d1-direct-authority-bootstrap-repair-request.txt']
 
 permissions:
   contents: read
