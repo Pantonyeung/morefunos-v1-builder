@@ -51,8 +51,7 @@ jobs:
           node - <<'NODE' | tee evidence/schema-recovery.txt
           const x=require('/tmp/pre-result.json');
           if(!x.success) throw new Error('OUTBOX_PRAGMA_FAILED');
-          const cols=x.result?.[0]?.results??[];
-          const names=cols.map(c=>c.name);
+          const names=(x.result?.[0]?.results??[]).map(c=>c.name);
           console.log('outbox_columns_before='+names.join(','));
           if(names.includes('store_id')) throw new Error('STORE_ID_ALREADY_PRESENT_ABORT');
           console.log('missing_store_id_confirmed=PASS');
@@ -62,8 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
-          SQL="$(cat source/infra/cloudflare/d1/migrations/0003-order-outbox-store-scope.sql)"
-          node -e 'process.stdout.write(JSON.stringify({sql:process.argv[1]}))' "$SQL" >/tmp/apply.json
+          node - <<'NODE' > /tmp/apply.json
+          const fs=require('fs');
+          const sql=fs.readFileSync('source/infra/cloudflare/d1/migrations/0003-order-outbox-store-scope.sql','utf8');
+          process.stdout.write(JSON.stringify({sql}));
+          NODE
           HTTP="$(curl -sS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/apply.json -o /tmp/apply-result.json -w '%{http_code}')"
           echo "migration_0003_http=$HTTP" | tee -a evidence/schema-recovery.txt
           cat /tmp/apply-result.json > evidence/migration-response.json
