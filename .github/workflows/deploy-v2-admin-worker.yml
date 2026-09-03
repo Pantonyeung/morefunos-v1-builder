@@ -4,13 +4,17 @@ on:
   push:
     paths:
       - 'requests/v2-admin-worker-deploy-request.txt'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'requests/v2-admin-worker-deploy-request.txt'
 
 permissions:
   contents: read
 
 jobs:
   deploy:
-    if: github.actor == 'Pantonyeung'
+    if: github.actor == 'Pantonyeung' && (github.event_name == 'push' || startsWith(github.head_ref, 'verify/t2-admin-worker-deploy-proof-'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
