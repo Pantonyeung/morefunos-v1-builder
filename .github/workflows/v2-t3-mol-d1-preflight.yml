@@ -1,0 +1,114 @@
+name: V2 T3 MOL D1 Preflight
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-t3-mol-d1-preflight-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-t3-mol-d1-preflight-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          test -n "$CF_TOKEN"
+          test -n "$CF_ACCOUNT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact source and migration identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          test -f source/infra/cloudflare/d1/migrations/0008-order-state-store-scope.sql
+          grep -q 'ALTER TABLE mfos_order_state ADD COLUMN store_id TEXT;' source/infra/cloudflare/d1/migrations/0008-order-state-store-scope.sql
+
+      - name: Preflight and conditionally apply 0008
+        id: d1
+        shell: bash
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/d1/database/$D1_DATABASE_ID/query"
+          query() {
+            local sql="$1" out="$2"
+            jq -n --arg sql "$sql" '{sql:$sql}' > "$RUNNER_TEMP/query.json"
+            curl --fail --silent --show-error -X POST "$API" \
+              -H "Authorization: Bearer $CF_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data @"$RUNNER_TEMP/query.json" > "$out"
+            jq -e '.success == true' "$out" >/dev/null
+          }
+          query 'PRAGMA table_info(mfos_order_state);' evidence/schema-before.json
+          HAS_STORE="$(jq '[.result[]?.results[]? | select(.name=="store_id")] | length' evidence/schema-before.json)"
+          printf 'store_id_before=%s\n' "$HAS_STORE" | tee evidence/preflight.txt
+          if [ "$HAS_STORE" = "0" ]; then
+            SQL="$(cat source/infra/cloudflare/d1/migrations/0008-order-state-store-scope.sql)"
+            query "$SQL" evidence/migration-0008.json
+            echo 'migration_0008=APPLIED' | tee -a evidence/preflight.txt
+          else
+            echo 'migration_0008=ALREADY_PRESENT_SKIP' | tee -a evidence/preflight.txt
+          fi
+          query 'PRAGMA table_info(mfos_order_state);' evidence/schema-after.json
+          query 'PRAGMA index_list(mfos_order_state);' evidence/index-after.json
+          jq -e '[.result[]?.results[]? | select(.name=="store_id")] | length == 1' evidence/schema-after.json >/dev/null
+          jq -e '[.result[]?.results[]? | select(.name=="mfos_order_state_store_idx")] | length == 1' evidence/index-after.json >/dev/null
+          echo 'd1_store_scope=PASS' | tee -a evidence/preflight.txt
+
+      - name: Record identity
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbuilder_sha=%s\nrun_id=%s\nd1_database_id=%s\nworkflow=v2-t3-mol-d1-preflight.yml\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$D1_DATABASE_ID" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-t3-mol-d1-preflight-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
