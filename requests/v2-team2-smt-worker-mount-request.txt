@@ -1,2 +1,2 @@
-source_sha=476250d88073282efd47f41bbc721629f32beba5
-attempt=availability-scope-red-2
+source_sha=0a2495658c42a4092eb92aed31935898c50c9f50
+attempt=availability-scope-green
