@@ -67,7 +67,7 @@ jobs:
           console.log('staff_id='+m.adminOperator.staffId);
           NODE
           npm run typecheck
-      - name: Configure canonical Admin principal
+      - name: Configure canonical Admin principal and deploy exact Worker
         working-directory: source
         shell: bash
         run: |
@@ -79,6 +79,8 @@ jobs:
           STORE_ID="$(node -e "const m=require('./docs/recovery/team1/MF01-TEMPORARY-BOOTSTRAP-MANIFEST-2026-09-03.json');process.stdout.write(m.store.storeId)")"
           PRINCIPAL="$(node -e "process.stdout.write(JSON.stringify({actorId:'admin:owner',staffId:process.argv[1],scopeRef:process.argv[2],permissions:['admin.direct_authority.bootstrap.v1','admin.merchant_store.initialize.v1']}))" "$STAFF_ID" "$STORE_ID")"
           printf '%s' "$PRINCIPAL" | npx --yes wrangler@4 secret put ADMIN_AUTH_PRINCIPAL_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+          npx --yes wrangler@4 deploy --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/tmp/deploy.log 2>&1
+          cat /tmp/deploy.log
           echo "admin_principal_uuid=PASS"
           echo "staff_id=$STAFF_ID"
           echo "scope_ref=$STORE_ID"
