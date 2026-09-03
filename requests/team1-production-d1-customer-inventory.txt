@@ -1,0 +1,2 @@
+requested_at=2026-09-03
+purpose=team1-customer-direct-vertical
