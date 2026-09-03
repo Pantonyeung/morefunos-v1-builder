@@ -105,6 +105,24 @@ jobs:
           set -euo pipefail
           ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
 
+      - name: Install SMM app dependencies
+        working-directory: source/apps/smm-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck SMM canonical orders surface
+        working-directory: source/apps/smm-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck 2>&1 | tee ../../evidence/smm-app-typecheck.log
+
+      - name: Build SMM canonical orders surface
+        working-directory: source/apps/smm-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee ../../evidence/smm-app-build.log
+
       - name: Write evidence
         if: always()
         shell: bash
