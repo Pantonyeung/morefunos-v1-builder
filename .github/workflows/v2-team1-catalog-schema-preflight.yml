@@ -1,0 +1,57 @@
+name: V2 Team1 Catalog Schema Preflight
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-catalog-schema-preflight.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Inspect catalog schema and row count read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          query() {
+            local sql="$1" out="$2"
+            node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.argv[1]}))" "$sql"
+            curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > "$out"
+          }
+          query "PRAGMA table_info(mfos_catalog_state)" /tmp/columns.json
+          query "SELECT COUNT(*) AS row_count FROM mfos_catalog_state" /tmp/count.json
+          node - <<'NODE' | tee evidence/catalog-schema-preflight.txt
+          const cols=require('/tmp/columns.json');
+          const count=require('/tmp/count.json');
+          if(!cols.success || !cols.result?.[0]?.success || !count.success || !count.result?.[0]?.success) process.exit(1);
+          const names=(cols.result[0].results||[]).map(r=>r.name);
+          const rowCount=Number(count.result[0].results?.[0]?.row_count ?? -1);
+          const legacy=['store_id','revision','record_json','updated_at'];
+          const current=['store_id','catalog_revision','snapshot_json','revision','created_at','updated_at'];
+          const upgraded=['store_id','revision','record_json','updated_at','catalog_revision','snapshot_json','created_at'];
+          const eq=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
+          console.log(`catalog_columns=${names.join(',')}`);
+          console.log(`catalog_rows=${rowCount}`);
+          console.log(`catalog_shape=${eq(names,legacy)?'LEGACY_EMPTY_CANDIDATE':eq(names,current)?'CURRENT':eq(names,upgraded)?'UPGRADED_LEGACY':'UNEXPECTED'}`);
+          if(rowCount < 0) process.exit(1);
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-team1-catalog-schema-preflight
+          path: evidence
+          retention-days: 30
