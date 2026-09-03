@@ -71,6 +71,13 @@ jobs:
           set -euo pipefail
           node --test --experimental-strip-types packages/pricing/*.test.ts 2>&1 | tee ../evidence/pricing-tests.log
 
+      - name: Run Catalog tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/catalog/*.test.ts 2>&1 | tee ../evidence/catalog-tests.log
+
       - name: Run root TypeScript typecheck
         working-directory: source
         shell: bash
