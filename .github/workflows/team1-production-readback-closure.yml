@@ -1,0 +1,124 @@
+name: Team1 Production Readback Closure
+
+on:
+  push:
+    paths:
+      - 'requests/team1-production-readback-closure.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      CANONICAL_STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+      CANONICAL_PRODUCT_ID: 29e9e173-087f-46f4-bae3-0c29f4d51417
+      CANONICAL_STAFF_ID: 7d61cc4d-e3d1-45b7-9e6c-28e2b8d7f779
+      CANONICAL_ORDER_ID: 094b2412-df92-4897-b0c2-3d67bcf85ef6
+      SUBMISSION_ID: recovery-live-customer-direct-20260903-v1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact admitted source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team1-production-readback-closure.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify admitted authority source invariants
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          ! grep -R "const DEFAULT_PRINCIPAL" -n infra/cloudflare/admin-web-worker/index.ts
+          grep -q "ADMIN_LOGIN_SECRET" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "ADMIN_AUTH_PRINCIPAL_JSON" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "D1SessionDeviceTrustRepository" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "createSecurityContextAuthorizationGateway" infra/cloudflare/admin-web-worker/index.ts
+
+      - name: Prove anonymous fail-closed and formal Admin session
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          ANON_HTTP="$(curl -sS -o /tmp/anon.json -w '%{http_code}' "$ADMIN_URL/api/admin/session")"
+          test "$ANON_HTTP" = 401
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          node -e "const x=require('/tmp/login.json');if(!x.authenticated||x.staffId!==process.env.CANONICAL_STAFF_ID||x.scopeRef!==process.env.CANONICAL_STORE_ID||!x.bootstrapAuthorized)process.exit(1)"
+          SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/session")"
+          test "$SESSION_HTTP" = 200
+          node -e "const x=require('/tmp/session.json');if(!x.authenticated||x.staffId!==process.env.CANONICAL_STAFF_ID||x.scopeRef!==process.env.CANONICAL_STORE_ID)process.exit(1)"
+          printf 'anonymous_session_http=%s\nlogin_http=%s\nsession_http=%s\n' "$ANON_HTTP" "$LOGIN_HTTP" "$SESSION_HTTP" | tee evidence/admin-session.txt
+
+      - name: Canonical business readback and exact Customer Order proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL="SELECT (SELECT COUNT(*) FROM mfos_catalog_state WHERE store_id='${CANONICAL_STORE_ID}') AS catalog_rows,(SELECT COUNT(*) FROM mfos_pricing_profile WHERE store_id='${CANONICAL_STORE_ID}' AND subject_id='${CANONICAL_PRODUCT_ID}' AND currency='HKD' AND fixed_price_minor=2500 AND lifecycle_status='ACTIVE') AS pricing_rows,(SELECT COUNT(*) FROM mfos_availability_state WHERE store_id='${CANONICAL_STORE_ID}' AND target_id='${CANONICAL_PRODUCT_ID}' AND status='AVAILABLE') AS availability_rows,(SELECT COUNT(*) FROM mfos_store_operational_state WHERE store_id='${CANONICAL_STORE_ID}' AND operational_status='OPEN') AS operational_rows,(SELECT COUNT(*) FROM mfos_business_day WHERE store_id='${CANONICAL_STORE_ID}') AS business_day_rows,(SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id='${SUBMISSION_ID}' AND order_id='${CANONICAL_ORDER_ID}') AS correlated_order_rows,(SELECT COUNT(*) FROM mfos_order_state WHERE order_id='${CANONICAL_ORDER_ID}') AS canonical_order_rows"
+          node -e "require('fs').writeFileSync('/tmp/readback.json',JSON.stringify({sql:process.env.SQL}))" SQL="$SQL"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/readback.json >/tmp/readback-result.json
+          node - <<'NODE' | tee evidence/d1-readback.txt
+          const x=require('/tmp/readback-result.json');
+          const r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('D1_READBACK_FAILED');
+          for(const k of ['catalog_rows','pricing_rows','availability_rows','operational_rows','business_day_rows','correlated_order_rows','canonical_order_rows']) {
+            if(Number(r[k])!==1) throw new Error(`${k}=${r[k]}`);
+          }
+          console.log(JSON.stringify(r));
+          console.log('canonical_business_readback=PASS');
+          console.log('exact_customer_order_exactly_one=PASS');
+          NODE
+
+      - name: Customer ordering projection readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl -sS -o /tmp/ordering.json -w '%{http_code}' "$ADMIN_URL/api/customer/ordering")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const x=require('/tmp/ordering.json');
+          if(x.storeStatus!=='open') throw new Error('STORE_NOT_OPEN');
+          const p=(x.products||[]).find(v=>v.productId===process.env.CANONICAL_PRODUCT_ID);
+          if(!p||p.name!=='古早鹽酥雞'||p.currency!=='HKD'||Number(p.priceMinor)!==2500||p.available!==true) throw new Error('PRODUCT_PROJECTION_MISMATCH');
+          NODE
+          printf 'customer_ordering_http=%s\n' "$HTTP" | tee evidence/customer-ordering.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-production-readback-closure-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
