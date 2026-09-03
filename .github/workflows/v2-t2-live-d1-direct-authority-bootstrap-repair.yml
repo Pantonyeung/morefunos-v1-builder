@@ -69,7 +69,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test --experimental-strip-types verification/t2-live-d1-direct-authority-bootstrap-repair.test.mjs 2>&1 | tee evidence/t2-live-d1-direct-authority-bootstrap-repair.log
+          node --test --experimental-strip-types \
+            verification/t2-live-d1-direct-authority-bootstrap-repair.test.mjs \
+            verification/t2-d1-known-availability-index-hotfix.test.mjs \
+            2>&1 | tee evidence/t2-live-d1-direct-authority-bootstrap-repair.log
 
       - name: Run root TypeScript typecheck
         working-directory: source
