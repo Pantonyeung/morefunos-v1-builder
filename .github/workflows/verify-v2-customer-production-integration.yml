@@ -76,6 +76,16 @@ jobs:
         working-directory: source
         run: node --test packages/customer-ui-integration/*.test.ts
 
+      - name: Customer D1 persistence tests
+        working-directory: source
+        run: |
+          node --test packages/customer-loyalty/customer-authentication-d1.test.ts
+          node --test packages/order/d1-store-order-acceptance.test.ts
+
+      - name: Admin explicit-principal regression
+        working-directory: source
+        run: node --test packages/admin-ui-integration/admin-worker-session-runtime.test.ts
+
       - name: Customer browser adapter tests
         working-directory: source
         run: node --test apps/customer-web/*.test.mjs
