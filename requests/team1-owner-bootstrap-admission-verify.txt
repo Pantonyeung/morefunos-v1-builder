@@ -1,3 +1,3 @@
-source_sha=9ea13df50b5861c8f21096634baf6d62682dacec
-requested_at=2026-09-03T23:55:00+08:00
-purpose=clean-latest-main-owner-bootstrap-admission-verify
+source_sha=2a1c716b3b8a2ad52551ee6bc1d970ec1d2e68b8
+requested_at=2026-09-03T23:57:00+08:00
+purpose=refreshed-main-owner-bootstrap-admission-r2-verify
