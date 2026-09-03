@@ -62,7 +62,7 @@ jobs:
             -H "Authorization: Bearer $LOOKUP_TOKEN" \
             "$LIVE_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
           test "$STATUS_CODE" = 200
-          node -e "const x=require('./evidence/status.json');if(!x.ok||x.lifecycleStatus!=='ACCEPTED'||x.orderId!==process.env.ORDER_ID||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1)" ORDER_ID="$ORDER_ID"
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/status.json');if(!x.ok||x.lifecycleStatus!=='ACCEPTED'||x.orderId!==process.env.ORDER_ID||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1)"
 
           D1_JSON="$(npx wrangler d1 execute morefun-v2-production --remote --command "SELECT s.order_id, s.revision, o.submission_id FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id WHERE o.submission_id='$SUBMISSION_ID';" --json)"
           printf '%s\n' "$D1_JSON" > evidence/d1.json
