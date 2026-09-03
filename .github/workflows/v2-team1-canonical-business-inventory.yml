@@ -1,0 +1,53 @@
+name: V2 Team1 Canonical Business Inventory
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-canonical-business-inventory.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Query production canonical business inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat > /tmp/inventory.json <<'JSON'
+          {"sql":"SELECT (SELECT COUNT(*) FROM mfos_catalog_state) AS catalog_rows, (SELECT COUNT(*) FROM mfos_catalog_state WHERE store_id=(SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01')) AS mf01_catalog_rows, (SELECT COUNT(*) FROM mfos_pricing_profile) AS pricing_rows, (SELECT COUNT(*) FROM mfos_availability_state) AS availability_rows, (SELECT COUNT(*) FROM mfos_store_operational_state) AS operational_rows, (SELECT COUNT(*) FROM mfos_business_day) AS business_day_rows, (SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01') AS mf01_store_id"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/inventory.json > /tmp/inventory-result.json
+          node - <<'NODE' | tee evidence/canonical-business-inventory.txt
+          const x=require('/tmp/inventory-result.json');
+          if(!x.success) process.exit(1);
+          const r=x.result?.[0]?.results?.[0];
+          if(!r) process.exit(1);
+          console.log('mf01_store_id='+r.mf01_store_id);
+          console.log('catalog_rows='+r.catalog_rows);
+          console.log('mf01_catalog_rows='+r.mf01_catalog_rows);
+          console.log('pricing_rows='+r.pricing_rows);
+          console.log('availability_rows='+r.availability_rows);
+          console.log('operational_rows='+r.operational_rows);
+          console.log('business_day_rows='+r.business_day_rows);
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team1-canonical-business-inventory
+          path: evidence
+          retention-days: 30
