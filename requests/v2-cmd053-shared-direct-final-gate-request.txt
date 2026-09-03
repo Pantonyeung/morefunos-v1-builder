@@ -1,4 +1,4 @@
-source_sha=af6a051413ab093c9d878e86c5c17bceac5550b2
+source_sha=a5f120a80d9cef65a6e9b1231410d2414c11df99
 branch_name=landing/CMD-053-clean-admission
-verification_scope=clean-admission+recovered-r8+pricing+catalog+business-day+shared-direct-gate+cross-port+typecheck
+verification_scope=clean-admission-final-head+recovered-r8+pricing+catalog+business-day+shared-direct-gate+cross-port+typecheck
 verification_revision=canonical-catalog-fixture-v2
