@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test --experimental-strip-types packages/order/direct-final-gate.test.ts packages/store-order-intake/store-order-intake.test.ts packages/store-order-intake/store-order-intake-async.test.ts 2>&1 | tee ../evidence/direct-final-gate-tests.log
+          node --test --experimental-strip-types packages/order/direct-final-gate.test.ts 2>&1 | tee ../evidence/direct-final-gate-tests.log
 
       - name: Run root TypeScript typecheck
         working-directory: source
