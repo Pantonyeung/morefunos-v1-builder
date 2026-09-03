@@ -1,3 +1,3 @@
-source_sha=00960a29c3ea801449fba8c0ea54fa5c284ae590
-scope=T2-P0-LIVE-CATALOG-BOOTSTRAP-ADAPTER
-attempt=6-post-admission
+source_sha=bf588d797cc13bdf663e5d18d014d86f7a42a126
+scope=T2-P0-TRUSTED-LIVE-BOOTSTRAP-INVOCATION-COMPOSITION
+attempt=1-candidate
