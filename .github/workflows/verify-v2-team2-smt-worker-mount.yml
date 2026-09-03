@@ -63,7 +63,7 @@ jobs:
 
       - name: Run Team2 trusted SMT Worker contracts
         working-directory: source
-        run: node --test --experimental-strip-types packages/availability/availability-port-contract.test.ts packages/smt-ui-integration/t2-smt-worker-mount.test.ts packages/smt-ui-integration/t2-smt-worker-boundary-wiring.test.ts packages/smt-ui-integration/t2-smt-session-d1.test.ts
+        run: node --test --experimental-strip-types packages/availability/availability-port-contract.test.ts packages/smt-ui-integration/t2-smt-worker-mount.test.ts packages/smt-ui-integration/t2-smt-worker-boundary-wiring.test.ts packages/smt-ui-integration/t2-smt-session-d1.test.ts packages/smt-ui-integration/t2-smt-availability-set-d1.test.ts
 
       - name: Run root TypeScript typecheck
         working-directory: source
