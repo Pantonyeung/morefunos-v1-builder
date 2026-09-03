@@ -1,3 +1,3 @@
-source_sha=4718e016a2f3817f55eb2fcf9a5d7eb1fbe2c8f6
-scope=T2-LIVE-D1-DIRECT-AUTHORITY-BOOTSTRAP-REPAIR
-attempt=4-post-admission
+source_sha=a6418119840d70305fcbb6ab38ee00db8fed5558
+scope=T2-P0-D1-KNOWN-AVAILABILITY-INDEX-HOTFIX
+attempt=1-candidate
