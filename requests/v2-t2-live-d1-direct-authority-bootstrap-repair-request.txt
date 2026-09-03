@@ -1,3 +1,3 @@
-source_sha=f01849bc294d44ed9aa9e8b3127d787a03d4cf7c
+source_sha=bf2e0755e6f23a9a7e9fbd506468b282fe025526
 scope=T2-LIVE-D1-DIRECT-AUTHORITY-BOOTSTRAP-REPAIR
-attempt=1
+attempt=2
