@@ -125,7 +125,7 @@ test('protected handler derives bootstrap authority from verified staff context 
   assert.equal(first.ok, true);
   assert.equal(first.storeId, STORE_ID);
   assert.equal(first.catalogRevision, 'catalog-live-1');
-  assert.equal(g.calls[0].command.permission, 'admin.direct-authority.bootstrap.v1');
+  assert.equal(g.calls[0].command.permission, 'admin.direct_authority.bootstrap.v1');
   assert.equal(g.calls[0].command.ingress.scopeRef, STORE_ID);
 
   const catalogAudit = sqlite.prepare('SELECT actor_id, authorization_context_ref, request_id FROM mfos_catalog_audit WHERE store_id=?').get(STORE_ID);
