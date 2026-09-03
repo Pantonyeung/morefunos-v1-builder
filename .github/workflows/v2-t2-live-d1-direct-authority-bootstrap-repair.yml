@@ -1,0 +1,95 @@
+name: V2 T2 Live D1 DIRECT Authority Bootstrap Repair
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-t2-live-d1-direct-authority-bootstrap-repair-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-t2-live-d1-direct-authority-bootstrap-repair-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source-identity=PASS sha=$EXPECTED" | tee evidence/source-identity.log
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install TypeScript toolchain
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
+
+      - name: Run guarded schema and trusted bootstrap gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types verification/t2-live-d1-direct-authority-bootstrap-repair.test.mjs 2>&1 | tee evidence/t2-live-d1-direct-authority-bootstrap-repair.log
+
+      - name: Run root TypeScript typecheck
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
+
+      - name: Write evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nmode=BUILDER_ONLY_NODE_SQLITE_D1_COMPATIBLE\nworkflow=v2-t2-live-d1-direct-authority-bootstrap-repair.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-t2-live-d1-direct-authority-bootstrap-repair-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
