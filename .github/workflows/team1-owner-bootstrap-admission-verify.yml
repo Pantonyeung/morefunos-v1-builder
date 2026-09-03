@@ -1,0 +1,66 @@
+name: Team1 Owner Bootstrap Admission Verify
+
+on:
+  push:
+    paths:
+      - requests/team1-owner-bootstrap-admission-verify.txt
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team1-owner-bootstrap-admission-verify.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify temporary owner authority and Customer runtime
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          ! grep -R "DEFAULT_PRINCIPAL" infra/cloudflare/admin-web-worker packages/admin-ui-integration packages/session-device-trust
+          grep -q "ADMIN_LOGIN_SECRET" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "ADMIN_AUTH_PRINCIPAL_JSON" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "ADMIN_AUTH_PRINCIPAL_REQUIRED" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "D1SessionDeviceTrustRepository" infra/cloudflare/admin-web-worker/index.ts
+          grep -q "createSecurityContextAuthorizationGateway" infra/cloudflare/admin-web-worker/index.ts
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/admin-ui-integration/admin-worker-session-runtime.test.ts
+          node --test packages/customer-ui-integration/*.test.ts
+          node --test packages/customer-loyalty/customer-authentication-d1.test.ts
+          node --test packages/order/d1-store-order-acceptance.test.ts
+          npm run typecheck
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
