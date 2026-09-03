@@ -78,12 +78,14 @@ jobs:
           set -euo pipefail
           node --test --experimental-strip-types packages/catalog/*.test.ts 2>&1 | tee ../evidence/catalog-tests.log
 
-      - name: Run Business Day tests
+      - name: Run Business Day unit tests
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
-          node --test --experimental-strip-types packages/business-day-cash/*.test.ts 2>&1 | tee ../evidence/business-day-tests.log
+          mapfile -t tests < <(find packages/business-day-cash -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' -print | sort)
+          test "${#tests[@]}" -gt 0
+          node --test --experimental-strip-types "${tests[@]}" 2>&1 | tee ../evidence/business-day-tests.log
 
       - name: Run root TypeScript typecheck
         working-directory: source
