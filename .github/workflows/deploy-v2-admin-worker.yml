@@ -83,7 +83,7 @@ jobs:
           console.log('admin_session_tables=PASS');
           NODE
           rm -f /tmp/d1-body.json /tmp/d1-result.json /tmp/d1-verify.json /tmp/d1-verify-result.json
-      - name: Read-only production authority preflight
+      - name: Read-only production authority and catalog preflight
         shell: bash
         run: |
           set -euo pipefail
@@ -96,6 +96,7 @@ jobs:
           UNION ALL SELECT 'business_day', COUNT(*) FROM mfos_business_day
           UNION ALL SELECT 'direct_bootstrap_idempotency', COUNT(*) FROM mfos_d1_idempotency WHERE scope='direct.authority.bootstrap';`;
           fs.writeFileSync('/tmp/authority-preflight.json', JSON.stringify({sql}));
+          fs.writeFileSync('/tmp/catalog-table.json', JSON.stringify({sql:"SELECT name FROM sqlite_master WHERE type='table' AND name='mfos_catalog_state'"}));
           NODE
           HTTP_CODE="$(curl -sS -o /tmp/authority-preflight-result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/authority-preflight.json)"
           echo "authority_preflight_http=$HTTP_CODE" | tee evidence/authority-preflight.txt
@@ -105,7 +106,23 @@ jobs:
           if(!x.success || !x.result?.[0]?.success) process.exit(1);
           for (const row of x.result[0].results || []) console.log(`${row.authority}=${row.row_count}`);
           NODE
-          rm -f /tmp/authority-preflight.json /tmp/authority-preflight-result.json
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/catalog-table.json > /tmp/catalog-table-result.json
+          CATALOG_PRESENT="$(node -e "const x=require('/tmp/catalog-table-result.json');process.stdout.write(String((x.result?.[0]?.results||[]).length===1))")"
+          echo "catalog_table_present=$CATALOG_PRESENT" | tee -a evidence/authority-preflight.txt
+          if [ "$CATALOG_PRESENT" = true ]; then
+            printf '%s' '{"sql":"SELECT store_id, catalog_revision, revision FROM mfos_catalog_state ORDER BY store_id"}' > /tmp/catalog-state.json
+            curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/catalog-state.json > /tmp/catalog-state-result.json
+            node - <<'NODE' | tee -a evidence/authority-preflight.txt
+          const x=require('/tmp/catalog-state-result.json');
+          if(!x.success || !x.result?.[0]?.success) process.exit(1);
+          const rows=x.result[0].results||[];
+          console.log(`catalog_rows=${rows.length}`);
+          for (const row of rows) console.log(`catalog_store=${row.store_id} catalog_revision=${row.catalog_revision} revision=${row.revision}`);
+          NODE
+          else
+            echo 'catalog_rows=0' | tee -a evidence/authority-preflight.txt
+          fi
+          rm -f /tmp/authority-preflight.json /tmp/authority-preflight-result.json /tmp/catalog-table.json /tmp/catalog-table-result.json /tmp/catalog-state.json /tmp/catalog-state-result.json
       - name: Apply formal Admin login secret when configured
         env:
           ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
