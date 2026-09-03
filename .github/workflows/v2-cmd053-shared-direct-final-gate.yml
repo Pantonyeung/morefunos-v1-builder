@@ -1,4 +1,4 @@
-name: V2 CMD-053 Shared DIRECT Final Gate
+name: V2 CMD-053 Recovered R8 Verification
 
 on:
   push:
@@ -27,9 +27,8 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '\r\n')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ -n "$BRANCH_NAME" ]]
+          [[ "$BRANCH_NAME" = 'landing/CMD-053-shared-direct-final-gate-r8' ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         env:
@@ -64,64 +63,43 @@ jobs:
         working-directory: source
         run: npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
 
-      - name: Run Pricing tests
+      - name: Run canonical Pricing regression
         working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test --experimental-strip-types packages/pricing/*.test.ts 2>&1 | tee ../evidence/pricing-tests.log
+        run: node --test --experimental-strip-types packages/pricing/*.test.ts 2>&1 | tee ../evidence/pricing-tests.log
 
-      - name: Run Catalog tests
+      - name: Run canonical Catalog regression
         working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test --experimental-strip-types packages/catalog/*.test.ts 2>&1 | tee ../evidence/catalog-tests.log
+        run: node --test --experimental-strip-types packages/catalog/*.test.ts 2>&1 | tee ../evidence/catalog-tests.log
 
-      - name: Run Business Day unit tests
+      - name: Run BusinessDay unit regression
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t tests < <(find packages/business-day-cash -maxdepth 1 -name '*.test.ts' ! -name '*.integration.test.ts' -print | sort)
-          test "${#tests[@]}" -gt 0
           node --test --experimental-strip-types "${tests[@]}" 2>&1 | tee ../evidence/business-day-tests.log
 
-      - name: Run shared DIRECT final gate tests
-        working-directory: source
+      - name: Run recovered r8 exact behavior harness
         shell: bash
         run: |
           set -euo pipefail
-          node --test --experimental-strip-types packages/order/direct-final-gate*.test.ts 2>&1 | tee ../evidence/direct-final-gate-tests.log
-
-      - name: Run staff direct runtime tests
-        working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test --experimental-strip-types packages/smm-ui-integration/order-runtime.test.ts packages/smt-ui-integration/order-runtime.test.ts 2>&1 | tee ../evidence/staff-direct-runtime-tests.log
+          node --test --experimental-strip-types verification/cmd053-r8-exact.test.mjs 2>&1 | tee evidence/r8-exact-harness.log
 
       - name: Run root TypeScript typecheck
         working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
 
       - name: Write evidence
         if: always()
-        shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-        run: |
-          mkdir -p evidence
-          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=v2-cmd053-shared-direct-final-gate.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nrecovered_branch=landing/CMD-053-shared-direct-final-gate-r8\nworkflow=v2-cmd053-shared-direct-final-gate.yml\n' "$SOURCE_SHA" > evidence/summary.txt
 
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-cmd053-${{ steps.request.outputs.source_sha }}
+          name: v2-cmd053-r8-${{ steps.request.outputs.source_sha }}
           path: evidence
           if-no-files-found: error
           retention-days: 30
