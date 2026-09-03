@@ -63,7 +63,9 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           cat > "$RUNNER_TEMP/live-repair.mjs" <<'EOF'
           import fs from 'node:fs';
-          import { repairDirectAuthoritySchema } from `${process.cwd()}/source/packages/production-persistence/d1-direct-authority-schema-repair.ts`;
+          import { pathToFileURL } from 'node:url';
+          const repairUrl = pathToFileURL(`${process.cwd()}/source/packages/production-persistence/d1-direct-authority-schema-repair.ts`).href;
+          const { repairDirectAuthoritySchema } = await import(repairUrl);
           const account = process.env.CF_ACCOUNT;
           const token = process.env.CF_TOKEN;
           const databaseId = process.env.D1_DATABASE_ID;
@@ -87,15 +89,21 @@ jobs:
           async function snapshot(label){
             const tables=['mfos_availability_state','mfos_availability_audit','mfos_store_operational_state','mfos_store_operational_audit','mfos_pricing_profile','mfos_business_day'];
             const out={};
-            for(const table of tables){out[table]={columns:(await query(`PRAGMA table_info(${table})`)).results,indexes:(await query(`PRAGMA index_list(${table})`)).results,count:(await query(`SELECT COUNT(*) AS row_count FROM ${table}`)).results?.[0]?.row_count ?? null};}
+            for(const table of tables){
+              const columns=(await query(`PRAGMA table_info(${table})`)).results;
+              const indexes=(await query(`PRAGMA index_list(${table})`)).results;
+              const count=columns.length === 0 ? null : (await query(`SELECT COUNT(*) AS row_count FROM ${table}`)).results?.[0]?.row_count ?? null;
+              out[table]={columns,indexes,count};
+            }
             fs.writeFileSync(`evidence/${label}.json`,JSON.stringify(out,null,2));
             return out;
           }
           await snapshot('schema-before');
           const result=await repairDirectAuthoritySchema(db);
           fs.writeFileSync('evidence/repair-result.json',JSON.stringify(result,null,2));
-          await snapshot('schema-after');
+          const after=await snapshot('schema-after');
           console.log('LIVE_D1_DIRECT_AUTHORITY_SCHEMA_REPAIR=PASS',JSON.stringify(result));
+          console.log('LIVE_D1_SCHEMA_AFTER',JSON.stringify(after));
           EOF
           node --experimental-strip-types "$RUNNER_TEMP/live-repair.mjs" 2>&1 | tee evidence/live-repair.log
 
