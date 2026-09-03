@@ -19,7 +19,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-
       - id: request
         shell: bash
         run: |
@@ -27,7 +26,6 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-t3-live-d1-authority-apply-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-
       - name: Require credentials
         env:
           TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
@@ -36,7 +34,6 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$TOKEN" && test -n "$CF_TOKEN" && test -n "$CF_ACCOUNT"
-
       - name: Checkout exact admitted V2 source
         uses: actions/checkout@v7
         with:
@@ -46,11 +43,9 @@ jobs:
           path: source
           persist-credentials: false
           fetch-depth: 0
-
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-
       - name: Run admitted guarded repair against production D1
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -98,7 +93,11 @@ jobs:
             fs.writeFileSync(`evidence/${label}.json`,JSON.stringify(out,null,2));
             return out;
           }
-          await snapshot('schema-before');
+          const before=await snapshot('schema-before');
+          const deps=(await query("SELECT name,type,sql FROM sqlite_master WHERE tbl_name=? AND type IN ('index','trigger') AND sql IS NOT NULL ORDER BY type,name",['mfos_availability_state'])).results;
+          const fks=(await query('PRAGMA foreign_key_list(mfos_availability_state)')).results;
+          fs.writeFileSync('evidence/availability-dependencies.json',JSON.stringify({deps,fks},null,2));
+          console.log('LIVE_AVAILABILITY_PREFLIGHT',JSON.stringify({columns:before.mfos_availability_state.columns,count:before.mfos_availability_state.count,deps,fks}));
           const result=await repairDirectAuthoritySchema(db);
           fs.writeFileSync('evidence/repair-result.json',JSON.stringify(result,null,2));
           const after=await snapshot('schema-after');
@@ -106,7 +105,6 @@ jobs:
           console.log('LIVE_D1_SCHEMA_AFTER',JSON.stringify(after));
           EOF
           node --experimental-strip-types "$RUNNER_TEMP/live-repair.mjs" 2>&1 | tee evidence/live-repair.log
-
       - name: Record identity
         if: always()
         env:
@@ -115,7 +113,6 @@ jobs:
         run: |
           mkdir -p evidence
           printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbuilder_sha=%s\nrun_id=%s\nd1_database_id=%s\nworkflow=v2-t3-live-d1-authority-apply.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$D1_DATABASE_ID" > evidence/summary.txt
-
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
