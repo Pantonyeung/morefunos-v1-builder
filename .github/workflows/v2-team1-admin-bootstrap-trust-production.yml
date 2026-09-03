@@ -1,0 +1,125 @@
+name: V2 Team1 Admin Bootstrap Trust Production
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-admin-bootstrap-trust-production.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-probe:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/v2-team1-admin-bootstrap-trust-production.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify exact bootstrap trust source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/order/d1-direct-authority-bootstrap-admin-handler.test.ts packages/admin-ui-integration/admin-worker-session-runtime.test.ts
+          npm run typecheck
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+      - name: Snapshot authority counts before probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat > /tmp/counts.json <<'JSON'
+          {"sql":"SELECT (SELECT COUNT(*) FROM mfos_store_operational_state) AS operational_rows, (SELECT COUNT(*) FROM mfos_pricing_profile) AS pricing_rows, (SELECT COUNT(*) FROM mfos_availability_state) AS availability_rows, (SELECT COUNT(*) FROM mfos_business_day) AS business_day_rows"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/counts.json > /tmp/before.json
+          node -e "const x=require('/tmp/before.json'); const r=x.result?.[0]?.results?.[0]; if(!r)process.exit(1); require('fs').writeFileSync('/tmp/before-counts.json',JSON.stringify(r)); console.log('authority_before='+JSON.stringify(r))" | tee evidence/bootstrap-trust.txt
+      - name: Deploy exact Admin Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config infra/cloudflare/admin-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          echo "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Verify live canonical Store trust boundary without mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$URL/api/admin/session")"
+          test "$LOGIN" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+
+          FORGED='{"storeId":"caller-chosen-store","idempotencyKey":"trust-probe-forged","catalogIdempotencyKey":"trust-probe-catalog","catalogSnapshot":{"storeId":"caller-nested-store","catalogRevision":"trust-probe","categories":[],"products":[]},"selectedProductId":"probe","storeOperational":{"status":"OPEN","reasonCode":"PROBE"},"availability":[],"pricing":[],"businessDay":{"businessDayId":"probe-day","businessDate":"2026-09-03","timezone":"Asia/Hong_Kong","boundaryLocalTime":"05:00","policyRevision":1}}'
+          FORGED_HTTP="$(curl -sS -o /tmp/forged.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data "$FORGED" "$URL/api/admin/direct-authority/bootstrap")"
+          echo "forged_store_id_http=$FORGED_HTTP" >> evidence/bootstrap-trust.txt
+          test "$FORGED_HTTP" = 400
+          node -e "const x=require('/tmp/forged.json'); if(x.code!=='ADMIN_BOOTSTRAP_TRUST_FIELD_FORBIDDEN') { console.error(x); process.exit(1) }"
+
+          PROBE='{"idempotencyKey":"trust-probe-safe","catalogIdempotencyKey":"trust-probe-catalog","catalogSnapshot":{"storeId":"caller-nested-store","catalogRevision":"trust-probe","categories":[],"products":[]},"selectedProductId":"probe","storeOperational":{"status":"OPEN","reasonCode":"PROBE"},"availability":[],"pricing":[],"businessDay":{"businessDayId":"probe-day","businessDate":"2026-09-03","timezone":"Asia/Hong_Kong","boundaryLocalTime":"05:00","policyRevision":1}}'
+          PROBE_HTTP="$(curl -sS -o /tmp/probe.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data "$PROBE" "$URL/api/admin/direct-authority/bootstrap")"
+          echo "canonical_scope_probe_http=$PROBE_HTTP" >> evidence/bootstrap-trust.txt
+          test "$PROBE_HTTP" = 400
+          node -e "const x=require('/tmp/probe.json'); if(x.code!=='DIRECT_BOOTSTRAP_AVAILABILITY_REQUIRED') { console.error(x); process.exit(1) }"
+          echo 'canonical_mf01_scope_resolution=PASS' >> evidence/bootstrap-trust.txt
+          echo 'nested_catalog_store_identity_override=PASS' >> evidence/bootstrap-trust.txt
+      - name: Prove probe made no authority business mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat > /tmp/counts.json <<'JSON'
+          {"sql":"SELECT (SELECT COUNT(*) FROM mfos_store_operational_state) AS operational_rows, (SELECT COUNT(*) FROM mfos_pricing_profile) AS pricing_rows, (SELECT COUNT(*) FROM mfos_availability_state) AS availability_rows, (SELECT COUNT(*) FROM mfos_business_day) AS business_day_rows"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/counts.json > /tmp/after.json
+          node - <<'NODE' | tee -a evidence/bootstrap-trust.txt
+          const fs=require('fs');
+          const before=JSON.parse(fs.readFileSync('/tmp/before-counts.json','utf8'));
+          const x=require('/tmp/after.json'); const after=x.result?.[0]?.results?.[0];
+          if(!after || JSON.stringify(before)!==JSON.stringify(after)){ console.error({before,after}); process.exit(1); }
+          console.log('authority_after='+JSON.stringify(after));
+          console.log('production_probe_business_mutation=NONE');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-admin-bootstrap-trust-${{ steps.req.outputs.sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
