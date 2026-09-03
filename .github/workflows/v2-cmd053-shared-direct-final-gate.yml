@@ -27,8 +27,9 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '\r\n')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$BRANCH_NAME" = 'landing/CMD-053-shared-direct-final-gate-r8' ]]
+          [[ "$BRANCH_NAME" = 'landing/CMD-053-shared-direct-final-gate-r8' || "$BRANCH_NAME" = 'landing/CMD-053-clean-admission' ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         env:
@@ -93,13 +94,14 @@ jobs:
         if: always()
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nrecovered_branch=landing/CMD-053-shared-direct-final-gate-r8\nworkflow=v2-cmd053-shared-direct-final-gate.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nsource_branch=%s\nworkflow=v2-cmd053-shared-direct-final-gate.yml\n' "$SOURCE_SHA" "$BRANCH_NAME" > evidence/summary.txt
 
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-cmd053-r8-${{ steps.request.outputs.source_sha }}
+          name: v2-cmd053-${{ steps.request.outputs.source_sha }}
           path: evidence
           if-no-files-found: error
           retention-days: 30
