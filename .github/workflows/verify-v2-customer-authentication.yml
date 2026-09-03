@@ -135,7 +135,10 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          node --test packages/customer-loyalty/customer-authentication-authority.test.ts packages/customer-loyalty/customer-authentication-postgres.test.ts | tee "$RUNNER_TEMP/v2-customer-authentication-tests.log"
+          node --test \
+            packages/customer-loyalty/customer-authentication-authority.test.ts \
+            packages/customer-loyalty/customer-authentication-postgres.test.ts \
+            packages/customer-loyalty/customer-authentication-d1.test.ts | tee "$RUNNER_TEMP/v2-customer-authentication-tests.log"
 
       - name: Production persistence regression
         run: |
