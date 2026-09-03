@@ -57,7 +57,7 @@ jobs:
           npm run typecheck
           npm run build
           test -f dist/index.html
-      - name: Deploy Admin Worker and assets
+      - name: Apply production D1 migrations
         working-directory: source
         shell: bash
         run: |
@@ -65,26 +65,33 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/evidence"
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
           test -s "$CONFIG"
-          npx --yes wrangler@4 deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
-          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
-          test -n "$URL"
-          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
-      - name: Apply Admin session secret when configured
+          npx --yes wrangler@4 d1 migrations apply morefun-v2-production --remote --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/d1-migrations.log"
+      - name: Apply formal Admin login secret when configured
         env:
-          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" ]; then
-            printf '%s' "$ADMIN_SESSION_BOOTSTRAP_JSON" | npx --yes wrangler@4 secret put ADMIN_SESSION_BOOTSTRAP_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
-            echo 'admin_session_secret=CONFIGURED' > "$GITHUB_WORKSPACE/evidence/session.txt"
+          if [ -n "${ADMIN_LOGIN_SECRET:-}" ]; then
+            printf '%s' "$ADMIN_LOGIN_SECRET" | npx --yes wrangler@4 secret put ADMIN_LOGIN_SECRET --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+            echo 'admin_login_secret=CONFIGURED' > "$GITHUB_WORKSPACE/evidence/session.txt"
           else
-            echo 'admin_session_secret=MISSING_FAIL_CLOSED' > "$GITHUB_WORKSPACE/evidence/session.txt"
+            echo 'admin_login_secret=MISSING_FAIL_CLOSED' > "$GITHUB_WORKSPACE/evidence/session.txt"
           fi
-      - name: Verify live host fail-closed and bindings
+      - name: Deploy Admin Worker and assets
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          npx --yes wrangler@4 deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Verify live Admin session authority
         env:
-          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
@@ -93,15 +100,20 @@ jobs:
           CODE="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/admin/session")"
           test "$CODE" = 401
           echo "anonymous_session_http=$CODE" > evidence/runtime.txt
-          if [ -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" ]; then
-            TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
-            AUTH_CODE="$(curl -sS -o /tmp/auth-session.json -w '%{http_code}' -H "Cookie: mf_admin_session=${TOKEN}" "$URL/api/admin/session")"
+          if [ -n "${ADMIN_LOGIN_SECRET:-}" ]; then
+            LOGIN_CODE="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')" "$URL/api/admin/session")"
+            test "$LOGIN_CODE" = 200
+            COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+            test -n "$COOKIE"
+            AUTH_CODE="$(curl -sS -o /tmp/auth-session.json -w '%{http_code}' -H "Cookie: $COOKIE" "$URL/api/admin/session")"
             test "$AUTH_CODE" = 200
+            echo "login_session_http=$LOGIN_CODE" >> evidence/runtime.txt
             echo "authenticated_session_http=$AUTH_CODE" >> evidence/runtime.txt
           else
+            echo 'login_session_http=BLOCKED_MISSING_SECRET' >> evidence/runtime.txt
             echo 'authenticated_session_http=BLOCKED_MISSING_SECRET' >> evidence/runtime.txt
           fi
-          rm -f /tmp/session.json /tmp/auth-session.json
+          rm -f /tmp/session.json /tmp/login.headers /tmp/login.json /tmp/auth-session.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
