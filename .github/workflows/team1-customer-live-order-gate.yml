@@ -1,0 +1,80 @@
+name: Team1 Customer Live Order Gate
+
+on:
+  push:
+    paths:
+      - requests/team1-customer-live-order-gate.txt
+
+permissions:
+  contents: read
+
+jobs:
+  live-order:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      LIVE_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      SUBMISSION_ID: recovery-live-customer-direct-20260903-v1
+      IDEMPOTENCY_KEY: recovery-live-customer-direct-20260903-v1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify canonical ordering and submit exactly one live order
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npm install --no-save --ignore-scripts --no-audit --no-fund wrangler@4
+          mkdir -p evidence
+
+          curl -fsS "$LIVE_URL/api/customer/ordering" -o evidence/ordering.json
+          PRODUCT_ID="$(node -e "const x=require('./evidence/ordering.json');if(x.storeStatus!=='open')process.exit(2);const p=x.products?.find(v=>v.available===true);if(!p?.productId)process.exit(3);process.stdout.write(p.productId)")"
+          GUEST_TOKEN="$(node -e "const {createHash}=require('node:crypto');process.stdout.write(createHash('sha256').update('morefun-team1-production-live-gate-20260903').digest('base64url'))")"
+          test "${#GUEST_TOKEN}" = 43
+
+          cat > evidence/request.json <<JSON
+          {"submissionId":"$SUBMISSION_ID","idempotencyKey":"$IDEMPOTENCY_KEY","payload":{"lines":[{"productId":"$PRODUCT_ID","quantity":1}]}}
+          JSON
+
+          HTTP_CODE="$(curl -sS -o evidence/submit.json -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -H "Cookie: mf_customer_guest=$GUEST_TOKEN" \
+            --data-binary @evidence/request.json \
+            "$LIVE_URL/api/customer/orders")"
+          test "$HTTP_CODE" = 200
+
+          ORDER_ID="$(node -e "const x=require('./evidence/submit.json');if(!x.ok||x.status!=='ACCEPTED'||!x.orderId||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1);process.stdout.write(x.orderId)")"
+          LOOKUP_TOKEN="$(node -e "const x=require('./evidence/submit.json');if(typeof x.lookupToken!=='string'||x.lookupToken.length!==43)process.exit(1);process.stdout.write(x.lookupToken)")"
+          test "$LOOKUP_TOKEN" = "$GUEST_TOKEN"
+
+          STATUS_CODE="$(curl -sS -o evidence/status.json -w '%{http_code}' \
+            -H "Cookie: mf_customer_guest=$GUEST_TOKEN" \
+            -H "Authorization: Bearer $LOOKUP_TOKEN" \
+            "$LIVE_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          test "$STATUS_CODE" = 200
+          node -e "const x=require('./evidence/status.json');if(!x.ok||x.lifecycleStatus!=='ACCEPTED'||x.orderId!==process.env.ORDER_ID||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1)" ORDER_ID="$ORDER_ID"
+
+          D1_JSON="$(npx wrangler d1 execute morefun-v2-production --remote --command "SELECT s.order_id, s.revision, o.submission_id FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id WHERE o.submission_id='$SUBMISSION_ID';" --json)"
+          printf '%s\n' "$D1_JSON" > evidence/d1.json
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/d1.json');const rows=x?.[0]?.results??[];if(rows.length!==1||rows[0].order_id!==process.env.ORDER_ID||rows[0].submission_id!==process.env.SUBMISSION_ID)process.exit(1)"
+
+          printf 'product_id=%s\norder_id=%s\nsubmission_id=%s\nhttp_submit=%s\nhttp_status=%s\ncanonical_count=1\n' \
+            "$PRODUCT_ID" "$ORDER_ID" "$SUBMISSION_ID" "$HTTP_CODE" "$STATUS_CODE" | tee evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-customer-live-order-gate-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
