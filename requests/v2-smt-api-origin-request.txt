@@ -1,2 +1,2 @@
-worker_name=morefunos-v2-smt-api
-request_id=TEAM2-INTEGRATED-OTA-API-ORIGIN-20260903-R1
+worker_name=morefun-order-api
+request_id=TEAM2-INTEGRATED-OTA-API-ORIGIN-20260903-R2
