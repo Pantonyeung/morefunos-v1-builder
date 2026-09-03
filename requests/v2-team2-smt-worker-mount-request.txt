@@ -1,1 +1,2 @@
 source_sha=476250d88073282efd47f41bbc721629f32beba5
+attempt=availability-scope-red-2
