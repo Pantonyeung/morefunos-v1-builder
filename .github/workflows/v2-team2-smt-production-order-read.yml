@@ -1,0 +1,181 @@
+name: V2 Team2 SMT Production Existing Order Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-team2-smt-production-order-read-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      CANONICAL_STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+      CANONICAL_STAFF_ID: 7d61cc4d-e3d1-45b7-9e6c-28e2b8d7f779
+      CANONICAL_ORDER_ID: 094b2412-df92-4897-b0c2-3d67bcf85ef6
+      SUBMISSION_ID: recovery-live-customer-direct-20260903-v1
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-team2-smt-production-order-read-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify exact source and Team2 contracts
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test --experimental-strip-types             packages/smt-ui-integration/t2-smt-worker-mount.test.ts             packages/smt-ui-integration/t2-smt-worker-boundary-wiring.test.ts             packages/smt-ui-integration/t2-smt-session-d1.test.ts
+          npm run typecheck
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+
+      - name: Freeze formal Team1 Admin authority secrets
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          PRINCIPAL="$(node -e "process.stdout.write(JSON.stringify({actorId:'admin:owner',staffId:process.env.CANONICAL_STAFF_ID,scopeRef:process.env.CANONICAL_STORE_ID,permissions:['admin.direct_authority.bootstrap.v1','admin.merchant_store.initialize.v1']}))")"
+          printf '%s' "$PRINCIPAL" | npx --yes wrangler@4 secret put ADMIN_AUTH_PRINCIPAL_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+          printf '%s' "$ADMIN_LOGIN_SECRET" | npx --yes wrangler@4 secret put ADMIN_LOGIN_SECRET --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+          printf 'admin_authority=FORMAL_DURABLE\nstore_id=%s\nstaff_id=%s\n' "$CANONICAL_STORE_ID" "$CANONICAL_STAFF_ID" > "$GITHUB_WORKSPACE/evidence/authority.txt"
+
+      - name: Deploy exact Admin Worker with SMT trusted route
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config infra/cloudflare/admin-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          grep -E 'Current Version ID:' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | tee "$GITHUB_WORKSPACE/evidence/version.txt"
+
+      - name: Resolve live durable session token
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          [[ "$COOKIE" == mf_admin_session=* ]]
+          TOKEN="${COOKIE#mf_admin_session=}"
+          test -n "$TOKEN"
+          node -e "const x=require('/tmp/login.json');if(!x.authenticated||x.staffId!==process.env.CANONICAL_STAFF_ID||x.scopeRef!==process.env.CANONICAL_STORE_ID)process.exit(1)"
+          printf '%s' "$TOKEN" > /tmp/smt-token
+          printf 'admin_login_http=%s\ndurable_session=PASS\n' "$LOGIN_HTTP" > evidence/session.txt
+
+      - name: Live SMT Catalog through trusted Worker to production D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/smt-token)"
+          cat >/tmp/catalog.json <<'JSON'
+          {"operationId":"catalog.menu.active.read.v1","request":{"storeId":"caller-forged-store"}}
+          JSON
+          HTTP="$(curl -sS -o /tmp/catalog.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/catalog.json "$ADMIN_URL/api/smt/runtime")"
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/catalog.out.json');if(x.storeId!==process.env.CANONICAL_STORE_ID||!x.catalogRevision||!Array.isArray(x.products))process.exit(1)"
+          printf 'smt_catalog_http=%s\nserver_scope_store_id=%s\n' "$HTTP" "$CANONICAL_STORE_ID" | tee evidence/smt-catalog.txt
+
+      - name: Live SMT exact existing Customer Order through canonical detail binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/smt-token)"
+          ORDER_ID="$CANONICAL_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/order-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o /tmp/order-detail.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/order-detail.json "$ADMIN_URL/api/smt/runtime")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const x=require('/tmp/order-detail.out.json');
+          if(x.orderId!==process.env.CANONICAL_ORDER_ID) throw new Error('ORDER_ID_MISMATCH');
+          if(x.storeId!==process.env.CANONICAL_STORE_ID) throw new Error('STORE_SCOPE_MISMATCH');
+          if(x.submissionId!==process.env.SUBMISSION_ID) throw new Error('SUBMISSION_MISMATCH');
+          if(x.lifecycleStatus!=='ACCEPTED') throw new Error('LIFECYCLE_MISMATCH');
+          if(Number(x.revision)!==Number(x.orderRevision)) throw new Error('REVISION_ALIAS_MISMATCH');
+          if(x.createdAt!==x.acceptedAt||x.updatedAt!==x.acceptedAt) throw new Error('TIME_ALIAS_MISMATCH');
+          NODE
+          printf 'smt_order_detail_http=%s\ncanonical_order_id=%s\nsubmission_id=%s\n' "$HTTP" "$CANONICAL_ORDER_ID" "$SUBMISSION_ID" | tee evidence/smt-order-detail.txt
+          cp /tmp/order-detail.out.json evidence/smt-order-detail.json
+
+      - name: Prove exactly one production D1 canonical Order and same projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL="SELECT (SELECT COUNT(*) FROM mfos_order_state WHERE order_id='${CANONICAL_ORDER_ID}') AS canonical_order_rows,(SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id='${SUBMISSION_ID}' AND order_id='${CANONICAL_ORDER_ID}') AS ownership_rows,(SELECT accepted_projection_json FROM mfos_order_state WHERE order_id='${CANONICAL_ORDER_ID}' LIMIT 1) AS accepted_projection_json"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/d1.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/d1.json >/tmp/d1.out.json
+          node - <<'NODE' | tee evidence/d1-order-readback.txt
+          const x=require('/tmp/d1.out.json'),r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('D1_READBACK_FAILED');
+          if(Number(r.canonical_order_rows)!==1||Number(r.ownership_rows)!==1) throw new Error('EXACTLY_ONE_FAILED:'+JSON.stringify(r));
+          const p=JSON.parse(r.accepted_projection_json);
+          if(p.orderId!==process.env.CANONICAL_ORDER_ID||p.storeId!==process.env.CANONICAL_STORE_ID||p.submissionId!==process.env.SUBMISSION_ID) throw new Error('D1_PROJECTION_MISMATCH');
+          console.log('canonical_order_rows=1');
+          console.log('ownership_rows=1');
+          console.log('canonical_order_id='+p.orderId);
+          console.log('exactly_one=PASS');
+          NODE
+
+      - name: Prove partial readiness remains fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/smt-token)"
+          cat >/tmp/unmounted.json <<'JSON'
+          {"operationId":"order.open-list.read.v1","request":{"limit":20}}
+          JSON
+          HTTP="$(curl -sS -o /tmp/unmounted.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/unmounted.json "$ADMIN_URL/api/smt/runtime")"
+          test "$HTTP" = 503
+          node -e "const x=require('/tmp/unmounted.out.json');if(x.code!=='SMT_RUNTIME_CAPABILITY_NOT_MOUNTED')process.exit(1)"
+          printf 'unmounted_operation_http=%s\nproduction_ready=false\nfail_closed=PASS\n' "$HTTP" | tee evidence/readiness.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-team2-smt-production-order-read-${{ steps.req.outputs.source_sha }}-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
