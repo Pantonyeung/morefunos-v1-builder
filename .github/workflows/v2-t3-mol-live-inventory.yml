@@ -72,17 +72,17 @@ jobs:
           jq -e '.success == true' evidence/workers.json >/dev/null
           jq '{success, workers:[.result[]? | {id, modified_on, created_on}]}' evidence/workers.json > evidence/workers-redacted.json
           rm evidence/workers.json
-          curl --fail --silent --show-error "$API_ROOT/pages/projects" -H "Authorization: Bearer $CF_TOKEN" > evidence/pages.json || true
+          curl --silent --show-error "$API_ROOT/pages/projects" -H "Authorization: Bearer $CF_TOKEN" > evidence/pages.json || true
           if jq -e '.success == true' evidence/pages.json >/dev/null 2>&1; then
             jq '{success, projects:[.result[]? | {name, subdomain, production_branch, created_on}]}' evidence/pages.json > evidence/pages-redacted.json
           else
-            printf '{"success":false,"projects":[]}' > evidence/pages-redacted.json
+            printf '{"success":false,"projects":[],"note":"token-not-authorized-for-pages-inventory"}\n' > evidence/pages-redacted.json
           fi
           rm -f evidence/pages.json
           cat evidence/workers-redacted.json
           cat evidence/pages-redacted.json
 
-      - name: Read canonical D1 operational inventory
+      - name: Read canonical D1 schema inventory
         shell: bash
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -101,16 +101,20 @@ jobs:
             jq -e '.success == true' "$out" >/dev/null
           }
           query "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'mfos_%' ORDER BY name;" evidence/tables.json
-          query "SELECT store_id, operational_status, revision, changed_at FROM mfos_store_operational_state ORDER BY changed_at DESC LIMIT 20;" evidence/store-operational.json
-          query "SELECT business_day_id, store_id, business_date, timezone, lifecycle_status, revision, opened_at FROM mfos_business_day ORDER BY business_date DESC, revision DESC LIMIT 20;" evidence/business-day.json
-          query "SELECT pricing_profile_id, store_id, subject_type, subject_id, sales_price_context, pricing_mode, currency, fixed_price_minor, lifecycle_status, revision, effective_from, effective_to FROM mfos_pricing_profile WHERE sales_price_context='DIRECT' AND lifecycle_status='ACTIVE' ORDER BY updated_at DESC LIMIT 50;" evidence/pricing.json
-          query "SELECT availability_id, store_id, target_type, target_id, status, revision, changed_at FROM mfos_availability_state WHERE status='AVAILABLE' ORDER BY changed_at DESC LIMIT 100;" evidence/availability.json
+          for table in mfos_availability_state mfos_business_day_state mfos_catalog_state mfos_store_operational_state mfos_business_day mfos_pricing_profile mfos_order_state mfos_stores; do
+            query "PRAGMA table_info($table);" "evidence/schema-$table.json"
+          done
+          query "SELECT * FROM mfos_stores LIMIT 20;" evidence/stores.json
+          query "SELECT * FROM mfos_availability_state LIMIT 20;" evidence/availability-sample.json
+          query "SELECT * FROM mfos_business_day_state LIMIT 20;" evidence/business-day-state-sample.json
+          query "SELECT * FROM mfos_catalog_state LIMIT 20;" evidence/catalog-state-sample.json
           query "SELECT order_id, store_id, lifecycle_status, revision, created_at, updated_at FROM mfos_order_state ORDER BY updated_at DESC LIMIT 20;" evidence/order-state.json
           jq '{tables:[.result[]?.results[]?.name]}' evidence/tables.json
-          jq '{store_operational:[.result[]?.results[]?]}' evidence/store-operational.json
-          jq '{business_days:[.result[]?.results[]?]}' evidence/business-day.json
-          jq '{direct_active_pricing:[.result[]?.results[]?]}' evidence/pricing.json
-          jq '{available:[.result[]?.results[]?]}' evidence/availability.json
+          for file in evidence/schema-*.json; do echo "--- $file"; jq '{columns:[.result[]?.results[]? | .name]}' "$file"; done
+          jq '{stores:[.result[]?.results[]?]}' evidence/stores.json
+          jq '{availability:[.result[]?.results[]?]}' evidence/availability-sample.json
+          jq '{business_day_state:[.result[]?.results[]?]}' evidence/business-day-state-sample.json
+          jq '{catalog_state:[.result[]?.results[]?]}' evidence/catalog-state-sample.json
           jq '{recent_orders:[.result[]?.results[]?]}' evidence/order-state.json
 
       - name: Record identity
