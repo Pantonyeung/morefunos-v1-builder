@@ -72,16 +72,15 @@ jobs:
           npm run build
           test -f dist/index.html
 
-      - name: Freeze formal Team1 Admin authority secrets
-        working-directory: source
+      - name: Verify formal Team1 Admin authority prerequisites
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
-          PRINCIPAL="$(node -e "process.stdout.write(JSON.stringify({actorId:'admin:owner',staffId:process.env.CANONICAL_STAFF_ID,scopeRef:process.env.CANONICAL_STORE_ID,permissions:['admin.direct_authority.bootstrap.v1','admin.merchant_store.initialize.v1']}))")"
-          printf '%s' "$PRINCIPAL" | npx --yes wrangler@4 secret put ADMIN_AUTH_PRINCIPAL_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
-          printf '%s' "$ADMIN_LOGIN_SECRET" | npx --yes wrangler@4 secret put ADMIN_LOGIN_SECRET --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
-          printf 'admin_authority=FORMAL_DURABLE\nstore_id=%s\nstaff_id=%s\n' "$CANONICAL_STORE_ID" "$CANONICAL_STAFF_ID" > "$GITHUB_WORKSPACE/evidence/authority.txt"
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$CANONICAL_STORE_ID"
+          test -n "$CANONICAL_STAFF_ID"
+          printf 'admin_authority=FORMAL_DURABLE_REMOTE_SECRETS_PRESERVED\nstore_id=%s\nstaff_id=%s\n' "$CANONICAL_STORE_ID" "$CANONICAL_STAFF_ID" > "$GITHUB_WORKSPACE/evidence/authority.txt"
 
       - name: Deploy exact Admin Worker with SMT trusted route
         working-directory: source
