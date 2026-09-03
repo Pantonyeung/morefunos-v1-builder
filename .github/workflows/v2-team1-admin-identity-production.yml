@@ -1,0 +1,156 @@
+name: V2 Team1 Admin Identity Production
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-admin-identity-production.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/v2-team1-admin-identity-production.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify exact Admin source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/admin-ui-integration/*.test.ts packages/merchant-store/d1-merchant-store-repository.test.ts packages/merchant-store/morefun-production-identity-init.test.ts packages/merchant-store/admin-morefun-identity-init-handler.test.ts
+          npm run typecheck
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+      - name: Apply production identity schema
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL_FILE='infra/cloudflare/d1/migrations/0010-merchant-store-identity-init.sql'
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/d1.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
+          HTTP="$(curl -sS -o /tmp/d1-result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/d1.json)"
+          echo "migration_0010_http=$HTTP" | tee "$GITHUB_WORKSPACE/evidence/identity.txt"
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/d1-result.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
+          node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/verify.json',JSON.stringify({sql:"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_merchants','mfos_stores','mfos_merchant_store_audit','mfos_merchant_code_binding','mfos_store_code_binding') ORDER BY name"}));
+          NODE
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
+          node - <<'NODE' | tee -a "$GITHUB_WORKSPACE/evidence/identity.txt"
+          const x=require('/tmp/verify-result.json');
+          const names=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=['mfos_merchant_code_binding','mfos_merchant_store_audit','mfos_merchants','mfos_store_code_binding','mfos_stores'].sort();
+          if(JSON.stringify(names)!==JSON.stringify(expected)){console.error('IDENTITY_TABLES_MISSING',names);process.exit(1)}
+          console.log('identity_tables=PASS');
+          NODE
+      - name: Configure formal Admin principal
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRINCIPAL='{"actorId":"admin:owner","staffId":"staff:owner","scopeRef":"store:morefun","permissions":["admin.direct_authority.bootstrap.v1","admin.merchant_store.initialize.v1"]}'
+          printf '%s' "$PRINCIPAL" | npx --yes wrangler@4 secret put ADMIN_AUTH_PRINCIPAL_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+          echo 'admin_principal=CONFIGURED' >> "$GITHUB_WORKSPACE/evidence/identity.txt"
+          if [ -n "${ADMIN_LOGIN_SECRET:-}" ]; then
+            printf '%s' "$ADMIN_LOGIN_SECRET" | npx --yes wrangler@4 secret put ADMIN_LOGIN_SECRET --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+            echo 'admin_login_secret=CONFIGURED' >> "$GITHUB_WORKSPACE/evidence/identity.txt"
+          else
+            echo 'admin_login_secret=MISSING_FAIL_CLOSED' >> "$GITHUB_WORKSPACE/evidence/identity.txt"
+          fi
+      - name: Deploy exact Admin Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config infra/cloudflare/admin-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          echo "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Verify live identity initialization and durable readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          ANON="$(curl -sS -o /tmp/anon.json -w '%{http_code}' -H 'content-type: application/json' --data '{"businessName":"磨飯 More Fun","storeName":"磨飯 元朗店"}' "$URL/api/admin/merchant-store/init")"
+          echo "anonymous_identity_init_http=$ANON" >> evidence/identity.txt
+          test "$ANON" = 401
+          if [ -z "${ADMIN_LOGIN_SECRET:-}" ]; then
+            echo 'live_identity_init=BLOCKED_MISSING_ADMIN_LOGIN_SECRET' >> evidence/identity.txt
+            exit 2
+          fi
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$URL/api/admin/session")"
+          test "$LOGIN" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          BODY='{"businessName":"磨飯 More Fun","storeName":"磨飯 元朗店"}'
+          INIT="$(curl -sS -o /tmp/init.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data "$BODY" "$URL/api/admin/merchant-store/init")"
+          echo "identity_init_http=$INIT" >> evidence/identity.txt
+          test "$INIT" = 200
+          REPLAY="$(curl -sS -o /tmp/replay.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data "$BODY" "$URL/api/admin/merchant-store/init")"
+          echo "identity_replay_http=$REPLAY" >> evidence/identity.txt
+          test "$REPLAY" = 200
+          node - <<'NODE' | tee -a evidence/identity.txt
+          const a=require('/tmp/init.json'), b=require('/tmp/replay.json');
+          if(a.merchantCode!=='MoreFun'||a.storeCode!=='MF01'||!a.merchantId||!a.storeId) process.exit(1);
+          if(a.merchantId!==b.merchantId||a.storeId!==b.storeId) process.exit(1);
+          console.log(`merchant_id=${a.merchantId}`);
+          console.log(`store_id=${a.storeId}`);
+          console.log('identity_replay_same_uuid=PASS');
+          NODE
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat > /tmp/readback.json <<'JSON'
+          {"sql":"SELECT mb.merchant_code, mb.merchant_id, sb.store_code, sb.store_id, sb.merchant_id AS store_merchant_id, (SELECT COUNT(*) FROM mfos_merchants) AS merchant_rows, (SELECT COUNT(*) FROM mfos_stores) AS store_rows, (SELECT COUNT(*) FROM mfos_merchant_code_binding) AS merchant_binding_rows, (SELECT COUNT(*) FROM mfos_store_code_binding) AS store_binding_rows FROM mfos_merchant_code_binding mb JOIN mfos_store_code_binding sb ON sb.merchant_id=mb.merchant_id WHERE mb.merchant_code='MoreFun' AND sb.store_code='MF01'"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/readback.json > /tmp/readback-result.json
+          node - <<'NODE' | tee -a evidence/identity.txt
+          const x=require('/tmp/readback-result.json'); const rows=x.result?.[0]?.results||[];
+          if(rows.length!==1) process.exit(1); const r=rows[0];
+          if(r.merchant_code!=='MoreFun'||r.store_code!=='MF01'||r.merchant_id!==r.store_merchant_id) process.exit(1);
+          if(Number(r.merchant_rows)!==1||Number(r.store_rows)!==1||Number(r.merchant_binding_rows)!==1||Number(r.store_binding_rows)!==1) process.exit(1);
+          console.log('production_identity_readback=PASS');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-admin-identity-${{ steps.req.outputs.sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
