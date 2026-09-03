@@ -201,7 +201,9 @@ test('trusted bootstrap uses explicit operator inputs, server time, one D1 batch
   assert.equal(first.recordedAt, NOW);
   assert.equal(sqlite.prepare('SELECT operational_status FROM mfos_store_operational_state WHERE store_id=?').get(STORE_ID).operational_status, 'OPEN');
   assert.equal(sqlite.prepare('SELECT status FROM mfos_availability_state WHERE store_id=?').get(STORE_ID).status, 'AVAILABLE');
-  assert.deepEqual(sqlite.prepare('SELECT currency, fixed_price_minor FROM mfos_pricing_profile WHERE store_id=?').get(STORE_ID), { currency: 'HKD', fixed_price_minor: 4100 });
+  const pricingRow = sqlite.prepare('SELECT currency, fixed_price_minor FROM mfos_pricing_profile WHERE store_id=?').get(STORE_ID);
+  assert.equal(pricingRow.currency, 'HKD');
+  assert.equal(pricingRow.fixed_price_minor, 4100);
   assert.equal(sqlite.prepare('SELECT lifecycle_status FROM mfos_business_day WHERE store_id=?').get(STORE_ID).lifecycle_status, 'OPEN');
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM mfos_d1_idempotency WHERE scope='direct.authority.bootstrap'").get().count, 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM mfos_outbox WHERE domain='DIRECT_AUTHORITY_BOOTSTRAP'").get().count, 1);
