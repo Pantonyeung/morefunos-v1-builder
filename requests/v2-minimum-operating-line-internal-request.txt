@@ -1,0 +1,2 @@
+source_sha=a7eacfd62968e12306ec704ffb58fd891bfdef4f
+verification_scope=customer-direct-submit+d1-canonical-order+smt-smm-same-order-id+idempotent-replay+typecheck
