@@ -105,8 +105,8 @@ jobs:
         run: |
           set -euo pipefail
           npm install --ignore-scripts --no-audit --no-fund
-          npm run typecheck 2>&1 | tee ../../evidence/admin-typecheck.log
-          npm run build 2>&1 | tee ../../evidence/admin-build.log
+          npm run typecheck 2>&1 | tee ../../../evidence/admin-typecheck.log
+          npm run build 2>&1 | tee ../../../evidence/admin-build.log
 
       - name: SMT app tests typecheck and build
         if: ${{ hashFiles('source/apps/smt-clean/package.json') != '' }}
@@ -115,9 +115,9 @@ jobs:
         run: |
           set -euo pipefail
           npm install --ignore-scripts --no-audit --no-fund
-          npm test 2>&1 | tee ../../evidence/smt-tests.log
-          npm run typecheck 2>&1 | tee ../../evidence/smt-typecheck.log
-          npm run build 2>&1 | tee ../../evidence/smt-build.log
+          npm test 2>&1 | tee ../../../evidence/smt-tests.log
+          npm run typecheck 2>&1 | tee ../../../evidence/smt-typecheck.log
+          npm run build 2>&1 | tee ../../../evidence/smt-build.log
 
       - name: SMM app typecheck and build
         if: ${{ hashFiles('source/apps/smm-web/package.json') != '' }}
@@ -126,8 +126,8 @@ jobs:
         run: |
           set -euo pipefail
           npm install --ignore-scripts --no-audit --no-fund
-          npm run typecheck 2>&1 | tee ../../evidence/smm-typecheck.log
-          npm run build 2>&1 | tee ../../evidence/smm-build.log
+          npm run typecheck 2>&1 | tee ../../../evidence/smm-typecheck.log
+          npm run build 2>&1 | tee ../../../evidence/smm-build.log
 
       - name: Write evidence
         if: always()
