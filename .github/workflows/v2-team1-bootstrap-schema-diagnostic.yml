@@ -30,21 +30,27 @@ jobs:
           mkdir -p evidence
           D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
           query(){
-            local sql="$1" out="$2"
+            local label="$1" sql="$2" out="$3"
             node -e 'process.stdout.write(JSON.stringify({sql:process.argv[1]}))' "$sql" >/tmp/q.json
-            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > "$out"
+            local http
+            http="$(curl -sS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json -o "$out" -w '%{http_code}')"
+            echo "$label http=$http" | tee -a evidence/schema-diagnostic.txt
+            if [ "$http" != 200 ]; then cat "$out" | tee -a evidence/schema-diagnostic.txt; exit 1; fi
           }
-          query "SELECT name, sql FROM sqlite_master WHERE type='table' AND name IN ('mfos_catalog_state','mfos_catalog_audit','mfos_outbox','mfos_d1_idempotency','mfos_store_operational_state','mfos_pricing_profile','mfos_availability_state','mfos_business_day') ORDER BY name" /tmp/tables.json
-          query "PRAGMA table_info(mfos_catalog_state)" /tmp/catalog-state.json
-          query "PRAGMA table_info(mfos_catalog_audit)" /tmp/catalog-audit.json
-          query "PRAGMA table_info(mfos_outbox)" /tmp/outbox.json
-          query "PRAGMA table_info(mfos_d1_idempotency)" /tmp/idemp-schema.json
-          query "SELECT scope,idempotency_key,request_fingerprint,completed_at FROM mfos_d1_idempotency WHERE idempotency_key IN ('mf01-catalog-bootstrap-xlsx-32f79e4463d1-v1','mf01-direct-bootstrap-xlsx-32f79e4463d1-v1')" /tmp/idemp-rows.json
-          query "SELECT audit_id,store_id,event_type,catalog_revision,recorded_at FROM mfos_catalog_audit WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8'" /tmp/catalog-audit-rows.json
-          query "SELECT event_id,domain,aggregate_id,event_type,status,store_id FROM mfos_outbox WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND (domain='CATALOG' OR domain='DIRECT_AUTHORITY_BOOTSTRAP')" /tmp/outbox-rows.json
-          node - <<'NODE' | tee evidence/schema-diagnostic.txt
+          query catalog_state "PRAGMA table_info(mfos_catalog_state)" /tmp/catalog-state.json
+          query catalog_audit "PRAGMA table_info(mfos_catalog_audit)" /tmp/catalog-audit.json
+          query outbox "PRAGMA table_info(mfos_outbox)" /tmp/outbox.json
+          query idempotency_schema "PRAGMA table_info(mfos_d1_idempotency)" /tmp/idemp-schema.json
+          query store_operational "PRAGMA table_info(mfos_store_operational_state)" /tmp/store-operational.json
+          query pricing "PRAGMA table_info(mfos_pricing_profile)" /tmp/pricing.json
+          query availability "PRAGMA table_info(mfos_availability_state)" /tmp/availability.json
+          query business_day "PRAGMA table_info(mfos_business_day)" /tmp/business-day.json
+          query idempotency_rows "SELECT scope,idempotency_key,request_fingerprint,completed_at FROM mfos_d1_idempotency WHERE idempotency_key IN ('mf01-catalog-bootstrap-xlsx-32f79e4463d1-v1','mf01-direct-bootstrap-xlsx-32f79e4463d1-v1')" /tmp/idemp-rows.json
+          query catalog_audit_rows "SELECT audit_id,store_id,event_type,catalog_revision,recorded_at FROM mfos_catalog_audit WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8'" /tmp/catalog-audit-rows.json
+          query outbox_rows "SELECT event_id,domain,aggregate_id,event_type,status,store_id FROM mfos_outbox WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND (domain='CATALOG' OR domain='DIRECT_AUTHORITY_BOOTSTRAP')" /tmp/outbox-rows.json
+          node - <<'NODE' | tee -a evidence/schema-diagnostic.txt
           const fs=require('fs');
-          for(const [name,file] of Object.entries({tables:'/tmp/tables.json',catalog_state:'/tmp/catalog-state.json',catalog_audit:'/tmp/catalog-audit.json',outbox:'/tmp/outbox.json',idempotency_schema:'/tmp/idemp-schema.json',idempotency_rows:'/tmp/idemp-rows.json',catalog_audit_rows:'/tmp/catalog-audit-rows.json',outbox_rows:'/tmp/outbox-rows.json'})){
+          for(const [name,file] of Object.entries({catalog_state:'/tmp/catalog-state.json',catalog_audit:'/tmp/catalog-audit.json',outbox:'/tmp/outbox.json',idempotency_schema:'/tmp/idemp-schema.json',store_operational:'/tmp/store-operational.json',pricing:'/tmp/pricing.json',availability:'/tmp/availability.json',business_day:'/tmp/business-day.json',idempotency_rows:'/tmp/idemp-rows.json',catalog_audit_rows:'/tmp/catalog-audit-rows.json',outbox_rows:'/tmp/outbox-rows.json'})){
             const x=JSON.parse(fs.readFileSync(file,'utf8'));
             if(!x.success) throw new Error(name+'_QUERY_FAILED');
             console.log('\n## '+name);
