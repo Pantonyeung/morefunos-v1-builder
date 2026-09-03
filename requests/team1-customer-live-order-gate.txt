@@ -1,0 +1,3 @@
+requested_at=2026-09-03T23:35:00+08:00
+source_sha=69f614795dabd9f131fc21d82db71dc8aba8e43b
+purpose=production-customer-direct-exactly-one-canonical-order
