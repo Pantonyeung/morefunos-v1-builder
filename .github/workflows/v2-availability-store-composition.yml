@@ -55,9 +55,10 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
           echo "source-identity=PASS sha=$EXPECTED" | tee evidence/source-identity.log
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install TypeScript test toolchain
         working-directory: source
