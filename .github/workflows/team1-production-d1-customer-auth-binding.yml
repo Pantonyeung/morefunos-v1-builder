@@ -1,0 +1,70 @@
+name: Team1 Production D1 Customer Auth Binding
+
+on:
+  push:
+    paths:
+      - 'requests/team1-production-d1-customer-auth-binding.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team1-production-d1-customer-auth-binding.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Apply only customer authentication binding when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund wrangler@4
+          mkdir -p evidence
+          MIGRATION='source/infra/cloudflare/d1/migrations/0011-customer-authentication-binding.sql'
+          test -s "$MIGRATION"
+          BEFORE="$(npx wrangler d1 execute morefun-v2-production --remote --command "SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='mfos_customer_authentication_binding';" --json)"
+          printf '%s\n' "$BEFORE" > evidence/before.json
+          COUNT="$(printf '%s' "$BEFORE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);const r=x?.[0]?.results?.[0]?.c ?? x?.[0]?.results?.[0]?.['COUNT(*)'];process.stdout.write(String(r ?? ''))})")"
+          if [ "$COUNT" = "0" ]; then
+            npx wrangler d1 execute morefun-v2-production --remote --file "$MIGRATION" --yes | tee evidence/apply.txt
+          elif [ "$COUNT" = "1" ]; then
+            echo 'already_present=1' | tee evidence/apply.txt
+          else
+            echo "unexpected_table_count=$COUNT" >&2
+            exit 1
+          fi
+          npx wrangler d1 execute morefun-v2-production --remote --command "SELECT name,type FROM sqlite_master WHERE name IN ('mfos_customer_authentication_binding','mfos_customer_authentication_customer_idx') ORDER BY name;" --json | tee evidence/after.json
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('evidence/after.json','utf8'));const names=new Set((x?.[0]?.results||[]).map(r=>r.name));if(!names.has('mfos_customer_authentication_binding')||!names.has('mfos_customer_authentication_customer_idx'))process.exit(1)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-production-d1-customer-auth-binding-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
