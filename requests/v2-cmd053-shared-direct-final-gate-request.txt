@@ -1,4 +1,4 @@
-source_sha=e186e02cbff84dd04916277d81ebd451f72cdf00
-branch_name=landing/CMD-053-shared-direct-final-gate-r8
-verification_scope=recovered-r8+pricing+catalog+business-day+shared-direct-gate+cross-port+typecheck
+source_sha=af6a051413ab093c9d878e86c5c17bceac5550b2
+branch_name=landing/CMD-053-clean-admission
+verification_scope=clean-admission+recovered-r8+pricing+catalog+business-day+shared-direct-gate+cross-port+typecheck
 verification_revision=canonical-catalog-fixture-v2
