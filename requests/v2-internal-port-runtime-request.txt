@@ -1,3 +1,3 @@
-source_sha=2b4aeb842badde9d7103c7b66882eceb25b6914e
-branch_name=work/CORE/B0269-port-authority-matrix-five-port-admission-correction
-request_id=B0269-PORT-AUTHORITY-MATRIX-INTERNAL-PORT-20260831
+source_sha=df7067c4c61a18733946ca6fedff221d5a0c8b38
+branch_name=work/SMT/T2-smt-canonical-runtime-transport
+request_id=T2-SMT-PAYMENT-REFUND-RESOLVER-RED-20260903
