@@ -27,7 +27,7 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-cmd053-shared-direct-final-gate-request.txt | tr -d '\r\n')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$BRANCH_NAME" = 'landing/CMD-053-shared-direct-final-gate-r8' || "$BRANCH_NAME" = 'landing/CMD-053-clean-admission' ]]
+          [[ "$BRANCH_NAME" = 'landing/CMD-053-shared-direct-final-gate-r8' || "$BRANCH_NAME" = 'landing/CMD-053-clean-admission' || "$BRANCH_NAME" = 'main' ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
