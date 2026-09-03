@@ -71,6 +71,17 @@ jobs:
           set -euo pipefail
           node --test --experimental-strip-types packages/availability/*.test.ts 2>&1 | tee ../evidence/availability-tests.log
 
+      - name: Run Admin Availability production wiring tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types \
+            packages/admin-ui-integration/admin-availability-migration.test.ts \
+            packages/admin-ui-integration/availability-page-port.test.ts \
+            packages/admin-ui-integration/availability-runtime.test.ts \
+            2>&1 | tee ../evidence/admin-availability-wiring-tests.log
+
       - name: Run Store operational tests
         working-directory: source
         shell: bash
