@@ -59,6 +59,7 @@ function applyMigrations(database) {
     '0004-accepted-order-projection.sql',
     '0006-availability-store-operational.sql',
     '0007-direct-final-gate-read-authorities.sql',
+    '0008-order-state-store-scope.sql',
   ]) {
     database.exec(readFileSync(`source/infra/cloudflare/d1/migrations/${name}`, 'utf8'));
   }
@@ -181,7 +182,9 @@ test('minimum operating line correlates one DIRECT submit to one D1 order seen b
   const accepted = await customer.submit(submitInput);
   assert.equal(accepted.disposition, 'ACCEPT');
   assert.equal(accepted.orderId, ORDER_ID);
-  assert.equal(sqlite.prepare('SELECT COUNT(*) AS count FROM mfos_order_state WHERE order_id = ?').get(ORDER_ID).count, 1);
+  const state = sqlite.prepare('SELECT order_id, store_id FROM mfos_order_state WHERE order_id = ?').get(ORDER_ID);
+  assert.equal(state.order_id, ORDER_ID);
+  assert.equal(state.store_id, STORE_ID);
 
   const resolver = new InternalPortCompositionResolver();
   const read = createReadPort(db);
