@@ -65,7 +65,7 @@ jobs:
           set -euo pipefail
           npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
 
-      - name: Run guarded schema and trusted bootstrap gate
+      - name: Run guarded schema trusted bootstrap and runtime assembly gate
         shell: bash
         run: |
           set -euo pipefail
@@ -74,6 +74,8 @@ jobs:
             verification/t2-d1-known-availability-index-hotfix.test.mjs \
             verification/t2-d1-catalog-bootstrap-adapter.test.mjs \
             verification/t2-protected-live-bootstrap-handler.test.mjs \
+            verification/t2-admin-worker-bootstrap-mount.test.mjs \
+            verification/t2-smt-20-operation-registry.test.mjs \
             2>&1 | tee evidence/t2-live-d1-direct-authority-bootstrap-repair.log
 
       - name: Run root TypeScript typecheck
