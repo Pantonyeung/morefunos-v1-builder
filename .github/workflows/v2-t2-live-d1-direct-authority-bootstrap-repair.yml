@@ -85,12 +85,26 @@ jobs:
           set -euo pipefail
           ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
 
+      - name: Build Admin assets and Wrangler dry-run exact Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+          cd ../..
+          npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/admin-web-worker/wrangler.jsonc --outdir ../evidence/admin-worker-dry-run 2>&1 | tee ../evidence/admin-worker-dry-run.log
+          test -s ../evidence/admin-worker-dry-run.log
+
       - name: Write evidence
         if: always()
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         shell: bash
-        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nmode=BUILDER_ONLY_NODE_SQLITE_D1_COMPATIBLE\nworkflow=v2-t2-live-d1-direct-authority-bootstrap-repair.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
+        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nmode=BUILDER_ONLY_NODE_SQLITE_D1_COMPATIBLE_PLUS_WRANGLER_DRY_RUN\nworkflow=v2-t2-live-d1-direct-authority-bootstrap-repair.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
 
       - name: Upload evidence
         if: always()
