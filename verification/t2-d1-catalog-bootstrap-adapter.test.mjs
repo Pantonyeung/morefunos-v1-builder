@@ -127,7 +127,7 @@ test('exact empty legacy catalog shell upgrades, unknown/non-empty shapes fail c
     const sqlite = new DatabaseSync(':memory:'); foundation(sqlite); legacyCatalog(sqlite);
     const result = await repairD1CatalogSchema(new SqliteD1Adapter(sqlite));
     assert.equal(result, 'UPGRADED_EMPTY_LEGACY');
-    assert.deepEqual(sqlite.prepare('PRAGMA table_info(mfos_catalog_state)').all().map(x => x.name), ['store_id','catalog_revision','snapshot_json','revision','created_at','updated_at']);
+    assert.deepEqual(sqlite.prepare('PRAGMA table_info(mfos_catalog_state)').all().map(x => x.name), ['store_id','revision','record_json','updated_at','catalog_revision','snapshot_json','created_at']);
     assert.ok(sqlite.prepare('PRAGMA table_info(mfos_catalog_audit)').all().length > 0);
     sqlite.close();
   }
