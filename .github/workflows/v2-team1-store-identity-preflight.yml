@@ -1,0 +1,74 @@
+name: V2 Team1 Store Identity Preflight
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-store-identity-preflight.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Inspect store-related production tables read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/q.json',JSON.stringify({sql:"SELECT name FROM sqlite_master WHERE type='table' AND lower(name) LIKE '%store%' ORDER BY name"}));
+          NODE
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > /tmp/tables.json
+          node - <<'NODE' | tee evidence/store-identity-preflight.txt
+          const x=require('/tmp/tables.json');
+          if(!x.success || !x.result?.[0]?.success) process.exit(1);
+          const names=(x.result[0].results||[]).map(r=>r.name);
+          console.log(`store_tables=${names.join(',')}`);
+          NODE
+          node - <<'NODE' >/tmp/store-queries.json
+          const x=require('/tmp/tables.json');
+          const names=(x.result?.[0]?.results||[]).map(r=>r.name);
+          const safe=(n)=>/^[A-Za-z0-9_]+$/.test(n);
+          const queries=[];
+          for(const name of names.filter(safe)){
+            queries.push({name,sql:`PRAGMA table_info(${name})`});
+            queries.push({name,sql:`SELECT * FROM ${name} LIMIT 5`});
+          }
+          process.stdout.write(JSON.stringify(queries));
+          NODE
+          node - <<'NODE'
+          const fs=require('fs');
+          const {execFileSync}=require('child_process');
+          const qs=JSON.parse(fs.readFileSync('/tmp/store-queries.json','utf8'));
+          const url=process.env.URL_OVERRIDE||`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${process.env.D1_DATABASE_ID}/query`;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          let out='';
+          for(const q of qs){
+            fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:q.sql}));
+            const raw=execFileSync('curl',['-fsS','-X','POST',url,'-H',`Authorization: Bearer ${token}`,'-H','content-type: application/json','--data-binary','@/tmp/body.json'],{encoding:'utf8'});
+            const x=JSON.parse(raw); const rows=x.result?.[0]?.results||[];
+            if(q.sql.startsWith('PRAGMA')) out+=`table=${q.name} columns=${rows.map(r=>r.name).join(',')}\n`;
+            else out+=`table=${q.name} rows=${JSON.stringify(rows)}\n`;
+          }
+          fs.appendFileSync('evidence/store-identity-preflight.txt',out);
+          process.stdout.write(out);
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-team1-store-identity-preflight
+          path: evidence
+          retention-days: 30
