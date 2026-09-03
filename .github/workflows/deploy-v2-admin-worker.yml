@@ -20,6 +20,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
     steps:
       - uses: actions/checkout@v7
         with:
@@ -57,15 +58,31 @@ jobs:
           npm run typecheck
           npm run build
           test -f dist/index.html
-      - name: Apply production D1 migrations
+      - name: Apply Admin session schema to production D1 using proven REST path
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
-          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
-          test -s "$CONFIG"
-          npx --yes wrangler@4 d1 migrations apply morefun-v2-production --remote --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/d1-migrations.log"
+          SQL_FILE='infra/cloudflare/d1/migrations/0009-admin-session-device-trust.sql'
+          test -s "$SQL_FILE"
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/d1-body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
+          HTTP_CODE="$(curl -sS -o /tmp/d1-result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/d1-body.json)"
+          printf 'migration=0009-admin-session-device-trust.sql http=%s\n' "$HTTP_CODE" | tee "$GITHUB_WORKSPACE/evidence/d1-migrations.log"
+          test "$HTTP_CODE" = 200
+          node -e "const x=require('/tmp/d1-result.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x.errors||x.result));process.exit(1)}"
+          node -e "require('fs').writeFileSync('/tmp/d1-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_session_policy','mfos_device_trust','mfos_session','mfos_session_device_idempotency','mfos_session_device_audit','mfos_session_device_commit_guard') ORDER BY name\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/d1-verify.json > /tmp/d1-verify-result.json
+          node - <<'NODE' | tee -a "$GITHUB_WORKSPACE/evidence/d1-migrations.log"
+          const x=require('/tmp/d1-verify-result.json');
+          const names=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=['mfos_device_trust','mfos_session','mfos_session_device_audit','mfos_session_device_commit_guard','mfos_session_device_idempotency','mfos_session_policy'].sort();
+          if(JSON.stringify(names)!==JSON.stringify(expected)){console.error('ADMIN_SESSION_D1_TABLES_MISSING',names);process.exit(1)}
+          console.log('database_name=morefun-v2-production');
+          console.log('admin_session_tables=PASS');
+          NODE
+          rm -f /tmp/d1-body.json /tmp/d1-result.json /tmp/d1-verify.json /tmp/d1-verify-result.json
       - name: Apply formal Admin login secret when configured
         env:
           ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
