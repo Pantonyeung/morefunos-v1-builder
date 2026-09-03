@@ -1,0 +1,39 @@
+name: Team1 Production D1 Customer Inventory
+
+on:
+  push:
+    paths:
+      - requests/team1-production-d1-customer-inventory.txt
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Query production D1 schema and customer/order inventory
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund wrangler@4
+          mkdir -p evidence
+          npx wrangler d1 execute morefun-v2-production --remote --command "SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND (name LIKE '%customer%' OR name LIKE '%auth%' OR name LIKE '%session%' OR name LIKE '%order%') ORDER BY name" > evidence/schema.json
+          npx wrangler d1 execute morefun-v2-production --remote --command "SELECT COUNT(*) AS canonical_orders FROM mfos_order_state; SELECT COUNT(*) AS customer_order_ownership FROM mfos_customer_order_ownership;" > evidence/counts.json
+          cat evidence/schema.json
+          cat evidence/counts.json
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: team1-production-d1-customer-inventory-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
