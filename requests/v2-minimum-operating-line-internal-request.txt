@@ -1,2 +1,2 @@
-source_sha=a7eacfd62968e12306ec704ffb58fd891bfdef4f
-verification_scope=customer-direct-submit+d1-canonical-order+smt-smm-same-order-id+idempotent-replay+typecheck
+source_sha=04e8ad8096ff6dcc75e8c228a77f857f6ce8d82e
+verification_scope=store-scope-repair+customer-direct-submit+d1-canonical-order+smt-smm-same-order-id+idempotent-replay+typecheck
