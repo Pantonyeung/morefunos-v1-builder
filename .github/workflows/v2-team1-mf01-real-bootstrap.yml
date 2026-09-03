@@ -1,0 +1,169 @@
+name: V2 Team1 MF01 Real Canonical Bootstrap
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-mf01-real-bootstrap.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/v2-team1-mf01-real-bootstrap.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify exact source and build Admin
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/order/d1-direct-authority-bootstrap-idempotency.test.ts packages/order/d1-direct-authority-bootstrap-admin-handler.test.ts packages/admin-ui-integration/admin-worker-session-runtime.test.ts
+          npm run typecheck
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+      - name: Preflight production authority is still empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat >/tmp/preflight.json <<'JSON'
+          {"sql":"SELECT (SELECT COUNT(*) FROM mfos_catalog_state) AS catalog_rows,(SELECT COUNT(*) FROM mfos_pricing_profile) AS pricing_rows,(SELECT COUNT(*) FROM mfos_availability_state) AS availability_rows,(SELECT COUNT(*) FROM mfos_store_operational_state) AS operational_rows,(SELECT COUNT(*) FROM mfos_business_day) AS business_day_rows"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/preflight.json >/tmp/preflight-result.json
+          node - <<'NODE' | tee evidence/bootstrap.txt
+          const x=require('/tmp/preflight-result.json'); const r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('D1_PREFLIGHT_FAILED');
+          for(const k of ['catalog_rows','pricing_rows','availability_rows','operational_rows','business_day_rows']) if(Number(r[k])!==0) throw new Error('AUTHORITY_NOT_EMPTY:'+k+'='+r[k]);
+          console.log('authority_preflight='+JSON.stringify(r));
+          console.log('authority_empty_before_bootstrap=PASS');
+          NODE
+      - name: Deploy exact Admin Worker with canonical principal
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          M=docs/recovery/team1/MF01-TEMPORARY-BOOTSTRAP-MANIFEST-2026-09-03.json
+          STAFF_ID="$(node -e "const m=require('./$M');process.stdout.write(m.adminOperator.staffId)")"
+          STORE_ID="$(node -e "const m=require('./$M');process.stdout.write(m.store.storeId)")"
+          PRINCIPAL="$(node -e "process.stdout.write(JSON.stringify({actorId:'admin:owner',staffId:process.argv[1],scopeRef:process.argv[2],permissions:['admin.direct_authority.bootstrap.v1','admin.merchant_store.initialize.v1']}))" "$STAFF_ID" "$STORE_ID")"
+          printf '%s' "$PRINCIPAL" | npx --yes wrangler@4 secret put ADMIN_AUTH_PRINCIPAL_JSON --config infra/cloudflare/admin-web-worker/wrangler.jsonc >/dev/null
+          npx --yes wrangler@4 deploy --config infra/cloudflare/admin-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+      - name: Build one-product real bootstrap payload from approved manifest
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const m=require('./docs/recovery/team1/MF01-TEMPORARY-BOOTSTRAP-MANIFEST-2026-09-03.json');
+          const now=new Date().toISOString();
+          const category={categoryId:m.catalog.category.categoryId,name:m.catalog.category.name,lifecycleStatus:'ACTIVE',position:0,revision:1,createdAt:now,updatedAt:now};
+          const product={productId:m.catalog.product.productId,name:m.catalog.product.name,lifecycleStatus:'ACTIVE',revision:1,createdAt:now,updatedAt:now,categoryMemberships:[{categoryId:category.categoryId,position:0}],optionGroups:[]};
+          const body={
+            idempotencyKey:'mf01-direct-bootstrap-xlsx-32f79e4463d1-v1',
+            catalogIdempotencyKey:'mf01-catalog-bootstrap-xlsx-32f79e4463d1-v1',
+            catalogSnapshot:{storeId:m.store.storeId,catalogRevision:m.catalog.catalogRevision,categories:[category],products:[product]},
+            selectedProductId:m.catalog.product.productId,
+            storeOperational:m.storeOperational,
+            availability:[m.availability],
+            pricing:[m.pricing],
+            businessDay:{businessDayId:m.businessDayPolicy.businessDayId,businessDate:'2026-09-03',timezone:m.businessDayPolicy.timezone,boundaryLocalTime:m.businessDayPolicy.boundaryLocalTime,policyRevision:m.businessDayPolicy.policyRevision}
+          };
+          fs.writeFileSync('/tmp/bootstrap.json',JSON.stringify(body));
+          fs.writeFileSync('/tmp/bootstrap-changed.json',JSON.stringify({...body,pricing:[{...body.pricing[0],fixedPriceMinor:2600}]}));
+          console.log('payload_source_sha256='+m.authority.sourceSha256);
+          console.log('payload_source_code='+m.catalog.product.sourceCode);
+          console.log('payload_product='+m.catalog.product.name);
+          console.log('payload_price_minor='+m.pricing.fixedPriceMinor);
+          NODE
+      - name: Execute real protected bootstrap and verify replay/conflict
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          node -e "const x=require('/tmp/login.json');if(x.staffId!=='7d61cc4d-e3d1-45b7-9e6c-28e2b8d7f779'||x.scopeRef!=='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8')process.exit(1)"
+
+          FIRST_HTTP="$(curl -sS -o /tmp/first.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data-binary @/tmp/bootstrap.json "$ADMIN_URL/api/admin/direct-authority/bootstrap")"
+          echo "first_bootstrap_http=$FIRST_HTTP" | tee -a evidence/bootstrap.txt
+          cat /tmp/first.json | tee evidence/first-response.json
+          test "$FIRST_HTTP" = 200
+          node -e "const x=require('/tmp/first.json');if(!x.ok||x.storeId!=='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8'||x.selectedProductId!=='29e9e173-087f-46f4-bae3-0c29f4d51417')process.exit(1)"
+
+          REPLAY_HTTP="$(curl -sS -o /tmp/replay.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data-binary @/tmp/bootstrap.json "$ADMIN_URL/api/admin/direct-authority/bootstrap")"
+          echo "same_payload_replay_http=$REPLAY_HTTP" | tee -a evidence/bootstrap.txt
+          test "$REPLAY_HTTP" = 200
+          node -e "const a=require('/tmp/first.json'),b=require('/tmp/replay.json');for(const k of ['storeId','catalogRevision','selectedProductId','businessDayId','recordedAt'])if(a[k]!==b[k])process.exit(1)"
+
+          CONFLICT_HTTP="$(curl -sS -o /tmp/conflict.json -w '%{http_code}' -H 'content-type: application/json' -H "Cookie: $COOKIE" --data-binary @/tmp/bootstrap-changed.json "$ADMIN_URL/api/admin/direct-authority/bootstrap")"
+          echo "changed_payload_same_key_http=$CONFLICT_HTTP" | tee -a evidence/bootstrap.txt
+          cat /tmp/conflict.json | tee evidence/conflict-response.json
+          test "$CONFLICT_HTTP" = 409
+          node -e "const x=require('/tmp/conflict.json');if(x.code!=='IDEMPOTENCY_KEY_REUSED')process.exit(1)"
+          echo 'same_payload_replay=PASS' | tee -a evidence/bootstrap.txt
+          echo 'changed_payload_conflict=PASS' | tee -a evidence/bootstrap.txt
+      - name: Canonical production D1 readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          cat >/tmp/readback.json <<'JSON'
+          {"sql":"SELECT (SELECT COUNT(*) FROM mfos_catalog_state WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8') AS catalog_rows,(SELECT COUNT(*) FROM mfos_pricing_profile WHERE pricing_profile_id='315bf882-1fee-4c38-a9e5-7fd4336755cf' AND store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND currency='HKD' AND fixed_price_minor=2500) AS pricing_rows,(SELECT COUNT(*) FROM mfos_availability_state WHERE availability_id='cb046a6d-31cb-4f28-9dc5-45786e0290df' AND store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND status='AVAILABLE') AS availability_rows,(SELECT COUNT(*) FROM mfos_store_operational_state WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND operational_status='OPEN') AS operational_rows,(SELECT COUNT(*) FROM mfos_business_day WHERE business_day_id='0d2cda16-38f6-4fca-aff1-06d99fd26353' AND store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND business_date='2026-09-03' AND timezone='Asia/Hong_Kong' AND boundary_local_time='05:00') AS business_day_rows,(SELECT snapshot_json FROM mfos_catalog_state WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8') AS snapshot_json"}
+          JSON
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/readback.json >/tmp/readback-result.json
+          node - <<'NODE' | tee -a evidence/bootstrap.txt
+          const x=require('/tmp/readback-result.json'); const r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('READBACK_FAILED');
+          for(const k of ['catalog_rows','pricing_rows','availability_rows','operational_rows','business_day_rows']) if(Number(r[k])!==1) throw new Error('READBACK_COUNT:'+k+'='+r[k]);
+          const s=JSON.parse(r.snapshot_json);
+          if(s.catalogRevision!=='mf01-temp-xlsx-32f79e4463d1-v1'||s.products?.length!==1||s.products[0].productId!=='29e9e173-087f-46f4-bae3-0c29f4d51417'||s.products[0].name!=='古早鹽酥雞') throw new Error('CATALOG_READBACK_MISMATCH');
+          console.log('canonical_readback_counts='+JSON.stringify({...r,snapshot_json:undefined}));
+          console.log('catalog_product_readback=古早鹽酥雞');
+          console.log('catalog_price_readback_hkd=25.00');
+          console.log('real_canonical_business_bootstrap=PASS');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team1-mf01-real-bootstrap-${{ steps.req.outputs.sha }}
+          path: evidence
+          retention-days: 30
