@@ -1,0 +1,118 @@
+name: V2 T3 Live D1 Authority Apply
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-t3-live-d1-authority-apply-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-t3-live-d1-authority-apply-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN" && test -n "$CF_TOKEN" && test -n "$CF_ACCOUNT"
+
+      - name: Checkout exact admitted V2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Run admitted guarded repair against production D1
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          cat > "$RUNNER_TEMP/live-repair.mjs" <<'EOF'
+          import fs from 'node:fs';
+          import { repairDirectAuthoritySchema } from `${process.cwd()}/source/packages/production-persistence/d1-direct-authority-schema-repair.ts`;
+          const account = process.env.CF_ACCOUNT;
+          const token = process.env.CF_TOKEN;
+          const databaseId = process.env.D1_DATABASE_ID;
+          const api = `https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${databaseId}/query`;
+          async function query(sql, params=[]) {
+            const r = await fetch(api,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({sql,params})});
+            const body = await r.json();
+            if (!r.ok || body.success !== true) throw new Error(`CF_D1_QUERY_FAILED:${r.status}:${JSON.stringify(body.errors ?? [])}`);
+            const entry = body.result?.[0];
+            if (!entry) throw new Error('CF_D1_EMPTY_RESULT');
+            return { success: entry.success !== false, results: entry.results ?? [], meta: entry.meta };
+          }
+          class Stmt {
+            constructor(sql,params=[]){this.sql=sql;this.params=params;}
+            bind(...params){return new Stmt(this.sql,params);}
+            async all(){return query(this.sql,this.params);}
+            async first(){const r=await query(this.sql,this.params);return r.results?.[0] ?? null;}
+            async run(){return query(this.sql,this.params);}
+          }
+          const db={prepare(sql){return new Stmt(sql);},async batch(){throw new Error('BATCH_NOT_ALLOWED_IN_SCHEMA_REPAIR');}};
+          async function snapshot(label){
+            const tables=['mfos_availability_state','mfos_availability_audit','mfos_store_operational_state','mfos_store_operational_audit','mfos_pricing_profile','mfos_business_day'];
+            const out={};
+            for(const table of tables){out[table]={columns:(await query(`PRAGMA table_info(${table})`)).results,indexes:(await query(`PRAGMA index_list(${table})`)).results,count:(await query(`SELECT COUNT(*) AS row_count FROM ${table}`)).results?.[0]?.row_count ?? null};}
+            fs.writeFileSync(`evidence/${label}.json`,JSON.stringify(out,null,2));
+            return out;
+          }
+          await snapshot('schema-before');
+          const result=await repairDirectAuthoritySchema(db);
+          fs.writeFileSync('evidence/repair-result.json',JSON.stringify(result,null,2));
+          await snapshot('schema-after');
+          console.log('LIVE_D1_DIRECT_AUTHORITY_SCHEMA_REPAIR=PASS',JSON.stringify(result));
+          EOF
+          node --experimental-strip-types "$RUNNER_TEMP/live-repair.mjs" 2>&1 | tee evidence/live-repair.log
+
+      - name: Record identity
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbuilder_sha=%s\nrun_id=%s\nd1_database_id=%s\nworkflow=v2-t3-live-d1-authority-apply.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$D1_DATABASE_ID" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-t3-live-d1-authority-apply-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
