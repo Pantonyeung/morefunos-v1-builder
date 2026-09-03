@@ -1,0 +1,91 @@
+name: V2 Team1 Bootstrap Schema Recovery
+
+on:
+  push:
+    paths:
+      - 'requests/v2-team1-bootstrap-schema-recovery.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/v2-team1-bootstrap-schema-recovery.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify existing 0003 contract and production pre-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          grep -F 'ALTER TABLE mfos_outbox ADD COLUMN store_id TEXT;' source/infra/cloudflare/d1/migrations/0003-order-outbox-store-scope.sql
+          grep -F 'mfos_outbox_pending_store_idx' source/infra/cloudflare/d1/migrations/0003-order-outbox-store-scope.sql
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          node -e 'process.stdout.write(JSON.stringify({sql:"PRAGMA table_info(mfos_outbox)"}))' >/tmp/pre.json
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/pre.json >/tmp/pre-result.json
+          node - <<'NODE' | tee evidence/schema-recovery.txt
+          const x=require('/tmp/pre-result.json');
+          if(!x.success) throw new Error('OUTBOX_PRAGMA_FAILED');
+          const cols=x.result?.[0]?.results??[];
+          const names=cols.map(c=>c.name);
+          console.log('outbox_columns_before='+names.join(','));
+          if(names.includes('store_id')) throw new Error('STORE_ID_ALREADY_PRESENT_ABORT');
+          console.log('missing_store_id_confirmed=PASS');
+          NODE
+      - name: Apply existing V2 migration 0003 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL="$(cat source/infra/cloudflare/d1/migrations/0003-order-outbox-store-scope.sql)"
+          node -e 'process.stdout.write(JSON.stringify({sql:process.argv[1]}))' "$SQL" >/tmp/apply.json
+          HTTP="$(curl -sS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/apply.json -o /tmp/apply-result.json -w '%{http_code}')"
+          echo "migration_0003_http=$HTTP" | tee -a evidence/schema-recovery.txt
+          cat /tmp/apply-result.json > evidence/migration-response.json
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/apply-result.json');if(!x.success)process.exit(1)"
+      - name: Verify production post-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          node -e 'process.stdout.write(JSON.stringify({sql:"PRAGMA table_info(mfos_outbox)"}))' >/tmp/post.json
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/post.json >/tmp/post-result.json
+          node - <<'NODE' | tee -a evidence/schema-recovery.txt
+          const x=require('/tmp/post-result.json');
+          if(!x.success) throw new Error('OUTBOX_POST_PRAGMA_FAILED');
+          const names=(x.result?.[0]?.results??[]).map(c=>c.name);
+          console.log('outbox_columns_after='+names.join(','));
+          if(!names.includes('store_id')) throw new Error('STORE_ID_MISSING_AFTER_0003');
+          console.log('production_outbox_store_scope_recovered=PASS');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team1-bootstrap-schema-recovery-${{ steps.req.outputs.sha }}
+          path: evidence
+          retention-days: 30
