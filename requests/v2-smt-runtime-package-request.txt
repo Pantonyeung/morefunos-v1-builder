@@ -1,4 +1,3 @@
-source_sha=bc55daac790a84ecc801f5aac1161117f98c8dc4
+source_sha=4718e016a2f3817f55eb2fcf9a5d7eb1fbe2c8f6
 channel=candidate
-api_base_url=
-request_id=TEAM2-B2304-S10-RUNTIME-PACKAGE-API-ORIGIN-RED-20260831
+request_id=TEAM2-INTEGRATED-SMT-OTA-20260903-R1
