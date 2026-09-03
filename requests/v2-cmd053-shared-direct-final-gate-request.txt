@@ -1,3 +1,3 @@
-source_sha=173be12127617f649981100a9172b24064b6e01c
+source_sha=8a7a599fdfccedc59e06cb9ab62bc2a2f4d3b188
 branch_name=landing/CMD-053-shared-direct-final-gate-r6
-verification_scope=pricing+catalog+business-day-unit+direct-final-gate+typecheck
+verification_scope=pricing+catalog+business-day-unit+direct-final-gate+consumer-bindings+typecheck
