@@ -87,6 +87,13 @@ jobs:
           test "${#tests[@]}" -gt 0
           node --test --experimental-strip-types "${tests[@]}" 2>&1 | tee ../evidence/business-day-tests.log
 
+      - name: Run shared DIRECT final gate tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/order/direct-final-gate.test.ts packages/store-order-intake/store-order-intake.test.ts packages/store-order-intake/store-order-intake-async.test.ts 2>&1 | tee ../evidence/direct-final-gate-tests.log
+
       - name: Run root TypeScript typecheck
         working-directory: source
         shell: bash
