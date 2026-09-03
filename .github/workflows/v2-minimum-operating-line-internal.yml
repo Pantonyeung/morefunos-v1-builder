@@ -69,7 +69,10 @@ jobs:
 
       - name: Run root TypeScript typecheck
         working-directory: source
-        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
 
       - name: Write evidence
         if: always()
