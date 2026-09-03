@@ -1,3 +1,3 @@
-source_sha=1d51b77143c6ccf44da401456b776c57ebef77af
+source_sha=879d017d391bec16c8de5e7a325a8ba9d48c790d
 branch_name=landing/CMD-050-shared-availability-store-production-composition
-request_id=CMD-050-AVAILABILITY-D1-RED-R1
+request_id=CMD-050-AVAILABILITY-D1-RED-R2
