@@ -1,5 +1,5 @@
-source_sha=cd4d0c29865a81c81de12d7e8f53a03ad46e0614
-base_sha=41740a49caf8d6c7e651ea6655f4727fb63286ec
-branch_name=work/CORE/B0220-human-custody-active-work-foundation
+source_sha=b7c31424ee217a2f717511c36e4be36587a63f3b
+base_sha=0ba8fc0a30f2cb41128f659cec1b99f89e84130f
+branch_name=landing/team1-customer-production-runtime-clean-20260903
 verification_phase=CANDIDATE
-# retrigger=B0220-red-rollback-client-discard
+# retrigger=TEAM1-CUSTOMER-D1-AUTH-RED
