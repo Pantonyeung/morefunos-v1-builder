@@ -87,7 +87,7 @@ jobs:
           set -euo pipefail
           D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
           SQL="SELECT (SELECT COUNT(*) FROM mfos_catalog_state WHERE store_id='${CANONICAL_STORE_ID}') AS catalog_rows,(SELECT COUNT(*) FROM mfos_pricing_profile WHERE store_id='${CANONICAL_STORE_ID}' AND subject_id='${CANONICAL_PRODUCT_ID}' AND currency='HKD' AND fixed_price_minor=2500 AND lifecycle_status='ACTIVE') AS pricing_rows,(SELECT COUNT(*) FROM mfos_availability_state WHERE store_id='${CANONICAL_STORE_ID}' AND target_id='${CANONICAL_PRODUCT_ID}' AND status='AVAILABLE') AS availability_rows,(SELECT COUNT(*) FROM mfos_store_operational_state WHERE store_id='${CANONICAL_STORE_ID}' AND operational_status='OPEN') AS operational_rows,(SELECT COUNT(*) FROM mfos_business_day WHERE store_id='${CANONICAL_STORE_ID}') AS business_day_rows,(SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id='${SUBMISSION_ID}' AND order_id='${CANONICAL_ORDER_ID}') AS correlated_order_rows,(SELECT COUNT(*) FROM mfos_order_state WHERE order_id='${CANONICAL_ORDER_ID}') AS canonical_order_rows"
-          node -e "require('fs').writeFileSync('/tmp/readback.json',JSON.stringify({sql:process.env.SQL}))" SQL="$SQL"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/readback.json',JSON.stringify({sql:process.env.SQL}))"
           curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/readback.json >/tmp/readback-result.json
           node - <<'NODE' | tee evidence/d1-readback.txt
           const x=require('/tmp/readback-result.json');
