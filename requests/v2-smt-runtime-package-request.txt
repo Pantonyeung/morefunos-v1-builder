@@ -1,3 +1,3 @@
-source_sha=d40a70acaa2ec7dbb549a81ccf8092e3a028bc28
+source_sha=0f901a156e6a84a8da536ce2c8062c1f97ffc7cb
 channel=candidate
-request_id=TEAM2-INTEGRATED-SMT-OTA-20260903-R2
+request_id=TEAM2-T2S-VIEWPORT-GEOMETRY-P0-CANDIDATE-20260903
