@@ -1,3 +1,3 @@
-source_sha=52869c045224904065bb6b167cef6804ed99820b
+source_sha=d40a70acaa2ec7dbb549a81ccf8092e3a028bc28
 scope=T2-P0-D1-KNOWN-AVAILABILITY-INDEX-HOTFIX
-attempt=2-fresh-main-candidate
+attempt=3-post-admission
