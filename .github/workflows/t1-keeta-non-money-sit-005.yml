@@ -496,14 +496,14 @@ jobs:
           const fs=require('fs');
           const e=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
           const line=(name,v)=>`- ${name}: ${v}`;
-          const r=e.reject_fresh?.result ?? {};
-          const a=e.ambiguous_controlled?.result ?? {};
+          const r=e.reject_fresh?.body?.result ?? {};
+          const a=e.ambiguous_controlled?.body?.result ?? {};
           const lines=[
             `T1_KEETA_NON_MONEY_SIT_005 run_id=${process.env.GITHUB_RUN_ID}`,
             line('source_sha', e.source_sha),
-            line('order_get_match', e.order_get_match?.result?.verdict ?? 'UNKNOWN'),
-            line('order_get_mismatch', e.order_get_mismatch?.result?.verdict ?? 'UNKNOWN'),
-            line('order_get_inconclusive', e.order_get_inconclusive?.result?.verdict ?? 'UNKNOWN'),
+            line('order_get_match', e.order_get_match?.body?.result?.verdict ?? 'UNKNOWN'),
+            line('order_get_mismatch', e.order_get_mismatch?.body?.result?.verdict ?? 'UNKNOWN'),
+            line('order_get_inconclusive', e.order_get_inconclusive?.body?.result?.verdict ?? 'UNKNOWN'),
             line('ambiguous_first', a.firstDisposition ?? a.reason ?? 'UNKNOWN'),
             line('ambiguous_second', a.secondDisposition ?? 'UNKNOWN'),
             line('ambiguous_attempts', a.readback?.providerActionAttempts ?? 'UNKNOWN'),
