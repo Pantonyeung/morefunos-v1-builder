@@ -1,2 +1,2 @@
-source_sha=cd7fe13861b78672ecf48505e01cc8b3bdb8eda6
-request_id=T2-B0277-CLEAN-REPLAY-SMT-20260904
+source_sha=0cbc25dc2ec57a407d12b78a22078d1b6921f3ec
+request_id=T2-B0277-CLEAN-R2-SMT-20260904
