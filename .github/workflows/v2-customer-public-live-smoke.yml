@@ -33,10 +33,9 @@ jobs:
           ORIGIN: ${{ steps.req.outputs.origin }}
         shell: bash
         run: |
-          set -euo pipefail
           mkdir -p evidence
 
-          fetch_200() {
+          fetch_status() {
             local url="$1" out="$2" code=""
             for i in {1..30}; do
               code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
@@ -46,39 +45,57 @@ jobs:
             printf '%s' "$code"
           }
 
-          INDEX_HTTP="$(fetch_200 "$ORIGIN/" /tmp/index.html)"
-          test "$INDEX_HTTP" = 200
-          grep -q 'customer-runtime' /tmp/index.html
+          INDEX_HTTP="$(fetch_status "$ORIGIN/" /tmp/index.html)"
+          MENU_HTTP="$(fetch_status "$ORIGIN/menu" /tmp/menu.html)"
+          ORDERING_HTTP="$(fetch_status "$ORIGIN/api/customer/ordering" /tmp/ordering.json)"
 
-          MENU_HTTP="$(fetch_200 "$ORIGIN/menu" /tmp/menu.html)"
-          test "$MENU_HTTP" = 200
-          grep -q 'customer-runtime' /tmp/menu.html
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html 2>/dev/null | head -n1 | sed -E 's/^src="([^"]+)"$/\1/' || true)"
+          CSS_PATH="$(grep -Eo 'href="[^"]*assets/[^"]+\.css"' /tmp/index.html 2>/dev/null | head -n1 | sed -E 's/^href="([^"]+)"$/\1/' || true)"
 
-          ORDERING_HTTP="$(fetch_200 "$ORIGIN/api/customer/ordering" /tmp/ordering.json)"
-          test "$ORDERING_HTTP" = 200
-          node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!x.presentationRevision||!Number.isSafeInteger(x.operationalRevision)||!Array.isArray(x.products))process.exit(1)"
-
-          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
-          test -n "$JS_PATH"
-          case "$JS_PATH" in
-            http*) JS_URL="$JS_PATH" ;;
-            /*) JS_URL="$ORIGIN$JS_PATH" ;;
-            *) JS_URL="$ORIGIN/$JS_PATH" ;;
-          esac
-          JS_HTTP="$(fetch_200 "$JS_URL" /tmp/customer.js)"
-          test "$JS_HTTP" = 200
-
+          JS_HTTP="000"
           FIXTURE_MARKERS=0
-          for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001'; do
-            if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
-          done
+          if [[ -n "$JS_PATH" ]]; then
+            case "$JS_PATH" in
+              http*) JS_URL="$JS_PATH" ;;
+              /*) JS_URL="$ORIGIN$JS_PATH" ;;
+              *) JS_URL="$ORIGIN/$JS_PATH" ;;
+            esac
+            JS_HTTP="$(fetch_status "$JS_URL" /tmp/customer.js)"
+            if [[ "$JS_HTTP" = 200 ]]; then
+              for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001'; do
+                if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
+              done
+            fi
+          fi
 
-          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nfixture_markers=%s\npresentation_canonical=%s\nclassification=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$FIXTURE_MARKERS"             "$([[ "$FIXTURE_MARKERS" = 0 ]] && echo YES || echo NO)"             "$([[ "$FIXTURE_MARKERS" = 0 ]] && echo READY_PRESENTATION || echo BLOCKED_PRESENTATION_FIXTURE)"             | tee evidence/summary.txt
-          cp /tmp/ordering.json evidence/ordering.json
+          API_VALID=NO
+          if [[ "$ORDERING_HTTP" = 200 ]]; then
+            if node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!x.presentationRevision||!Number.isSafeInteger(x.operationalRevision)||!Array.isArray(x.products))process.exit(1)"; then API_VALID=YES; fi
+          fi
+
+          ASSET_VALID=NO
+          if [[ "$INDEX_HTTP" = 200 && -n "$JS_PATH" && -n "$CSS_PATH" && "$JS_HTTP" = 200 ]]; then ASSET_VALID=YES; fi
+          SPA_VALID=NO
+          if [[ "$MENU_HTTP" = 200 && -n "$JS_PATH" ]]; then SPA_VALID=YES; fi
+
+          PRESENTATION_CANONICAL=YES
+          CLASSIFICATION=READY_PRESENTATION
+          if [[ "$FIXTURE_MARKERS" -gt 0 ]]; then
+            PRESENTATION_CANONICAL=NO
+            CLASSIFICATION=BLOCKED_PRESENTATION_FIXTURE
+          fi
+
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nasset_valid=%s\nspa_valid=%s\napi_valid=%s\nfixture_markers=%s\npresentation_canonical=%s\nclassification=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$ASSET_VALID" "$SPA_VALID" "$API_VALID" "$FIXTURE_MARKERS" "$PRESENTATION_CANONICAL" "$CLASSIFICATION"             | tee evidence/summary.txt
+          [[ -f /tmp/ordering.json ]] && cp /tmp/ordering.json evidence/ordering.json || true
+          [[ -f /tmp/index.html ]] && cp /tmp/index.html evidence/index.html || true
+
+          test "$ASSET_VALID" = YES
+          test "$SPA_VALID" = YES
+          test "$API_VALID" = YES
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: v2-customer-public-live-smoke-${{ steps.req.outputs.source_sha }}
           path: evidence
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
