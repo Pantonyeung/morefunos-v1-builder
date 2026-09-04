@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   smoke:
@@ -62,7 +63,7 @@ jobs:
             esac
             JS_HTTP="$(fetch_status "$JS_URL" /tmp/customer.js)"
             if [[ "$JS_HTTP" = 200 ]]; then
-              for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001'; do
+              for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001' 'TST-HISTORY-001' '+852 5600 4443'; do
                 if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
               done
             fi
@@ -92,6 +93,14 @@ jobs:
           test "$ASSET_VALID" = YES
           test "$SPA_VALID" = YES
           test "$API_VALID" = YES
+      - name: Publish Team2 audit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PUBLIC_LIVE_SMOKE status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
