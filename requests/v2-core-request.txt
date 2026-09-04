@@ -1,5 +1,5 @@
 source_sha=361b852299549caffba2dc97c6dfb040e166c5bc
 base_sha=2934f60966beab0ac74a4819fa570e0a19f8ebfe
 branch_name=work/CORE/B0268-canonical-actor-identity-authority-006
-verification_phase=FINAL
-request_id=T2-CANONICAL-ACTOR-IDENTITY-AUTHORITY-006-FINAL-20260904
+verification_phase=CANDIDATE
+request_id=T2-CANONICAL-ACTOR-IDENTITY-AUTHORITY-006-FINAL-CANDIDATE-20260904
