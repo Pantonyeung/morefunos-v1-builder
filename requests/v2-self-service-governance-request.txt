@@ -1,4 +1,4 @@
-source_sha=a711d4fadb97fcd94d504ba2c77b9aab305a37c0
-base_sha=56d9727a691b60575a0d1f1fad05db7eca039b8f
+source_sha=09e55f44ed765ac9096798023623c40f45f15bb2
+base_sha=e891bd9703d5244c18c8a98f33c509451ee5d0d3
 branch_name=work/SMM/B0310-visual-phase1-shell-ordering
-request_id=SMM-B0310-R1-SELF-SERVICE-20260905
+request_id=SMM-B0310-TERMINAL-SELF-SERVICE-20260905
