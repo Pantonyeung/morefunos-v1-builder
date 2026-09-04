@@ -1,0 +1,101 @@
+name: V2 Production Main Pin Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 production source SHA
+        required: true
+        type: string
+  push:
+    paths:
+      - 'requests/v2-production-main-pin-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-production-main-pin-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-production-main-pin-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require requested source equals current V2 main HEAD
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::PRODUCTION_SOURCE_NOT_CURRENT_MAIN source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "production-main-pin=PASS sha=$MAIN_SHA"
+
+      - name: Checkout exact current V2 main
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release pin and governance hard guards
+        working-directory: source
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -s docs/recovery/commander/PRODUCTION-RELEASE-PIN.yaml
+          grep -q '^SOURCE_POLICY: MAIN_HEAD_ONLY$' docs/recovery/commander/PRODUCTION-RELEASE-PIN.yaml
+          grep -q '^STATUS: PRE_RELEASE\|^STATUS: PRODUCTION_CLOSED' docs/recovery/commander/PRODUCTION-RELEASE-PIN.yaml
+          python3 -m unittest scripts/test_governance_guard_stale_room_pointer.py
+          python3 scripts/governance_guard.py --head "$SOURCE_SHA" --branch main
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          cat > evidence/production-main-pin.txt <<EOF
+          builder_repo=Pantonyeung/morefunos-v1-builder
+          builder_run_id=$GITHUB_RUN_ID
+          source_repo=Pantonyeung/Morefun-v2
+          source_sha=$SOURCE_SHA
+          source_policy=MAIN_HEAD_ONLY
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-production-main-pin-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 90
