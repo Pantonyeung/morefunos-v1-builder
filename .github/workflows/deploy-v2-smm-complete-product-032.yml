@@ -213,13 +213,46 @@ jobs:
               };
             },expected);
 
+            const ordersTab=page.getByRole('tab',{name:'訂單'});
+            if(await ordersTab.count())await ordersTab.click();
+            else {
+              const btn=page.getByRole('button',{name:'訂單'});
+              if(await btn.count())await btn.first().click();
+            }
+            await page.waitForTimeout(500);
+            if(result.orders.count>0){
+              const completeCount=await page.getByRole('button',{name:'完成訂單'}).count();
+              const cancelCount=await page.getByRole('button',{name:'取消訂單'}).count();
+              if(completeCount<1||cancelCount<1)throw new Error('SMM_ORDER_ACTION_BUTTONS_NOT_MOUNTED');
+            }
+            if(await page.getByRole('button',{name:'重印小票'}).count())throw new Error('SMM_UNSUPPORTED_REPRINT_BUTTON_PRESENT');
+
+            const moreTab=page.getByRole('tab',{name:'更多'});
+            if(await moreTab.count())await moreTab.click();
+            else {
+              const btn=page.getByRole('button',{name:'更多'});
+              if(await btn.count())await btn.first().click();
+            }
+            await page.getByText('Availability canonical read/set 已接線',{exact:true}).waitFor({state:'visible',timeout:5000});
+            await page.getByText(/Print request\/observe 已接線/).waitFor({state:'visible',timeout:5000});
+            await page.getByText(/Business Day 已 admit SMM，但 production binding尚未 mount/).waitFor({state:'visible',timeout:5000});
+            await page.getByText(/Reporting 已 admit SMM，但 production binding尚未 mount/).waitFor({state:'visible',timeout:5000});
+
+            const activeTab=page.getByRole('tab',{name:'待處理'});
+            if(await activeTab.count())await activeTab.click();
+            else {
+              const btn=page.getByRole('button',{name:'待處理'});
+              if(await btn.count())await btn.first().click();
+            }
+            await page.getByText(/Keeta 商戶決定目前未 mount 到 SMM production manifest/).waitFor({state:'visible',timeout:5000});
+
             const orderTab=page.getByRole('tab',{name:'點單'});
             if(await orderTab.count())await orderTab.click();
             else {
               const btn=page.getByRole('button',{name:'點單'});
               if(await btn.count())await btn.first().click();
             }
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             const bodyText=await page.locator('body').innerText();
             if(bodyText.includes('Canonical provider未就緒'))throw new Error('SMM_UI_PROVIDER_NOT_READY');
             const publicOrigin=new URL(process.env.URL).origin;
