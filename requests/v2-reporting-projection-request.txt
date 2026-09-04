@@ -1,3 +1,3 @@
-source_sha=cc1a5cee865dd1aeaebb7308b405f5a159a9931c
-branch_name=work/CORE/B0145-owner-channel-performance-source-authority-r2
-request_id=B0145-OWNER-CHANNEL-PERFORMANCE-R2-20260831
+source_sha=3246d0c05c28a6fded6b38f1a0d38815a981d1db
+branch_name=work/CORE/B0273-final-four-server-operations
+request_id=T2-BUNDLE008-REPORTING-GREEN-20260904
