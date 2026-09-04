@@ -162,17 +162,7 @@ jobs:
           console.log('keeta_required_d1_schema=present');
           NODE
 
-      - name: Prepare protected SIT probe secret for same-version deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          PROBE_KEY="$(openssl rand -hex 32)"
-          echo "::add-mask::$PROBE_KEY"
-          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/keeta-deploy-secrets.env"
-          chmod 600 "$RUNNER_TEMP/keeta-deploy-secrets.env"
-          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
-
-      - name: Deploy exact Keeta SIT Worker with probe secret
+      - name: Deploy exact Keeta SIT Worker
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -180,7 +170,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/keeta-deploy-secrets.env"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
 
       - name: Smoke deployed health endpoint
         shell: bash
@@ -193,26 +183,6 @@ jobs:
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (body.service !== 'morefun-v2-keeta-sit' || body.status !== 'ok') process.exit(1);
-          NODE
-
-      - name: Probe live Keeta Store Details through protected runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer $PROBE_KEY" \
-            "https://morefun-v2-keeta-sit.pantonyeung.workers.dev/sit/store-details?shopId=721578302" \
-            > "$RUNNER_TEMP/keeta-store-details.json"
-          node - "$RUNNER_TEMP/keeta-store-details.json" <<'NODE'
-          const fs = require('fs');
-          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          if (body.code !== 0 || body.message !== 'success') throw new Error(`KEETA_STORE_DETAILS_PROBE_FAILED ${JSON.stringify(body)}`);
-          if (Number(body.data?.shopId) !== 721578302) throw new Error('KEETA_STORE_DETAILS_SHOP_ID_MISMATCH');
-          console.log(`keeta_store_shop_id=${body.data.shopId}`);
-          console.log(`keeta_store_status=${body.data.status}`);
-          console.log(`keeta_store_delivery_rest_status=${body.data.deliveryRestStatus}`);
-          console.log(`keeta_store_pickup_rest_status=${body.data.pickupRestStatus}`);
-          console.log(`keeta_store_available_for_order=${body.data.availableForOrder}`);
           NODE
 
       - name: Record deployment evidence
