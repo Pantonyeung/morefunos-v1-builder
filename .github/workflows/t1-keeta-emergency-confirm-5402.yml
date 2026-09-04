@@ -1,21 +1,21 @@
-name: T1 Keeta Emergency Confirm 5402
+name: T1 Keeta Prepare 5402
 
 on:
   push:
     branches:
       - main
     paths:
-      - requests/t1-keeta-emergency-confirm-5402.txt
+      - requests/t1-keeta-prepare-5402.txt
 
 permissions:
   contents: read
 
 concurrency:
-  group: t1-keeta-emergency-confirm-5402
+  group: t1-keeta-prepare-5402
   cancel-in-progress: false
 
 jobs:
-  confirm:
+  prepare:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     env:
@@ -64,20 +64,20 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Assemble protected manual confirm worker
+      - name: Assemble protected manual prepare worker
         shell: bash
         run: |
           set -euo pipefail
           cp donor/workers/keeta/src/oauth-runtime.ts source/workers/keeta/src/oauth-runtime.ts
           cp donor/packages/integration/keeta-standard-oauth.ts source/packages/integration/keeta-standard-oauth.ts
-          cat > source/workers/keeta/src/manual-confirm-5402.ts <<'TS'
+          cat > source/workers/keeta/src/manual-prepare-5402.ts <<'TS'
           import base from "./index.ts";
-          import { buildKeetaOrderConfirmRequest } from "../../../packages/integration/keeta-order-provider-requests.ts";
+          import { buildKeetaOrderReadyRequest } from "../../../packages/integration/keeta-order-provider-requests.ts";
           import { sendKeetaJsonRequest, type RuntimeSecretProvider } from "../../../packages/integration/keeta-standard-api.ts";
           import { getUsableKeetaConnectionToken, type KeetaOAuthRuntimeEnv } from "./oauth-runtime.ts";
 
           interface Env extends KeetaOAuthRuntimeEnv {
-            readonly KEETA_MANUAL_CONFIRM_KEY?: string;
+            readonly KEETA_MANUAL_PREPARE_KEY?: string;
           }
 
           const APP_ID = 3419700273;
@@ -98,14 +98,14 @@ jobs:
           export default {
             async fetch(request: Request, env: Env): Promise<Response> {
               const url = new URL(request.url);
-              if (request.method === "POST" && url.pathname === "/sit/manual-confirm-5402") {
-                const expected = env.KEETA_MANUAL_CONFIRM_KEY;
+              if (request.method === "POST" && url.pathname === "/sit/manual-prepare-5402") {
+                const expected = env.KEETA_MANUAL_PREPARE_KEY;
                 if (!expected || request.headers.get("authorization") !== `Bearer ${expected}`) {
                   return json({code:"UNAUTHORIZED"},401);
                 }
                 try {
                   const token = await getUsableKeetaConnectionToken("default", env);
-                  const providerRequest = buildKeetaOrderConfirmRequest({orderViewId: ORDER_ID, providerShopId: SHOP_ID});
+                  const providerRequest = buildKeetaOrderReadyRequest({orderViewId: ORDER_ID, providerShopId: SHOP_ID});
                   const response = await sendKeetaJsonRequest({
                     url: providerRequest.endpoint,
                     params: {
@@ -124,7 +124,7 @@ jobs:
                     providerMessage:response.message ?? null
                   });
                 } catch (error) {
-                  return json({code:error instanceof Error ? error.message : "MANUAL_CONFIRM_FAILED"},500);
+                  return json({code:error instanceof Error ? error.message : "MANUAL_PREPARE_FAILED"},500);
                 }
               }
               return base.fetch(request, env as never);
@@ -135,12 +135,12 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const src=JSON.parse(fs.readFileSync('source/workers/keeta/wrangler.jsonc','utf8'));
-          src.main='src/manual-confirm-5402.ts';
+          src.main='src/manual-prepare-5402.ts';
           src.vars={...(src.vars||{}),KEETA_APP_ID:'3419700273'};
-          fs.writeFileSync('source/workers/keeta/manual-confirm-wrangler.jsonc',JSON.stringify(src,null,2));
+          fs.writeFileSync('source/workers/keeta/manual-prepare-wrangler.jsonc',JSON.stringify(src,null,2));
           NODE
 
-      - name: Deploy and confirm immediately
+      - name: Deploy and prepare immediately
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -150,20 +150,20 @@ jobs:
           set -euo pipefail
           KEY="$(openssl rand -hex 32)"
           echo "::add-mask::$KEY"
-          printf 'KEETA_MANUAL_CONFIRM_KEY=%s\n' "$KEY" > "$RUNNER_TEMP/manual.env"
-          wrangler deploy --config manual-confirm-wrangler.jsonc --secrets-file "$RUNNER_TEMP/manual.env"
+          printf 'KEETA_MANUAL_PREPARE_KEY=%s\n' "$KEY" > "$RUNNER_TEMP/manual.env"
+          wrangler deploy --config manual-prepare-wrangler.jsonc --secrets-file "$RUNNER_TEMP/manual.env"
           sleep 2
-          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/confirm.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/manual-confirm-5402")"
-          echo "confirm_http=$HTTP"
-          cat "$RUNNER_TEMP/confirm.json"
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/prepare.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/manual-prepare-5402")"
+          echo "prepare_http=$HTTP"
+          cat "$RUNNER_TEMP/prepare.json"
           test "$HTTP" = "200"
-          jq -e '.code==0 and .orderViewId==5123441027165402' "$RUNNER_TEMP/confirm.json" >/dev/null
+          jq -e '.code==0 and .orderViewId==5123441027165402' "$RUNNER_TEMP/prepare.json" >/dev/null
 
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: t1-keeta-emergency-confirm-5402-${{ github.run_id }}
-          path: ${{ runner.temp }}/confirm.json
+          name: t1-keeta-prepare-5402-${{ github.run_id }}
+          path: ${{ runner.temp }}/prepare.json
           if-no-files-found: warn
           retention-days: 7
