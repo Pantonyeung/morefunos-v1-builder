@@ -68,6 +68,9 @@ jobs:
           runq open_orders "SELECT COUNT(*) AS open_projection_count FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL AND json_extract(accepted_projection_json,'$.lifecycleStatus')='ACCEPTED';"
           runq catalog_identity "SELECT store_id,catalog_revision,json_extract(snapshot_json,'$.storeId') AS snapshot_store_id,json_extract(snapshot_json,'$.catalogRevision') AS snapshot_catalog_revision,json_array_length(json_extract(snapshot_json,'$.categories')) AS category_count,json_array_length(json_extract(snapshot_json,'$.products')) AS product_count FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
           runq order_identity "SELECT COUNT(*) AS total, SUM(CASE WHEN json_extract(accepted_projection_json,'$.orderId')!=order_id THEN 1 ELSE 0 END) AS order_id_mismatch, SUM(CASE WHEN CAST(json_extract(accepted_projection_json,'$.orderRevision') AS INTEGER)!=revision THEN 1 ELSE 0 END) AS revision_mismatch, SUM(CASE WHEN json_extract(accepted_projection_json,'$.storeId') IS NOT NULL AND json_extract(accepted_projection_json,'$.storeId')!=store_id THEN 1 ELSE 0 END) AS store_mismatch, SUM(CASE WHEN json_extract(accepted_projection_json,'$.lifecycleStatus') NOT IN ('ACCEPTED','COMPLETED','CANCELLED') THEN 1 ELSE 0 END) AS lifecycle_invalid FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL;"
+          runq sessions "SELECT session_id,staff_id,lifecycle_status,absolute_expires_at,revision,json_extract(payload_json,'$.deviceId') AS device_id,json_extract(payload_json,'$.policyId') AS policy_id,json_extract(payload_json,'$.lastActivityAt') AS last_activity_at FROM mfos_session WHERE session_id LIKE 'smt-device-session:%' ORDER BY rowid DESC LIMIT 8;"
+          runq bindings "SELECT runtime_binding_ref,device_id,bound_session_id,lifecycle_status,expires_at,revision,capability_ids_json,created_at,updated_at FROM mfos_smt_runtime_binding ORDER BY created_at DESC LIMIT 8;"
+          runq devices "SELECT device_id,revision,json_extract(payload_json,'$.lifecycleStatus') AS lifecycle_status,json_extract(payload_json,'$.trustSourceRef') AS trust_source_ref,json_extract(payload_json,'$.displayName') AS display_name FROM mfos_device_trust WHERE device_id LIKE 'device:smt:%' ORDER BY rowid DESC LIMIT 8;"
 
           node - <<'NODE' | tee "$GITHUB_WORKSPACE/evidence/summary.txt"
           const fs=require('fs'), p=process.env.GITHUB_WORKSPACE+'/evidence/';
@@ -79,6 +82,9 @@ jobs:
           const open=rows('open_orders');
           const catalogIdentity=rows('catalog_identity');
           const orderIdentity=rows('order_identity');
+          const sessions=rows('sessions');
+          const bindings=rows('bindings');
+          const devices=rows('devices');
           const openDays=days.filter(x=>x.lifecycle_status==='OPEN');
           console.log('source_sha='+process.env.SOURCE_SHA);
           console.log('canonical_store_rows='+store.length);
@@ -100,6 +106,19 @@ jobs:
           console.log('order_revision_mismatch='+(orderIdentity[0]?.revision_mismatch??'UNKNOWN'));
           console.log('order_store_mismatch='+(orderIdentity[0]?.store_mismatch??'UNKNOWN'));
           console.log('order_lifecycle_invalid='+(orderIdentity[0]?.lifecycle_invalid??'UNKNOWN'));
+          console.log('smt_session_count='+sessions.length);
+          console.log('latest_session_status='+(sessions[0]?.lifecycle_status||'MISSING'));
+          console.log('latest_session_device='+(sessions[0]?.device_id||'MISSING'));
+          console.log('latest_session_expiry='+(sessions[0]?.absolute_expires_at||'MISSING'));
+          console.log('runtime_binding_count='+bindings.length);
+          console.log('latest_binding_status='+(bindings[0]?.lifecycle_status||'MISSING'));
+          console.log('latest_binding_device='+(bindings[0]?.device_id||'MISSING'));
+          console.log('latest_binding_session_match='+(bindings[0]?.bound_session_id===sessions[0]?.session_id));
+          console.log('latest_binding_expiry='+(bindings[0]?.expires_at||'MISSING'));
+          console.log('latest_binding_capabilities='+(bindings[0]?.capability_ids_json||'MISSING'));
+          console.log('paired_device_count='+devices.length);
+          console.log('latest_device_status='+(devices[0]?.lifecycle_status||'MISSING'));
+          console.log('latest_device_id_match='+(devices[0]?.device_id===sessions[0]?.device_id));
           NODE
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
