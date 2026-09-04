@@ -1,2 +1,2 @@
-source_sha=1bda5f7c99022e07fbe3e1c6860ebdc4bce92f3b
-attempt=t1-customer-pwa-021a-post-admission
+source_sha=04625ef00136d2545331b2e6b6af1cdaa61d3cb8
+attempt=t1-customer-pwa-021a-red-proof
