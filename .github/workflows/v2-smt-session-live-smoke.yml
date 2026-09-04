@@ -41,7 +41,8 @@ jobs:
           node -e "const x=require('/tmp/get.json'); if(x.code!=='SMT_RUNTIME_SESSION_REQUIRED') process.exit(1)"
 
           BAD='__morefun_live_smoke_intentionally_invalid_5c7f61e3__'
-          POST_CODE="$(curl -sS -H 'Cache-Control: no-cache' -H 'content-type: application/json' -o /tmp/post.json -w '%{http_code}' --data \"{\\\"loginSecret\\\":\\\"$BAD\\\"}\" "$ORIGIN/api/smt/session")"
+          printf '{"+'"'+'loginSecret'+'"'+':"+'"'+'%s'+'"'+'}' "$BAD" > /tmp/post-body.json
+          POST_CODE="$(curl -sS -H 'Cache-Control: no-cache' -H 'content-type: application/json' -o /tmp/post.json -w '%{http_code}' --data-binary @/tmp/post-body.json "$ORIGIN/api/smt/session")"
           echo "post_http=$POST_CODE" | tee evidence/post.txt
           cat /tmp/post.json | tee -a evidence/post.txt
           test "$POST_CODE" = 401
