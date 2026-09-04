@@ -108,7 +108,7 @@ jobs:
               ? "WHERE json_extract(record_json, '$.merchantDecision') = 'PENDING' AND json_extract(record_json, '$.canonicalOrderId') IS NULL"
               : "WHERE json_extract(record_json, '$.canonicalOrderId') IS NULL";
             const row = await db(env).prepare(
-              `SELECT record_json FROM mfos_keeta_durable_delivery ${predicate} ORDER BY first_seen_at DESC LIMIT 1`
+              `SELECT record_json FROM mfos_keeta_durable_delivery ${predicate} ORDER BY json_extract(record_json, '$.firstSeenAt') DESC LIMIT 1`
             ).first<{ record_json?: string }>();
             if (!row?.record_json) return null;
             return JSON.parse(row.record_json) as KeetaDurableDeliveryRecord;
