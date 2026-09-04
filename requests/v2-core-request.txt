@@ -1,5 +1,5 @@
-source_sha=49f6a5145825760371d3976e2a167eb419c54b56
-base_sha=
-branch_name=main
+source_sha=cd7fe13861b78672ecf48505e01cc8b3bdb8eda6
+base_sha=06fa950f08df16e87a3cac7c59a493cd766d9c99
+branch_name=admit/CORE/B0277-fulfillment-server-closure
 verification_phase=CANDIDATE
-request_id=T2-B0277-POST-ADMISSION-CORE-20260904
+request_id=T2-B0277-CLEAN-REPLAY-CORE-20260904
