@@ -1,0 +1,86 @@
+name: Team1 Production D1 Order Lifecycle 0012
+
+on:
+  push:
+    paths:
+      - requests/team1-production-d1-order-lifecycle-0012.txt
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact admitted V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team1-production-d1-order-lifecycle-0012.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Guard and apply exact 0012 migration only when fully absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund wrangler@4
+          mkdir -p evidence
+          MIGRATION='source/infra/cloudflare/d1/migrations/0012-order-lifecycle-state.sql'
+          test -s "$MIGRATION"
+          BEFORE="$(npx wrangler d1 execute morefun-v2-production --remote --command "SELECT name,type FROM pragma_table_info('mfos_order_state') WHERE name IN ('order_snapshot_json','lifecycle_status','created_at') ORDER BY name;" --json)"
+          printf '%s\n' "$BEFORE" > evidence/before.json
+          COUNT="$(printf '%s' "$BEFORE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);process.stdout.write(String(x?.[0]?.results?.length ?? -1))})")"
+          if [ "$COUNT" = "0" ]; then
+            npx wrangler d1 execute morefun-v2-production --remote --file "$MIGRATION" --yes | tee evidence/apply.txt
+          elif [ "$COUNT" = "3" ]; then
+            echo 'already_present=3' | tee evidence/apply.txt
+          else
+            echo "partial_0012_schema=$COUNT" | tee evidence/apply.txt
+            exit 1
+          fi
+          AFTER="$(npx wrangler d1 execute morefun-v2-production --remote --command "SELECT name,type FROM pragma_table_info('mfos_order_state') WHERE name IN ('order_snapshot_json','lifecycle_status','created_at') ORDER BY name;" --json)"
+          printf '%s\n' "$AFTER" > evidence/after.json
+          printf '%s' "$AFTER" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);const rows=x?.[0]?.results??[];const got=new Map(rows.map(r=>[r.name,String(r.type).toUpperCase()]));for(const k of ['order_snapshot_json','lifecycle_status','created_at'])if(got.get(k)!=='TEXT')process.exit(1);if(rows.length!==3)process.exit(1)})"
+          npx wrangler d1 execute morefun-v2-production --remote --command "SELECT name,type FROM sqlite_master WHERE name IN ('mfos_order_lifecycle_audit','mfos_order_state_store_lifecycle_idx') ORDER BY name;" --json | tee evidence/objects.json
+
+      - name: Record evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=team1-production-d1-order-lifecycle-0012.yml\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team1-production-d1-order-lifecycle-0012-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
