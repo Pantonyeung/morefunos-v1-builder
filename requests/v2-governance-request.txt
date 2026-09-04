@@ -1,4 +1,4 @@
-source_sha=6a40e7da85aa57e759e22147d2649a2699e4ddeb
-base_sha=e34d2ef86c3b1f299cd2d99c4edfeb174007e07e
+source_sha=7cbdb9e12c7598911eb7d1d7d421a87c9874ed8f
+base_sha=f9a9680aa8f362d7a40e9197547fb9232efbf765
 branch_name=work/UIX/B0300-shared-ui-foundation
-request_id=UIX-B0300-FINAL-GOVERNANCE-20260905
+request_id=UIX-B0300-TERMINAL-GOVERNANCE-20260905
