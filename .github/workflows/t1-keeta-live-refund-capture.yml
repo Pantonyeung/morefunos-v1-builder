@@ -11,6 +11,9 @@ on:
       - main
     paths:
       - requests/t1-keeta-live-refund-capture.txt
+  issues:
+    types:
+      - opened
 
 permissions:
   contents: read
@@ -21,7 +24,7 @@ concurrency:
 
 jobs:
   capture:
-    if: github.actor == 'Pantonyeung'
+    if: github.actor == 'Pantonyeung' && (github.event_name != 'issues' || startsWith(github.event.issue.title, '[TEAM1-CAPTURE]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
