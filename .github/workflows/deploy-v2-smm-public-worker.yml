@@ -1,0 +1,119 @@
+name: Deploy V2 SMM Public Worker
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-public-worker-deploy.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-public-worker-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Build exact SMM PWA
+        working-directory: source/apps/smm-web
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -s dist/index.html
+          test -s dist/manifest.webmanifest
+          test -s dist/smm-icon.svg
+      - name: Verify SMM trusted edge contract
+        working-directory: source
+        run: node --test packages/smm-ui-integration/production-orders-mount.test.ts
+      - name: Deploy exact SMM public Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config infra/cloudflare/smm-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Public assets SPA and fail-closed API smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          fetch_status() {
+            local url="$1" out="$2" code=""
+            for i in {1..30}; do
+              code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
+              if [[ "$code" != 000 ]]; then break; fi
+              sleep 2
+            done
+            printf '%s' "$code"
+          }
+          INDEX_HTTP="$(fetch_status "$URL/" /tmp/index.html)"
+          SPA_HTTP="$(fetch_status "$URL/orders" /tmp/spa.html)"
+          MANIFEST_HTTP="$(fetch_status "$URL/manifest.webmanifest" /tmp/manifest.json)"
+          test "$INDEX_HTTP" = 200
+          test "$SPA_HTTP" = 200
+          test "$MANIFEST_HTTP" = 200
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$URL$JS_PATH";; *) JS_URL="$URL/$JS_PATH";; esac
+          ASSET_HTTP="$(fetch_status "$JS_URL" /tmp/smm.js)"
+          test "$ASSET_HTTP" = 200
+          SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/smm/session")"
+          test "$SESSION_HTTP" = 401
+          node -e "const x=require('/tmp/session.json');if(x.code!=='SMT_RUNTIME_SESSION_REQUIRED')process.exit(1)"
+          BAD='__smm_016_intentionally_invalid__'
+          node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))" BAD="$BAD"
+          PAIR_HTTP="$(BAD="$BAD" node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))"; curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
+          test "$PAIR_HTTP" = 401
+          node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMT_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
+          FIXTURE_MARKERS=0
+          for marker in 'TST-SMM-' 'SMM-DEMO-ORDER' 'SMM-FIXTURE-ORDER'; do
+            if grep -Fq "$marker" /tmp/smm.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
+          done
+          test "$FIXTURE_MARKERS" = 0
+          node -e "const x=require('/tmp/manifest.json');if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nmanifest_http=%s\nasset_http=%s\nanonymous_session_http=%s\ninvalid_pair_http=%s\nfixture_markers=%s\n'             "${{ steps.req.outputs.source_sha }}" "$URL" "$INDEX_HTTP" "$SPA_HTTP" "$MANIFEST_HTTP" "$ASSET_HTTP" "$SESSION_HTTP" "$PAIR_HTTP" "$FIXTURE_MARKERS" | tee evidence/smoke.txt
+      - name: Publish Team2 deploy audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_SMM_DEPLOY_016 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smm-public-worker-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
