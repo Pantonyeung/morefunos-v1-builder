@@ -1,5 +1,5 @@
-source_sha=abdcd0afb6156b9a6c31eddfc1f37f7ae68984d5
-base_sha=3511111851b49a4a7975d1edf214f8a8d8e23343
-branch_name=work/CORE/B0145-owner-channel-performance-source-authority-r2
-verification_phase=CANDIDATE
-request_id=B0145-OWNER-CHANNEL-PERFORMANCE-CORE-CANDIDATE-20260831-R3
+source_sha=d9fcf772178a51c613000959915d18b2876d4d0c
+base_sha=d1612e028a304eea994147aae06a6b31f22b22ad
+branch_name=recovery/team2/T2-CANONICAL-ACTOR-IDENTITY-AUTHORITY-006
+verification_phase=RED
+request_id=T2-CANONICAL-ACTOR-IDENTITY-AUTHORITY-006-RED-20260904
