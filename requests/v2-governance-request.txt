@@ -1,4 +1,4 @@
-source_sha=97d785a13b656a1365ab71376902d55dcbcbdf30
+source_sha=a711d4fadb97fcd94d504ba2c77b9aab305a37c0
 base_sha=56d9727a691b60575a0d1f1fad05db7eca039b8f
-branch_name=work/UIX/B0302-design-skill-mother-enhancement
-request_id=UIX-B0302-TERMINAL-GOVERNANCE-20260905
+branch_name=work/SMM/B0310-visual-phase1-shell-ordering
+request_id=SMM-B0310-R1-GOVERNANCE-20260905
