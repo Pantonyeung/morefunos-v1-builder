@@ -1,5 +1,5 @@
-source_sha=65c983ca1cf6c3e2f65a4fbcc66ada5ce6060c27
-base_sha=1615e82f2b17f505e915b6182f4465e911275cf4
-branch_name=work/CORE/B0277-fulfillment-production-release-authority
+source_sha=49f6a5145825760371d3976e2a167eb419c54b56
+base_sha=
+branch_name=main
 verification_phase=CANDIDATE
-request_id=T2-FULFILLMENT-012-CANDIDATE-CORE-20260904
+request_id=T2-B0277-POST-ADMISSION-CORE-20260904
