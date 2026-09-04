@@ -1,2 +1,2 @@
-source_sha=ddcaf35eb989afcc09ac95caba3fad1323f6ff98
-phase=RED_PRODUCT_GAP
+source_sha=7b952c438d0f0703ee691fe757c70408f0471d4d
+phase=GREEN
