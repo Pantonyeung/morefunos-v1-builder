@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Read exact durable Keeta receipt via Cloudflare D1 REST API
+      - name: Read exact Keeta dedup and durable receipt via D1 REST API
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -27,11 +27,14 @@ jobs:
           set -euo pipefail
 
           ORDER_VIEW_ID="$(sed -n 's/^order_view_id=//p' requests/t1-keeta-d1-fast-read.txt | tail -n 1 | tr -d '[:space:]')"
+          MESSAGE_ID="$(sed -n 's/^message_id=//p' requests/t1-keeta-d1-fast-read.txt | tail -n 1 | tr -d '[:space:]')"
           test -n "$ORDER_VIEW_ID" || { echo "ORDER_VIEW_ID_MISSING"; exit 2; }
+          test -n "$MESSAGE_ID" || { echo "MESSAGE_ID_MISSING"; exit 2; }
 
-          SQL="SELECT json_extract(record_json,'$.firstSeenAt') AS first_seen_at, json_extract(record_json,'$.merchantDecision') AS merchant_decision, json_extract(record_json,'$.providerActionStatus') AS provider_action_status, json_extract(record_json,'$.evidence.eventId') AS event_id, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, COALESCE(json_extract(json_extract(record_json,'$.evidence.message'),'$.baseOrder.orderViewId'), json_extract(json_extract(record_json,'$.evidence.message'),'$.orderInfo.baseOrder.orderViewId')) AS order_view_id FROM mfos_keeta_durable_delivery WHERE COALESCE(json_extract(json_extract(record_json,'$.evidence.message'),'$.baseOrder.orderViewId'), json_extract(json_extract(record_json,'$.evidence.message'),'$.orderInfo.baseOrder.orderViewId')) = ? ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 5;"
+          DEDUP_KEY="KEETA:$MESSAGE_ID"
+          SQL="SELECT d.dedup_key AS dedup_key, CASE WHEN d.fingerprint IS NOT NULL THEN 1 ELSE 0 END AS dedup_present, CASE WHEN r.dedup_key IS NOT NULL THEN 1 ELSE 0 END AS delivery_present, CASE WHEN r.record_json IS NOT NULL THEN instr(r.record_json, ?) ELSE 0 END AS delivery_contains_order, json_extract(r.record_json,'$.evidence.messageId') AS delivery_message_id, json_extract(r.record_json,'$.merchantDecision') AS merchant_decision FROM keeta_webhook_dedup d LEFT JOIN mfos_keeta_durable_delivery r ON r.dedup_key = d.dedup_key WHERE d.dedup_key = ? LIMIT 1;"
 
-          jq -n --arg sql "$SQL" --arg order "$ORDER_VIEW_ID" '{sql:$sql,params:[$order]}' > "$RUNNER_TEMP/d1-query.json"
+          jq -n --arg sql "$SQL" --arg order "$ORDER_VIEW_ID" --arg key "$DEDUP_KEY" '{sql:$sql,params:[$order,$key]}' > "$RUNNER_TEMP/d1-query.json"
 
           curl --fail-with-body --silent --show-error --max-time 20 \
             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" \
@@ -41,17 +44,19 @@ jobs:
             > "$RUNNER_TEMP/d1-fast-read.txt"
 
           cat "$RUNNER_TEMP/d1-fast-read.txt"
-
           jq -e '.success == true and (.result | length) > 0 and (.result[0].success == true)' "$RUNNER_TEMP/d1-fast-read.txt" >/dev/null
 
-          MATCHES="$(jq '[.result[0].results[]?] | length' "$RUNNER_TEMP/d1-fast-read.txt")"
-          echo "matching_rows=$MATCHES"
+          ROWS="$(jq '[.result[0].results[]?] | length' "$RUNNER_TEMP/d1-fast-read.txt")"
+          echo "matching_identity_rows=$ROWS"
           echo "order_view_id=$ORDER_VIEW_ID"
+          echo "message_id=$MESSAGE_ID"
 
-          if [ "$MATCHES" -lt 1 ]; then
-            echo "KEETA_DURABLE_RECEIPT_NOT_FOUND order_view_id=$ORDER_VIEW_ID"
+          if [ "$ROWS" -lt 1 ]; then
+            echo "KEETA_WEBHOOK_DEDUP_NOT_FOUND message_id=$MESSAGE_ID"
             exit 3
           fi
+
+          jq -r '.result[0].results[0] | "dedup_present=\(.dedup_present) delivery_present=\(.delivery_present) delivery_contains_order=\(.delivery_contains_order) delivery_message_id=\(.delivery_message_id // "null") merchant_decision=\(.merchant_decision // "null")"' "$RUNNER_TEMP/d1-fast-read.txt"
 
       - name: Upload fast-read evidence
         if: always()
