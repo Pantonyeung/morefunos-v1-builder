@@ -29,7 +29,7 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Verify exact current main
+      - name: Verify deployed source remains product-current
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
           TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
@@ -37,8 +37,24 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$TOKEN"
-          MAIN_SHA="$(curl -fsSL -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
-          test "$MAIN_SHA" = "$SOURCE_SHA"
+          AUTH=(-H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json')
+          MAIN_SHA="$(curl -fsSL "${AUTH[@]}" https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
+          if [ "$MAIN_SHA" != "$SOURCE_SHA" ]; then
+            curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...$MAIN_SHA" > /tmp/compare.json
+            python3 - <<'PY'
+          import json,sys
+          x=json.load(open('/tmp/compare.json'))
+          if x.get('status') not in ('ahead','identical'):
+              print('SOURCE_NOT_ANCESTOR_OF_MAIN',file=sys.stderr); sys.exit(1)
+          changed=[f['filename'] for f in x.get('files',[])]
+          product=[p for p in changed if p.startswith(('apps/','packages/','infra/'))]
+          if product:
+              print('PRODUCT_PATHS_MOVED_AFTER_DEPLOY=' + ','.join(product),file=sys.stderr); sys.exit(1)
+          print('CURRENT_MAIN_DOCS_GOVERNANCE_ONLY_AHEAD=' + str(len(changed)))
+          PY
+          fi
+          echo "deployed_source_sha=$SOURCE_SHA"
+          echo "current_main_sha=$MAIN_SHA"
 
       - uses: actions/setup-node@v7
         with: {node-version: '24'}
