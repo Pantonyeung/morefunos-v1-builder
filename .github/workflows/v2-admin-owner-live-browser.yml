@@ -49,21 +49,19 @@ jobs:
       - name: Run real public browser acceptance
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
-          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence
-          test -n "$ADMIN_SESSION_BOOTSTRAP_JSON"
+          test -n "$ADMIN_LOGIN_SECRET"
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
           cat > live-browser.mjs <<'EOF'
           import {chromium} from 'playwright-core';
           import fs from 'node:fs';
-          const {ADMIN_ORIGIN,OWNER_ORIGIN,SOURCE_SHA,ADMIN_SESSION_BOOTSTRAP_JSON}=process.env;
-          const bootstrap=JSON.parse(ADMIN_SESSION_BOOTSTRAP_JSON);
-          const token=Array.isArray(bootstrap)?bootstrap[0]?.sessionToken:null;
-          if(!token) throw new Error('ADMIN_SESSION_TOKEN_MISSING');
+          const {ADMIN_ORIGIN,OWNER_ORIGIN,SOURCE_SHA,ADMIN_LOGIN_SECRET}=process.env;
+          if(!ADMIN_LOGIN_SECRET) throw new Error('ADMIN_LOGIN_SECRET_MISSING');
           const browser=await chromium.launch({headless:true,executablePath:process.argv[2]});
           const result={sourceSha:SOURCE_SHA,admin:{},owner:{}};
 
@@ -76,16 +74,15 @@ jobs:
           await anon.close();
 
           const context=await browser.newContext({viewport:{width:1440,height:1000}});
-          await context.addCookies([
-            {name:'mf_admin_session',value:token,url:ADMIN_ORIGIN,path:'/',httpOnly:true,secure:true,sameSite:'Strict'},
-            {name:'mf_admin_session',value:token,url:OWNER_ORIGIN,path:'/',httpOnly:true,secure:true,sameSite:'Strict'},
-          ]);
 
           const admin=await context.newPage();
           const adminErrors=[]; const adminFailures=[];
           admin.on('pageerror',e=>adminErrors.push(String(e)));
           admin.on('requestfailed',r=>adminFailures.push(r.url()+':'+(r.failure()?.errorText||'failed')));
           await admin.goto(ADMIN_ORIGIN+'/admin/business-day',{waitUntil:'networkidle'});
+          await admin.getByLabel('登入憑證').fill(ADMIN_LOGIN_SECRET);
+          await admin.getByRole('button',{name:'登入',exact:true}).click();
+          await admin.getByText('MoreFunOS',{exact:true}).waitFor({timeout:15000});
           const adminSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
           if(adminSession.status()!==200) throw new Error('ADMIN_AUTH_SESSION:'+adminSession.status());
           const adminBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ');
@@ -99,13 +96,15 @@ jobs:
           if(adminSession2.status()!==200) throw new Error('ADMIN_REFRESH_SESSION_LOST');
           if(adminErrors.length||adminFailures.length) throw new Error('ADMIN_BROWSER_ERROR:'+adminErrors.join('|')+';'+adminFailures.join('|'));
           await admin.screenshot({path:'evidence/admin.png',fullPage:true});
-          result.admin={...result.admin,authenticatedSession:200,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           const owner=await context.newPage();
           const ownerErrors=[]; const ownerFailures=[];
           owner.on('pageerror',e=>ownerErrors.push(String(e)));
           owner.on('requestfailed',r=>ownerFailures.push(r.url()+':'+(r.failure()?.errorText||'failed')));
           await owner.goto(OWNER_ORIGIN+'/',{waitUntil:'networkidle'});
+          await owner.getByLabel('登入憑證').fill(ADMIN_LOGIN_SECRET);
+          await owner.getByRole('button',{name:'登入',exact:true}).click();
           const ownerSession=await context.request.get(OWNER_ORIGIN+'/api/owner/session');
           if(ownerSession.status()!==200) throw new Error('OWNER_AUTH_SESSION:'+ownerSession.status());
           const ownerBootstrap=await context.request.get(OWNER_ORIGIN+'/api/owner/bootstrap');
@@ -122,7 +121,7 @@ jobs:
           if(ownerSession2.status()!==200) throw new Error('OWNER_REFRESH_SESSION_LOST');
           if(ownerErrors.length||ownerFailures.length) throw new Error('OWNER_BROWSER_ERROR:'+ownerErrors.join('|')+';'+ownerFailures.join('|'));
           await owner.screenshot({path:'evidence/owner.png',fullPage:true});
-          result.owner={...result.owner,authenticatedSession:200,bootstrap:200,reportingUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.owner={...result.owner,uiLogin:'PASS',authenticatedSession:200,bootstrap:200,reportingUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           await browser.close();
           fs.writeFileSync('evidence/summary.json',JSON.stringify(result,null,2));
