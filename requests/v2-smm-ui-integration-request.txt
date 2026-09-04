@@ -1,2 +1,2 @@
-source_sha=3c3a763c6d9b7477299c9b4d78d0da345f75c49e
-request_id=T2-SMM-016-RED-20260904
+source_sha=40c225af9d1efdf019733c3774d0fcaef79bc131
+request_id=T2-SMM-016-GREEN-20260904
