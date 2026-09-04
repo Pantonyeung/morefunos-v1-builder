@@ -67,7 +67,10 @@ jobs:
               "packages/integration/keeta-durable-delivery.ts"
             ],
             "include": [],
-            "exclude": []
+            "exclude": [],
+            "compilerOptions": {
+              "types": ["node"]
+            }
           }
           open("tsconfig.team1-keeta-bundle002.json","w").write(json.dumps(config))
           PY
