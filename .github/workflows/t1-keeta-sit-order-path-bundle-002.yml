@@ -53,10 +53,11 @@ jobs:
         working-directory: source
         shell: bash
         run: |
-          cat > tsconfig.team1-keeta-bundle002.json <<'EOF'
-          {
+          python3 - <<'PY'
+          import json
+          config = {
             "extends": "./tsconfig.json",
-            "include": [
+            "files": [
               "packages/integration/keeta-sit-order-path-runtime.ts",
               "packages/integration/keeta-sit-order-path-runtime.test.ts",
               "packages/integration/keeta-provider-action-delivery.test.ts",
@@ -64,10 +65,13 @@ jobs:
               "packages/integration/keeta-order-get-reconciliation.test.ts",
               "packages/integration/d1-keeta-durable-runtime.ts",
               "packages/integration/keeta-durable-delivery.ts"
-            ]
+            ],
+            "include": [],
+            "exclude": []
           }
-          EOF
-          npx tsc --noEmit -p tsconfig.team1-keeta-bundle002.json
+          open("tsconfig.team1-keeta-bundle002.json","w").write(json.dumps(config))
+          PY
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.team1-keeta-bundle002.json
 
       - name: Root TypeScript diagnostic
         working-directory: source
