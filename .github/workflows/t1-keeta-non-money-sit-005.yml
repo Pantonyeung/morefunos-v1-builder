@@ -10,6 +10,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: morefun-v2-keeta-sit
+  cancel-in-progress: false
+
 jobs:
   execute:
     if: github.actor == 'Pantonyeung'
@@ -23,6 +27,24 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Cache Wrangler npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node24-wrangler-${{ env.WRANGLER_VERSION }}
+
+      - name: Install pinned Wrangler once
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+          wrangler --version
 
       - name: Resolve exact V2 source
         id: source
@@ -342,7 +364,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config "$RUNNER_TEMP/probe-wrangler.jsonc" --secrets-file "$RUNNER_TEMP/probe.env"
+          wrangler deploy --yes --config "$RUNNER_TEMP/probe-wrangler.jsonc" --secrets-file "$RUNNER_TEMP/probe.env"
 
       - name: Execute non-money SIT cases
         shell: bash
@@ -513,6 +535,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
-          printf 'y\n' | npx --yes "wrangler@$WRANGLER_VERSION" secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc 2>/dev/null || true
+          wrangler deploy --yes --config wrangler.jsonc
+          printf 'y\n' | wrangler secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc 2>/dev/null || true
           echo "current_worker_restored=true"
