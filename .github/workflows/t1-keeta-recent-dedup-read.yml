@@ -25,7 +25,7 @@ jobs:
           KEETA_D1_DATABASE_ID: e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492
         run: |
           set -euo pipefail
-          AFTER_MS=1788514967136
+          AFTER_MS=1788517959532
           SQL="SELECT dedup_key, fingerprint, created_at FROM keeta_webhook_dedup WHERE created_at > ? ORDER BY created_at ASC LIMIT 50;"
           jq -n --arg sql "$SQL" --argjson after "$AFTER_MS" '{sql:$sql,params:[$after]}' > "$RUNNER_TEMP/q.json"
           curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
