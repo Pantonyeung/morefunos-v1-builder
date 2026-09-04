@@ -55,6 +55,7 @@ jobs:
 
           JS_HTTP="000"
           FIXTURE_MARKERS=0
+          BROWSER_ORDER_CONTRACT=NO
           if [[ -n "$JS_PATH" ]]; then
             case "$JS_PATH" in
               http*) JS_URL="$JS_PATH" ;;
@@ -66,6 +67,9 @@ jobs:
               for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001' 'TST-HISTORY-001' '+852 5600 4443'; do
                 if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
               done
+              if grep -Fq 'CUSTOMER_ORDER_RESPONSE_ORDER_ID_REQUIRED' /tmp/customer.js && grep -Fq 'CUSTOMER_LIFECYCLE_REVISION_INVALID' /tmp/customer.js; then
+                BROWSER_ORDER_CONTRACT=YES
+              fi
             fi
           fi
 
@@ -86,13 +90,14 @@ jobs:
             CLASSIFICATION=BLOCKED_PRESENTATION_FIXTURE
           fi
 
-          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nasset_valid=%s\nspa_valid=%s\napi_valid=%s\nfixture_markers=%s\npresentation_canonical=%s\nclassification=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$ASSET_VALID" "$SPA_VALID" "$API_VALID" "$FIXTURE_MARKERS" "$PRESENTATION_CANONICAL" "$CLASSIFICATION"             | tee evidence/summary.txt
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nasset_valid=%s\nspa_valid=%s\napi_valid=%s\nfixture_markers=%s\nbrowser_order_contract=%s\npresentation_canonical=%s\nclassification=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$ASSET_VALID" "$SPA_VALID" "$API_VALID" "$FIXTURE_MARKERS" "$BROWSER_ORDER_CONTRACT" "$PRESENTATION_CANONICAL" "$CLASSIFICATION"             | tee evidence/summary.txt
           [[ -f /tmp/ordering.json ]] && cp /tmp/ordering.json evidence/ordering.json || true
           [[ -f /tmp/index.html ]] && cp /tmp/index.html evidence/index.html || true
 
           test "$ASSET_VALID" = YES
           test "$SPA_VALID" = YES
           test "$API_VALID" = YES
+          test "$BROWSER_ORDER_CONTRACT" = YES
       - name: Publish Team2 audit comment
         if: always()
         env:
