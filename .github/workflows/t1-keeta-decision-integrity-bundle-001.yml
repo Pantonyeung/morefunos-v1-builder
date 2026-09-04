@@ -49,7 +49,12 @@ jobs:
         working-directory: source
         run: |
           node --test packages/integration/keeta-decision-integrity.test.ts
+          node --test packages/integration/keeta-merchant-decision-internal-runtime.test.ts
           node --test packages/smm-ui-integration/keeta-merchant-inbox-runtime.test.ts
+
+      - name: Keeta Worker Wrangler dry-run
+        working-directory: source
+        run: npx --yes wrangler@4 deploy --dry-run --config workers/keeta/wrangler.jsonc
 
       - name: Root TypeScript guard
         working-directory: source
