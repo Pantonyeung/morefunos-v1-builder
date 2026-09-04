@@ -40,6 +40,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
           node --test apps/customer-web/customer-canonical-presentation.test.mjs
+          node --test apps/customer-web/customer-runtime-production-contract.test.mjs
           node apps/customer-web/customer-closure-static.test.mjs
           node --check apps/customer-web/customer-shell.js
           node --check apps/customer-web/customer-runtime-bridge.js
