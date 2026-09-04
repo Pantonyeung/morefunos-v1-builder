@@ -1,0 +1,13 @@
+name: Builder Actions Diagnostic
+on:
+  pull_request:
+    paths:
+      - 'requests/v2-smm-ui-integration-request.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "builder-actions-ok"
