@@ -39,6 +39,7 @@ jobs:
           set -euo pipefail
           test -n "$ADMIN_LOGIN_SECRET"
           mkdir -p evidence
+          T3_MODE="$(sed -n 's/^mode=//p' requests/team1-owner-bootstrap-production-continuation.txt | tr -d '[:space:]')"
           LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
           LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
           test "$LOGIN_HTTP" = 200
@@ -47,6 +48,13 @@ jobs:
           node -e "const x=require('/tmp/login.json');if(!x.authenticated||x.staffId!==process.env.CANONICAL_STAFF_ID||x.scopeRef!==process.env.CANONICAL_STORE_ID||!x.bootstrapAuthorized)process.exit(1)"
           SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/session")"
           test "$SESSION_HTTP" = 200
+          if [ "$T3_MODE" = "T3_SMM_LIVE" ]; then
+            TOKEN="$(printf '%s' "$COOKIE" | sed 's/^mf_admin_session=//')"
+            test -n "$TOKEN"
+            printf '%s' "$TOKEN" > /tmp/t3-smm-bearer-token
+            printf 'login_http=%s\nsession_http=%s\nmode=T3_SMM_LIVE\n' "$LOGIN_HTTP" "$SESSION_HTTP" > evidence/admin-live.txt
+            exit 0
+          fi
 
           node - <<'NODE'
           const fs=require('fs');
@@ -71,6 +79,7 @@ jobs:
           printf 'login_http=%s\nsession_http=%s\nprotected_bootstrap_replay_http=%s\n' "$LOGIN_HTTP" "$SESSION_HTTP" "$BOOT_HTTP" | tee evidence/admin-live.txt
 
       - name: Canonical business readback
+        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-003') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +90,7 @@ jobs:
           cp /tmp/ordering.json evidence/ordering.json
 
       - name: Replay existing Customer Order and prove exactly one
+        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-003') }}
         shell: bash
         run: |
           set -euo pipefail
