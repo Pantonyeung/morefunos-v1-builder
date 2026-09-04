@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - requests/t1-keeta-live-refund-capture.txt
+  pull_request:
+    branches:
+      - main
+    paths:
+      - requests/t1-keeta-live-refund-capture.txt
 
 permissions:
   contents: read
@@ -16,6 +21,7 @@ concurrency:
 
 jobs:
   capture:
+    if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
