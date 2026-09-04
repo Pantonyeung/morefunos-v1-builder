@@ -1,0 +1,282 @@
+name: Deploy V2 SMM Complete Product 032
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-complete-product-032-deploy.txt'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  deploy-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/v2-smm-complete-product-032-deploy' \
+            -f description='SMM 032 deploy/browser running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-complete-product-032-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require trusted credentials
+        env:
+          V2_SOURCE_READ_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$V2_SOURCE_READ_TOKEN"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify exact source and build SMM
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/smm-ui-integration/*.test.ts
+          npm run typecheck
+          npm --prefix apps/smm-web install --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smm-web run typecheck
+          npm --prefix apps/smm-web run build
+          test -s apps/smm-web/dist/index.html
+          test -s apps/smm-web/dist/manifest.webmanifest
+          ! grep -R -E 'mfos_order_state|D1Database|\.prepare\(' apps/smm-web/src infra/cloudflare/smm-web-worker
+
+      - name: Deploy exact SMM public Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config infra/cloudflare/smm-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+
+      - name: Public PWA and fail-closed smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          fetch200() { local u="$1" o="$2" c=""; for i in {1..30}; do c="$(curl -sS -o "$o" -w '%{http_code}' "$u" || true)"; [ "$c" = 200 ] && break; sleep 2; done; printf '%s' "$c"; }
+          INDEX_HTTP="$(fetch200 "$URL/" /tmp/index.html)"
+          SPA_HTTP="$(fetch200 "$URL/orders" /tmp/spa.html)"
+          MANIFEST_HTTP="$(fetch200 "$URL/manifest.webmanifest" /tmp/manifest.json)"
+          test "$INDEX_HTTP" = 200
+          test "$SPA_HTTP" = 200
+          test "$MANIFEST_HTTP" = 200
+          node -e "const x=require('/tmp/manifest.json');if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$URL$JS_PATH";; *) JS_URL="$URL/$JS_PATH";; esac
+          ASSET_HTTP="$(fetch200 "$JS_URL" /tmp/smm.js)"
+          test "$ASSET_HTTP" = 200
+          SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/smm/session")"
+          test "$SESSION_HTTP" = 401
+          node -e "const x=require('/tmp/session.json');if(x.code!=='SMM_RUNTIME_SESSION_REQUIRED')process.exit(1)"
+          BAD='__smm_032_invalid__'
+          BAD="$BAD" node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))"
+          PAIR_HTTP="$(curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
+          test "$PAIR_HTTP" = 401
+          node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMM_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
+          FIXTURE_MARKERS=0
+          for marker in 'TST-SMM-' 'SMM-DEMO-ORDER' 'SMM-FIXTURE-ORDER' '__MOREFUNOS_SMM_RUNTIME__'; do
+            grep -Fq "$marker" /tmp/smm.js && FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)) || true
+          done
+          test "$FIXTURE_MARKERS" = 0
+          printf 'index_http=%s\nspa_http=%s\nmanifest_http=%s\nasset_http=%s\nanonymous_session_http=%s\ninvalid_pair_http=%s\nfixture_markers=%s\n' "$INDEX_HTTP" "$SPA_HTTP" "$MANIFEST_HTTP" "$ASSET_HTTP" "$SESSION_HTTP" "$PAIR_HTTP" "$FIXTURE_MARKERS" > evidence/public-smoke.txt
+
+      - name: Real Chromium SMM functional E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          URL="$(cat evidence/url.txt)"
+          export URL ADMIN_LOGIN_SECRET
+          node <<'NODE'
+          const fs=require('fs');
+          const {chromium}=require('playwright');
+          const expected=[
+            'catalog.menu.active.read.v1',
+            'pricing.quote.v1',
+            'availability.read.current.internal.v2',
+            'availability.set.v2',
+            'order.open-list.read.v1',
+            'order.history-list.read.v1',
+            'order.detail.read.v1',
+            'order.cancel.v1',
+            'order.complete.v1',
+            'payment.accept.v1',
+            'payment.reconcile.v1',
+            'refund.request.v1',
+            'refund.reconcile.v1',
+            'print.job.request.v1',
+            'print.job.observe.v1',
+          ];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:430,height:932}});
+            const pageErrors=[];
+            const requestFailures=[];
+            const apiNetwork=[];
+            page.on('pageerror',e=>pageErrors.push(String(e)));
+            page.on('requestfailed',r=>requestFailures.push({url:r.url(),failure:r.failure()?.errorText||''}));
+            page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiNetwork.push({origin:u.origin,path:u.pathname,method:r.method()})});
+            await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
+            await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
+            await page.getByRole('button',{name:'連接 Runtime'}).click();
+            await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const result=await page.evaluate(async(expected)=>{
+              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              if(!raw)throw new Error('SMM_SESSION_STORAGE_MISSING');
+              const saved=JSON.parse(raw);
+              if(!saved.sessionToken)throw new Error('SMM_SESSION_TOKEN_MISSING');
+              const headers={authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'};
+              const s=await fetch('/api/smm/session',{headers:{authorization:'Bearer '+saved.sessionToken,accept:'application/json'},cache:'no-store'});
+              const session=await s.json();
+              if(s.status!==200)throw new Error('SMM_SESSION_REFRESH_FAILED');
+              const ids=new Set(session.mountedOperationIds||[]);
+              for(const id of expected)if(!ids.has(id))throw new Error('SMM_MANIFEST_MISSING:'+id);
+              for(const id of ['availability.read.current.v1','availability.set.v1','print.job.reprint.v1','print.job.execute.v1'])if(ids.has(id))throw new Error('SMM_MANIFEST_FORBIDDEN:'+id);
+
+              const invoke=async(operationId,request)=>{
+                const r=await fetch('/api/smm/runtime',{method:'POST',headers,body:JSON.stringify({operationId,request}),cache:'no-store'});
+                const body=await r.json();
+                if(r.status!==200)throw new Error(operationId+':HTTP_'+r.status+':'+(body.code||'UNKNOWN'));
+                return body;
+              };
+
+              const menu=await invoke('catalog.menu.active.read.v1',{});
+              if(!Array.isArray(menu.products)||menu.products.length<1)throw new Error('SMM_MENU_EMPTY');
+              const product=menu.products[0];
+              const optionIds=[];
+              for(const group of product.optionGroups||[]){
+                const need=Math.max(0,group.required?group.minSelections||1:0);
+                for(let i=0;i<need;i++){
+                  const option=group.options?.[i];
+                  if(!option)throw new Error('SMM_REQUIRED_OPTION_UNAVAILABLE');
+                  optionIds.push(option.optionId);
+                }
+              }
+              const line={lineId:'smm-live-quote-1',productId:product.productId,quantity:1,...(optionIds.length?{optionIds}:{})};
+              const pricing=await invoke('pricing.quote.v1',{lines:[line]});
+              if(!Array.isArray(pricing.lines)||pricing.lines.length!==1||!Number.isSafeInteger(pricing.totalMinor))throw new Error('SMM_PRICING_INVALID');
+              const availability=await invoke('availability.read.current.internal.v2',{storeId:session.storeId,targetType:'PRODUCT',targetId:product.productId});
+              if(availability.ok!==true)throw new Error('SMM_AVAILABILITY_READ_FAILED');
+              const open=await invoke('order.open-list.read.v1',{limit:50});
+              if(!Array.isArray(open.orders))throw new Error('SMM_ORDERS_INVALID');
+              return {
+                storeId:session.storeId,
+                mountedOperationIds:[...ids],
+                menu:{catalogRevision:menu.catalogRevision,productCount:menu.products.length,firstProductId:product.productId},
+                pricing:{currency:pricing.currency,totalMinor:pricing.totalMinor},
+                availability:{ok:availability.ok,hasValue:availability.value!==null},
+                orders:{count:open.orders.length,firstOrderId:open.orders[0]?.orderId||null},
+              };
+            },expected);
+
+            const orderTab=page.getByRole('tab',{name:'點單'});
+            if(await orderTab.count())await orderTab.click();
+            else {
+              const btn=page.getByRole('button',{name:'點單'});
+              if(await btn.count())await btn.first().click();
+            }
+            await page.waitForTimeout(1000);
+            const bodyText=await page.locator('body').innerText();
+            if(bodyText.includes('Canonical provider未就緒'))throw new Error('SMM_UI_PROVIDER_NOT_READY');
+            const publicOrigin=new URL(process.env.URL).origin;
+            if(apiNetwork.some(x=>x.origin!==publicOrigin))throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN');
+            if(pageErrors.length)throw new Error('SMM_PAGE_ERRORS:'+pageErrors.join('|'));
+            if(requestFailures.length)throw new Error('SMM_REQUEST_FAILURES:'+JSON.stringify(requestFailures));
+            fs.writeFileSync('evidence/browser-e2e.json',JSON.stringify({
+              publicOrigin,
+              runtimeReady:true,
+              apiNetwork,
+              pageErrors,
+              requestFailures,
+              directBrowserD1:false,
+              ...result,
+            },null,2));
+            console.log('SMM_032_BROWSER_READY products='+result.menu.productCount+' orders='+result.orders.count+' totalMinor='+result.pricing.totalMinor);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Write summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          CLASSIFICATION=FAILED
+          test -s evidence/browser-e2e.json && CLASSIFICATION=READY
+          printf 'source_sha=%s\nrun_id=%s\nclassification=%s\npublic_origin=%s\nmorefun_v2_native_ci=0\n' "${{ steps.req.outputs.source_sha }}" "$GITHUB_RUN_ID" "$CLASSIFICATION" "$(cat evidence/url.txt 2>/dev/null || true)" > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smm-complete-product-032-deploy-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-smm-complete-product-032-deploy' \
+            -f description='SMM 032 deploy/browser passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-smm-complete-product-032-deploy' \
+            -f description='SMM 032 deploy/browser failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
