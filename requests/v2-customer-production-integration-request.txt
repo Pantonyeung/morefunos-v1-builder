@@ -1,2 +1,2 @@
-source_sha=d3287ee7b43d26d2996e201d4bf9143dffca5f20
-attempt=015-audited
+source_sha=2c4a7b34a2d9f4bcb728558e1e053b902c972114
+attempt=015-live-price-schema
