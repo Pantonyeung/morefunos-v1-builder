@@ -131,11 +131,11 @@ jobs:
           await owner.goto(OWNER_ORIGIN+'/',{waitUntil:'networkidle'});
           await owner.getByLabel('登入憑證').fill(ADMIN_LOGIN_SECRET);
           await owner.getByRole('button',{name:'登入',exact:true}).click();
+          await owner.getByText('今日實收',{exact:true}).waitFor({timeout:15000});
           const ownerSession=await context.request.get(OWNER_ORIGIN+'/api/owner/session');
           if(ownerSession.status()!==200) throw new Error('OWNER_AUTH_SESSION:'+ownerSession.status());
           const ownerBootstrap=await context.request.get(OWNER_ORIGIN+'/api/owner/bootstrap');
           if(ownerBootstrap.status()!==200) throw new Error('OWNER_BOOTSTRAP:'+ownerBootstrap.status());
-          await owner.getByText('今日實收',{exact:true}).waitFor({timeout:15000});
           const ownerBody=(await owner.locator('body').innerText()).replace(/\s+/g,' ');
           if(ownerBody.includes('需要正式 Admin session')||ownerBody.includes('Protected Preview')) throw new Error('OWNER_STILL_LOGIN_GATE');
           const ownerManifest=await context.request.get(OWNER_ORIGIN+'/manifest.webmanifest');
