@@ -32,12 +32,20 @@ jobs:
           const fs=require('fs');
           const sql=`
           SELECT 'catalog' AS domain, COUNT(*) AS row_count FROM mfos_catalog_state
-          UNION ALL SELECT 'business_day', COUNT(*) FROM mfos_business_day_state
+          UNION ALL SELECT 'business_day_state', COUNT(*) FROM mfos_business_day_state
           UNION ALL SELECT 'availability', COUNT(*) FROM mfos_availability_state
           UNION ALL SELECT 'customer_order_ownership', COUNT(*) FROM mfos_customer_order_ownership
-          UNION ALL SELECT 'payment_state', COUNT(*) FROM mfos_payment_state;
-          SELECT store_id, COUNT(*) AS row_count FROM mfos_customer_order_ownership GROUP BY store_id ORDER BY row_count DESC LIMIT 10;
-          SELECT store_id, COUNT(*) AS row_count FROM mfos_payment_state GROUP BY store_id ORDER BY row_count DESC LIMIT 10;
+          UNION ALL SELECT 'payment_state', COUNT(*) FROM mfos_payment_state
+          UNION ALL SELECT 'device_trust_total', COUNT(*) FROM mfos_device_trust
+          UNION ALL SELECT 'device_trust_trusted', COUNT(*) FROM mfos_device_trust WHERE json_extract(payload_json,'$.lifecycleStatus')='TRUSTED'
+          UNION ALL SELECT 'session_total', COUNT(*) FROM mfos_session
+          UNION ALL SELECT 'session_active', COUNT(*) FROM mfos_session WHERE lifecycle_status='ACTIVE'
+          UNION ALL SELECT 'runtime_binding_total', COUNT(*) FROM mfos_smt_runtime_binding
+          UNION ALL SELECT 'runtime_binding_active', COUNT(*) FROM mfos_smt_runtime_binding WHERE lifecycle_status='ACTIVE';
+          SELECT MAX(json_extract(payload_json,'$.issuedAt')) AS latest_session_issued_at FROM mfos_session;
+          SELECT MAX(created_at) AS latest_binding_created_at FROM mfos_smt_runtime_binding;
+          SELECT store_code, store_id, merchant_id FROM mfos_store_code_binding ORDER BY store_code;
+          SELECT store_id, business_date, lifecycle_status, opened_at, closed_at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 10;
           `;
           fs.writeFileSync('/tmp/query.json',JSON.stringify({sql}));
           NODE
@@ -49,10 +57,14 @@ jobs:
           const counts=x.result?.[0]?.results||[];
           console.log('database_name=morefun-v2-production');
           for(const row of counts) console.log(`${row.domain}_rows=${row.row_count}`);
-          const ownership=x.result?.[1]?.results||[];
-          const payments=x.result?.[2]?.results||[];
-          console.log('ownership_store_ids='+ownership.map(r=>`${r.store_id}:${r.row_count}`).join(','));
-          console.log('payment_store_ids='+payments.map(r=>`${r.store_id}:${r.row_count}`).join(','));
+          const latestSession=x.result?.[1]?.results?.[0]||{};
+          const latestBinding=x.result?.[2]?.results?.[0]||{};
+          const stores=x.result?.[3]?.results||[];
+          const businessDays=x.result?.[4]?.results||[];
+          console.log('latest_session_issued_at='+(latestSession.latest_session_issued_at||''));
+          console.log('latest_binding_created_at='+(latestBinding.latest_binding_created_at||''));
+          console.log('store_bindings='+stores.map(r=>`${r.store_code}:${r.store_id}`).join(','));
+          console.log('business_days='+businessDays.map(r=>`${r.store_id}:${r.business_date}:${r.lifecycle_status}`).join(','));
           NODE
           rm -f /tmp/query.json /tmp/result.json
       - uses: actions/upload-artifact@v4
