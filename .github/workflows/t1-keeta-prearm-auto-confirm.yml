@@ -75,11 +75,13 @@ jobs:
 
           ARM_AFTER_MS="$(date +%s%3N)"
           ARM_UNTIL_MS="$((ARM_AFTER_MS + 900000))"
+          export ARM_AFTER_MS ARM_UNTIL_MS
           echo "ARM_AFTER_MS=$ARM_AFTER_MS" >> "$GITHUB_ENV"
           echo "ARM_UNTIL_MS=$ARM_UNTIL_MS" >> "$GITHUB_ENV"
 
           node - <<'NODE'
           const fs=require('fs');
+          if(!process.env.ARM_AFTER_MS || !process.env.ARM_UNTIL_MS) throw new Error('ARM_ENV_MISSING');
           const src=JSON.parse(fs.readFileSync('source/workers/keeta/wrangler.jsonc','utf8'));
           src.vars={
             ...(src.vars||{}),
@@ -88,6 +90,10 @@ jobs:
             KEETA_SIT_AUTO_CONFIRM_UNTIL_MS:process.env.ARM_UNTIL_MS
           };
           fs.writeFileSync('source/workers/keeta/prearm-wrangler.jsonc',JSON.stringify(src,null,2));
+          const verify=JSON.parse(fs.readFileSync('source/workers/keeta/prearm-wrangler.jsonc','utf8'));
+          if(verify.vars.KEETA_SIT_AUTO_CONFIRM_AFTER_MS!==process.env.ARM_AFTER_MS) throw new Error('ARM_AFTER_WRITE_MISMATCH');
+          if(verify.vars.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS!==process.env.ARM_UNTIL_MS) throw new Error('ARM_UNTIL_WRITE_MISMATCH');
+          console.log('arm_config_write=PASS');
           NODE
 
       - name: Deploy pre-armed worker
@@ -108,8 +114,13 @@ jobs:
           echo "health_http=$HTTP"
           cat "$RUNNER_TEMP/health.json"
           test "$HTTP" = "200"
-          echo "AUTO_CONFIRM_ARMED=true"
-          echo "auto_confirm_after_ms=$ARM_AFTER_MS"
-          echo "auto_confirm_until_ms=$ARM_UNTIL_MS"
+          node - <<'NODE'
+          const fs=require('fs');
+          const cfg=JSON.parse(fs.readFileSync('source/workers/keeta/prearm-wrangler.jsonc','utf8'));
+          if(!cfg.vars?.KEETA_SIT_AUTO_CONFIRM_AFTER_MS || !cfg.vars?.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS) process.exit(1);
+          console.log('AUTO_CONFIRM_ARMED=true');
+          console.log('auto_confirm_after_ms='+cfg.vars.KEETA_SIT_AUTO_CONFIRM_AFTER_MS);
+          console.log('auto_confirm_until_ms='+cfg.vars.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS);
+          NODE
           echo "target_shop=721578302"
           echo "target_next_orders=ONE_FRESH_ORDER_ONLY"
