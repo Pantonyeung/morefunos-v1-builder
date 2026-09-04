@@ -1,4 +1,4 @@
-source_sha=aac329539657f865b4df7a37e512e5407ac32df0
-base_sha=1796848222141f17223b2ab518c086f61099e872
-branch_name=work/SYS/B1102-admin-a01-cross-room-admission-reconcile
-request_id=TEAM1-B1102-SELF-SERVICE-20260901
+source_sha=387d2b571fd47fff3c026bab3ee154e9d6817722
+base_sha=e34d2ef86c3b1f299cd2d99c4edfeb174007e07e
+branch_name=work/UIX/B0300-shared-ui-foundation
+request_id=UIX-B0300-SELF-SERVICE-20260905
