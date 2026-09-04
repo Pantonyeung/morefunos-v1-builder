@@ -1,2 +1,3 @@
-source_sha=75d6c85d178f755634167f2d189077cafa2ddbcd
-attempt=4
+source_sha=65675379d454025e8fd1a82e4a246e539fc59a9b
+request_id=T3-MICRO-003-SMM-PRODUCTION-SAME-ORDER-20260904
+mode=T3_SMM
