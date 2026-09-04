@@ -14,17 +14,57 @@ on:
   issues:
     types:
       - opened
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: morefun-v2-keeta-live-capture-v2
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+      issue_number: ${{ steps.decide.outputs.issue_number }}
+    steps:
+      - name: Decide whether capture is requested
+        id: decide
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            ISSUE="$(gh issue list --repo Pantonyeung/morefunos-v1-builder --state open --limit 100 --json number,title --jq '.[] | select(.title | startswith("[TEAM1-CAPTURE]")) | .number' | head -n 1)"
+            if [ -n "$ISSUE" ]; then
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+              echo "issue_number=$ISSUE" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "issue_number=" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "${{ github.event_name }}" = "issues" ]; then
+            if [[ "${{ github.event.issue.title }}" == "[TEAM1-CAPTURE]"* ]]; then
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+              echo "issue_number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "issue_number=" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "issue_number=" >> "$GITHUB_OUTPUT"
+          fi
+
   capture:
-    if: github.actor == 'Pantonyeung' && (github.event_name != 'issues' || startsWith(github.event.issue.title, '[TEAM1-CAPTURE]'))
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -132,3 +172,11 @@ jobs:
           git checkout -- src/index.ts
           wrangler deploy --config wrangler.jsonc
           echo "exact_worker_restored=true"
+
+      - name: Close scheduled capture request
+        if: always() && github.event_name == 'schedule' && needs.gate.outputs.issue_number != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue close "${{ needs.gate.outputs.issue_number }}" --repo Pantonyeung/morefunos-v1-builder --comment "Team1 scheduled capture run ${{ github.run_id }} consumed this request."
