@@ -1,4 +1,4 @@
-source_sha=f0ff02e5070c9f1cd2338d69bac08bbae0ccec29
-base_sha=1cd0757918053a4269bb02f2ef620c7874de5cce
-branch_name=work/UIX/B0301-mobile-ordering-adoption-primitives
-request_id=UIX-B0301-TERMINAL-SELF-SERVICE-20260905
+source_sha=97d785a13b656a1365ab71376902d55dcbcbdf30
+base_sha=56d9727a691b60575a0d1f1fad05db7eca039b8f
+branch_name=work/UIX/B0302-design-skill-mother-enhancement
+request_id=UIX-B0302-TERMINAL-SELF-SERVICE-20260905
