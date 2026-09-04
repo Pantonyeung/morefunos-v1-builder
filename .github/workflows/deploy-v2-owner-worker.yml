@@ -1,0 +1,80 @@
+name: Deploy V2 Owner Worker
+
+on:
+  push:
+    paths:
+      - 'requests/v2-owner-worker-deploy-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-worker-deploy-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Build exact Owner source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          cd apps/owner-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+      - name: Deploy Owner Worker and assets
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          CONFIG='infra/cloudflare/owner-web-worker/wrangler.jsonc'
+          test -s "$CONFIG"
+          npx --yes wrangler@4 deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Verify live Owner fail-closed shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          test "$(curl -sS -o /tmp/index.html -w '%{http_code}' "$URL/")" = 200
+          test "$(curl -sS -o /tmp/manifest.json -w '%{http_code}' "$URL/manifest.webmanifest")" = 200
+          SESSION_CODE="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/owner/session")"
+          test "$SESSION_CODE" = 401
+          printf 'index=200\nmanifest=200\nanonymous_session=%s\n' "$SESSION_CODE" > evidence/runtime.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-owner-worker-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
