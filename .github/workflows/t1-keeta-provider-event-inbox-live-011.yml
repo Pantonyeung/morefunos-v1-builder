@@ -1,0 +1,163 @@
+name: T1 Keeta Provider Event Inbox Live Apply 011
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-provider-event-inbox-live-011.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefun-v2-keeta-provider-event-inbox-live
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WRANGLER_VERSION: "4.125.0"
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact admitted V2 source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-provider-event-inbox-live-011.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove admitted source and B0293 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.source.outputs.sha }}"
+          test -f source/infra/cloudflare/d1/migrations/0019-provider-event-inbox.sql
+          grep -Fq 'mfos_provider_event_inbox' source/infra/cloudflare/d1/migrations/0019-provider-event-inbox.sql
+          grep -Fq 'createD1KeetaProviderEventInboxRepository' source/workers/keeta/src/index.ts
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: B0293 exact-source regression
+        working-directory: source
+        run: |
+          node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/d1-keeta-durable-runtime.test.ts packages/integration/keeta-durable-delivery.test.ts
+          npm run typecheck
+
+      - name: Verify live D1 identity
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 list --json > "$RUNNER_TEMP/d1-list.json"
+          node - "$RUNNER_TEMP/d1-list.json" wrangler.jsonc <<'NODE'
+          const fs=require('fs');
+          const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const cfg=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          const expected=cfg.d1_databases.find(x=>x.binding==='KEETA_INGRESS_DB');
+          if(!expected) throw new Error('KEETA_D1_BINDING_MISSING');
+          const live=rows.find(x=>x.name===expected.database_name);
+          if(!live || live.uuid!==expected.database_id) throw new Error('KEETA_D1_IDENTITY_MISMATCH');
+          console.log('d1_identity=PASS');
+          console.log('d1_name='+live.name);
+          console.log('d1_id='+live.uuid);
+          NODE
+
+      - name: Inspect provider event inbox before apply
+        id: preflight
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name='mfos_provider_event_inbox';" > "$RUNNER_TEMP/preflight.json"
+          if grep -Fq 'mfos_provider_event_inbox' "$RUNNER_TEMP/preflight.json"; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "provider_event_inbox_preexisting=true"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "provider_event_inbox_preexisting=false"
+          fi
+
+      - name: Apply only B0293 migration when absent
+        if: steps.preflight.outputs.present != 'true'
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --file ../../infra/cloudflare/d1/migrations/0019-provider-event-inbox.sql
+
+      - name: Prove live provider event inbox schema
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT type,name FROM sqlite_master WHERE name IN ('mfos_provider_event_inbox','mfos_provider_event_inbox_identity_idx','mfos_provider_event_inbox_order_idx') ORDER BY name;" | tee "$RUNNER_TEMP/schema-after.json"
+          grep -Fq 'mfos_provider_event_inbox' "$RUNNER_TEMP/schema-after.json"
+          grep -Fq 'mfos_provider_event_inbox_identity_idx' "$RUNNER_TEMP/schema-after.json"
+          grep -Fq 'mfos_provider_event_inbox_order_idx' "$RUNNER_TEMP/schema-after.json"
+
+      - name: Deploy exact admitted Keeta Worker
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler deploy --config wrangler.jsonc | tee "$RUNNER_TEMP/deploy.txt"
+
+      - name: Smoke live Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error https://morefun-v2-keeta-sit.pantonyeung.workers.dev/health | tee "$RUNNER_TEMP/health.json"
+          grep -Fq '"status":"ok"' "$RUNNER_TEMP/health.json"
+
+      - name: Read current inbox count
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT COUNT(*) AS provider_event_rows FROM mfos_provider_event_inbox;" | tee "$RUNNER_TEMP/inbox-count.json"
