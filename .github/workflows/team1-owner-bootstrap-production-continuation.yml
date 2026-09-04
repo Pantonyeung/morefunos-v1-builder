@@ -39,7 +39,6 @@ jobs:
           set -euo pipefail
           test -n "$ADMIN_LOGIN_SECRET"
           mkdir -p evidence
-          T3_MODE="$(sed -n 's/^mode=//p' requests/team1-owner-bootstrap-production-continuation.txt | tr -d '[:space:]')"
           LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
           LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
           test "$LOGIN_HTTP" = 200
@@ -48,13 +47,6 @@ jobs:
           node -e "const x=require('/tmp/login.json');if(!x.authenticated||x.staffId!==process.env.CANONICAL_STAFF_ID||x.scopeRef!==process.env.CANONICAL_STORE_ID||!x.bootstrapAuthorized)process.exit(1)"
           SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/session")"
           test "$SESSION_HTTP" = 200
-          if [ "$T3_MODE" = "T3_LIVE" ]; then
-            TOKEN="$(printf '%s' "$COOKIE" | sed 's/^mf_admin_session=//')"
-            test -n "$TOKEN"
-            printf '%s' "$TOKEN" > /tmp/t3-smt-bearer-token
-            printf 'login_http=%s\nsession_http=%s\nmode=T3_LIVE\n' "$LOGIN_HTTP" "$SESSION_HTTP" > evidence/admin-live.txt
-            exit 0
-          fi
 
           node - <<'NODE'
           const fs=require('fs');
@@ -79,7 +71,6 @@ jobs:
           printf 'login_http=%s\nsession_http=%s\nprotected_bootstrap_replay_http=%s\n' "$LOGIN_HTTP" "$SESSION_HTTP" "$BOOT_HTTP" | tee evidence/admin-live.txt
 
       - name: Canonical business readback
-        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-002-LIVE') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -90,7 +81,6 @@ jobs:
           cp /tmp/ordering.json evidence/ordering.json
 
       - name: Replay existing Customer Order and prove exactly one
-        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-002-LIVE') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -106,64 +96,6 @@ jobs:
           npx wrangler d1 execute morefun-v2-production --remote --command "SELECT order_id,submission_id FROM mfos_customer_order_ownership WHERE submission_id='$SUBMISSION_ID';" --json > evidence/d1-order.json
           node -e "const x=require('./evidence/d1-order.json');const r=x?.[0]?.results??[];if(r.length!==1||r[0].order_id!==process.env.EXISTING_ORDER_ID)process.exit(1)"
           printf 'replay_http=%s\nlifecycle_http=%s\norder_id=%s\ncanonical_count=1\n' "$REPLAY_HTTP" "$STATUS_HTTP" "$EXISTING_ORDER_ID" | tee evidence/customer-replay.txt
-
-      - name: T3 LIVE real Chromium same-order read
-        if: ${{ contains(github.event.head_commit.message, 'T3-MICRO-002-LIVE') }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s /tmp/t3-smt-bearer-token
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0 esbuild@0.25.10
-          npx playwright install chromium
-          git clone --depth 1 https://x-access-token:${{ secrets.V2_SOURCE_READ_TOKEN }}@github.com/Pantonyeung/Morefun-v2.git /tmp/t3-v2 >/dev/null 2>&1
-          git -C /tmp/t3-v2 fetch --depth 1 origin ccba2a88c83fc152f8258ee4372edca2da9c6a1c >/dev/null 2>&1
-          git -C /tmp/t3-v2 checkout --detach ccba2a88c83fc152f8258ee4372edca2da9c6a1c >/dev/null 2>&1
-          test "$(git -C /tmp/t3-v2 rev-parse HEAD)" = "ccba2a88c83fc152f8258ee4372edca2da9c6a1c"
-          npx esbuild /tmp/t3-v2/apps/smt-clean/src/runtime/browser-same-order-proof.ts --bundle --platform=browser --format=iife --global-name=MoreFunLiveProof --outfile=/tmp/t3-live-proof.js
-          TOKEN="$(cat /tmp/t3-smt-bearer-token)"
-          TOKEN="$TOKEN" node <<'NODE'
-          const fs=require('fs');
-          const {chromium}=require('playwright');
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage();
-            const calls=[];
-            page.on('request',r=>{if(new URL(r.url()).pathname==='/api/smt/runtime')calls.push({method:r.method(),url:r.url(),body:r.postData()})});
-            const root=await page.goto(process.env.ADMIN_URL+'/',{waitUntil:'domcontentloaded'});
-            if(!root||!root.ok())throw new Error('WORKER_ROOT_UNREACHABLE');
-            await page.addScriptTag({path:'/tmp/t3-live-proof.js'});
-            const out=await page.evaluate(async({token,orderId})=>{
-              window.moreFunNative={postMessage:()=>{}};
-              window.__MORE_FUN_OS_SMT_CANONICAL_BOOTSTRAP__=()=>({
-                apiBaseUrl:location.origin,
-                bearerToken:token,
-                mountedOperationIds:['order.detail.read.v1'],
-                expiresAt:'2099-01-01T00:00:00.000Z'
-              });
-              return window.MoreFunLiveProof.proveExistingCanonicalOrderThroughTrustedBrowser(
-                new URL('https://appassets.androidplatform.net/runtime/index.html?releaseId=live&runtimeVersion=live&runtimeChannel=stable'),
-                window,
-                orderId
-              );
-            },{token:process.env.TOKEN,orderId:process.env.EXISTING_ORDER_ID});
-            if(out.orderId!==process.env.EXISTING_ORDER_ID||out.runtimeReady!==false||calls.length!==1)throw new Error('LIVE_BROWSER_PROOF_MISMATCH');
-            const b=JSON.parse(calls[0].body||'null');
-            if(calls[0].method!=='POST'||b.operationId!=='order.detail.read.v1'||JSON.stringify(b.request)!==JSON.stringify({orderId:process.env.EXISTING_ORDER_ID}))throw new Error('LIVE_REQUEST_SHAPE_MISMATCH');
-            for(const f of ['actorId','staffId','storeId','deviceId','scopeRef'])if(JSON.stringify(b).includes(f))throw new Error('BROWSER_AUTHORITY_FIELD_'+f);
-            fs.writeFileSync('evidence/t3-live-browser.json',JSON.stringify({endpoint:process.env.ADMIN_URL,orderId:out.orderId,runtimeReady:false,networkInvocationCount:1,orderWriteCount:0,browserAuthorityFieldsPresent:false},null,2));
-            await browser.close();
-          })().catch(e=>{console.error(e);process.exit(1)});
-          NODE
-
-      - name: T3 LIVE production D1 exactly-one readback
-        if: ${{ contains(github.event.head_commit.message, 'T3-MICRO-002-LIVE') }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install --no-save --ignore-scripts --no-audit --no-fund wrangler@4
-          npx wrangler d1 execute morefun-v2-production --remote --command "SELECT (SELECT COUNT(*) FROM mfos_order_state WHERE order_id='$EXISTING_ORDER_ID') AS order_rows,(SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id='$SUBMISSION_ID' AND order_id='$EXISTING_ORDER_ID') AS ownership_rows,(SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id='$SUBMISSION_ID') AS submission_rows;" --json > evidence/t3-live-d1.json
-          node -e "const x=require('./evidence/t3-live-d1.json');const r=x?.[0]?.results?.[0];if(!r||Number(r.order_rows)!==1||Number(r.ownership_rows)!==1||Number(r.submission_rows)!==1)process.exit(1)"
-          printf 'order_id=%s\norder_rows=1\nownership_rows=1\nsubmission_rows=1\n' "$EXISTING_ORDER_ID" > evidence/t3-live-exactly-one.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
