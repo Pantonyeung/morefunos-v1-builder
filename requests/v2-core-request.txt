@@ -1,5 +1,5 @@
-source_sha=648c995acc58c7e8540d7649e465a98e4e70b6a7
+source_sha=b1cf611ec7c03044b21b5e0d9af2e07fe5a05fd6
 base_sha=e7e9a62fc906b6a1f9ac621a1f340ad431cb2142
-branch_name=work/CORE/B0273-final-four-server-operations
-verification_phase=FINAL_MERGE_REQUEST
-request_id=T2-BUNDLE008-POST-ADMISSION-CORE-20260904
+branch_name=work/CORE/B0273-remaining-server-operations-admission
+verification_phase=CANDIDATE
+request_id=T2-BUNDLE008-CLEAN-ADMISSION-CORE-20260904
