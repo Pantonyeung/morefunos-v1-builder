@@ -1,3 +1,3 @@
 source_sha=ca8c3e179ee32c23660cc16639afb766649fa6b2
 origin=https://morefun-v2-customer.pantonyeung.workers.dev
-request_id=T1-B2506-BROWSER-E2E
+request_id=T1-B2506-BROWSER-E2E-RETRY-WORKSPACE
