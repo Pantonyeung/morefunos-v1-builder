@@ -1,4 +1,2 @@
-source_sha=9b81a4a5ce8f72b837e01e281a03d2e9372f6a47
-request_id=CMD-022-FINAL-LATEST-MAIN-ALIGNMENT-R2
-branch=landing/CMD-022-final-latest-main-alignment-r2
-purpose=final exact-source latest-main alignment r2 verification for accepted CMD-022 SMM Keeta merchant inbox adapter
+source_sha=8a2733be21045aff7a3342c933dc0db7a4af0946
+request_id=T3-MICRO-003-SMM-SAME-ORDER-RED-20260904
