@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   verify:
@@ -164,3 +165,14 @@ jobs:
           path: evidence
           if-no-files-found: error
           retention-days: 30
+
+      - name: Report T3-MICRO-002 exact success
+        if: success() && steps.request.outputs.source_sha == 'ccba2a88c83fc152f8258ee4372edca2da9c6a1c'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/94/comments" \
+            -f body="T3_MICRO_002_BUILDER_SUCCESS run_id=${GITHUB_RUN_ID} run_attempt=${GITHUB_RUN_ATTEMPT} builder_sha=${GITHUB_SHA} source_sha=${SOURCE_SHA}"
