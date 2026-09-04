@@ -140,7 +140,7 @@ jobs:
           if (live.uuid !== expected.database_id) throw new Error('KEETA_D1_DATABASE_ID_MISMATCH');
           NODE
 
-      - name: Apply Keeta SIT D1 migrations
+      - name: Verify required Keeta SIT D1 schema without applying unrelated migrations
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -148,7 +148,19 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" d1 migrations apply KEETA_INGRESS_DB --remote --config wrangler.jsonc
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('keeta_webhook_dedup','mfos_keeta_durable_delivery') ORDER BY name;" \
+            > "$RUNNER_TEMP/keeta-schema.json"
+          node - "$RUNNER_TEMP/keeta-schema.json" <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const rows = Array.isArray(payload) ? payload.flatMap((entry) => entry?.results ?? []) : [];
+          const names = new Set(rows.map((row) => row.name));
+          for (const required of ['keeta_webhook_dedup', 'mfos_keeta_durable_delivery']) {
+            if (!names.has(required)) throw new Error(`KEETA_REQUIRED_D1_TABLE_MISSING ${required}`);
+          }
+          console.log('keeta_required_d1_schema=present');
+          NODE
 
       - name: Prepare protected SIT probe secret for same-version deployment
         shell: bash
