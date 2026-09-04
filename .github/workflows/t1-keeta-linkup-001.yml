@@ -41,6 +41,13 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install exact V2 dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+
       - name: Exact T1 Keeta linkup test
         working-directory: source
         shell: bash
@@ -53,4 +60,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes typescript@5.9.3 tsc --noEmit -p tsconfig.json
+          npm run typecheck
