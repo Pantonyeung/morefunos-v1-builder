@@ -1,4 +1,4 @@
-source_sha=dfdd6829cb903a055f067a435633966d0ac150ab
-base_sha=c35e940e515ea7b1995e98adcd98fb2855321a8e
-branch_name=work/SMM/B0310-visual-phase1-shell-ordering
-request_id=SMM-B0310-FINAL-GOVERNANCE-20260905
+source_sha=9c609088c6e530c96be6bf1d75d31fe590d831a3
+base_sha=7c744d5ef67c51a70e00321c536e05371d1c3898
+branch_name=work/SMM/B0311-ordering-product-sheet-live-cart
+request_id=SMM-B0311-R1-GOV-20260905
