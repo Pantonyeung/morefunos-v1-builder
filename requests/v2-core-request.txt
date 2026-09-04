@@ -1,5 +1,5 @@
-source_sha=56a8ed5f75d8b2ec4bdb5ba0d5f1b1a2bb0d4773
+source_sha=c14d623a2d4a040de9ee16841abf766acfd4d073
 base_sha=bb1834b3eaa3824f327a41b36ffa2491cc181682
 branch_name=work/CORE/B0274-order-complete-authority
 verification_phase=CANDIDATE
-request_id=T2-ORDER-COMPLETE-009-RED-20260904
+request_id=T2-ORDER-COMPLETE-009-CANDIDATE-CORE-20260904
