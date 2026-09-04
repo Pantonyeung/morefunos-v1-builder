@@ -31,7 +31,8 @@ jobs:
           gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
             -f state=pending \
             -f context='builder/v2-smm-complete-product-032' \
-            -f description='Team3 SMM 032 Builder running'
+            -f description='Team3 SMM 032 Builder running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
       - name: Checkout Builder definition
         uses: actions/checkout@v7
@@ -121,7 +122,8 @@ jobs:
           gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
             -f state=success \
             -f context='builder/v2-smm-complete-product-032' \
-            -f description='Team3 SMM 032 Builder passed'
+            -f description='Team3 SMM 032 Builder passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
       - name: Publish failure status
         if: failure()
@@ -132,4 +134,5 @@ jobs:
           gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
             -f state=failure \
             -f context='builder/v2-smm-complete-product-032' \
-            -f description='Team3 SMM 032 Builder failed'
+            -f description='Team3 SMM 032 Builder failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
