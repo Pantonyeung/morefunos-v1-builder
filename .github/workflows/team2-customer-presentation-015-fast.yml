@@ -1,0 +1,76 @@
+name: Team2 Customer Presentation 015 Fast Gate
+
+on:
+  push:
+    paths:
+      - 'requests/team2-customer-presentation-015-fast.txt'
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  fast:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team2-customer-presentation-015-fast.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Exact 015 presentation tests
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          node --test apps/customer-web/customer-canonical-presentation.test.mjs
+          node apps/customer-web/customer-closure-static.test.mjs
+          node --check apps/customer-web/customer-shell.js
+          node --check apps/customer-web/customer-runtime-bridge.js
+          for f in apps/customer-web/customer-shell.js apps/customer-web/customer-closure-v3.js apps/customer-web/customer-runtime-bridge.js apps/customer-web/customer-canonical-presentation.js; do
+            for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001' 'TST-HISTORY-001' '+852 5600 4443'; do
+              ! grep -F "$marker" "$f"
+            done
+          done
+          grep -F "priceMinor" apps/customer-web/customer-canonical-presentation.js
+          grep -F "HK$ 25" apps/customer-web/customer-canonical-presentation.test.mjs
+      - name: Publish durable fast GREEN
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          CONTENT="$(printf 'status=GREEN\nsource_sha=%s\nrun_id=%s\nfixture_markers=0\nlive_price_minor_hkd=PASS\n' "$SOURCE_SHA" "$RUN_ID" | base64 -w0)"
+          P="evidence/team2/customer-presentation-015-fast-green.txt"
+          SHA="$(gh api "repos/Pantonyeung/morefunos-v1-builder/contents/$P" --jq '.sha' 2>/dev/null || true)"
+          if [ -n "$SHA" ]; then
+            gh api --method PUT "repos/Pantonyeung/morefunos-v1-builder/contents/$P" -f message="evidence(team2): Customer 015 fast GREEN $SOURCE_SHA" -f content="$CONTENT" -f sha="$SHA" >/dev/null
+          else
+            gh api --method PUT "repos/Pantonyeung/morefunos-v1-builder/contents/$P" -f message="evidence(team2): Customer 015 fast GREEN $SOURCE_SHA" -f content="$CONTENT" >/dev/null
+          fi
+      - name: Publish audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PRESENTATION_015_FAST status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
