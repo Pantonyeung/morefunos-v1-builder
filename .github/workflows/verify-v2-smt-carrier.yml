@@ -95,11 +95,32 @@ jobs:
 
       - name: Root TypeScript typecheck
         id: root_typecheck
+        continue-on-error: true
         working-directory: source
         shell: bash
         run: |
           set -o pipefail
           npm run typecheck 2>&1 | tee /tmp/root-typecheck.log
+
+      - name: Report Team3 TS7006 root gate
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          ROOT_OUTCOME: ${{ steps.root_typecheck.outcome }}
+        run: |
+          set -euo pipefail
+          excerpt=""
+          if [ -f /tmp/root-typecheck.log ]; then
+            excerpt="$(grep -E 'production-native-print-runtime.ts|error TS7006|error TS' /tmp/root-typecheck.log | tail -n 12 | tr '\n' ' ' | sed 's/"/\\\"/g' || true)"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/94/comments"             -f body="T3_HOTFIX_TS7006_003_ROOT run_id=${GITHUB_RUN_ID} run_attempt=${GITHUB_RUN_ATTEMPT} builder_sha=${GITHUB_SHA} source_sha=${SOURCE_SHA} root_typecheck=${ROOT_OUTCOME} excerpt=${excerpt}"
+
+      - name: Require root TypeScript GREEN
+        if: steps.root_typecheck.outcome != 'success'
+        shell: bash
+        run: exit 1
 
       - name: SMT integration tests
         working-directory: source
