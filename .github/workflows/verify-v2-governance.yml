@@ -92,6 +92,13 @@ jobs:
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
           echo "source-identity=PASS sha=$EXPECTED"
 
+      - name: Verify stale Room pointer hard guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          python3 -m unittest scripts/test_governance_guard_stale_room_pointer.py
+
       - name: Run Morefun-v2 governance guard
         shell: bash
         env:
