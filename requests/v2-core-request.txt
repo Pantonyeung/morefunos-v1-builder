@@ -1,5 +1,5 @@
-source_sha=fb35cb55adf60a58716a6698006c5d1127278277
-base_sha=e829f3dd5ad90a1a59dc029d9629f3467009a8ca
-branch_name=work/CORE/B0276-final-two-server-closure
+source_sha=1d4c11070a0de8b891ca5167f067ed95ed527dfb
+base_sha=01682671c2d5c1d0f5fe1ee396d161d1b156003d
+branch_name=work/CORE/B0277-fulfillment-final-server-closure
 verification_phase=CANDIDATE
-request_id=T2-REMAINING-TWO-011-CANDIDATE3-CORE-20260904
+request_id=T2-B0277-FULFILLMENT-CANDIDATE-CORE-20260904
