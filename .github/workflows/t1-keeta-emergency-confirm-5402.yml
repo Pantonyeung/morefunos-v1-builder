@@ -1,29 +1,28 @@
-name: T1 Keeta Configure Order Webhooks
+name: T1 Keeta Emergency Confirm 1859
 
 on:
   push:
     branches:
       - main
     paths:
-      - requests/t1-keeta-configure-order-webhooks.txt
+      - requests/t1-keeta-emergency-confirm-1859.txt
 
 permissions:
   contents: read
 
 concurrency:
-  group: t1-keeta-webhook-config
+  group: t1-keeta-emergency-confirm-1859
   cancel-in-progress: false
 
 jobs:
-  configure:
+  confirm:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 8
     env:
       WRANGLER_VERSION: "4.125.0"
       DONOR_SHA: "967a8e09dfbc53655380665824d5687c0ccd177b"
       SOURCE_SHA: "fe436016ce86672a9d08a634635380f845a2e985"
       WORKER_URL: "https://morefun-v2-keeta-sit.pantonyeung.workers.dev"
-      CALLBACK_URL: "https://morefun-v2-keeta-sit.pantonyeung.workers.dev/webhooks/keeta"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,64 +64,70 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Assemble protected webhook config worker
+      - name: Assemble protected manual confirm worker
         shell: bash
         run: |
           set -euo pipefail
           cp donor/workers/keeta/src/oauth-runtime.ts source/workers/keeta/src/oauth-runtime.ts
           cp donor/packages/integration/keeta-standard-oauth.ts source/packages/integration/keeta-standard-oauth.ts
-          cat > source/workers/keeta/src/configure-order-webhooks.ts <<'TS'
+          cat > source/workers/keeta/src/manual-confirm-1859.ts <<'TS'
           import base from "./index.ts";
+          import { buildKeetaOrderConfirmRequest } from "../../../packages/integration/keeta-order-provider-requests.ts";
           import { sendKeetaJsonRequest, type RuntimeSecretProvider } from "../../../packages/integration/keeta-standard-api.ts";
           import { getUsableKeetaConnectionToken, type KeetaOAuthRuntimeEnv } from "./oauth-runtime.ts";
 
           interface Env extends KeetaOAuthRuntimeEnv {
-            readonly KEETA_WEBHOOK_CONFIG_KEY?: string;
+            readonly KEETA_MANUAL_CONFIRM_KEY?: string;
           }
 
           const APP_ID = 3419700273;
-          const ENDPOINT = "https://open.mykeeta.com/api/open/base/callback/url/set";
-          const CALLBACK_URL = "https://morefun-v2-keeta-sit.pantonyeung.workers.dev/webhooks/keeta";
-          const EVENTS = [1001,1002,1003,1004,1005,1006,1007,1101,1102,1201,1202] as const;
-          const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
+          const SHOP_ID = 721578302;
+          const ORDER_ID = 5123441027161859;
+          const json = (body: unknown, status=200) => new Response(JSON.stringify(body), {
+            status,
+            headers: {"content-type":"application/json; charset=utf-8","cache-control":"no-store"},
+          });
 
-          function secrets(env:Env):RuntimeSecretProvider{
-            return {async getSecret(name:string){
-              if(name!=="KEETA_APP_SECRET") return null;
+          function secretProvider(env: Env): RuntimeSecretProvider {
+            return { async getSecret(name: string) {
+              if (name !== "KEETA_APP_SECRET") return null;
               return env.KEETA_APP_SECRET?.length ? env.KEETA_APP_SECRET : null;
             }};
           }
 
           export default {
-            async fetch(request:Request,env:Env):Promise<Response>{
-              const url=new URL(request.url);
-              if(request.method==="POST" && url.pathname==="/sit/configure-order-webhooks"){
-                const expected=env.KEETA_WEBHOOK_CONFIG_KEY;
-                if(!expected || request.headers.get("authorization")!==`Bearer ${expected}`) return json({code:"UNAUTHORIZED"},401);
-                try{
-                  const token=await getUsableKeetaConnectionToken("default",env);
-                  const results=[];
-                  for(const eventId of EVENTS){
-                    const response=await sendKeetaJsonRequest({
-                      url:ENDPOINT,
-                      params:{
-                        appId:APP_ID,
-                        accessToken:token.accessToken,
-                        timestamp:Math.floor(Date.now()/1000),
-                        eventId,
-                        url:CALLBACK_URL,
-                        isTest:1
-                      },
-                      secretProvider:secrets(env)
-                    });
-                    results.push({eventId,providerOk:response.ok,providerCode:response.code,providerMessage:response.message??null});
-                  }
-                  return json({code:0,callbackUrl:CALLBACK_URL,results});
-                }catch(error){
-                  return json({code:error instanceof Error?error.message:"CONFIGURE_WEBHOOK_FAILED"},500);
+            async fetch(request: Request, env: Env): Promise<Response> {
+              const url = new URL(request.url);
+              if (request.method === "POST" && url.pathname === "/sit/manual-confirm-1859") {
+                const expected = env.KEETA_MANUAL_CONFIRM_KEY;
+                if (!expected || request.headers.get("authorization") !== `Bearer ${expected}`) {
+                  return json({code:"UNAUTHORIZED"},401);
+                }
+                try {
+                  const token = await getUsableKeetaConnectionToken("default", env);
+                  const providerRequest = buildKeetaOrderConfirmRequest({orderViewId: ORDER_ID, providerShopId: SHOP_ID});
+                  const response = await sendKeetaJsonRequest({
+                    url: providerRequest.endpoint,
+                    params: {
+                      ...providerRequest.params,
+                      appId: APP_ID,
+                      accessToken: token.accessToken,
+                      timestamp: Math.floor(Date.now()/1000),
+                    },
+                    secretProvider: secretProvider(env),
+                  });
+                  return json({
+                    code:0,
+                    orderViewId:ORDER_ID,
+                    providerOk:response.ok,
+                    providerCode:response.code,
+                    providerMessage:response.message ?? null
+                  });
+                } catch (error) {
+                  return json({code:error instanceof Error ? error.message : "MANUAL_CONFIRM_FAILED"},500);
                 }
               }
-              return base.fetch(request,env as never);
+              return base.fetch(request, env as never);
             }
           };
           TS
@@ -130,12 +135,12 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const src=JSON.parse(fs.readFileSync('source/workers/keeta/wrangler.jsonc','utf8'));
-          src.main='src/configure-order-webhooks.ts';
+          src.main='src/manual-confirm-1859.ts';
           src.vars={...(src.vars||{}),KEETA_APP_ID:'3419700273'};
-          fs.writeFileSync('source/workers/keeta/configure-webhooks-wrangler.jsonc',JSON.stringify(src,null,2));
+          fs.writeFileSync('source/workers/keeta/manual-confirm-wrangler.jsonc',JSON.stringify(src,null,2));
           NODE
 
-      - name: Deploy config worker and configure 1001-1007
+      - name: Deploy and confirm immediately
         working-directory: source/workers/keeta
         shell: bash
         env:
@@ -145,37 +150,20 @@ jobs:
           set -euo pipefail
           KEY="$(openssl rand -hex 32)"
           echo "::add-mask::$KEY"
-          printf 'KEETA_WEBHOOK_CONFIG_KEY=%s\n' "$KEY" > "$RUNNER_TEMP/config.env"
-          wrangler deploy --config configure-webhooks-wrangler.jsonc --secrets-file "$RUNNER_TEMP/config.env"
-          HTTP=""
-          for i in $(seq 1 15); do
-            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/configure-order-webhooks" || true)"
-            if [ "$HTTP" = "200" ]; then break; fi
-            echo "configure_route_not_ready attempt=$i http=$HTTP"
-            sleep 2
-          done
-          echo "configure_http=$HTTP"
-          cat "$RUNNER_TEMP/config.json"
+          printf 'KEETA_MANUAL_CONFIRM_KEY=%s\n' "$KEY" > "$RUNNER_TEMP/manual.env"
+          wrangler deploy --config manual-confirm-wrangler.jsonc --secrets-file "$RUNNER_TEMP/manual.env"
+          sleep 2
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/confirm.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/manual-confirm-1859")"
+          echo "confirm_http=$HTTP"
+          cat "$RUNNER_TEMP/confirm.json"
           test "$HTTP" = "200"
-          jq -e '.code==0 and (.results|length)==11 and ([.results[]|select(.providerOk!=true or .providerCode!=0)]|length)==0' "$RUNNER_TEMP/config.json" >/dev/null
-
-      - name: Restore exact admitted worker
-        if: always()
-        working-directory: source/workers/keeta
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          wrangler deploy --config wrangler.jsonc
-          echo "exact_worker_restored=true"
+          jq -e '.code==0 and .orderViewId==5123441027161859' "$RUNNER_TEMP/confirm.json" >/dev/null
 
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: t1-keeta-order-webhook-config-${{ github.run_id }}
-          path: ${{ runner.temp }}/config.json
+          name: t1-keeta-emergency-confirm-1859-${{ github.run_id }}
+          path: ${{ runner.temp }}/confirm.json
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 7
