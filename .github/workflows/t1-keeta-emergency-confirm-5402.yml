@@ -83,7 +83,7 @@ jobs:
           const APP_ID = 3419700273;
           const ENDPOINT = "https://open.mykeeta.com/api/open/base/callback/url/set";
           const CALLBACK_URL = "https://morefun-v2-keeta-sit.pantonyeung.workers.dev/webhooks/keeta";
-          const EVENTS = [1001,1002,1003,1004,1005,1006,1007] as const;
+          const EVENTS = [1001,1002,1003,1004,1005,1006,1007,1101,1102,1201,1202] as const;
           const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 
           function secrets(env:Env):RuntimeSecretProvider{
@@ -157,7 +157,7 @@ jobs:
           echo "configure_http=$HTTP"
           cat "$RUNNER_TEMP/config.json"
           test "$HTTP" = "200"
-          jq -e '.code==0 and (.results|length)==7 and ([.results[]|select(.providerOk!=true or .providerCode!=0)]|length)==0' "$RUNNER_TEMP/config.json" >/dev/null
+          jq -e '.code==0 and (.results|length)==11 and ([.results[]|select(.providerOk!=true or .providerCode!=0)]|length)==0' "$RUNNER_TEMP/config.json" >/dev/null
 
       - name: Restore exact admitted worker
         if: always()
