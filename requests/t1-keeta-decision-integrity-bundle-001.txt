@@ -1,2 +1,2 @@
-source_sha=64297bae0e4ddca8e7577155e238d260bcbc3207
-phase=B2507_RED
+source_sha=b1e150b0639e41b1cc7c418ccb04fb8b4bf855b7
+phase=B2507_RED_VALID
