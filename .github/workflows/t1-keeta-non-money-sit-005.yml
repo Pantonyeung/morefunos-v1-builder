@@ -364,7 +364,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          wrangler deploy --yes --config "$RUNNER_TEMP/probe-wrangler.jsonc" --secrets-file "$RUNNER_TEMP/probe.env"
+          wrangler deploy --config "$RUNNER_TEMP/probe-wrangler.jsonc" --secrets-file "$RUNNER_TEMP/probe.env"
 
       - name: Execute non-money SIT cases
         shell: bash
@@ -535,6 +535,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          wrangler deploy --yes --config wrangler.jsonc
+          wrangler deploy --config wrangler.jsonc
           printf 'y\n' | wrangler secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc 2>/dev/null || true
           echo "current_worker_restored=true"
