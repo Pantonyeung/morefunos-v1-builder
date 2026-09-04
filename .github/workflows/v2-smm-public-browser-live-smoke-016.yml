@@ -70,12 +70,21 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage();
-            const api=[];
+            const api=[]; const consoleEvents=[]; const pageErrors=[]; const requestFailures=[];
+            page.on('console',m=>consoleEvents.push({type:m.type(),text:m.text()}));
+            page.on('pageerror',e=>pageErrors.push(String(e?.stack||e)));
+            page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
             page.on('request',r=>{
               const u=new URL(r.url());
               if(u.pathname.startsWith('/api/')) api.push({origin:u.origin,path:u.pathname,method:r.method()});
             });
             await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
+            await page.waitForTimeout(1500);
+            const bodyBefore=(await page.textContent('body'))||'';
+            const pairingInputCount=await page.getByPlaceholder('輸入可信配對憑證').count();
+            fs.writeFileSync('evidence/browser-bootstrap.json',JSON.stringify({url:page.url(),title:await page.title(),bodyText:bodyBefore.slice(0,4000),pairingInputCount,consoleEvents,pageErrors,requestFailures},null,2));
+            console.log('SMM_BOOTSTRAP_DIAGNOSTIC pairingInputCount='+pairingInputCount+' body='+JSON.stringify(bodyBefore.slice(0,1000))+' pageErrors='+JSON.stringify(pageErrors)+' requestFailures='+JSON.stringify(requestFailures));
+            if(pairingInputCount!==1) throw new Error('SMM_UI_PAIRING_INPUT_MISSING');
             await page.getByPlaceholder('輸入可信配對憑證').fill(process.env.ADMIN_LOGIN_SECRET);
             await page.getByRole('button',{name:'連接 Runtime'}).click();
             await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
