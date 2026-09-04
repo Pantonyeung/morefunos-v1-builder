@@ -1,2 +1,2 @@
-source_sha=1bda5f7c99022e07fbe3e1c6860ebdc4bce92f3b
-attempt=t1-customer-pwa-021a-final-green-pin
+source_sha=37697ed1b35f037a97957fc8500472034f12807b
+attempt=t1-b2506-customer-submit-lifecycle-red
