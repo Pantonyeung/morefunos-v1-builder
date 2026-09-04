@@ -1,0 +1,56 @@
+name: T1 Keeta Linkup 001
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-linkup-001.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact V2 source
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-linkup-001.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Exact T1 Keeta linkup test
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test packages/integration/keeta-worker-durable-receipt-linkup.test.ts
+
+      - name: Keeta TypeScript guard
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes typescript@5.9.3 tsc --noEmit -p tsconfig.json
