@@ -82,6 +82,7 @@ jobs:
           INDEX_HTTP="$(fetch_status "$URL/" /tmp/index.html)"
           SPA_HTTP="$(fetch_status "$URL/orders" /tmp/spa.html)"
           MANIFEST_HTTP="$(fetch_status "$URL/manifest.webmanifest" /tmp/manifest.json)"
+          echo "index_http=$INDEX_HTTP spa_http=$SPA_HTTP manifest_http=$MANIFEST_HTTP"
           test "$INDEX_HTTP" = 200
           test "$SPA_HTTP" = 200
           test "$MANIFEST_HTTP" = 200
@@ -89,13 +90,16 @@ jobs:
           test -n "$JS_PATH"
           case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$URL$JS_PATH";; *) JS_URL="$URL/$JS_PATH";; esac
           ASSET_HTTP="$(fetch_status "$JS_URL" /tmp/smm.js)"
+          echo "asset_http=$ASSET_HTTP js_path=$JS_PATH"
           test "$ASSET_HTTP" = 200
           SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/smm/session")"
+          echo "anonymous_session_http=$SESSION_HTTP body=$(cat /tmp/session.json)"
           test "$SESSION_HTTP" = 401
           node -e "const x=require('/tmp/session.json');if(x.code!=='SMT_RUNTIME_SESSION_REQUIRED')process.exit(1)"
           BAD='__smm_016_intentionally_invalid__'
-          node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))" BAD="$BAD"
-          PAIR_HTTP="$(BAD="$BAD" node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))"; curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
+          BAD="$BAD" node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))"
+          PAIR_HTTP="$(curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
+          echo "invalid_pair_http=$PAIR_HTTP body=$(cat /tmp/pair-response.json)"
           test "$PAIR_HTTP" = 401
           node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMT_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
           FIXTURE_MARKERS=0
