@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: morefun-v2-keeta-sit
+  group: t1-keeta-webhook-config
   cancel-in-progress: false
 
 jobs:
