@@ -90,6 +90,22 @@ jobs:
         working-directory: source
         run: node --test apps/customer-web/*.test.mjs
 
+      - name: Customer public Worker TDD
+        working-directory: source
+        run: node --experimental-strip-types --test infra/cloudflare/customer-web-worker/*.test.ts
+
+      - name: Customer web production build
+        working-directory: source/apps/customer-web
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          find dist/assets -maxdepth 1 -type f | grep -E '/[^/]+-[A-Za-z0-9_-]+\.(js|css)$'
+
+      - name: Customer Worker Wrangler dry-run
+        working-directory: source
+        run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/customer-web-worker/wrangler.jsonc
+
       - name: Customer integration TypeScript strict check
         working-directory: source
         run: npm exec --yes --package=typescript@5.9.3 -- tsc -p packages/customer-ui-integration/tsconfig.json
