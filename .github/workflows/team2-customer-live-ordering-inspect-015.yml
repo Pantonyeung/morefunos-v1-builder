@@ -30,6 +30,8 @@ jobs:
           console.log('store_status='+String(x.storeStatus||''));
           console.log('products_count='+x.products.length);
           console.log('product_keys='+Object.keys(first).sort().join(','));
+          console.log('first_product_currency='+String(first.currency||''));
+          console.log('first_product_price_minor='+String(first.priceMinor??''));
           console.log('has_publish_sequence='+Number.isSafeInteger(x.publishSequence));
           console.log('has_catalog_version='+Boolean(x.catalogVersion));
           NODE
