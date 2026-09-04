@@ -1,5 +1,5 @@
 status=GREEN
-source_sha=aada37744108849291e6c7cac5458ae7e9b944d2
-run_id=33863319605
+source_sha=9efc1f253e3db9c96b331cc81f68ee05751e5a76
+run_id=33863453471
 fixture_markers=0
 live_price_minor_hkd=PASS
