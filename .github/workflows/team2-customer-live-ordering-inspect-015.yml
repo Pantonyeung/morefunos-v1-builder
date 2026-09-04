@@ -1,0 +1,47 @@
+name: Team2 Customer Live Ordering Inspect 015
+on:
+  push:
+    paths:
+      - 'requests/team2-customer-live-ordering-inspect-015.txt'
+permissions:
+  contents: read
+  issues: write
+jobs:
+  inspect:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Inspect live canonical ordering shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGIN="https://morefun-v2-customer.pantonyeung.workers.dev"
+          HTTP="$(curl -sS -o /tmp/ordering.json -w '%{http_code}' "$ORIGIN/api/customer/ordering")"
+          test "$HTTP" = 200
+          node - <<'NODE' >/tmp/shape.txt
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/ordering.json','utf8'));
+          if(!Array.isArray(x.products)) process.exit(1);
+          const first=x.products[0]||{};
+          console.log('ordering_http=200');
+          console.log('store_status='+String(x.storeStatus||''));
+          console.log('products_count='+x.products.length);
+          console.log('product_keys='+Object.keys(first).sort().join(','));
+          console.log('has_publish_sequence='+Number.isSafeInteger(x.publishSequence));
+          console.log('has_catalog_version='+Boolean(x.catalogVersion));
+          NODE
+          cat /tmp/shape.txt
+      - name: Publish audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          SHAPE="$(cat /tmp/shape.txt 2>/dev/null || true)"
+          gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_LIVE_ORDERING_INSPECT status=$JOB_STATUS run_id=$RUN_ID
+          $SHAPE"
