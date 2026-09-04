@@ -1,0 +1,43 @@
+name: T1 Keeta D1 Fast Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-d1-fast-read.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read latest durable Keeta receipt from remote D1
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          QUERY="SELECT json_extract(record_json,'$.firstSeenAt') AS first_seen_at, json_extract(record_json,'$.merchantDecision') AS merchant_decision, json_extract(record_json,'$.providerActionStatus') AS provider_action_status, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, json_extract(json_extract(record_json,'$.evidence.message'),'$.orderInfo.baseOrder.orderViewId') AS order_view_id FROM mfos_keeta_durable_delivery ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 5;"
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute morefun-v2-keeta-sit-ingress --remote --command="$QUERY" > "$RUNNER_TEMP/d1-fast-read.txt"
+          cat "$RUNNER_TEMP/d1-fast-read.txt"
+          BODY="T1_KEETA_D1_FAST_READ run_id=$GITHUB_RUN_ID"$'\n\n'"$(tail -n 80 "$RUNNER_TEMP/d1-fast-read.txt")"
+          gh api "repos/Pantonyeung/morefunos-v1-builder/issues/97/comments" -f body="$BODY"
+      - name: Upload fast-read evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: t1-keeta-d1-fast-read-${{ github.run_id }}
+          path: ${{ runner.temp }}/d1-fast-read.txt
+          if-no-files-found: warn
+          retention-days: 7
+        env:
+          GH_TOKEN: ${{ github.token }}
