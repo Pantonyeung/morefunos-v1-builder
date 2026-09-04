@@ -183,7 +183,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          wrangler deploy --yes --config wrangler.jsonc
+          wrangler deploy --config wrangler.jsonc
 
       - name: Smoke deployed health endpoint
         shell: bash
