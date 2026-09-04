@@ -1,0 +1,162 @@
+name: Team2 Customer Controlled Order 015
+
+on:
+  push:
+    paths:
+      - 'requests/team2-customer-controlled-order-015.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  controlled-order:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve exact admitted source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team2-customer-controlled-order-015.txt | tr -d '[:space:]')"
+          ORIGIN="$(sed -n 's/^origin=//p' requests/team2-customer-controlled-order-015.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ORIGIN" =~ ^https:// ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Exactly one public submit and same-order lifecycle
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          ORIGIN: ${{ steps.req.outputs.origin }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          cat > /tmp/controlled-order.mjs <<'NODE'
+          import {
+            readCustomerOrderingRuntime,
+            submitCustomerOrderRuntime,
+            readCustomerOrderLifecycleRuntime,
+            createCustomerOrderLookupToken,
+          } from process.cwd() + '/source/apps/customer-web/customer-runtime-adapter.js';
+
+          const origin = process.env.ORIGIN;
+          const runId = process.env.RUN_ID;
+          let cookie = '';
+          let postCalls = 0;
+          let getCalls = 0;
+
+          async function fetcher(input, init = {}) {
+            const url = new URL(String(input), origin);
+            const headers = new Headers(init.headers || {});
+            if (cookie) headers.set('cookie', cookie);
+            const method = String(init.method || 'GET').toUpperCase();
+            if (method === 'POST') {
+              postCalls += 1;
+              if (postCalls > 1) throw new Error('CONTROLLED_ORDER_SECOND_POST_FORBIDDEN');
+            } else if (method === 'GET') {
+              getCalls += 1;
+            }
+            const response = await fetch(url, { ...init, headers });
+            const setCookie = response.headers.get('set-cookie');
+            if (setCookie) cookie = setCookie.split(';', 1)[0];
+            return response;
+          }
+
+          const ordering = await readCustomerOrderingRuntime({ fetcher });
+          if (ordering.storeStatus !== 'open') throw new Error('CONTROLLED_ORDER_STORE_NOT_OPEN');
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ordering.businessDate || ''))) throw new Error('CONTROLLED_ORDER_BUSINESS_DATE_REQUIRED');
+          const product = ordering.products.find((item) => item && item.available !== false && String(item.productId || '').trim());
+          if (!product) throw new Error('CONTROLLED_ORDER_AVAILABLE_PRODUCT_REQUIRED');
+
+          const submissionId = `t2-015-${runId}`;
+          const idempotencyKey = `t2-015-idem-${runId}`;
+          const callerToken = createCustomerOrderLookupToken(globalThis.crypto);
+          const submitted = await submitCustomerOrderRuntime({
+            submissionId,
+            idempotencyKey,
+            createdAt: new Date().toISOString(),
+            businessDate: ordering.businessDate,
+            lookupToken: callerToken,
+            payload: { lines: [{ productId: product.productId, quantity: 1 }] },
+          }, { fetcher });
+
+          if (postCalls !== 1) throw new Error(`CONTROLLED_ORDER_POST_COUNT_${postCalls}`);
+          if (submitted.status !== 'accepted' || submitted.authoritativeAcceptance !== true || submitted.lifecycleProtected !== true) {
+            throw new Error('CONTROLLED_ORDER_SUBMIT_NOT_CANONICAL_ACCEPTED');
+          }
+          if (!String(submitted.orderId || '').trim()) throw new Error('CONTROLLED_ORDER_ID_REQUIRED');
+          if (!String(submitted.lookupToken || '').match(/^[A-Za-z0-9_-]{43}$/)) throw new Error('CONTROLLED_ORDER_SERVER_LOOKUP_TOKEN_REQUIRED');
+
+          const identity = {
+            submissionId,
+            businessDate: ordering.businessDate,
+            lookupToken: submitted.lookupToken,
+          };
+          const lifecycle1 = await readCustomerOrderLifecycleRuntime(identity, { fetcher });
+          const lifecycle2 = await readCustomerOrderLifecycleRuntime(identity, { fetcher });
+
+          if (postCalls !== 1) throw new Error('CONTROLLED_ORDER_POST_COUNT_CHANGED');
+          for (const lifecycle of [lifecycle1, lifecycle2]) {
+            if (lifecycle.orderId !== submitted.orderId) throw new Error('CONTROLLED_ORDER_ID_MISMATCH');
+            if (lifecycle.submissionId !== submissionId) throw new Error('CONTROLLED_ORDER_SUBMISSION_ID_MISMATCH');
+            if (lifecycle.status !== 'accepted' || lifecycle.authoritativeAcceptance !== true) throw new Error('CONTROLLED_ORDER_LIFECYCLE_NOT_ACCEPTED');
+          }
+          if (lifecycle1.orderRevision !== lifecycle2.orderRevision) throw new Error('CONTROLLED_ORDER_REVISION_UNSTABLE');
+
+          const summary = {
+            source_sha: process.env.SOURCE_SHA,
+            origin,
+            submission_id: submissionId,
+            order_id: submitted.orderId,
+            order_revision: submitted.orderRevision,
+            lifecycle_order_id_1: lifecycle1.orderId,
+            lifecycle_order_id_2: lifecycle2.orderId,
+            lifecycle_status: lifecycle2.status,
+            product_id: product.productId,
+            business_date: ordering.businessDate,
+            post_count: postCalls,
+            lifecycle_get_count: 2,
+            duplicate_observed: false,
+          };
+          await import('node:fs').then(({ writeFileSync }) => writeFileSync('evidence/controlled-order.json', JSON.stringify(summary, null, 2) + '\n'));
+          console.log(JSON.stringify(summary));
+          NODE
+          node /tmp/controlled-order.mjs
+      - name: Publish audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          if [[ -f evidence/controlled-order.json ]]; then
+            ORDER_ID="$(node -e "const x=require('./evidence/controlled-order.json');process.stdout.write(x.order_id)")"
+            SUBMISSION_ID="$(node -e "const x=require('./evidence/controlled-order.json');process.stdout.write(x.submission_id)")"
+            gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_CONTROLLED_ORDER_015 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA submission_id=$SUBMISSION_ID order_id=$ORDER_ID post_count=1 duplicate_observed=false"
+          else
+            gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_CONTROLLED_ORDER_015 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA no_order_evidence=true"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team2-customer-controlled-order-015-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
