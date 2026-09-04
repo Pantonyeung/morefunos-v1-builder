@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   deploy:
@@ -84,6 +85,15 @@ jobs:
           test "$ORDERING_HTTP" = 200
           node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!Array.isArray(x.products))process.exit(1)"
           printf 'index_http=%s\nspa_http=%s\nordering_http=%s\n' "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" > evidence/smoke.txt
+      - name: Publish Team2 deploy audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_DEPLOY_015 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
