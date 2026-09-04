@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: morefun-v2-keeta-sit
+  cancel-in-progress: false
+
 jobs:
   configure:
     runs-on: ubuntu-24.04
@@ -143,14 +147,20 @@ jobs:
           echo "::add-mask::$KEY"
           printf 'KEETA_WEBHOOK_CONFIG_KEY=%s\n' "$KEY" > "$RUNNER_TEMP/config.env"
           wrangler deploy --config configure-webhooks-wrangler.jsonc --secrets-file "$RUNNER_TEMP/config.env"
-          sleep 2
-          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/configure-order-webhooks")"
+          HTTP=""
+          for i in $(seq 1 15); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" "$WORKER_URL/sit/configure-order-webhooks" || true)"
+            if [ "$HTTP" = "200" ]; then break; fi
+            echo "configure_route_not_ready attempt=$i http=$HTTP"
+            sleep 2
+          done
           echo "configure_http=$HTTP"
           cat "$RUNNER_TEMP/config.json"
           test "$HTTP" = "200"
           jq -e '.code==0 and (.results|length)==7 and ([.results[]|select(.providerOk!=true or .providerCode!=0)]|length)==0' "$RUNNER_TEMP/config.json" >/dev/null
 
       - name: Restore exact admitted worker
+        if: always()
         working-directory: source/workers/keeta
         shell: bash
         env:
