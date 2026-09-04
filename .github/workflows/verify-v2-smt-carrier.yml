@@ -14,6 +14,7 @@ on:
 permissions:
   contents: read
   issues: write
+  statuses: write
 
 jobs:
   verify:
@@ -21,6 +22,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      - name: Publish carrier pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/v2-smt-carrier' \
+            -f description='SMT carrier verification running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
       - name: Checkout Builder definition
         uses: actions/checkout@v7
         with:
@@ -210,3 +222,28 @@ jobs:
             excerpt="$(grep -E 'production-native-print-runtime.ts|error TS7006|error TS' /tmp/root-typecheck.log | tail -n 12 | tr '\n' ' ' | sed 's/"/\\\"/g' || true)"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/94/comments"             -f body="T3_HOTFIX_TS7006_003_GATE run_id=${GITHUB_RUN_ID} run_attempt=${GITHUB_RUN_ATTEMPT} builder_sha=${GITHUB_SHA} source_sha=${SOURCE_SHA} root_typecheck=${ROOT_OUTCOME} job_status=${JOB_STATUS} excerpt=${excerpt}"
+
+
+      - name: Publish carrier success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-smt-carrier' \
+            -f description='SMT carrier verification passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish carrier failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-smt-carrier' \
+            -f description='SMT carrier verification failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
