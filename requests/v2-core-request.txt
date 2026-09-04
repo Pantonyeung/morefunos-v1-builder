@@ -1,5 +1,5 @@
-source_sha=3a3a452dfcca4095129f9e9fac5f713fa4eec1cd
-base_sha=e87c803a07d25f0c573174091d1a05656e48077b
-branch_name=work/CORE/B0272-payment-refund-fulfillment-mount
+source_sha=eba6fc345fef040a522509f9eaecb89b6e695536
+base_sha=
+branch_name=main
 verification_phase=CANDIDATE
-request_id=T2-PAYMENT-REFUND-FULFILLMENT-BUNDLE-007-FINAL-EXACT-20260904
+request_id=COMMANDER-T2-BUNDLE007-POST-ADMISSION-20260904
