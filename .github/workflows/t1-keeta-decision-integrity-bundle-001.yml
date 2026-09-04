@@ -50,6 +50,7 @@ jobs:
         run: |
           node --test packages/integration/keeta-decision-integrity.test.ts
           node --test packages/integration/keeta-merchant-decision-internal-runtime.test.ts
+          node --test packages/order/d1-accepted-order-projection-identity.test.ts
           node --test packages/smm-ui-integration/keeta-merchant-inbox-runtime.test.ts
 
       - name: Keeta Worker Wrangler dry-run
