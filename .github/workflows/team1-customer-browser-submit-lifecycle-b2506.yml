@@ -46,7 +46,7 @@ jobs:
           mkdir -p evidence
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME"
-          cat > /tmp/customer-browser-b2506.mjs <<'NODE'
+          cat > customer-browser-b2506.mjs <<'NODE'
           import { chromium } from 'playwright-core';
           import fs from 'node:fs';
 
@@ -118,7 +118,7 @@ jobs:
           await ctx.close();
           await browser.close();
           NODE
-          node /tmp/customer-browser-b2506.mjs "$CHROME" "$ORIGIN" "$SOURCE_SHA"
+          node customer-browser-b2506.mjs "$CHROME" "$ORIGIN" "$SOURCE_SHA"
 
       - name: Publish audit
         if: always()
