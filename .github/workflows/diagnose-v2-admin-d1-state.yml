@@ -28,45 +28,42 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           mkdir -p evidence
-          node - <<'NODE'
-          const fs=require('fs');
-          const sql=`
-          SELECT 'catalog' AS domain, COUNT(*) AS row_count FROM mfos_catalog_state
-          UNION ALL SELECT 'business_day_state', COUNT(*) FROM mfos_business_day_state
-          UNION ALL SELECT 'availability', COUNT(*) FROM mfos_availability_state
-          UNION ALL SELECT 'customer_order_ownership', COUNT(*) FROM mfos_customer_order_ownership
-          UNION ALL SELECT 'payment_state', COUNT(*) FROM mfos_payment_state
-          UNION ALL SELECT 'device_trust_total', COUNT(*) FROM mfos_device_trust
-          UNION ALL SELECT 'device_trust_trusted', COUNT(*) FROM mfos_device_trust WHERE json_extract(payload_json,'$.lifecycleStatus')='TRUSTED'
-          UNION ALL SELECT 'session_total', COUNT(*) FROM mfos_session
-          UNION ALL SELECT 'session_active', COUNT(*) FROM mfos_session WHERE lifecycle_status='ACTIVE'
-          UNION ALL SELECT 'runtime_binding_total', COUNT(*) FROM mfos_smt_runtime_binding
-          UNION ALL SELECT 'runtime_binding_active', COUNT(*) FROM mfos_smt_runtime_binding WHERE lifecycle_status='ACTIVE';
-          SELECT MAX(json_extract(payload_json,'$.issuedAt')) AS latest_session_issued_at FROM mfos_session;
-          SELECT MAX(created_at) AS latest_binding_created_at FROM mfos_smt_runtime_binding;
-          SELECT store_code, store_id, merchant_id FROM mfos_store_code_binding ORDER BY store_code;
-          SELECT store_id, business_date, lifecycle_status, opened_at, closed_at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 10;
-          `;
-          fs.writeFileSync('/tmp/query.json',JSON.stringify({sql}));
-          NODE
           URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
-          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > /tmp/result.json
-          node - <<'NODE' | tee evidence/d1-state.txt
-          const x=require('/tmp/result.json');
-          if(!x.success || !(x.result||[]).every(r=>r.success!==false)) process.exit(1);
-          const counts=x.result?.[0]?.results||[];
-          console.log('database_name=morefun-v2-production');
-          for(const row of counts) console.log(`${row.domain}_rows=${row.row_count}`);
-          const latestSession=x.result?.[1]?.results?.[0]||{};
-          const latestBinding=x.result?.[2]?.results?.[0]||{};
-          const stores=x.result?.[3]?.results||[];
-          const businessDays=x.result?.[4]?.results||[];
-          console.log('latest_session_issued_at='+(latestSession.latest_session_issued_at||''));
-          console.log('latest_binding_created_at='+(latestBinding.latest_binding_created_at||''));
-          console.log('store_bindings='+stores.map(r=>`${r.store_code}:${r.store_id}`).join(','));
-          console.log('business_days='+businessDays.map(r=>`${r.store_id}:${r.business_date}:${r.lifecycle_status}`).join(','));
-          NODE
-          rm -f /tmp/query.json /tmp/result.json
+
+          query() {
+            local name="$1"
+            local sql="$2"
+            SQL="$sql" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > "/tmp/${name}.json"
+            NAME="$name" node - <<'NODE' | tee "evidence/${name}.txt"
+const x=require('/tmp/'+process.env.NAME+'.json');
+if(!x.success || !x.result?.[0]?.success) {
+  console.error(JSON.stringify(x.errors||x.result||x));
+  process.exit(1);
+}
+for(const row of x.result[0].results||[]) console.log(JSON.stringify(row));
+NODE
+          }
+
+          query counts "SELECT
+            (SELECT COUNT(*) FROM mfos_device_trust) AS device_total,
+            (SELECT COUNT(*) FROM mfos_device_trust WHERE json_extract(payload_json,'$.lifecycleStatus')='TRUSTED') AS device_trusted,
+            (SELECT COUNT(*) FROM mfos_session) AS session_total,
+            (SELECT COUNT(*) FROM mfos_session WHERE lifecycle_status='ACTIVE') AS session_active,
+            (SELECT COUNT(*) FROM mfos_smt_runtime_binding) AS binding_total,
+            (SELECT COUNT(*) FROM mfos_smt_runtime_binding WHERE lifecycle_status='ACTIVE') AS binding_active"
+
+          query latest "SELECT
+            (SELECT MAX(json_extract(payload_json,'$.issuedAt')) FROM mfos_session) AS latest_session_issued_at,
+            (SELECT MAX(created_at) FROM mfos_smt_runtime_binding) AS latest_binding_created_at"
+
+          query stores "SELECT store_code, store_id, merchant_id FROM mfos_store_code_binding ORDER BY store_code"
+
+          query business_days "SELECT store_id, business_date, lifecycle_status, opened_at, closed_at, revision FROM mfos_business_day ORDER BY opened_at DESC LIMIT 10"
+
+          printf 'database_name=morefun-v2-production\nsecrets_or_tokens_logged=NO\n' > evidence/summary.txt
+          rm -f /tmp/query.json /tmp/counts.json /tmp/latest.json /tmp/stores.json /tmp/business_days.json
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
