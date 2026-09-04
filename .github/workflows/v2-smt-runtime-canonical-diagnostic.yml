@@ -71,6 +71,7 @@ jobs:
           runq sessions "SELECT session_id,staff_id,lifecycle_status,absolute_expires_at,revision,json_extract(payload_json,'$.deviceId') AS device_id,json_extract(payload_json,'$.policyId') AS policy_id,json_extract(payload_json,'$.lastActivityAt') AS last_activity_at FROM mfos_session WHERE session_id LIKE 'smt-device-session:%' ORDER BY rowid DESC LIMIT 8;"
           runq bindings "SELECT runtime_binding_ref,device_id,bound_session_id,lifecycle_status,expires_at,revision,capability_ids_json,created_at,updated_at FROM mfos_smt_runtime_binding ORDER BY created_at DESC LIMIT 8;"
           runq devices "SELECT device_id,revision,json_extract(payload_json,'$.lifecycleStatus') AS lifecycle_status,json_extract(payload_json,'$.trustSourceRef') AS trust_source_ref,json_extract(payload_json,'$.displayName') AS display_name FROM mfos_device_trust WHERE device_id LIKE 'device:smt:%' ORDER BY rowid DESC LIMIT 8;"
+          runq catalog_shape "SELECT json_extract(snapshot_json,'$.categories[0].categoryId') AS category_id,json_extract(snapshot_json,'$.categories[0].name') AS category_name,json_extract(snapshot_json,'$.categories[0].lifecycleStatus') AS category_status,json_extract(snapshot_json,'$.categories[0].position') AS category_position,json_extract(snapshot_json,'$.categories[0].revision') AS category_revision,json_extract(snapshot_json,'$.categories[0].createdAt') AS category_created,json_extract(snapshot_json,'$.categories[0].updatedAt') AS category_updated,json_extract(snapshot_json,'$.products[0].productId') AS product_id,json_extract(snapshot_json,'$.products[0].name') AS product_name,json_extract(snapshot_json,'$.products[0].lifecycleStatus') AS product_status,json_extract(snapshot_json,'$.products[0].revision') AS product_revision,json_extract(snapshot_json,'$.products[0].createdAt') AS product_created,json_extract(snapshot_json,'$.products[0].updatedAt') AS product_updated,json_array_length(json_extract(snapshot_json,'$.products[0].categoryMemberships')) AS membership_count,json_extract(snapshot_json,'$.products[0].categoryMemberships[0].categoryId') AS membership_category_id,json_extract(snapshot_json,'$.products[0].categoryMemberships[0].position') AS membership_position,json_array_length(json_extract(snapshot_json,'$.products[0].optionGroups')) AS option_group_count FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
 
           node - <<'NODE' | tee "$GITHUB_WORKSPACE/evidence/summary.txt"
           const fs=require('fs'), p=process.env.GITHUB_WORKSPACE+'/evidence/';
@@ -85,6 +86,7 @@ jobs:
           const sessions=rows('sessions');
           const bindings=rows('bindings');
           const devices=rows('devices');
+          const catalogShape=rows('catalog_shape');
           const openDays=days.filter(x=>x.lifecycle_status==='OPEN');
           console.log('source_sha='+process.env.SOURCE_SHA);
           console.log('canonical_store_rows='+store.length);
@@ -119,6 +121,24 @@ jobs:
           console.log('paired_device_count='+devices.length);
           console.log('latest_device_status='+(devices[0]?.lifecycle_status||'MISSING'));
           console.log('latest_device_id_match='+(devices[0]?.device_id===sessions[0]?.device_id));
+          const cs=catalogShape[0]||{};
+          console.log('catalog_category_id='+(cs.category_id||'MISSING'));
+          console.log('catalog_category_name='+(cs.category_name||'MISSING'));
+          console.log('catalog_category_status='+(cs.category_status||'MISSING'));
+          console.log('catalog_category_position='+(cs.category_position??'MISSING'));
+          console.log('catalog_category_revision='+(cs.category_revision??'MISSING'));
+          console.log('catalog_category_created='+(cs.category_created||'MISSING'));
+          console.log('catalog_category_updated='+(cs.category_updated||'MISSING'));
+          console.log('catalog_product_id='+(cs.product_id||'MISSING'));
+          console.log('catalog_product_name='+(cs.product_name||'MISSING'));
+          console.log('catalog_product_status='+(cs.product_status||'MISSING'));
+          console.log('catalog_product_revision='+(cs.product_revision??'MISSING'));
+          console.log('catalog_product_created='+(cs.product_created||'MISSING'));
+          console.log('catalog_product_updated='+(cs.product_updated||'MISSING'));
+          console.log('catalog_membership_count='+(cs.membership_count??'MISSING'));
+          console.log('catalog_membership_category_id='+(cs.membership_category_id||'MISSING'));
+          console.log('catalog_membership_position='+(cs.membership_position??'MISSING'));
+          console.log('catalog_option_group_count='+(cs.option_group_count??'MISSING'));
           NODE
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
