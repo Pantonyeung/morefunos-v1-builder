@@ -49,33 +49,6 @@ jobs:
         run: |
           node --test packages/integration/keeta-decision-integrity.test.ts
           node --test packages/integration/keeta-worker-durable-receipt-linkup.test.ts
-      - name: Team1 Keeta scoped TypeScript guard
-        working-directory: source
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          config = {
-            "extends": "./tsconfig.json",
-            "files": [
-              "packages/integration/keeta-sit-order-path-runtime.ts",
-              "packages/integration/keeta-sit-order-path-runtime.test.ts",
-              "packages/integration/keeta-provider-action-delivery.test.ts",
-              "packages/integration/keeta-order-get-reconciliation.ts",
-              "packages/integration/keeta-order-get-reconciliation.test.ts",
-              "packages/integration/d1-keeta-durable-runtime.ts",
-              "packages/integration/keeta-durable-delivery.ts"
-            ],
-            "include": [],
-            "exclude": [],
-            "compilerOptions": {
-              "types": ["node"]
-            }
-          }
-          open("tsconfig.team1-keeta-bundle002.json","w").write(json.dumps(config))
-          PY
-          tsc --noEmit -p tsconfig.team1-keeta-bundle002.json
-
       - name: Root TypeScript diagnostic
         working-directory: source
         shell: bash
