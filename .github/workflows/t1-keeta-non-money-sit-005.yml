@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   execute:
@@ -429,6 +430,49 @@ jobs:
           path: ${{ runner.temp }}/sit005
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publish sanitized audit result
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="$RUNNER_TEMP/sit005/evidence.json"
+          if [[ -f "$FILE" ]]; then
+            BODY="$(node - "$FILE" <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const line=(name,v)=>`- ${name}: ${v}`;
+          const r=e.reject_fresh?.result ?? {};
+          const a=e.ambiguous_controlled?.result ?? {};
+          const lines=[
+            `T1_KEETA_NON_MONEY_SIT_005 run_id=${process.env.GITHUB_RUN_ID}`,
+            line('source_sha', e.source_sha),
+            line('order_get_match', e.order_get_match?.result?.verdict ?? 'UNKNOWN'),
+            line('order_get_mismatch', e.order_get_mismatch?.result?.verdict ?? 'UNKNOWN'),
+            line('order_get_inconclusive', e.order_get_inconclusive?.result?.verdict ?? 'UNKNOWN'),
+            line('ambiguous_first', a.firstDisposition ?? a.reason ?? 'UNKNOWN'),
+            line('ambiguous_second', a.secondDisposition ?? 'UNKNOWN'),
+            line('ambiguous_attempts', a.readback?.providerActionAttempts ?? 'UNKNOWN'),
+            line('reject_executed', r.executed === true ? 'YES' : 'NO'),
+            line('reject_reason', r.executed === true ? 'N/A' : (r.reason ?? 'UNKNOWN')),
+            line('reject_first', r.firstDisposition ?? 'N/A'),
+            line('reject_second', r.secondDisposition ?? 'N/A'),
+            line('reject_provider_action', r.readback?.providerAction ?? 'N/A'),
+            line('reject_provider_status', r.readback?.providerActionStatus ?? 'N/A'),
+            line('reject_attempts', r.readback?.providerActionAttempts ?? 'N/A'),
+            line('reject_canonical_order_present', r.readback?.canonicalOrderPresent ?? 'N/A'),
+            line('money_accept', e.money_dependent_accept),
+            line('artifact', `t1-keeta-non-money-sit-005-${process.env.GITHUB_RUN_ID}`)
+          ];
+          process.stdout.write(lines.join('\n'));
+          NODE
+            )"
+            gh api "repos/Pantonyeung/morefunos-v1-builder/issues/97/comments" -f body="$BODY"
+          else
+            gh api "repos/Pantonyeung/morefunos-v1-builder/issues/97/comments" -f body="T1_KEETA_NON_MONEY_SIT_005 run_id=$GITHUB_RUN_ID: evidence.json missing; inspect run failure."
+          fi
 
       - name: Restore exact current Worker
         if: always()
