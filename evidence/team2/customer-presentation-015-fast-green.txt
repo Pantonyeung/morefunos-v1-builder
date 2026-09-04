@@ -1,0 +1,5 @@
+status=GREEN
+source_sha=aada37744108849291e6c7cac5458ae7e9b944d2
+run_id=33863319605
+fixture_markers=0
+live_price_minor_hkd=PASS
