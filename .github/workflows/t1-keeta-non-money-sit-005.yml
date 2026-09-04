@@ -1,0 +1,444 @@
+name: T1 Keeta Non-Money SIT Execution 005
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-non-money-sit-005.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  execute:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      DONOR_SHA: '967a8e09dfbc53655380665824d5687c0ccd177b'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact V2 source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-non-money-sit-005.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact current V2 and historical auth donor
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Checkout B0169 auth donor
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.DONOR_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: donor
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Assemble ephemeral guarded probe only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp donor/workers/keeta/src/oauth-runtime.ts source/workers/keeta/src/oauth-runtime.ts
+          cp donor/packages/integration/keeta-standard-oauth.ts source/packages/integration/keeta-standard-oauth.ts
+          cat > source/workers/keeta/src/non-money-sit-probe.ts <<'TS'
+          import type { D1DatabaseLike } from "../../../packages/production-persistence/d1.ts";
+          import {
+            createD1KeetaDurableDeliveryRepository,
+            createD1KeetaMerchantDecisionIntegrityAuthority,
+            createD1KeetaProviderActionDeliveryAuthority,
+          } from "../../../packages/integration/d1-keeta-durable-runtime.ts";
+          import type { KeetaDurableDeliveryRecord } from "../../../packages/integration/keeta-durable-delivery.ts";
+          import { createKeetaSitOrderPathRuntime } from "../../../packages/integration/keeta-sit-order-path-runtime.ts";
+          import { createKeetaOrderGetReconciliationAdapter } from "../../../packages/integration/keeta-order-get-reconciliation.ts";
+          import { sendKeetaJsonRequest, type RuntimeSecretProvider } from "../../../packages/integration/keeta-standard-api.ts";
+          import type { KeetaProviderRequest } from "../../../packages/integration/keeta-order-provider-requests.ts";
+          import { getUsableKeetaConnectionToken, type KeetaOAuthRuntimeEnv } from "./oauth-runtime.ts";
+
+          interface Env extends KeetaOAuthRuntimeEnv {
+            readonly KEETA_SIT_PROBE_KEY?: string;
+            readonly KEETA_INGRESS_DB?: D1DatabaseLike;
+            readonly KEETA_CANONICAL_STORE_ID?: string;
+          }
+
+          const APP_ID = 3419700273;
+          const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+            status,
+            headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+          });
+
+          function auth(request: Request, env: Env) {
+            const expected = env.KEETA_SIT_PROBE_KEY;
+            if (!expected) throw new Error("PROBE_UNAVAILABLE");
+            if ((request.headers.get("authorization") ?? "") !== `Bearer ${expected}`) throw new Error("PROBE_UNAUTHORIZED");
+          }
+
+          function db(env: Env): D1DatabaseLike {
+            if (!env.KEETA_INGRESS_DB) throw new Error("D1_UNAVAILABLE");
+            return env.KEETA_INGRESS_DB;
+          }
+
+          function secretProvider(env: Env): RuntimeSecretProvider {
+            return { async getSecret(name: string) {
+              if (name !== "KEETA_APP_SECRET") return null;
+              return env.KEETA_APP_SECRET?.length ? env.KEETA_APP_SECRET : null;
+            }};
+          }
+
+          async function latestReceipt(env: Env, pendingOnly: boolean): Promise<KeetaDurableDeliveryRecord | null> {
+            const predicate = pendingOnly
+              ? "WHERE json_extract(record_json, '$.merchantDecision') = 'PENDING' AND json_extract(record_json, '$.canonicalOrderId') IS NULL"
+              : "WHERE json_extract(record_json, '$.canonicalOrderId') IS NULL";
+            const row = await db(env).prepare(
+              `SELECT record_json FROM mfos_keeta_durable_delivery ${predicate} ORDER BY first_seen_at DESC LIMIT 1`
+            ).first<{ record_json?: string }>();
+            if (!row?.record_json) return null;
+            return JSON.parse(row.record_json) as KeetaDurableDeliveryRecord;
+          }
+
+          function summary(record: KeetaDurableDeliveryRecord | null) {
+            if (!record) return null;
+            let orderViewId: string | null = null;
+            try {
+              const parsed = JSON.parse(record.evidence.message) as { orderInfo?: { baseOrder?: { orderViewId?: unknown } } };
+              const raw = parsed.orderInfo?.baseOrder?.orderViewId;
+              if (raw !== undefined && raw !== null) orderViewId = String(raw);
+            } catch {}
+            return {
+              dedupKey: record.dedupKey,
+              messageId: record.evidence.messageId,
+              orderViewId,
+              providerShopId: record.evidence.providerShopId,
+              canonicalStoreId: record.canonicalStoreId ?? null,
+              merchantDecision: record.merchantDecision ?? null,
+              providerAction: record.providerAction ?? null,
+              providerActionStatus: record.providerActionStatus ?? null,
+              providerActionAttempts: record.providerActionAttempts ?? 0,
+              canonicalOrderPresent: Boolean(record.canonicalOrderId),
+              firstSeenAt: record.firstSeenAt,
+            };
+          }
+
+          async function executeProvider(request: KeetaProviderRequest, env: Env) {
+            const token = await getUsableKeetaConnectionToken("default", env);
+            return sendKeetaJsonRequest({
+              url: request.endpoint,
+              params: {
+                ...request.params,
+                appId: APP_ID,
+                accessToken: token.accessToken,
+                timestamp: Math.floor(Date.now() / 1000),
+              },
+              secretProvider: secretProvider(env),
+            });
+          }
+
+          async function reconcile(record: KeetaDurableDeliveryRecord, env: Env, mode: "MATCH" | "MISMATCH" | "INCONCLUSIVE") {
+            const repository = createD1KeetaDurableDeliveryRepository(db(env));
+            const adapter = createKeetaOrderGetReconciliationAdapter({
+              repository,
+              resolveStoreBinding: async () => mode === "MISMATCH"
+                ? "SIT005_INTENTIONAL_STORE_MISMATCH"
+                : (record.canonicalStoreId ?? null),
+              readCanonicalOrder: async () => null,
+              sendProviderRequest: async ({ request }) => {
+                if (mode === "INCONCLUSIVE") throw new Error("SIT005_CONTROLLED_TRANSPORT_FAULT_BEFORE_SEND");
+                return executeProvider(request, env);
+              },
+            });
+            const result = await adapter.reconcile(record.dedupKey);
+            return {
+              verdict: result.verdict,
+              reasons: result.reasons,
+              dedupKey: result.dedupKey,
+              providerOrderId: result.providerOrderId ?? null,
+              providerShopId: result.providerShopId ?? null,
+              canonicalStoreId: result.canonicalStoreId ?? null,
+              queriedEndpoint: result.queriedEndpoint ?? null,
+              providerCode: result.providerCode ?? null,
+              providerMessage: result.providerMessage ?? null,
+              providerError: result.providerError ?? null,
+              canonicalOrderPresent: result.canonicalOrder !== null,
+            };
+          }
+
+          async function rejectFresh(env: Env) {
+            const current = await latestReceipt(env, true);
+            if (!current) return { executed: false, reason: "NO_PENDING_RECEIPT" };
+            const ageMs = Date.now() - Date.parse(current.firstSeenAt);
+            if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 240000) {
+              return { executed: false, reason: "NO_FRESH_PENDING_RECEIPT_UNDER_4_MINUTES", ageMs, receipt: summary(current) };
+            }
+
+            const database = db(env);
+            const decision = createD1KeetaMerchantDecisionIntegrityAuthority(database);
+            const decided = await decision.decide(
+              current.dedupKey,
+              current.canonicalStoreId ?? "",
+              { decision: "REJECT", evidenceRef: `SIT005:${Date.now()}`, cancelCode: 500001 }
+            );
+
+            const runtime = createKeetaSitOrderPathRuntime({
+              repository: createD1KeetaDurableDeliveryRepository(database),
+              providerActionAuthority: createD1KeetaProviderActionDeliveryAuthority(database),
+              moneyAuthority: async () => ({ status: "UNKNOWN_FAIL_CLOSED", reasonCode: "MONEY_AUTHORITY_EXTERNAL_BLOCKER" }),
+              acceptCanonicalOrder: async () => { throw new Error("SIT005_ACCEPT_FORBIDDEN"); },
+              sendProviderRequest: async ({ request }) => {
+                const response = await executeProvider(request, env);
+                if (!response.ok) throw new Error(`KEETA_PROVIDER_NON_SUCCESS_${response.code}`);
+                return { outcome: "SUCCESS" as const, evidenceRef: `provider-code:${response.code}` };
+              },
+            });
+
+            const first = await runtime.continueDecision(decided.dedupKey);
+            const second = await runtime.continueDecision(decided.dedupKey);
+            const readback = await createD1KeetaDurableDeliveryRepository(database).get(decided.dedupKey);
+            return {
+              executed: true,
+              firstDisposition: first.disposition,
+              secondDisposition: second.disposition,
+              readback: summary(readback),
+              expectedProviderEndpoint: "https://open.mykeeta.com/api/open/order/cancel",
+              cancelCode: 500001,
+              canonicalOrderCountExpected: 0,
+            };
+          }
+
+          async function controlledAmbiguous(env: Env, runId: string) {
+            const base = await latestReceipt(env, false);
+            if (!base) return { executed: false, reason: "NO_DURABLE_RECEIPT_FOR_CONTROLLED_AMBIGUOUS" };
+            const database = db(env);
+            const syntheticKey = `KEETA:SIT005:AMBIGUOUS:${runId}`;
+            const synthetic: KeetaDurableDeliveryRecord = {
+              ...base,
+              dedupKey: syntheticKey,
+              fingerprint: `SIT005:${runId}`,
+              merchantDecision: "REJECTED",
+              merchantDecisionEvidenceRef: `SIT005:${runId}`,
+              canonicalOrderId: undefined,
+              canonicalRevision: undefined,
+              cancelCode: 500001,
+              providerAction: undefined,
+              providerActionStatus: undefined,
+              providerActionAttempts: 0,
+              providerActionClaimRef: undefined,
+              providerActionLastError: undefined,
+              providerActionSentAt: undefined,
+              updatedAt: new Date().toISOString(),
+            };
+            const repository = createD1KeetaDurableDeliveryRepository(database);
+            await repository.putIfAbsent(synthetic);
+            try {
+              const runtime = createKeetaSitOrderPathRuntime({
+                repository,
+                providerActionAuthority: createD1KeetaProviderActionDeliveryAuthority(database),
+                moneyAuthority: async () => ({ status: "UNKNOWN_FAIL_CLOSED", reasonCode: "MONEY_AUTHORITY_EXTERNAL_BLOCKER" }),
+                acceptCanonicalOrder: async () => { throw new Error("SIT005_ACCEPT_FORBIDDEN"); },
+                sendProviderRequest: async () => ({ outcome: "AMBIGUOUS" as const, evidenceRef: "SIT005_CONTROLLED_NO_PROVIDER_SEND" }),
+              });
+              const first = await runtime.continueDecision(syntheticKey);
+              const second = await runtime.continueDecision(syntheticKey);
+              const readback = await repository.get(syntheticKey);
+              return {
+                executed: true,
+                providerNetworkSend: false,
+                firstDisposition: first.disposition,
+                secondDisposition: second.disposition,
+                readback: summary(readback),
+              };
+            } finally {
+              await database.prepare("DELETE FROM mfos_keeta_durable_delivery WHERE dedup_key = ?").bind(syntheticKey).run();
+            }
+          }
+
+          export default {
+            async fetch(request: Request, env: Env): Promise<Response> {
+              try {
+                auth(request, env);
+                const url = new URL(request.url);
+                if (request.method === "GET" && url.pathname === "/sit/non-money/status") {
+                  const latest = await latestReceipt(env, false);
+                  const pending = await latestReceipt(env, true);
+                  return json({ code: 0, latest: summary(latest), pending: summary(pending) });
+                }
+                if (request.method === "POST" && url.pathname === "/sit/non-money/order-get") {
+                  const record = await latestReceipt(env, false);
+                  if (!record) return json({ code: "NO_DURABLE_RECEIPT" }, 409);
+                  const mode = (url.searchParams.get("mode") ?? "MATCH") as "MATCH" | "MISMATCH" | "INCONCLUSIVE";
+                  if (!["MATCH","MISMATCH","INCONCLUSIVE"].includes(mode)) return json({ code: "MODE_INVALID" }, 400);
+                  return json({ code: 0, mode, result: await reconcile(record, env, mode) });
+                }
+                if (request.method === "POST" && url.pathname === "/sit/non-money/reject-fresh") {
+                  return json({ code: 0, result: await rejectFresh(env) });
+                }
+                if (request.method === "POST" && url.pathname === "/sit/non-money/ambiguous-controlled") {
+                  return json({ code: 0, result: await controlledAmbiguous(env, url.searchParams.get("runId") ?? "unknown") });
+                }
+                return json({ code: "NOT_FOUND" }, 404);
+              } catch (error) {
+                const code = error instanceof Error ? error.message : "SIT005_ERROR";
+                return json({ code }, 500);
+              }
+            },
+          };
+          TS
+
+          cat > "$RUNNER_TEMP/probe-wrangler.jsonc" <<'JSON'
+          {
+            "name": "morefun-v2-keeta-sit",
+            "main": "__SOURCE__/workers/keeta/src/non-money-sit-probe.ts",
+            "compatibility_date": "2026-08-29",
+            "compatibility_flags": ["nodejs_compat"],
+            "workers_dev": true,
+            "preview_urls": false,
+            "vars": {
+              "KEETA_APP_ID": "3419700273",
+              "KEETA_CANONICAL_STORE_ID": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+            },
+            "d1_databases": [{
+              "binding": "KEETA_INGRESS_DB",
+              "database_name": "morefun-v2-keeta-sit-ingress",
+              "database_id": "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+            }]
+          }
+          JSON
+          sed -i "s#__SOURCE__#$GITHUB_WORKSPACE/source#g" "$RUNNER_TEMP/probe-wrangler.jsonc"
+
+      - name: Prepare ephemeral SIT probe authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/probe.env"
+          chmod 600 "$RUNNER_TEMP/probe.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+
+      - name: Deploy guarded temporary non-money SIT probe
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config "$RUNNER_TEMP/probe-wrangler.jsonc" --secrets-file "$RUNNER_TEMP/probe.env"
+
+      - name: Execute non-money SIT cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/sit005"
+          call() {
+            local method="$1"; shift
+            local path="$1"; shift
+            local outfile="$1"; shift
+            for attempt in $(seq 1 20); do
+              HTTP="$(curl --silent --show-error -o "$outfile" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL$path" || true)"
+              if [[ "$HTTP" != "000" ]]; then break; fi
+              sleep 2
+            done
+            echo "http=$HTTP path=$path"
+            cat "$outfile"
+            echo
+            test "$HTTP" = "200"
+          }
+
+          call GET  '/sit/non-money/status' "$RUNNER_TEMP/sit005/status.json"
+          call POST '/sit/non-money/order-get?mode=MATCH' "$RUNNER_TEMP/sit005/order-get-match.json"
+          call POST '/sit/non-money/order-get?mode=MISMATCH' "$RUNNER_TEMP/sit005/order-get-mismatch.json"
+          call POST '/sit/non-money/order-get?mode=INCONCLUSIVE' "$RUNNER_TEMP/sit005/order-get-inconclusive.json"
+          call POST "/sit/non-money/ambiguous-controlled?runId=$GITHUB_RUN_ID" "$RUNNER_TEMP/sit005/ambiguous.json"
+          call POST '/sit/non-money/reject-fresh' "$RUNNER_TEMP/sit005/reject.json"
+
+          node - "$RUNNER_TEMP/sit005" <<'NODE'
+          const fs=require('fs'), path=require('path');
+          const dir=process.argv[2];
+          const read=n=>JSON.parse(fs.readFileSync(path.join(dir,n),'utf8'));
+          const status=read('status.json');
+          const match=read('order-get-match.json');
+          const mismatch=read('order-get-mismatch.json');
+          const inconclusive=read('order-get-inconclusive.json');
+          const ambiguous=read('ambiguous.json');
+          const reject=read('reject.json');
+
+          const evidence={
+            builder_run_id:process.env.GITHUB_RUN_ID,
+            source_sha:process.env.SOURCE_SHA || null,
+            status,
+            order_get_match:match,
+            order_get_mismatch:mismatch,
+            order_get_inconclusive:inconclusive,
+            ambiguous_controlled:ambiguous,
+            reject_fresh:reject,
+            money_dependent_accept:'NOT_EXECUTED_FAIL_CLOSED'
+          };
+          fs.writeFileSync(path.join(dir,'evidence.json'),JSON.stringify(evidence,null,2));
+
+          const checks=[];
+          checks.push(['ORDER_GET_MATCH', match?.result?.verdict === 'MATCH']);
+          checks.push(['ORDER_GET_MISMATCH', mismatch?.result?.verdict === 'MISMATCH']);
+          checks.push(['ORDER_GET_INCONCLUSIVE', inconclusive?.result?.verdict === 'INCONCLUSIVE']);
+          checks.push(['AMBIGUOUS_NO_RETRY', ambiguous?.result?.executed === true
+            && ambiguous?.result?.firstDisposition === 'NEEDS_RECONCILIATION'
+            && ambiguous?.result?.secondDisposition === 'NEEDS_RECONCILIATION'
+            && ambiguous?.result?.readback?.providerActionStatus === 'AMBIGUOUS'
+            && ambiguous?.result?.readback?.providerActionAttempts === 1]);
+
+          const r=reject?.result;
+          if (r?.executed === true) {
+            checks.push(['REJECT_PROVIDER_CANCEL_SENT', r.firstDisposition === 'COMPLETE'
+              && r.secondDisposition === 'COMPLETE'
+              && r.readback?.providerAction === 'CANCEL'
+              && r.readback?.providerActionStatus === 'SENT'
+              && r.readback?.providerActionAttempts === 1]);
+            checks.push(['REJECT_CANONICAL_ORDER_ZERO', r.readback?.canonicalOrderPresent === false]);
+          } else {
+            console.log(`REJECT_READY_NOT_EXECUTED reason=${r?.reason ?? 'UNKNOWN'}`);
+          }
+
+          for (const [name,ok] of checks) {
+            console.log(`${name}=${ok?'PASS':'FAIL'}`);
+            if (!ok) process.exitCode=1;
+          }
+          NODE
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+
+      - name: Upload sanitized SIT evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: t1-keeta-non-money-sit-005-${{ github.run_id }}
+          path: ${{ runner.temp }}/sit005
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Restore exact current Worker
+        if: always()
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
+          npx --yes "wrangler@$WRANGLER_VERSION" secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc --remote 2>/dev/null || true
+          echo "current_worker_restored=true"
