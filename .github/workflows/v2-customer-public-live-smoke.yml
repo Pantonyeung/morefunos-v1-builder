@@ -105,7 +105,12 @@ jobs:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
-        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PUBLIC_LIVE_SMOKE status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
+        shell: bash
+        run: |
+          SUMMARY_FILE="evidence/summary.txt"
+          SUMMARY="summary_unavailable"
+          if [ -s "$SUMMARY_FILE" ]; then SUMMARY="$(tr '\n' ' ' < "$SUMMARY_FILE")"; fi
+          gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PUBLIC_LIVE_SMOKE status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA $SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
