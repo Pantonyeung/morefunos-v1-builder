@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - 'requests/v2-smm-complete-product-032-request.txt'
+  pull_request:
+    paths:
+      - 'requests/v2-smm-complete-product-032-request.txt'
   workflow_dispatch:
     inputs:
       source_sha:
