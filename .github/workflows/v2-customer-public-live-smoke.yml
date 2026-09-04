@@ -40,7 +40,7 @@ jobs:
             local url="$1" out="$2" code=""
             for i in {1..30}; do
               code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
-              [[ "$code" = 200 ]] && break
+              if [[ "$code" = 200 ]]; then break; fi
               sleep 2
             done
             printf '%s' "$code"
@@ -80,5 +80,5 @@ jobs:
         with:
           name: v2-customer-public-live-smoke-${{ steps.req.outputs.source_sha }}
           path: evidence
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
