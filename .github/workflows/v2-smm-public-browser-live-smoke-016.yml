@@ -76,7 +76,7 @@ jobs:
               if(u.pathname.startsWith('/api/')) api.push({origin:u.origin,path:u.pathname,method:r.method()});
             });
             await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
-            await page.getByLabel('SMM Runtime 配對').getByPlaceholder('輸入可信配對憑證').fill(process.env.ADMIN_LOGIN_SECRET);
+            await page.getByPlaceholder('輸入可信配對憑證').fill(process.env.ADMIN_LOGIN_SECRET);
             await page.getByRole('button',{name:'連接 Runtime'}).click();
             await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
             await page.getByText('Orders 已由 trusted HTTP canonical projection 提供。',{exact:true}).waitFor({state:'visible',timeout:15000});
