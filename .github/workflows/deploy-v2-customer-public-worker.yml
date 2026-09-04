@@ -62,30 +62,40 @@ jobs:
         run: |
           set -euo pipefail
           URL="$(cat evidence/url.txt)"
-          for i in {1..30}; do
-            INDEX_HTTP="$(curl -sS -o /tmp/index.html -w '%{http_code}' "$URL/" || true)"
-            if [[ "$INDEX_HTTP" = 200 ]] && grep -q 'customer-runtime' /tmp/index.html; then break; fi
-            sleep 2
-          done
+          fetch_status() {
+            local url="$1" out="$2" code=""
+            for i in {1..30}; do
+              code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
+              if [[ "$code" = 200 ]]; then break; fi
+              sleep 2
+            done
+            printf '%s' "$code"
+          }
+
+          INDEX_HTTP="$(fetch_status "$URL/" /tmp/index.html)"
+          MENU_HTTP="$(fetch_status "$URL/menu" /tmp/menu.html)"
+          ORDERING_HTTP="$(fetch_status "$URL/api/customer/ordering" /tmp/ordering.json)"
           test "$INDEX_HTTP" = 200
-          grep -q 'customer-runtime' /tmp/index.html
-
-          for i in {1..30}; do
-            MENU_HTTP="$(curl -sS -o /tmp/menu.html -w '%{http_code}' "$URL/menu" || true)"
-            if [[ "$MENU_HTTP" = 200 ]] && grep -q 'customer-runtime' /tmp/menu.html; then break; fi
-            sleep 2
-          done
           test "$MENU_HTTP" = 200
-          grep -q 'customer-runtime' /tmp/menu.html
-
-          for i in {1..30}; do
-            ORDERING_HTTP="$(curl -sS -o /tmp/ordering.json -w '%{http_code}' "$URL/api/customer/ordering" || true)"
-            if [[ "$ORDERING_HTTP" = 200 ]]; then break; fi
-            sleep 2
-          done
           test "$ORDERING_HTTP" = 200
+
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in
+            http*) JS_URL="$JS_PATH" ;;
+            /*) JS_URL="$URL$JS_PATH" ;;
+            *) JS_URL="$URL/$JS_PATH" ;;
+          esac
+          JS_HTTP="$(fetch_status "$JS_URL" /tmp/customer.js)"
+          test "$JS_HTTP" = 200
+
+          FIXTURE_MARKERS=0
+          for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001' 'TST-HISTORY-001' '+852 5600 4443'; do
+            if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
+          done
+          test "$FIXTURE_MARKERS" = 0
           node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!Array.isArray(x.products))process.exit(1)"
-          printf 'index_http=%s\nspa_http=%s\nordering_http=%s\n' "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" > evidence/smoke.txt
+          printf 'index_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nfixture_markers=%s\n' "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$FIXTURE_MARKERS" > evidence/smoke.txt
       - name: Publish Team2 deploy audit
         if: always()
         env:
