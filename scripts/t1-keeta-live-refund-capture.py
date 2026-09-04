@@ -11,7 +11,7 @@ new = '''        if (result.evidence.eventId === 1001) {
           await createReceiptOnlyRuntime(env).recordProviderReceipt(result.evidence);
         }
 
-        if ([1002, 1003, 1004, 1005, 1007].includes(result.evidence.eventId)) {
+        if ([1002, 1003, 1004, 1005, 1006, 1007].includes(result.evidence.eventId)) {
           try {
             const m = JSON.parse(result.evidence.message) as Record<string, unknown>;
             const pick = (key: string) => m[key] ?? null;
