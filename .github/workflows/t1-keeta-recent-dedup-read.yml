@@ -1,0 +1,44 @@
+name: T1 Keeta Recent Dedup Read
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - requests/t1-keeta-recent-dedup-read.txt
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read recent Keeta webhook dedup rows
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KEETA_D1_DATABASE_ID: e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492
+        run: |
+          set -euo pipefail
+          AFTER_MS=1788514967136
+          SQL="SELECT dedup_key, fingerprint, created_at FROM keeta_webhook_dedup WHERE created_at > ? ORDER BY created_at ASC LIMIT 50;"
+          jq -n --arg sql "$SQL" --argjson after "$AFTER_MS" '{sql:$sql,params:[$after]}' > "$RUNNER_TEMP/q.json"
+          curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
+          cat "$RUNNER_TEMP/out.json"
+          jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/out.json" >/dev/null
+          echo "recent_rows=$(jq '[.result[0].results[]?] | length' "$RUNNER_TEMP/out.json")"
+          jq -r '.result[0].results[]? | "dedup_key=\(.dedup_key) created_at=\(.created_at)"' "$RUNNER_TEMP/out.json"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: t1-keeta-recent-dedup-${{ github.run_id }}
+          path: ${{ runner.temp }}/out.json
+          if-no-files-found: warn
+          retention-days: 7
