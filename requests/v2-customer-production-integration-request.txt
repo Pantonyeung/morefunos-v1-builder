@@ -1,2 +1,2 @@
-source_sha=68e2245da091095b02ca07fde9678d7f6b74674b
-attempt=t1-b2506-customer-submit-lifecycle-green
+source_sha=7640f935113a68d9434d463deda65c8c1964ff95
+attempt=t1-b2506-customer-submit-lifecycle-green-2
