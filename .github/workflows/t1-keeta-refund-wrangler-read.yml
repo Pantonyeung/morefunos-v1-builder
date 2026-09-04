@@ -1,0 +1,46 @@
+name: T1 Keeta Refund Wrangler Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-refund-wrangler-read.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Install Wrangler
+        run: npm install --global wrangler@4.125.0 --no-audit --no-fund
+      - name: Checkout exact admitted V2
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: bc1033b4fd8369ccd1f288906bdcb5cc4f21f534
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Read live schema and refund inbox via Wrangler binding
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_VIEW_ID="$(sed -n 's/^order_view_id=//p' ../../../requests/t1-keeta-refund-wrangler-read.txt | tail -n1 | tr -d '[:space:]')"
+          echo "=== schema ==="
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT type,name FROM sqlite_master WHERE name LIKE 'mfos_provider_event_inbox%';"
+          echo "=== refund rows ==="
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "SELECT provider_event_ref,event_id,provider_order_ref,provider_shop_id,event_json,first_received_at,last_received_at FROM mfos_provider_event_inbox WHERE provider_key='KEETA' AND provider_order_ref='$ORDER_VIEW_ID' AND event_id IN (1005,1007) ORDER BY first_received_at DESC LIMIT 10;"
