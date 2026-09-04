@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           SUFFIX="$(sed -n 's/^suffix=//p' requests/t1-keeta-live-suffix-read.txt | tr -d '[:space:]')"
-          test "$SUFFIX" = "5402"
+          [[ "$SUFFIX" =~ ^[0-9]{4}$ ]]
           SQL="SELECT dedup_key, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, json_extract(record_json,'$.merchantDecision') AS merchant_decision, record_json FROM mfos_keeta_durable_delivery WHERE record_json LIKE ? ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 3;"
           jq -n --arg sql "$SQL" --arg like "%$SUFFIX%" '{sql:$sql,params:[$like]}' > "$RUNNER_TEMP/q.json"
           curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
