@@ -1,2 +1,2 @@
-source_sha=f0ff02e5070c9f1cd2338d69bac08bbae0ccec29
-request_id=UIX-B0301-TERMINAL-SMM-20260905
+source_sha=a711d4fadb97fcd94d504ba2c77b9aab305a37c0
+request_id=SMM-B0310-R1-UI-INTEGRATION-20260905
