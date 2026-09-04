@@ -1,3 +1,3 @@
 source_sha=ca8c3e179ee32c23660cc16639afb766649fa6b2
 origin=https://morefun-v2-customer.pantonyeung.workers.dev
-retry=t1-b2506-after-d1-0012-repair
+retry=t1-b2506-post-deploy-controlled-order
