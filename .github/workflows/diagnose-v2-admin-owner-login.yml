@@ -45,3 +45,47 @@ jobs:
           OWNER_AUTH="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/body.json','utf8'));process.stdout.write(String(x.authenticated===true))")"
           OWNER_GET="$(curl -sS -b /tmp/owner-cookie -o /tmp/body.json -w '%{http_code}' "$OWNER_ORIGIN/api/owner/session")"
           printf 'owner_post_http=%s\nowner_post_authenticated=%s\nowner_post_code=%s\nowner_get_http=%s\n' "$OWNER_POST" "$OWNER_AUTH" "$OWNER_CODE" "$OWNER_GET"
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Install Playwright core
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+      - name: Diagnose Admin UI transition safely
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          cat > /tmp/admin-login-diagnostic.mjs <<'EOF'
+          import {chromium} from 'playwright-core';
+          const {ADMIN_ORIGIN,ADMIN_LOGIN_SECRET}=process.env;
+          const browser=await chromium.launch({headless:true,executablePath:process.argv[2]});
+          const context=await browser.newContext({viewport:{width:1440,height:1000}});
+          const page=await context.newPage();
+          const errors=[]; const failures=[]; const sessionResponses=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          page.on('requestfailed',r=>failures.push(r.url()+':'+(r.failure()?.errorText||'failed')));
+          page.on('response',async r=>{
+            if(r.url().includes('/api/admin/session')){
+              sessionResponses.push({method:r.request().method(),status:r.status()});
+            }
+          });
+          await page.goto(ADMIN_ORIGIN+'/admin/business-day',{waitUntil:'networkidle'});
+          await page.getByLabel('登入憑證').fill(ADMIN_LOGIN_SECRET);
+          await page.getByRole('button',{name:'登入',exact:true}).click();
+          await page.waitForTimeout(3000);
+          const body=(await page.locator('body').innerText()).replace(/\s+/g,' ').slice(0,1200);
+          const session=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
+          console.log('ui_session_http='+session.status());
+          console.log('ui_body_has_morefunos='+String(body.includes('MoreFunOS')));
+          console.log('ui_body_has_login_gate='+String(body.includes('需要正式 Admin session')));
+          console.log('ui_body_has_invalid='+String(body.includes('ADMIN_CREDENTIAL_INVALID')));
+          console.log('ui_body_prefix='+JSON.stringify(body));
+          console.log('ui_pageerrors='+JSON.stringify(errors));
+          console.log('ui_requestfailures='+JSON.stringify(failures));
+          console.log('ui_session_responses='+JSON.stringify(sessionResponses));
+          await browser.close();
+          EOF
+          node /tmp/admin-login-diagnostic.mjs "$CHROME"
