@@ -1,2 +1,2 @@
-source_sha=7712360805fa6ffde3bc43ea85ea58f80a9c8cce
-phase=GREEN_R2_D1_ACTION_CAS
+source_sha=35d32a6f201cb4a9ea0fb80c4e84ca0c86aa1e83
+phase=GREEN_R3_HARNESS_FIXED
