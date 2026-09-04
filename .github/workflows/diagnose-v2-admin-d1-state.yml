@@ -21,7 +21,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Query non-sensitive launch state summary
+
+      - name: Query non-sensitive SMT pairing state
         shell: bash
         run: |
           set -euo pipefail
@@ -35,30 +36,12 @@ jobs:
             local sql="$2"
             SQL="$sql" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
             curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > "/tmp/${name}.json"
-            NAME="$name" node - <<'NODE' | tee "evidence/${name}.txt"
-const x=require('/tmp/'+process.env.NAME+'.json');
-if(!x.success || !x.result?.[0]?.success) {
-  console.error(JSON.stringify(x.errors||x.result||x));
-  process.exit(1);
-}
-for(const row of x.result[0].results||[]) console.log(JSON.stringify(row));
-NODE
+            NAME="$name" node -e "const x=require('/tmp/'+process.env.NAME+'.json');if(!x.success||!x.result?.[0]?.success){console.error(JSON.stringify(x.errors||x.result||x));process.exit(1)};for(const row of x.result[0].results||[])console.log(JSON.stringify(row))" | tee "evidence/${name}.txt"
           }
 
-          query counts "SELECT
-            (SELECT COUNT(*) FROM mfos_device_trust) AS device_total,
-            (SELECT COUNT(*) FROM mfos_device_trust WHERE json_extract(payload_json,'$.lifecycleStatus')='TRUSTED') AS device_trusted,
-            (SELECT COUNT(*) FROM mfos_session) AS session_total,
-            (SELECT COUNT(*) FROM mfos_session WHERE lifecycle_status='ACTIVE') AS session_active,
-            (SELECT COUNT(*) FROM mfos_smt_runtime_binding) AS binding_total,
-            (SELECT COUNT(*) FROM mfos_smt_runtime_binding WHERE lifecycle_status='ACTIVE') AS binding_active"
-
-          query latest "SELECT
-            (SELECT MAX(json_extract(payload_json,'$.issuedAt')) FROM mfos_session) AS latest_session_issued_at,
-            (SELECT MAX(created_at) FROM mfos_smt_runtime_binding) AS latest_binding_created_at"
-
+          query counts "SELECT (SELECT COUNT(*) FROM mfos_device_trust) AS device_total, (SELECT COUNT(*) FROM mfos_device_trust WHERE json_extract(payload_json,'$.lifecycleStatus')='TRUSTED') AS device_trusted, (SELECT COUNT(*) FROM mfos_session) AS session_total, (SELECT COUNT(*) FROM mfos_session WHERE lifecycle_status='ACTIVE') AS session_active, (SELECT COUNT(*) FROM mfos_smt_runtime_binding) AS binding_total, (SELECT COUNT(*) FROM mfos_smt_runtime_binding WHERE lifecycle_status='ACTIVE') AS binding_active"
+          query latest "SELECT (SELECT MAX(json_extract(payload_json,'$.issuedAt')) FROM mfos_session) AS latest_session_issued_at, (SELECT MAX(created_at) FROM mfos_smt_runtime_binding) AS latest_binding_created_at"
           query stores "SELECT store_code, store_id, merchant_id FROM mfos_store_code_binding ORDER BY store_code"
-
           query business_days "SELECT store_id, business_date, lifecycle_status, opened_at, closed_at, revision FROM mfos_business_day ORDER BY opened_at DESC LIMIT 10"
 
           printf 'database_name=morefun-v2-production\nsecrets_or_tokens_logged=NO\n' > evidence/summary.txt
