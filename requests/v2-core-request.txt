@@ -1,5 +1,5 @@
 source_sha=72c564fadf936d492f5f9f114fab8278ea403b32
-base_sha=3e3211465719165ae1ea9d8128a5c284e0928ea3
+base_sha=
 branch_name=main
-verification_phase=POST_ADMISSION
-request_id=COMMANDER-T2-T3-COMBINED-MAIN-POST-ADMISSION-20260904
+verification_phase=CANDIDATE
+request_id=COMMANDER-COMBINED-MAIN-CORE-POST-ADMISSION-R2-20260904
