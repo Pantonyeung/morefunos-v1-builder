@@ -1,4 +1,4 @@
-source_sha=eb5fea3e3a4531bde9407b0b7913725b048498f5
-base_sha=c11bf3d0bca876e859c8dafc996e3f5aab517092
+source_sha=f0ff02e5070c9f1cd2338d69bac08bbae0ccec29
+base_sha=1cd0757918053a4269bb02f2ef620c7874de5cce
 branch_name=work/UIX/B0301-mobile-ordering-adoption-primitives
-request_id=UIX-B0301-V2-GOVERNANCE-20260905
+request_id=UIX-B0301-TERMINAL-GOVERNANCE-20260905
