@@ -1,0 +1,84 @@
+name: V2 Customer Public Live Smoke
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-public-live-smoke.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-public-live-smoke.txt | tr -d '[:space:]')"
+          ORIGIN="$(sed -n 's/^origin=//p' requests/v2-customer-public-live-smoke.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ORIGIN" =~ ^https:// ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+      - name: Public assets SPA API and presentation smoke
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          ORIGIN: ${{ steps.req.outputs.origin }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+
+          fetch_200() {
+            local url="$1" out="$2" code=""
+            for i in {1..30}; do
+              code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
+              [[ "$code" = 200 ]] && break
+              sleep 2
+            done
+            printf '%s' "$code"
+          }
+
+          INDEX_HTTP="$(fetch_200 "$ORIGIN/" /tmp/index.html)"
+          test "$INDEX_HTTP" = 200
+          grep -q 'customer-runtime' /tmp/index.html
+
+          MENU_HTTP="$(fetch_200 "$ORIGIN/menu" /tmp/menu.html)"
+          test "$MENU_HTTP" = 200
+          grep -q 'customer-runtime' /tmp/menu.html
+
+          ORDERING_HTTP="$(fetch_200 "$ORIGIN/api/customer/ordering" /tmp/ordering.json)"
+          test "$ORDERING_HTTP" = 200
+          node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!x.presentationRevision||!Number.isSafeInteger(x.operationalRevision)||!Array.isArray(x.products))process.exit(1)"
+
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in
+            http*) JS_URL="$JS_PATH" ;;
+            /*) JS_URL="$ORIGIN$JS_PATH" ;;
+            *) JS_URL="$ORIGIN/$JS_PATH" ;;
+          esac
+          JS_HTTP="$(fetch_200 "$JS_URL" /tmp/customer.js)"
+          test "$JS_HTTP" = 200
+
+          FIXTURE_MARKERS=0
+          for marker in 'F6 紫米餐' '(5) 招牌雞扒便當' 'TST-CU-20260824-001'; do
+            if grep -Fq "$marker" /tmp/customer.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
+          done
+
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nfixture_markers=%s\npresentation_canonical=%s\nclassification=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$FIXTURE_MARKERS"             "$([[ "$FIXTURE_MARKERS" = 0 ]] && echo YES || echo NO)"             "$([[ "$FIXTURE_MARKERS" = 0 ]] && echo READY_PRESENTATION || echo BLOCKED_PRESENTATION_FIXTURE)"             | tee evidence/summary.txt
+          cp /tmp/ordering.json evidence/ordering.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-customer-public-live-smoke-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
