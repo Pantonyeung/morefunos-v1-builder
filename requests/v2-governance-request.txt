@@ -1,4 +1,4 @@
-source_sha=9c609088c6e530c96be6bf1d75d31fe590d831a3
+source_sha=62d7c3106a8a74caf82b9c1fd7892ff44cb50831
 base_sha=7c744d5ef67c51a70e00321c536e05371d1c3898
 branch_name=work/SMM/B0311-ordering-product-sheet-live-cart
-request_id=SMM-B0311-R1-GOV-20260905
+request_id=SMM-B0311-TERMINAL-GOV-20260905
