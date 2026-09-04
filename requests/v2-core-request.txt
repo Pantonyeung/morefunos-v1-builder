@@ -1,5 +1,5 @@
-source_sha=f61eff6836840c8ab1328bb66c913f4f3ccdcd4f
-base_sha=
-branch_name=main
+source_sha=98159b27593fe3fce7ba00e973ca98bb7298d20e
+base_sha=e829f3dd5ad90a1a59dc029d9629f3467009a8ca
+branch_name=work/CORE/B0276-last-two-server-closure
 verification_phase=CANDIDATE
-request_id=T2-ORDER-COMPLETE-009-POST-ADMISSION-CORE-20260904
+request_id=T2-LAST-TWO-011-PRINT-CANDIDATE-CORE-20260904
