@@ -1,2 +1,2 @@
-source_sha=eb5fea3e3a4531bde9407b0b7913725b048498f5
-request_id=UIX-B0301-SMM-CONSUMER-20260905
+source_sha=f0ff02e5070c9f1cd2338d69bac08bbae0ccec29
+request_id=UIX-B0301-TERMINAL-SMM-20260905
