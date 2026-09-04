@@ -1,0 +1,99 @@
+name: V2 SMT Runtime Canonical Data Diagnostic
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-runtime-canonical-diagnostic.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-runtime-canonical-diagnostic.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Read production canonical runtime state
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          DB='morefun-v2-production'
+          runq() {
+            local name="$1"
+            local sql="$2"
+            npx --yes wrangler@4 d1 execute "$DB" --remote --config "$CONFIG" --json --command "$sql" > "$GITHUB_WORKSPACE/evidence/$name.json"
+          }
+
+          runq store "SELECT b.store_code,b.store_id,b.merchant_id,s.record_json FROM mfos_store_code_binding b LEFT JOIN mfos_stores s ON s.store_id=b.store_id WHERE b.store_code='MF01';"
+          STORE_ID="$(node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.GITHUB_WORKSPACE+'/evidence/store.json','utf8'));
+          const rows=(Array.isArray(x)?x.flatMap(v=>v.results||[]):[]);
+          if(rows.length!==1||!rows[0].store_id) process.exit(1);
+          process.stdout.write(rows[0].store_id);
+          NODE
+          )"
+
+          runq business_day "SELECT business_day_id,store_id,business_date,lifecycle_status,opened_at,revision FROM mfos_business_day WHERE store_id='$STORE_ID' ORDER BY opened_at DESC LIMIT 5;"
+          runq catalog "SELECT store_id,catalog_revision,revision,updated_at,length(snapshot_json) AS snapshot_bytes FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
+          runq orders "SELECT COUNT(*) AS accepted_projection_count FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL;"
+          runq open_orders "SELECT COUNT(*) AS open_projection_count FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL AND json_extract(accepted_projection_json,'$.lifecycleStatus')='ACCEPTED';"
+
+          node - <<'NODE' | tee "$GITHUB_WORKSPACE/evidence/summary.txt"
+          const fs=require('fs'), p=process.env.GITHUB_WORKSPACE+'/evidence/';
+          function rows(n){const x=JSON.parse(fs.readFileSync(p+n+'.json','utf8'));return Array.isArray(x)?x.flatMap(v=>v.results||[]):[]}
+          const store=rows('store');
+          const days=rows('business_day');
+          const catalog=rows('catalog');
+          const orders=rows('orders');
+          const open=rows('open_orders');
+          const openDays=days.filter(x=>x.lifecycle_status==='OPEN');
+          console.log('source_sha='+process.env.SOURCE_SHA);
+          console.log('canonical_store_rows='+store.length);
+          console.log('canonical_store_id='+(store[0]?.store_id||'MISSING'));
+          console.log('business_day_rows='+days.length);
+          console.log('open_business_day_count='+openDays.length);
+          console.log('open_business_day='+(openDays[0]?.business_date||'MISSING'));
+          console.log('catalog_state_count='+catalog.length);
+          console.log('catalog_revision='+(catalog[0]?.catalog_revision||'MISSING'));
+          console.log('catalog_snapshot_bytes='+(catalog[0]?.snapshot_bytes||0));
+          console.log('accepted_projection_count='+(orders[0]?.accepted_projection_count??'UNKNOWN'));
+          console.log('open_projection_count='+(open[0]?.open_projection_count??'UNKNOWN'));
+          NODE
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smt-runtime-canonical-diagnostic-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
