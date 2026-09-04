@@ -1,0 +1,160 @@
+name: T1 Keeta Live Refund Event Capture
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-live-refund-capture.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefun-v2-keeta-sit
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node24-wrangler-${{ env.WRANGLER_VERSION }}
+      - name: Install pinned Wrangler once
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+          wrangler --version
+      - name: Resolve exact V2 source
+        id: source
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-live-refund-capture.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.source.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Add sanitized live event capture only
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source/workers/keeta/src/index.ts')
+          s=p.read_text()
+          old='''        if (result.evidence.eventId === 1001) {
+          await createReceiptOnlyRuntime(env).recordProviderReceipt(result.evidence);
+        }
+
+        return json({ ...result.ack, data: {} });'''
+          new='''        if (result.evidence.eventId === 1001) {
+          await createReceiptOnlyRuntime(env).recordProviderReceipt(result.evidence);
+        }
+
+        if ([1002, 1003, 1004, 1005, 1007].includes(result.evidence.eventId)) {
+          try {
+            const m = JSON.parse(result.evidence.message) as Record<string, unknown>;
+            const pick = (key: string) => m[key] ?? null;
+            console.log("KEETA_LIVE_EVENT_CAPTURE " + JSON.stringify({
+              eventId: result.evidence.eventId,
+              messageId: result.evidence.messageId,
+              providerShopId: result.evidence.providerShopId,
+              orderViewId: pick("orderViewId"),
+              status: pick("status"),
+              afterSaleOrderId: pick("afterSaleOrderId"),
+              isAppeal: pick("isAppeal"),
+              money: pick("money"),
+              currency: pick("currency"),
+              applyOpType: pick("applyOpType"),
+              applyReason: pick("applyReason"),
+              handleOpType: pick("handleOpType"),
+              handleReason: pick("handleReason"),
+              opTime: pick("opTime"),
+              refundProductCount: Array.isArray(m.refundProducts) ? m.refundProducts.length : null
+            }));
+          } catch {
+            console.log("KEETA_LIVE_EVENT_CAPTURE " + JSON.stringify({
+              eventId: result.evidence.eventId,
+              messageId: result.evidence.messageId,
+              providerShopId: result.evidence.providerShopId,
+              parseError: true
+            }));
+          }
+        }
+
+        return json({ ...result.ack, data: {} });'''
+          if s.count(old) != 1:
+              raise SystemExit('CAPTURE_PATCH_ANCHOR_NOT_UNIQUE')
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Deploy sanitized capture Worker
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy --config wrangler.jsonc
+      - name: Capture window armed
+        run: |
+          echo "KEETA_LIVE_REFUND_CAPTURE=ARMED"
+          echo "capture_window_minutes=75"
+          echo "target_events=1002,1003,1004,1005,1007"
+      - name: Capture sanitized live events for 75 minutes
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          timeout 4500s wrangler tail --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-live-tail.jsonl" 2> "$RUNNER_TEMP/keeta-live-tail.err" || true
+          node - "$RUNNER_TEMP/keeta-live-tail.jsonl" "$RUNNER_TEMP/keeta-live-events.json" <<'NODE'
+          const fs=require('fs'); const rows=[];
+          if(fs.existsSync(process.argv[2])) for(const line of fs.readFileSync(process.argv[2],'utf8').split(/\r?\n/)){
+            if(!line.trim()) continue; let row; try{row=JSON.parse(line);}catch{continue;}
+            for(const log of row?.logs ?? []) for(const part of (Array.isArray(log?.message)?log.message:[log?.message])){
+              if(typeof part==='string' && part.startsWith('KEETA_LIVE_EVENT_CAPTURE ')){
+                try{rows.push(JSON.parse(part.slice('KEETA_LIVE_EVENT_CAPTURE '.length)));}catch{}
+              }
+            }
+          }
+          fs.writeFileSync(process.argv[3],JSON.stringify(rows,null,2));
+          console.log('captured_events='+rows.length);
+          for(const r of rows) console.log(JSON.stringify(r));
+          NODE
+      - name: Upload sanitized capture evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: t1-keeta-live-refund-capture-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/keeta-live-events.json
+            ${{ runner.temp }}/keeta-live-tail.err
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Restore exact admitted Worker
+        if: always()
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          git checkout -- src/index.ts
+          wrangler deploy --config wrangler.jsonc
+          echo "exact_worker_restored=true"
