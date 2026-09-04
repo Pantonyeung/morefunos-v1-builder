@@ -1,2 +1,2 @@
-source_sha=ca8c3e179ee32c23660cc16639afb766649fa6b2
-attempt=t1-b2506-post-admission
+source_sha=7640f935113a68d9434d463deda65c8c1964ff95
+attempt=t1-b2506-customer-submit-lifecycle-green-2
