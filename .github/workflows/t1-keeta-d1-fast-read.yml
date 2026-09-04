@@ -26,7 +26,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          QUERY="SELECT json_extract(record_json,'$.firstSeenAt') AS first_seen_at, json_extract(record_json,'$.merchantDecision') AS merchant_decision, json_extract(record_json,'$.providerActionStatus') AS provider_action_status, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, json_extract(json_extract(record_json,'$.evidence.message'),'$.orderInfo.baseOrder.orderViewId') AS order_view_id FROM mfos_keeta_durable_delivery ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 5;"
+          QUERY="SELECT json_extract(record_json,'$.firstSeenAt') AS first_seen_at, json_extract(record_json,'$.merchantDecision') AS merchant_decision, json_extract(record_json,'$.providerActionStatus') AS provider_action_status, json_extract(record_json,'$.evidence.eventId') AS event_id, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, COALESCE(json_extract(json_extract(record_json,'$.evidence.message'),'$.baseOrder.orderViewId'), json_extract(json_extract(record_json,'$.evidence.message'),'$.orderInfo.baseOrder.orderViewId')) AS order_view_id FROM mfos_keeta_durable_delivery ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 5;"
           npx --yes "wrangler@$WRANGLER_VERSION" d1 execute morefun-v2-keeta-sit-ingress --remote --command="$QUERY" > "$RUNNER_TEMP/d1-fast-read.txt"
           cat "$RUNNER_TEMP/d1-fast-read.txt"
           BODY="T1_KEETA_D1_FAST_READ run_id=$GITHUB_RUN_ID"$'\n\n'"$(tail -n 80 "$RUNNER_TEMP/d1-fast-read.txt")"
