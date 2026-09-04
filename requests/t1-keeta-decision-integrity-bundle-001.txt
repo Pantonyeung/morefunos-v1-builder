@@ -1,2 +1,2 @@
-source_sha=799bb38e65aa91ff532fc44250e8e6dee8423d5b
-phase=POST_ADMISSION
+source_sha=64297bae0e4ddca8e7577155e238d260bcbc3207
+phase=B2507_RED
