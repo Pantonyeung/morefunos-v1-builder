@@ -98,7 +98,17 @@ jobs:
           await admin.goto(ADMIN_ORIGIN+'/admin/business-day',{waitUntil:'networkidle'});
           await admin.getByLabel('登入憑證').fill(ADMIN_LOGIN_SECRET);
           await admin.getByRole('button',{name:'登入',exact:true}).click();
-          await admin.getByText('MoreFunOS',{exact:true}).waitFor({timeout:15000});
+          try {
+            await admin.getByText('MoreFunOS',{exact:true}).waitFor({timeout:15000});
+          } catch (error) {
+            const diagnosticSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
+            const diagnosticBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ').slice(0,1600);
+            console.log('ADMIN_UI_DIAG_SESSION_HTTP='+diagnosticSession.status());
+            console.log('ADMIN_UI_DIAG_BODY='+JSON.stringify(diagnosticBody));
+            console.log('ADMIN_UI_DIAG_PAGE_ERRORS='+JSON.stringify(adminErrors));
+            console.log('ADMIN_UI_DIAG_REQUEST_FAILURES='+JSON.stringify(adminFailures));
+            throw error;
+          }
           const adminSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
           if(adminSession.status()!==200) throw new Error('ADMIN_AUTH_SESSION:'+adminSession.status());
           const adminBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ');
