@@ -1,0 +1,77 @@
+name: Deploy V2 Customer Public Worker
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-public-worker-deploy.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-public-worker-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Build exact Customer assets
+        working-directory: source/apps/customer-web
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+      - name: Verify edge contract
+        working-directory: source
+        run: node --experimental-strip-types --test infra/cloudflare/customer-web-worker/*.test.ts
+      - name: Deploy exact Customer public Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          npx --yes wrangler@4 deploy --config infra/cloudflare/customer-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          echo "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+      - name: Public smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          curl -fsS "$URL/" > /tmp/index.html
+          grep -q 'customer-runtime' /tmp/index.html
+          curl -fsS "$URL/menu" > /tmp/menu.html
+          grep -q 'customer-runtime' /tmp/menu.html
+          HTTP="$(curl -sS -o /tmp/ordering.json -w '%{http_code}' "$URL/api/customer/ordering")"
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!Array.isArray(x.products))process.exit(1)"
+          printf 'index=PASS\nspa=PASS\nordering_http=%s\n' "$HTTP" > evidence/smoke.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-customer-public-worker-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
