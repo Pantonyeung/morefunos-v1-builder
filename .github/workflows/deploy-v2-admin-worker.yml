@@ -46,6 +46,17 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Require source equals current V2 main HEAD
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "v2-main-pin=PASS sha=$MAIN_SHA"
+
       - uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
