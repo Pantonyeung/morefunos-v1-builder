@@ -1,0 +1,112 @@
+name: V2 Admin Owner Complete Product Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-owner-complete-product-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-admin-owner-complete-product-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-owner-complete-product-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Admin Owner production wiring tests
+        working-directory: source
+        run: node --test packages/admin-ui-integration/t2-031-admin-owner-production-wiring.test.ts
+
+      - name: Owner network runtime tests
+        working-directory: source
+        run: node --experimental-strip-types --test apps/owner-web/src/t2-031-owner-network-runtime.test.ts
+
+      - name: Admin app typecheck
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck
+
+      - name: Admin app build
+        working-directory: source/apps/admin-web
+        run: npm run build
+
+      - name: Owner app typecheck
+        working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck
+
+      - name: Owner app build
+        working-directory: source/apps/owner-web
+        run: npm run build
+
+      - name: Write evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-admin-owner-complete-product.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-admin-owner-complete-product-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
