@@ -1,0 +1,47 @@
+name: Diagnose V2 Admin Owner Login
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-owner-login-diagnostic-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      OWNER_ORIGIN: https://morefun-v2-owner.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-owner-login-diagnostic-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Probe formal login safely
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          rm -f /tmp/admin-cookie /tmp/owner-cookie /tmp/body.json
+          ADMIN_POST="$(curl -sS -c /tmp/admin-cookie -o /tmp/body.json -w '%{http_code}' -H 'content-type: application/json' --data "$(node -e "process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))")" "$ADMIN_ORIGIN/api/admin/session")"
+          ADMIN_CODE="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/body.json','utf8'));process.stdout.write(String(x.code||''))")"
+          ADMIN_AUTH="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/body.json','utf8'));process.stdout.write(String(x.authenticated===true))")"
+          ADMIN_GET="$(curl -sS -b /tmp/admin-cookie -o /tmp/body.json -w '%{http_code}' "$ADMIN_ORIGIN/api/admin/session")"
+          printf 'admin_post_http=%s\nadmin_post_authenticated=%s\nadmin_post_code=%s\nadmin_get_http=%s\n' "$ADMIN_POST" "$ADMIN_AUTH" "$ADMIN_CODE" "$ADMIN_GET"
+          OWNER_POST="$(curl -sS -c /tmp/owner-cookie -o /tmp/body.json -w '%{http_code}' -H 'content-type: application/json' --data "$(node -e "process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))")" "$OWNER_ORIGIN/api/owner/session")"
+          OWNER_CODE="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/body.json','utf8'));process.stdout.write(String(x.code||''))")"
+          OWNER_AUTH="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/body.json','utf8'));process.stdout.write(String(x.authenticated===true))")"
+          OWNER_GET="$(curl -sS -b /tmp/owner-cookie -o /tmp/body.json -w '%{http_code}' "$OWNER_ORIGIN/api/owner/session")"
+          printf 'owner_post_http=%s\nowner_post_authenticated=%s\nowner_post_code=%s\nowner_get_http=%s\n' "$OWNER_POST" "$OWNER_AUTH" "$OWNER_CODE" "$OWNER_GET"
