@@ -108,6 +108,37 @@ event_new='''        if (result.evidence.eventId === 1001) {
           }
         }
 
+        if ([1002, 1003, 1004, 1005, 1007].includes(result.evidence.eventId)) {
+          try {
+            const m = JSON.parse(result.evidence.message) as Record<string, unknown>;
+            const pick = (key: string) => m[key] ?? null;
+            console.log("KEETA_LIVE_EVENT_CAPTURE " + JSON.stringify({
+              eventId: result.evidence.eventId,
+              messageId: result.evidence.messageId,
+              providerShopId: result.evidence.providerShopId,
+              orderViewId: pick("orderViewId"),
+              status: pick("status"),
+              afterSaleOrderId: pick("afterSaleOrderId"),
+              isAppeal: pick("isAppeal"),
+              money: pick("money"),
+              currency: pick("currency"),
+              applyOpType: pick("applyOpType"),
+              applyReason: pick("applyReason"),
+              handleOpType: pick("handleOpType"),
+              handleReason: pick("handleReason"),
+              opTime: pick("opTime"),
+              refundProductCount: Array.isArray(m.refundProducts) ? m.refundProducts.length : null
+            }));
+          } catch {
+            console.log("KEETA_LIVE_EVENT_CAPTURE " + JSON.stringify({
+              eventId: result.evidence.eventId,
+              messageId: result.evidence.messageId,
+              providerShopId: result.evidence.providerShopId,
+              parseError: true
+            }));
+          }
+        }
+
         return json({ ...result.ack, data: {} });'''
 if s.count(event_anchor)!=1:
     raise SystemExit("EVENT_ANCHOR_NOT_UNIQUE")
