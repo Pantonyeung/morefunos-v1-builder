@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
-          npx --yes wrangler@4 deploy --config infra/cloudflare/customer-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config infra/cloudflare/customer-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
           URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
           test -n "$URL"
           echo "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
