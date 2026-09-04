@@ -1,0 +1,115 @@
+name: T1 Keeta Pre-Armed Auto Confirm
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - requests/t1-keeta-prearm-auto-confirm.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t1-keeta-prearm-auto-confirm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_VERSION: "4.125.0"
+      DONOR_SHA: "967a8e09dfbc53655380665824d5687c0ccd177b"
+      SOURCE_SHA: "fe436016ce86672a9d08a634635380f845a2e985"
+      WORKER_URL: "https://morefun-v2-keeta-sit.pantonyeung.workers.dev"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node24-wrangler-${{ env.WRANGLER_VERSION }}
+
+      - name: Install Wrangler
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+          wrangler --version
+
+      - name: Checkout admitted source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Checkout OAuth donor
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.DONOR_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: donor
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Assemble pre-armed worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp donor/workers/keeta/src/oauth-runtime.ts source/workers/keeta/src/oauth-runtime.ts
+          cp donor/packages/integration/keeta-standard-oauth.ts source/packages/integration/keeta-standard-oauth.ts
+          python3 scripts/t1-keeta-auto-confirm-probe.py
+
+          ARM_AFTER_MS="$(date +%s%3N)"
+          ARM_UNTIL_MS="$((ARM_AFTER_MS + 900000))"
+          echo "ARM_AFTER_MS=$ARM_AFTER_MS" >> "$GITHUB_ENV"
+          echo "ARM_UNTIL_MS=$ARM_UNTIL_MS" >> "$GITHUB_ENV"
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const src=JSON.parse(fs.readFileSync('source/workers/keeta/wrangler.jsonc','utf8'));
+          src.vars={
+            ...(src.vars||{}),
+            KEETA_APP_ID:'3419700273',
+            KEETA_SIT_AUTO_CONFIRM_AFTER_MS:process.env.ARM_AFTER_MS,
+            KEETA_SIT_AUTO_CONFIRM_UNTIL_MS:process.env.ARM_UNTIL_MS
+          };
+          fs.writeFileSync('source/workers/keeta/prearm-wrangler.jsonc',JSON.stringify(src,null,2));
+          NODE
+
+      - name: Deploy pre-armed worker
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler deploy --config prearm-wrangler.jsonc
+
+      - name: Verify health and arm state
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$WORKER_URL/health")"
+          echo "health_http=$HTTP"
+          cat "$RUNNER_TEMP/health.json"
+          test "$HTTP" = "200"
+          echo "AUTO_CONFIRM_ARMED=true"
+          echo "auto_confirm_after_ms=$ARM_AFTER_MS"
+          echo "auto_confirm_until_ms=$ARM_UNTIL_MS"
+          echo "target_shop=721578302"
+          echo "target_next_orders=ONE_FRESH_ORDER_ONLY"
