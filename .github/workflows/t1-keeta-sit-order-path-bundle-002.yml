@@ -71,7 +71,7 @@ jobs:
           }
           open("tsconfig.team1-keeta-bundle002.json","w").write(json.dumps(config))
           PY
-          ./node_modules/.bin/tsc --noEmit -p tsconfig.team1-keeta-bundle002.json
+          tsc --noEmit -p tsconfig.team1-keeta-bundle002.json
 
       - name: Root TypeScript diagnostic
         working-directory: source
