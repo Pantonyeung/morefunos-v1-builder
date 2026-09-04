@@ -1,4 +1,4 @@
-name: T1 Keeta Live Refund Event Capture
+name: T1 Keeta Live Event Capture
 
 on:
   push:
@@ -11,13 +11,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: morefun-v2-keeta-sit
+  group: morefun-v2-keeta-live-capture-v2
   cancel-in-progress: false
 
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 20
     env:
       WRANGLER_VERSION: "4.125.0"
     steps:
@@ -69,6 +69,7 @@ jobs:
           set -euo pipefail
           python3 scripts/t1-keeta-live-refund-capture.py
           grep -Fq "KEETA_LIVE_EVENT_CAPTURE" source/workers/keeta/src/index.ts
+          grep -Fq "1006" source/workers/keeta/src/index.ts
 
       - name: Deploy capture Worker
         working-directory: source/workers/keeta
@@ -83,9 +84,9 @@ jobs:
       - name: Arm capture window
         shell: bash
         run: |
-          echo "KEETA_LIVE_REFUND_CAPTURE=ARMED"
-          echo "capture_window_minutes=75"
-          echo "target_events=1002,1003,1004,1005,1007"
+          echo "KEETA_LIVE_EVENT_CAPTURE=ARMED"
+          echo "capture_window_minutes=8"
+          echo "target_events=1002,1003,1004,1005,1006,1007"
 
       - name: Tail sanitized live events
         working-directory: source/workers/keeta
@@ -95,7 +96,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          timeout 4500s wrangler tail --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-live-tail.jsonl" 2> "$RUNNER_TEMP/keeta-live-tail.err" || true
+          timeout 480s wrangler tail --config wrangler.jsonc --format json --search KEETA_LIVE_EVENT_CAPTURE > "$RUNNER_TEMP/keeta-live-tail.jsonl" 2> "$RUNNER_TEMP/keeta-live-tail.err" || true
           grep -F "KEETA_LIVE_EVENT_CAPTURE" "$RUNNER_TEMP/keeta-live-tail.jsonl" > "$RUNNER_TEMP/keeta-live-events.txt" || true
           echo "capture_complete=true"
 
@@ -103,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: t1-keeta-live-refund-capture-${{ github.run_id }}
+          name: t1-keeta-live-event-capture-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/keeta-live-events.txt
             ${{ runner.temp }}/keeta-live-tail.err
