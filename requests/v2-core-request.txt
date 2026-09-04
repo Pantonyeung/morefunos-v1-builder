@@ -1,5 +1,5 @@
-source_sha=32c411b96955db42d26de3b6a91ab0b78fa71d85
+source_sha=decc62902bddf3f8c66ba47133bf707b561421ff
 base_sha=fb7e13c85286c289fb91c969888a72e67a9ab4b0
 branch_name=work/CORE/B0273-final-four-server-operations
 verification_phase=CANDIDATE
-request_id=T2-FINAL-FOUR-BUNDLE-008-CORE-GREEN-1-20260904
+request_id=T2-FINAL-FOUR-BUNDLE-008-FINAL-EXACT-20260904
