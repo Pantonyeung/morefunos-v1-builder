@@ -1,3 +1,4 @@
-request_id=T1-KEETA-D1-IDENTITY-7982
-order_view_id=5123440081007982
-message_id=2095785052851032097
+request_id=T1-KEETA-JOURNAL-FAST-READ-SMOKE-001
+mode=journal_latest
+order_view_id=
+message_id=
