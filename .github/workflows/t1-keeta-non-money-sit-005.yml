@@ -352,7 +352,8 @@ jobs:
             local outfile="$1"; shift
             for attempt in $(seq 1 20); do
               HTTP="$(curl --silent --show-error -o "$outfile" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL$path" || true)"
-              if [[ "$HTTP" != "000" ]]; then break; fi
+              if [[ "$HTTP" == "200" ]]; then break; fi
+              if [[ "$HTTP" != "000" && "$HTTP" != "404" ]]; then break; fi
               sleep 2
             done
             echo "http=$HTTP path=$path"
@@ -484,5 +485,5 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
-          npx --yes "wrangler@$WRANGLER_VERSION" secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc --remote 2>/dev/null || true
+          printf 'y\n' | npx --yes "wrangler@$WRANGLER_VERSION" secret delete KEETA_SIT_PROBE_KEY --config wrangler.jsonc 2>/dev/null || true
           echo "current_worker_restored=true"
