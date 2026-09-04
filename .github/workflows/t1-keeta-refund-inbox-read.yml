@@ -1,0 +1,49 @@
+name: T1 Keeta Refund Inbox Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-refund-inbox-read.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read durable Keeta refund events from live D1
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KEETA_D1_DATABASE_ID: e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492
+        run: |
+          set -euo pipefail
+          ORDER_VIEW_ID="$(sed -n 's/^order_view_id=//p' requests/t1-keeta-refund-inbox-read.txt | tail -n1 | tr -d '[:space:]')"
+          test -n "$ORDER_VIEW_ID"
+
+          SQL="SELECT provider_event_ref,event_id,provider_order_ref,provider_shop_id,event_json,first_received_at,last_received_at FROM mfos_provider_event_inbox WHERE provider_key='KEETA' AND provider_order_ref=? AND event_id IN (1005,1007) ORDER BY first_received_at DESC LIMIT 10;"
+          jq -n --arg sql "$SQL" --arg order "$ORDER_VIEW_ID" '{sql:$sql,params:[$order]}' > "$RUNNER_TEMP/q.json"
+
+          curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/q.json"             > "$RUNNER_TEMP/refund-inbox.json"
+
+          cat "$RUNNER_TEMP/refund-inbox.json"
+          jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/refund-inbox.json" >/dev/null
+          jq -r '.result[0].results[]? | "event_id=\(.event_id) provider_event_ref=\(.provider_event_ref) provider_order_ref=\(.provider_order_ref) first_received_at=\(.first_received_at) event_json=\(.event_json)"' "$RUNNER_TEMP/refund-inbox.json"
+
+      - name: Upload refund inbox evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: t1-keeta-refund-inbox-${{ github.run_id }}
+          path: ${{ runner.temp }}/refund-inbox.json
+          if-no-files-found: warn
+          retention-days: 7
