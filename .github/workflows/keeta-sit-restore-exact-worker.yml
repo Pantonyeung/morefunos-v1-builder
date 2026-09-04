@@ -52,7 +52,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = '${{ steps.source.outputs.sha }}'
-          grep -Fq '"KEETA_APP_ID": "3419700273"' source/workers/keeta/wrangler.jsonc
+          grep -Fq '"name": "morefun-v2-keeta-sit"' source/workers/keeta/wrangler.jsonc
+          grep -Fq '"database_id": "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"' source/workers/keeta/wrangler.jsonc
           grep -Fq '/webhooks/keeta' source/workers/keeta/src/index.ts
           if grep -Fq 'keeta_webhook_reject code=' source/workers/keeta/src/index.ts; then
             echo 'DIAGNOSTIC_PATCH_PRESENT_IN_SOURCE' >&2
