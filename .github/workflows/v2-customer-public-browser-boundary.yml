@@ -1,0 +1,78 @@
+name: V2 Customer Public Browser Boundary Evidence
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-public-browser-boundary.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-public-browser-boundary.txt | tr -d '[:space:]')"
+          ORIGIN="$(sed -n 's/^origin=//p' requests/v2-customer-public-browser-boundary.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ORIGIN" =~ ^https:// ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Install browser harness
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+      - name: Prove connected runtime and presentation boundary
+        env:
+          ORIGIN: ${{ steps.req.outputs.origin }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          cat > /tmp/customer-boundary.mjs <<'EOF'
+          import {chromium} from 'playwright-core';
+          import fs from 'node:fs';
+          const [chrome,origin,sourceSha]=process.argv.slice(2);
+          const browser=await chromium.launch({headless:true,executablePath:chrome});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto(origin+'/menu',{waitUntil:'networkidle'});
+          await page.locator('html[data-cu-runtime="connected"]').waitFor({timeout:15000});
+          const text=(await page.locator('body').innerText()).replace(/\s+/g,' ');
+          const fixtureMarkers=['F6 紫米餐','(5) 招牌雞扒便當','6 涼拌雞絲便當'];
+          const fixtureMarkersPresent=fixtureMarkers.filter(x=>text.includes(x));
+          await page.screenshot({path:'evidence/customer-public-menu.png',fullPage:true});
+          const result={sourceSha,origin,runtimeConnected:true,pageErrors:errors,fixtureMarkersPresent,presentationCanonical:fixtureMarkersPresent.length===0};
+          fs.writeFileSync('evidence/boundary.json',JSON.stringify(result,null,2));
+          fs.writeFileSync('evidence/summary.txt',[
+            'source_sha='+sourceSha,
+            'origin='+origin,
+            'runtime_connected=PASS',
+            'fixture_markers_present='+(fixtureMarkersPresent.length?'YES':'NO'),
+            'presentation_canonical='+(fixtureMarkersPresent.length?'NO':'YES'),
+            'classification='+(fixtureMarkersPresent.length?'BLOCKED_PRESENTATION_FIXTURE':'READY_PRESENTATION')
+          ].join('\n')+'\n');
+          if(errors.length) throw new Error('PAGE_ERROR:'+errors.join('|'));
+          await ctx.close(); await browser.close();
+          EOF
+          node /tmp/customer-boundary.mjs "$CHROME" "$ORIGIN" "$SOURCE_SHA"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-customer-public-browser-boundary-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
