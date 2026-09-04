@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   issues: write
+  issues: write
 
 jobs:
   deploy:
@@ -93,6 +94,15 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
         run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_DEPLOY_015 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
+
+      - name: Publish Team2 deploy audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_DEPLOY status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
 
       - uses: actions/upload-artifact@v4
         if: always()
