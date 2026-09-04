@@ -87,6 +87,19 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Cache Wrangler npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node24-wrangler-${{ env.WRANGLER_VERSION }}
+
+      - name: Install pinned Wrangler once
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+          wrangler --version
+
       - name: Install source dependencies
         working-directory: source
         run: npm install --ignore-scripts --no-audit --no-fund
@@ -107,7 +120,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets.json"
+          wrangler secret list --config wrangler.jsonc --format json > "$RUNNER_TEMP/keeta-secrets.json"
           node - "$RUNNER_TEMP/keeta-secrets.json" <<'NODE'
           const fs = require('fs');
           const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -125,7 +138,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" d1 list --json > "$RUNNER_TEMP/d1-list.json"
+          wrangler d1 list --json > "$RUNNER_TEMP/d1-list.json"
           node - "$RUNNER_TEMP/d1-list.json" wrangler.jsonc <<'NODE'
           const fs = require('fs');
           const rows = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -148,7 +161,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
             --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('keeta_webhook_dedup','mfos_keeta_durable_delivery') ORDER BY name;" \
             > "$RUNNER_TEMP/keeta-schema.json"
           node - "$RUNNER_TEMP/keeta-schema.json" <<'NODE'
@@ -170,7 +183,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
+          wrangler deploy --yes --config wrangler.jsonc
 
       - name: Smoke deployed health endpoint
         shell: bash
