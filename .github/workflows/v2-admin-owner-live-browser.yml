@@ -1,0 +1,138 @@
+name: V2 Admin Owner Live Browser Acceptance
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-owner-live-browser-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      OWNER_ORIGIN: https://morefun-v2-owner.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact admitted source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-owner-live-browser-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify exact current main
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          MAIN_SHA="$(curl -fsSL -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
+          test "$MAIN_SHA" = "$SOURCE_SHA"
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+
+      - name: Install Playwright core
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+
+      - name: Run real public browser acceptance
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test -n "$ADMIN_SESSION_BOOTSTRAP_JSON"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          cat > live-browser.mjs <<'EOF'
+          import {chromium} from 'playwright-core';
+          import fs from 'node:fs';
+          const {ADMIN_ORIGIN,OWNER_ORIGIN,SOURCE_SHA,ADMIN_SESSION_BOOTSTRAP_JSON}=process.env;
+          const bootstrap=JSON.parse(ADMIN_SESSION_BOOTSTRAP_JSON);
+          const token=Array.isArray(bootstrap)?bootstrap[0]?.sessionToken:null;
+          if(!token) throw new Error('ADMIN_SESSION_TOKEN_MISSING');
+          const browser=await chromium.launch({headless:true,executablePath:process.argv[2]});
+          const result={sourceSha:SOURCE_SHA,admin:{},owner:{}};
+
+          const anon=await browser.newContext();
+          const a1=await anon.request.get(ADMIN_ORIGIN+'/api/admin/session');
+          const o1=await anon.request.get(OWNER_ORIGIN+'/api/owner/session');
+          if(a1.status()!==401) throw new Error('ADMIN_ANON_NOT_401:'+a1.status());
+          if(o1.status()!==401) throw new Error('OWNER_ANON_NOT_401:'+o1.status());
+          result.admin.anonymousSession=401; result.owner.anonymousSession=401;
+          await anon.close();
+
+          const context=await browser.newContext({viewport:{width:1440,height:1000}});
+          await context.addCookies([
+            {name:'mf_admin_session',value:token,url:ADMIN_ORIGIN,path:'/',httpOnly:true,secure:true,sameSite:'Strict'},
+            {name:'mf_admin_session',value:token,url:OWNER_ORIGIN,path:'/',httpOnly:true,secure:true,sameSite:'Strict'},
+          ]);
+
+          const admin=await context.newPage();
+          const adminErrors=[]; const adminFailures=[];
+          admin.on('pageerror',e=>adminErrors.push(String(e)));
+          admin.on('requestfailed',r=>adminFailures.push(r.url()+':'+(r.failure()?.errorText||'failed')));
+          await admin.goto(ADMIN_ORIGIN+'/admin/business-day',{waitUntil:'networkidle'});
+          const adminSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
+          if(adminSession.status()!==200) throw new Error('ADMIN_AUTH_SESSION:'+adminSession.status());
+          const adminBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ');
+          if(!adminBody.includes('MoreFunOS')) throw new Error('ADMIN_SHELL_MISSING');
+          if(adminBody.includes('需要正式 Admin session')) throw new Error('ADMIN_STILL_LOGIN_GATE');
+          const manifest=await context.request.get(ADMIN_ORIGIN+'/manifest.webmanifest');
+          const sw=await context.request.get(ADMIN_ORIGIN+'/sw.js');
+          if(manifest.status()!==200||sw.status()!==200) throw new Error('ADMIN_PWA_ASSET_FAIL');
+          await admin.reload({waitUntil:'networkidle'});
+          const adminSession2=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
+          if(adminSession2.status()!==200) throw new Error('ADMIN_REFRESH_SESSION_LOST');
+          if(adminErrors.length||adminFailures.length) throw new Error('ADMIN_BROWSER_ERROR:'+adminErrors.join('|')+';'+adminFailures.join('|'));
+          await admin.screenshot({path:'evidence/admin.png',fullPage:true});
+          result.admin={...result.admin,authenticatedSession:200,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+
+          const owner=await context.newPage();
+          const ownerErrors=[]; const ownerFailures=[];
+          owner.on('pageerror',e=>ownerErrors.push(String(e)));
+          owner.on('requestfailed',r=>ownerFailures.push(r.url()+':'+(r.failure()?.errorText||'failed')));
+          await owner.goto(OWNER_ORIGIN+'/',{waitUntil:'networkidle'});
+          const ownerSession=await context.request.get(OWNER_ORIGIN+'/api/owner/session');
+          if(ownerSession.status()!==200) throw new Error('OWNER_AUTH_SESSION:'+ownerSession.status());
+          const ownerBootstrap=await context.request.get(OWNER_ORIGIN+'/api/owner/bootstrap');
+          if(ownerBootstrap.status()!==200) throw new Error('OWNER_BOOTSTRAP:'+ownerBootstrap.status());
+          await owner.getByText('今日實收',{exact:true}).waitFor({timeout:15000});
+          const ownerBody=(await owner.locator('body').innerText()).replace(/\s+/g,' ');
+          if(ownerBody.includes('需要正式 Admin session')||ownerBody.includes('Protected Preview')) throw new Error('OWNER_STILL_LOGIN_GATE');
+          const ownerManifest=await context.request.get(OWNER_ORIGIN+'/manifest.webmanifest');
+          const ownerSw=await context.request.get(OWNER_ORIGIN+'/sw.js');
+          if(ownerManifest.status()!==200||ownerSw.status()!==200) throw new Error('OWNER_PWA_ASSET_FAIL');
+          await owner.reload({waitUntil:'networkidle'});
+          await owner.getByText('今日實收',{exact:true}).waitFor({timeout:15000});
+          const ownerSession2=await context.request.get(OWNER_ORIGIN+'/api/owner/session');
+          if(ownerSession2.status()!==200) throw new Error('OWNER_REFRESH_SESSION_LOST');
+          if(ownerErrors.length||ownerFailures.length) throw new Error('OWNER_BROWSER_ERROR:'+ownerErrors.join('|')+';'+ownerFailures.join('|'));
+          await owner.screenshot({path:'evidence/owner.png',fullPage:true});
+          result.owner={...result.owner,authenticatedSession:200,bootstrap:200,reportingUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+
+          await browser.close();
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(result,null,2));
+          EOF
+          node live-browser.mjs "$CHROME"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-owner-live-browser-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
