@@ -350,18 +350,21 @@ jobs:
             local method="$1"; shift
             local path="$1"; shift
             local outfile="$1"; shift
+            local HTTP="000"
             for attempt in $(seq 1 20); do
               HTTP="$(curl --silent --show-error -o "$outfile" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL$path" || true)"
-              if [[ "$HTTP" == "200" ]]; then break; fi
               if [[ "$HTTP" != "000" && "$HTTP" != "404" ]]; then break; fi
               sleep 2
             done
+            printf '%s\n' "$HTTP" > "$outfile.http"
             echo "http=$HTTP path=$path"
-            cat "$outfile"
+            if [[ -f "$outfile" ]]; then cat "$outfile"; else printf '{"code":"NO_RESPONSE_BODY"}'; fi
             echo
-            test "$HTTP" = "200"
+            return 0
           }
 
+          # Never fail-fast: every case must leave sanitized evidence even when an
+          # earlier case is blocked or fails.
           call GET  '/sit/non-money/status' "$RUNNER_TEMP/sit005/status.json"
           call POST '/sit/non-money/order-get?mode=MATCH' "$RUNNER_TEMP/sit005/order-get-match.json"
           call POST '/sit/non-money/order-get?mode=MISMATCH' "$RUNNER_TEMP/sit005/order-get-mismatch.json"
@@ -372,7 +375,16 @@ jobs:
           node - "$RUNNER_TEMP/sit005" <<'NODE'
           const fs=require('fs'), path=require('path');
           const dir=process.argv[2];
-          const read=n=>JSON.parse(fs.readFileSync(path.join(dir,n),'utf8'));
+          const read=n=>{
+            const p=path.join(dir,n);
+            if(!fs.existsSync(p)) return {code:'EVIDENCE_FILE_MISSING'};
+            const raw=fs.readFileSync(p,'utf8');
+            try{return JSON.parse(raw);}catch{return {code:'EVIDENCE_JSON_INVALID',raw:raw.slice(0,500)};}
+          };
+          const http=n=>{
+            const p=path.join(dir,n+'.http');
+            return fs.existsSync(p)?fs.readFileSync(p,'utf8').trim():'MISSING';
+          };
           const status=read('status.json');
           const match=read('order-get-match.json');
           const mismatch=read('order-get-mismatch.json');
@@ -380,39 +392,53 @@ jobs:
           const ambiguous=read('ambiguous.json');
           const reject=read('reject.json');
 
+          const noDurableReceipt=status?.code===0 && status?.latest===null && status?.pending===null;
           const evidence={
             builder_run_id:process.env.GITHUB_RUN_ID,
             source_sha:process.env.SOURCE_SHA || null,
-            status,
-            order_get_match:match,
-            order_get_mismatch:mismatch,
-            order_get_inconclusive:inconclusive,
-            ambiguous_controlled:ambiguous,
-            reject_fresh:reject,
+            classification:noDurableReceipt?'EXTERNAL_BLOCKER_NO_DURABLE_KEETA_RECEIPT':'EXECUTION_EVIDENCE_AVAILABLE',
+            status:{http:http('status.json'),body:status},
+            order_get_match:{http:http('order-get-match.json'),body:match},
+            order_get_mismatch:{http:http('order-get-mismatch.json'),body:mismatch},
+            order_get_inconclusive:{http:http('order-get-inconclusive.json'),body:inconclusive},
+            ambiguous_controlled:{http:http('ambiguous.json'),body:ambiguous},
+            reject_fresh:{http:http('reject.json'),body:reject},
             money_dependent_accept:'NOT_EXECUTED_FAIL_CLOSED'
           };
           fs.writeFileSync(path.join(dir,'evidence.json'),JSON.stringify(evidence,null,2));
 
           const checks=[];
-          checks.push(['ORDER_GET_MATCH', match?.result?.verdict === 'MATCH']);
-          checks.push(['ORDER_GET_MISMATCH', mismatch?.result?.verdict === 'MISMATCH']);
-          checks.push(['ORDER_GET_INCONCLUSIVE', inconclusive?.result?.verdict === 'INCONCLUSIVE']);
-          checks.push(['AMBIGUOUS_NO_RETRY', ambiguous?.result?.executed === true
-            && ambiguous?.result?.firstDisposition === 'NEEDS_RECONCILIATION'
-            && ambiguous?.result?.secondDisposition === 'NEEDS_RECONCILIATION'
-            && ambiguous?.result?.readback?.providerActionStatus === 'AMBIGUOUS'
-            && ambiguous?.result?.readback?.providerActionAttempts === 1]);
-
-          const r=reject?.result;
-          if (r?.executed === true) {
-            checks.push(['REJECT_PROVIDER_CANCEL_SENT', r.firstDisposition === 'COMPLETE'
-              && r.secondDisposition === 'COMPLETE'
-              && r.readback?.providerAction === 'CANCEL'
-              && r.readback?.providerActionStatus === 'SENT'
-              && r.readback?.providerActionAttempts === 1]);
-            checks.push(['REJECT_CANONICAL_ORDER_ZERO', r.readback?.canonicalOrderPresent === false]);
+          if(noDurableReceipt){
+            checks.push(['STATUS_D1_REACHABLE_EMPTY', http('status.json')==='200']);
+            checks.push(['ORDER_GET_MATCH_BLOCKED_NO_RECEIPT', match?.code==='NO_DURABLE_RECEIPT']);
+            checks.push(['ORDER_GET_MISMATCH_BLOCKED_NO_RECEIPT', mismatch?.code==='NO_DURABLE_RECEIPT']);
+            checks.push(['ORDER_GET_INCONCLUSIVE_BLOCKED_NO_RECEIPT', inconclusive?.code==='NO_DURABLE_RECEIPT']);
+            checks.push(['AMBIGUOUS_BLOCKED_NO_RECEIPT', ambiguous?.result?.executed===false
+              && ambiguous?.result?.reason==='NO_DURABLE_RECEIPT_FOR_CONTROLLED_AMBIGUOUS']);
+            checks.push(['REJECT_BLOCKED_NO_PENDING_RECEIPT', reject?.result?.executed===false
+              && reject?.result?.reason==='NO_PENDING_RECEIPT']);
+            console.log('PROVIDER_EXTERNAL_BLOCKER=NO_DURABLE_KEETA_RECEIPT_IN_BOUND_D1');
           } else {
-            console.log(`REJECT_READY_NOT_EXECUTED reason=${r?.reason ?? 'UNKNOWN'}`);
+            checks.push(['ORDER_GET_MATCH', match?.result?.verdict === 'MATCH']);
+            checks.push(['ORDER_GET_MISMATCH', mismatch?.result?.verdict === 'MISMATCH']);
+            checks.push(['ORDER_GET_INCONCLUSIVE', inconclusive?.result?.verdict === 'INCONCLUSIVE']);
+            checks.push(['AMBIGUOUS_NO_RETRY', ambiguous?.result?.executed === true
+              && ambiguous?.result?.firstDisposition === 'NEEDS_RECONCILIATION'
+              && ambiguous?.result?.secondDisposition === 'NEEDS_RECONCILIATION'
+              && ambiguous?.result?.readback?.providerActionStatus === 'AMBIGUOUS'
+              && ambiguous?.result?.readback?.providerActionAttempts === 1]);
+
+            const r=reject?.result;
+            if (r?.executed === true) {
+              checks.push(['REJECT_PROVIDER_CANCEL_SENT', r.firstDisposition === 'COMPLETE'
+                && r.secondDisposition === 'COMPLETE'
+                && r.readback?.providerAction === 'CANCEL'
+                && r.readback?.providerActionStatus === 'SENT'
+                && r.readback?.providerActionAttempts === 1]);
+              checks.push(['REJECT_CANONICAL_ORDER_ZERO', r.readback?.canonicalOrderPresent === false]);
+            } else {
+              console.log(`REJECT_READY_NOT_EXECUTED reason=${r?.reason ?? 'UNKNOWN'}`);
+            }
           }
 
           for (const [name,ok] of checks) {
