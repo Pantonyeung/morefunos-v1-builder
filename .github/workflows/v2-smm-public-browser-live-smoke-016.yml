@@ -53,7 +53,7 @@ jobs:
           ASSET_HTTP="$(curl -sS -o /tmp/smm.js -w '%{http_code}' "$JS_URL")"
           echo "asset=$ASSET_HTTP" | tee -a evidence/http.txt
           test "$ASSET_HTTP" = 200
-          node -e "const x=require('/tmp/manifest.out');if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/manifest.out','utf8'));if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
 
       - name: Install Chromium
         run: |
