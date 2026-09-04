@@ -35,16 +35,21 @@ jobs:
           mkdir -p evidence
 
           GET_CODE="$(curl -sS -H 'Cache-Control: no-cache' -o /tmp/get.json -w '%{http_code}' "$ORIGIN/api/smt/session")"
+          echo "get_http=$GET_CODE" | tee evidence/get.txt
+          cat /tmp/get.json | tee -a evidence/get.txt
           test "$GET_CODE" = 401
           node -e "const x=require('/tmp/get.json'); if(x.code!=='SMT_RUNTIME_SESSION_REQUIRED') process.exit(1)"
 
           BAD='__morefun_live_smoke_intentionally_invalid_5c7f61e3__'
           POST_CODE="$(curl -sS -H 'Cache-Control: no-cache' -H 'content-type: application/json' -o /tmp/post.json -w '%{http_code}' --data \"{\\\"loginSecret\\\":\\\"$BAD\\\"}\" "$ORIGIN/api/smt/session")"
+          echo "post_http=$POST_CODE" | tee evidence/post.txt
+          cat /tmp/post.json | tee -a evidence/post.txt
           test "$POST_CODE" = 401
           node -e "const x=require('/tmp/post.json'); if(x.code!=='SMT_PAIRING_CREDENTIAL_INVALID') process.exit(1)"
 
           curl -sS -D /tmp/options.headers -o /tmp/options.body -X OPTIONS -H "Origin: $APP_ORIGIN" -H 'Access-Control-Request-Method: POST' "$ORIGIN/api/smt/session"
           tr -d '\r' < /tmp/options.headers > /tmp/options.clean
+          cp /tmp/options.clean evidence/options.txt
           grep -Fi "access-control-allow-origin: $APP_ORIGIN" /tmp/options.clean >/dev/null
 
           printf 'source_sha=%s\nget_http=%s\npost_invalid_http=%s\npairing_secret_authority=CONFIGURED\ncors_appassets=PASS\n' \
