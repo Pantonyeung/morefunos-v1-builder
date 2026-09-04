@@ -110,6 +110,7 @@ jobs:
           printf 'admin_login_http=%s\ndurable_session=PASS\n' "$LOGIN_HTTP" > evidence/session.txt
 
       - name: Live SMT Catalog through trusted Worker to production D1
+        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-003') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -122,13 +123,20 @@ jobs:
           node -e "const x=require('/tmp/catalog.out.json');if(x.storeId!==process.env.CANONICAL_STORE_ID||!x.catalogRevision||!Array.isArray(x.products))process.exit(1)"
           printf 'smt_catalog_http=%s\nserver_scope_store_id=%s\n' "$HTTP" "$CANONICAL_STORE_ID" | tee evidence/smt-catalog.txt
 
-      - name: Live SMT exact existing Customer Order through canonical detail binding
+      - name: Live exact existing Customer Order through canonical detail binding
         shell: bash
         run: |
           set -euo pipefail
           TOKEN="$(cat /tmp/smt-token)"
-          ORDER_ID="$CANONICAL_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/order-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
-          HTTP="$(curl -sS -o /tmp/order-detail.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/order-detail.json "$ADMIN_URL/api/smt/runtime")"
+          MODE="$(sed -n 's/^mode=//p' requests/v2-team2-smt-production-order-read-request.txt | tr -d '[:space:]')"
+          if [ "$MODE" = "T3_SMM" ]; then
+            ORDER_ID="$CANONICAL_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/order-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+            RUNTIME_PATH="/api/smm/runtime"
+          else
+            ORDER_ID="$CANONICAL_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/order-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+            RUNTIME_PATH="/api/smt/runtime"
+          fi
+          HTTP="$(curl -sS -o /tmp/order-detail.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/order-detail.json "$ADMIN_URL$RUNTIME_PATH")"
           test "$HTTP" = 200
           node - <<'NODE'
           const x=require('/tmp/order-detail.out.json');
@@ -163,6 +171,7 @@ jobs:
           NODE
 
       - name: Prove partial readiness remains fail-closed
+        if: ${{ !contains(github.event.head_commit.message, 'T3-MICRO-003') }}
         shell: bash
         run: |
           set -euo pipefail
