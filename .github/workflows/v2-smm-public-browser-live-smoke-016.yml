@@ -1,0 +1,155 @@
+name: V2 SMM Public Browser Live Smoke 016
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-public-browser-smoke-016.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      FIXED_ORDER_015: 6e95b49b-c529-4bdd-8f8a-99582f5eef05
+      FIXED_ORDER_003: 094b2412-df92-4897-b0c2-3d67bcf85ef6
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-public-browser-smoke-016.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          test -n "$ADMIN_LOGIN_SECRET"
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+
+      - name: Public HTTP preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          for spec in "/ index" "/orders spa" "/manifest.webmanifest manifest"; do
+            path="${spec%% *}"; name="${spec##* }"
+            code="$(curl -sS -o "/tmp/$name.out" -w '%{http_code}' "$SMM_ORIGIN$path")"
+            echo "$name=$code" | tee -a evidence/http.txt
+            test "$code" = 200
+          done
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.out | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$SMM_ORIGIN$JS_PATH";; *) JS_URL="$SMM_ORIGIN/$JS_PATH";; esac
+          ASSET_HTTP="$(curl -sS -o /tmp/smm.js -w '%{http_code}' "$JS_URL")"
+          echo "asset=$ASSET_HTTP" | tee -a evidence/http.txt
+          test "$ASSET_HTTP" = 200
+          node -e "const x=require('/tmp/manifest.out');if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
+
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Pair UI and prove canonical Order visible
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage();
+            const api=[];
+            page.on('request',r=>{
+              const u=new URL(r.url());
+              if(u.pathname.startsWith('/api/')) api.push({origin:u.origin,path:u.pathname,method:r.method()});
+            });
+            await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
+            await page.getByLabel('SMM Runtime 配對').getByPlaceholder('輸入可信配對憑證').fill(process.env.ADMIN_LOGIN_SECRET);
+            await page.getByRole('button',{name:'連接 Runtime'}).click();
+            await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
+            await page.getByText('Orders 已由 trusted HTTP canonical projection 提供。',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const candidates=[process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
+            let visible=null;
+            for(const id of candidates){
+              if(await page.getByText(id,{exact:true}).count()){visible=id;break;}
+            }
+            if(!visible) throw new Error('SMM_FIXED_CANONICAL_ORDER_NOT_VISIBLE');
+            const session=await page.evaluate(()=>JSON.parse(localStorage.getItem('morefunos.smm.device-session.v1')||'null'));
+            if(!session?.sessionToken||!session.storeId||!session.sessionId||!session.deviceId||!session.runtimeBindingRef) throw new Error('SMM_TRUSTED_SESSION_STORAGE_INVALID');
+            const publicOrigin=new URL(process.env.SMM_ORIGIN).origin;
+            if(api.some(x=>x.origin!==publicOrigin)) throw new Error('SMM_BROWSER_API_NOT_SAME_ORIGIN');
+            if(!api.some(x=>x.path==='/api/smm/session'&&x.method==='POST')) throw new Error('SMM_BROWSER_PAIRING_NETWORK_MISSING');
+            if(!api.some(x=>x.path==='/api/smm/runtime'&&x.method==='POST')) throw new Error('SMM_BROWSER_RUNTIME_NETWORK_MISSING');
+            const direct=await fetch(process.env.ADMIN_ORIGIN+'/api/smt/runtime',{
+              method:'POST',
+              headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json'},
+              body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:visible}})
+            });
+            const truth=await direct.json();
+            if(direct.status!==200||truth.orderId!==visible||truth.storeId!==session.storeId||!Number.isInteger(truth.revision)||truth.revision<1) throw new Error('SMM_SERVER_TRUTH_MISMATCH');
+            const auditText=await page.locator('.smm-order-card',{hasText:visible}).locator('.smm-muted').first().textContent();
+            if(!auditText?.includes(session.storeId)||!auditText.includes('rev '+truth.revision)) throw new Error('SMM_UI_STORE_REVISION_MISMATCH');
+            const body=await page.textContent('body');
+            for(const marker of ['TST-SMM-','SMM-DEMO-ORDER','SMM-FIXTURE-ORDER']) if(body?.includes(marker)) throw new Error('SMM_FIXTURE_MARKER_VISIBLE');
+            fs.writeFileSync('evidence/browser.json',JSON.stringify({
+              sourceSha:process.env.SOURCE_SHA,
+              publicOrigin,
+              runtimeReady:true,
+              orderId:visible,
+              storeId:truth.storeId,
+              lifecycleStatus:truth.lifecycleStatus,
+              revision:truth.revision,
+              browserApiRequests:api,
+              browserDirectD1:false,
+              serverTruthMatch:true,
+              fixtureMarkers:0
+            },null,2));
+            console.log('SMM_016_LIVE_BROWSER_READY orderId='+visible+' storeId='+truth.storeId+' revision='+truth.revision+' status='+truth.lifecycleStatus);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          CLASSIFICATION=BLOCKED
+          ORDER_ID=
+          if test -s evidence/browser.json; then
+            CLASSIFICATION=READY
+            ORDER_ID="$(node -p "require('./evidence/browser.json').orderId")"
+          fi
+          printf 'source_sha=%s\nrun_id=%s\nclassification=%s\norigin=%s\norder_id=%s\nfixture_markers=0\ndirect_browser_d1=NO\nmorefun_v2_native_ci=0\n' "${{ steps.req.outputs.source_sha }}" "$GITHUB_RUN_ID" "$CLASSIFICATION" "$SMM_ORIGIN" "$ORDER_ID" | tee evidence/summary.txt
+
+      - name: Publish audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          SUMMARY="$(tr '\n' ' ' < evidence/summary.txt)"
+          gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_SMM_BROWSER_016 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA $SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smm-browser-016-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
