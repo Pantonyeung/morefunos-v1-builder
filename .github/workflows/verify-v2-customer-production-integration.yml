@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   verify:
@@ -118,6 +119,16 @@ jobs:
         run: |
           mkdir -p evidence
           printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-customer-production-integration.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Publish Team2 audit comment
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PRODUCTION_INTEGRATION status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
 
       - name: Upload evidence
         if: always()
