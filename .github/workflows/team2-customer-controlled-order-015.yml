@@ -47,12 +47,13 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           cat > /tmp/controlled-order.mjs <<'NODE'
-          import {
+          import { pathToFileURL } from 'node:url';
+          const {
             readCustomerOrderingRuntime,
             submitCustomerOrderRuntime,
             readCustomerOrderLifecycleRuntime,
             createCustomerOrderLookupToken,
-          } from process.cwd() + '/source/apps/customer-web/customer-runtime-adapter.js';
+          } = await import(pathToFileURL(process.cwd() + '/source/apps/customer-web/customer-runtime-adapter.js').href);
 
           const origin = process.env.ORIGIN;
           const runId = process.env.RUN_ID;
