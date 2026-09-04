@@ -1,0 +1,177 @@
+name: Deploy V2 SMM Public Worker 016
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-public-worker-016.txt'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  deploy-smoke:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      FIXED_ORDER_ID: 6e95b49b-c529-4bdd-8f8a-99582f5eef05
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-public-worker-016.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require existing trusted credentials
+        env:
+          V2_SOURCE_READ_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$V2_SOURCE_READ_TOKEN"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+
+      - name: Verify exact source and SMM boundary
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/smm-ui-integration/*.test.ts
+          npm --prefix apps/smm-web install --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smm-web run typecheck
+          npm --prefix apps/smm-web run build
+          test -s apps/smm-web/dist/index.html
+          test -s apps/smm-web/dist/manifest.webmanifest
+          ! grep -R -E 'mfos_order_state|D1Database|\.prepare\(' apps/smm-web/src infra/cloudflare/smm-web-worker
+
+      - name: Deploy exact SMM public Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config infra/cloudflare/smm-web-worker/wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          echo "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+
+      - name: Public PWA asset smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          fetch200() { local u="$1" o="$2" c=""; for i in {1..30}; do c="$(curl -sS -o "$o" -w '%{http_code}' "$u" || true)"; [ "$c" = 200 ] && break; sleep 2; done; printf '%s' "$c"; }
+          INDEX_HTTP="$(fetch200 "$URL/" /tmp/index.html)"
+          SPA_HTTP="$(fetch200 "$URL/orders" /tmp/spa.html)"
+          MANIFEST_HTTP="$(fetch200 "$URL/manifest.webmanifest" /tmp/manifest.json)"
+          test "$INDEX_HTTP" = 200
+          test "$SPA_HTTP" = 200
+          test "$MANIFEST_HTTP" = 200
+          node -e "const x=require('/tmp/manifest.json');if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$URL$JS_PATH";; *) JS_URL="$URL/$JS_PATH";; esac
+          ASSET_HTTP="$(fetch200 "$JS_URL" /tmp/smm.js)"
+          test "$ASSET_HTTP" = 200
+          FIXTURE_MARKERS=0
+          for marker in 'TST-' 'fixture' 'mockOrder' '__MOREFUNOS_SMM_RUNTIME__'; do
+            grep -Fq "$marker" /tmp/smm.js && FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)) || true
+          done
+          test "$FIXTURE_MARKERS" = 0
+          printf 'index_http=%s\nspa_http=%s\nmanifest_http=%s\nasset_http=%s\nfixture_markers=%s\n' "$INDEX_HTTP" "$SPA_HTTP" "$MANIFEST_HTTP" "$ASSET_HTTP" "$FIXTURE_MARKERS" | tee evidence/public-assets.txt
+
+      - name: Trusted same-origin browser Order projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          URL="$(cat evidence/url.txt)"
+          export URL ADMIN_ORIGIN ADMIN_LOGIN_SECRET FIXED_ORDER_ID
+          node <<'NODE'
+          const fs=require('fs');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage();
+            const network=[];
+            page.on('request',r=>{const u=new URL(r.url()); if(u.pathname.startsWith('/api/')) network.push({origin:u.origin,path:u.pathname,method:r.method()})});
+            await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
+            const result=await page.evaluate(async(secret)=>{
+              const p=await fetch('/api/smm/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:secret}),cache:'no-store'});
+              const session=await p.json();
+              if(p.status!==200||!session.sessionToken||!session.storeId||!Array.isArray(session.mountedOperationIds)) throw new Error('SMM_PAIR_FAILED');
+              const s=await fetch('/api/smm/session',{headers:{authorization:'Bearer '+session.sessionToken},cache:'no-store'});
+              const refreshed=await s.json();
+              if(s.status!==200||refreshed.storeId!==session.storeId) throw new Error('SMM_SESSION_REFRESH_FAILED');
+              const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
+              const open=await r.json();
+              if(r.status!==200||!Array.isArray(open.orders)) throw new Error('SMM_OPEN_LIST_FAILED');
+              return {session:{...session,sessionToken:'[masked]'},open,token:session.sessionToken};
+            },process.env.ADMIN_LOGIN_SECRET);
+            const fixed=result.open.orders.find(o=>o.orderId===process.env.FIXED_ORDER_ID);
+            if(!fixed) throw new Error('SMM_FIXED_ORDER_NOT_VISIBLE');
+            if(fixed.storeId!==result.session.storeId||!Number.isInteger(fixed.revision)||fixed.revision<1) throw new Error('SMM_FIXED_ORDER_SCOPE_REVISION_INVALID');
+            const direct=await fetch(process.env.ADMIN_ORIGIN+'/api/smt/runtime',{method:'POST',headers:{authorization:'Bearer '+result.token,'content-type':'application/json'},body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.FIXED_ORDER_ID}})});
+            const truth=await direct.json();
+            if(direct.status!==200||truth.orderId!==fixed.orderId||truth.storeId!==fixed.storeId||truth.revision!==fixed.revision) throw new Error('SMM_SERVER_TRUTH_MISMATCH');
+            const publicOrigin=new URL(process.env.URL).origin;
+            if(network.some(x=>x.origin!==publicOrigin)) throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN');
+            fs.writeFileSync('evidence/browser-order.json',JSON.stringify({publicOrigin,apiNetwork:network,fixedOrder:{orderId:fixed.orderId,storeId:fixed.storeId,lifecycleStatus:fixed.lifecycleStatus,revision:fixed.revision},serverTruth:{orderId:truth.orderId,storeId:truth.storeId,lifecycleStatus:truth.lifecycleStatus,revision:truth.revision},runtimeReady:true,directBrowserD1:false},null,2));
+            console.log('SMM_016_BROWSER_READY orderId='+fixed.orderId+' revision='+fixed.revision+' status='+fixed.lifecycleStatus);
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Record final summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          STATUS=FAILED
+          test -s evidence/browser-order.json && STATUS=READY
+          printf 'source_sha=%s\nrun_id=%s\nclassification=%s\npublic_origin=%s\nfixed_order_id=%s\nserver_20_20=FROZEN\nmorefun_v2_native_ci=0\n' "${{ steps.req.outputs.source_sha }}" "$GITHUB_RUN_ID" "$STATUS" "$(cat evidence/url.txt 2>/dev/null || true)" "$FIXED_ORDER_ID" | tee evidence/summary.txt
+
+      - name: Publish Team2 audit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          SUMMARY="$(tr '\n' ' ' < evidence/summary.txt 2>/dev/null || echo summary_unavailable)"
+          gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_SMM_PUBLIC_016 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA $SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smm-public-016-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
