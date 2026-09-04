@@ -48,7 +48,7 @@ jobs:
       - name: Exact Keeta decision integrity tests
         working-directory: source
         run: |
-          node --test packages/integration/d1-keeta-durable-runtime.test.ts
+          node --test packages/integration/keeta-decision-integrity.test.ts
           node --test packages/smm-ui-integration/keeta-merchant-inbox-runtime.test.ts
 
       - name: Root TypeScript guard
