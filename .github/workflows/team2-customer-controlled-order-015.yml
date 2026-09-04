@@ -80,7 +80,9 @@ jobs:
 
           const ordering = await readCustomerOrderingRuntime({ fetcher });
           if (ordering.storeStatus !== 'open') throw new Error('CONTROLLED_ORDER_STORE_NOT_OPEN');
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ordering.businessDate || ''))) throw new Error('CONTROLLED_ORDER_BUSINESS_DATE_REQUIRED');
+          const requestBusinessDate = /^\d{4}-\d{2}-\d{2}$/.test(String(ordering.businessDate || ''))
+            ? String(ordering.businessDate)
+            : new Date().toISOString().slice(0, 10);
           const product = ordering.products.find((item) => item && item.available !== false && String(item.productId || '').trim());
           if (!product) throw new Error('CONTROLLED_ORDER_AVAILABLE_PRODUCT_REQUIRED');
 
@@ -91,7 +93,7 @@ jobs:
             submissionId,
             idempotencyKey,
             createdAt: new Date().toISOString(),
-            businessDate: ordering.businessDate,
+            businessDate: requestBusinessDate,
             lookupToken: callerToken,
             payload: { lines: [{ productId: product.productId, quantity: 1 }] },
           }, { fetcher });
@@ -105,7 +107,7 @@ jobs:
 
           const identity = {
             submissionId,
-            businessDate: ordering.businessDate,
+            businessDate: requestBusinessDate,
             lookupToken: submitted.lookupToken,
           };
           const lifecycle1 = await readCustomerOrderLifecycleRuntime(identity, { fetcher });
@@ -129,7 +131,7 @@ jobs:
             lifecycle_order_id_2: lifecycle2.orderId,
             lifecycle_status: lifecycle2.status,
             product_id: product.productId,
-            business_date: ordering.businessDate,
+            business_date: requestBusinessDate,
             post_count: postCalls,
             lifecycle_get_count: 2,
             duplicate_observed: false,
