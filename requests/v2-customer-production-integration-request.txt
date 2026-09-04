@@ -1,2 +1,2 @@
-source_sha=44f7c1a2a2ecbf13b54b317e4db04d682e70e3c6
-attempt=t1-customer-pwa-021a-vite-public-fix
+source_sha=1bda5f7c99022e07fbe3e1c6860ebdc4bce92f3b
+attempt=t1-customer-pwa-021a-post-admission
