@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - 'requests/v2-smm-ui-integration-request.txt'
+  pull_request:
+    paths:
+      - 'requests/v2-smm-ui-integration-request.txt'
   workflow_dispatch:
     inputs:
       source_sha:
