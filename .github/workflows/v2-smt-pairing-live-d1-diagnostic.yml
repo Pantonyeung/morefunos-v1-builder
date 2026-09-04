@@ -1,0 +1,98 @@
+name: V2 SMT Pairing Live D1 Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-smt-pairing-live-d1-diagnostic.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-pairing-live-d1-diagnostic.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CF_TOKEN" && test -n "$CF_ACCOUNT" && test -n "$SOURCE_TOKEN"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Read production SMT pairing chain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "
+          SELECT device_id, revision,
+                 json_extract(payload_json,'$.lifecycleStatus') AS lifecycle_status,
+                 json_extract(payload_json,'$.createdAt') AS created_at,
+                 json_extract(payload_json,'$.updatedAt') AS updated_at
+          FROM mfos_device_trust ORDER BY rowid DESC LIMIT 8;
+          " 2>&1 | tee evidence/devices.txt
+
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "
+          SELECT session_id, staff_id, lifecycle_status, absolute_expires_at, revision,
+                 json_extract(payload_json,'$.deviceId') AS device_id,
+                 json_extract(payload_json,'$.issuedAt') AS issued_at,
+                 json_extract(payload_json,'$.lastActivityAt') AS last_activity_at,
+                 json_extract(payload_json,'$.rotateAfterAt') AS rotate_after_at
+          FROM mfos_session ORDER BY rowid DESC LIMIT 8;
+          " 2>&1 | tee evidence/sessions.txt
+
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "
+          SELECT runtime_binding_ref, device_id, bound_session_id, lifecycle_status,
+                 expires_at, revision, capability_ids_json, created_at, updated_at
+          FROM mfos_smt_runtime_binding ORDER BY rowid DESC LIMIT 8;
+          " 2>&1 | tee evidence/runtime-bindings.txt
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_sha=%s\nrun_id=%s\nworkflow=v2-smt-pairing-live-d1-diagnostic\nsecrets_or_tokens_logged=NO\nmorefun_v2_actions=0\n'             "${{ steps.request.outputs.source_sha }}" "$GITHUB_RUN_ID" > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smt-pairing-live-d1-diagnostic-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
