@@ -1,5 +1,5 @@
-source_sha=2af69212f9f5be8220564ec190e7e3176bdde427
-base_sha=01682671c2d5c1d0f5fe1ee396d161d1b156003d
-branch_name=work/CORE/B0277-fulfillment-final-server-closure
+source_sha=65c983ca1cf6c3e2f65a4fbcc66ada5ce6060c27
+base_sha=1615e82f2b17f505e915b6182f4465e911275cf4
+branch_name=work/CORE/B0277-fulfillment-production-release-authority
 verification_phase=CANDIDATE
-request_id=T2-B0277-FULFILLMENT-CANDIDATE-CORE-R3-20260904
+request_id=T2-FULFILLMENT-012-CANDIDATE-CORE-20260904
