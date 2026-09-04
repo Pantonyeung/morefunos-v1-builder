@@ -1,2 +1,2 @@
-source_sha=046199c0aea14661cd7b473fbfd797b0c5fbcea9
-request_id=T3-MICRO-003-SMM-WORKER-RED-20260904
+source_sha=595dcf9ce559b8c898bddbe78889841ce540d5ff
+request_id=T3-MICRO-003-SMM-ROUTE-RED-20260904
