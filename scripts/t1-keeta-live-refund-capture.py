@@ -15,12 +15,24 @@ new = '''        if (result.evidence.eventId === 1001) {
           try {
             const m = JSON.parse(result.evidence.message) as Record<string, unknown>;
             const pick = (key: string) => m[key] ?? null;
+            const logisticsStatus = result.evidence.eventId === 1006 ? pick("logisticsStatus") : null;
+            const logisticsStage =
+              logisticsStatus === 0 ? "ORDER_CREATED" :
+              logisticsStatus === 10 ? "DISPATCHING" :
+              logisticsStatus === 20 ? "RIDER_ASSIGNED" :
+              logisticsStatus === 25 ? "RIDER_ARRIVED_STORE" :
+              logisticsStatus === 30 ? "ORDER_COLLECTED" :
+              logisticsStatus === 50 ? "DELIVERY_COMPLETED" :
+              logisticsStatus === 99 ? "DELIVERY_CANCELLED" :
+              logisticsStatus === null ? null : "UNKNOWN";
             console.log("KEETA_LIVE_EVENT_CAPTURE " + JSON.stringify({
               eventId: result.evidence.eventId,
               messageId: result.evidence.messageId,
               providerShopId: result.evidence.providerShopId,
               orderViewId: pick("orderViewId"),
               status: pick("status"),
+              logisticsStatus,
+              logisticsStage,
               afterSaleOrderId: pick("afterSaleOrderId"),
               isAppeal: pick("isAppeal"),
               money: pick("money"),
