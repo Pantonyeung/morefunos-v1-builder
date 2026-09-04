@@ -1,0 +1,59 @@
+name: V2 SMT Session Live Smoke
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-session-live-smoke.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-session-live-smoke.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Verify live SMT session authority
+        shell: bash
+        env:
+          ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+          APP_ORIGIN: https://appassets.androidplatform.net
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+
+          GET_CODE="$(curl -sS -H 'Cache-Control: no-cache' -o /tmp/get.json -w '%{http_code}' "$ORIGIN/api/smt/session")"
+          test "$GET_CODE" = 401
+          node -e "const x=require('/tmp/get.json'); if(x.code!=='SMT_RUNTIME_SESSION_REQUIRED') process.exit(1)"
+
+          BAD='__morefun_live_smoke_intentionally_invalid_5c7f61e3__'
+          POST_CODE="$(curl -sS -H 'Cache-Control: no-cache' -H 'content-type: application/json' -o /tmp/post.json -w '%{http_code}' --data \"{\\\"loginSecret\\\":\\\"$BAD\\\"}\" "$ORIGIN/api/smt/session")"
+          test "$POST_CODE" = 401
+          node -e "const x=require('/tmp/post.json'); if(x.code!=='SMT_PAIRING_CREDENTIAL_INVALID') process.exit(1)"
+
+          curl -sS -D /tmp/options.headers -o /tmp/options.body -X OPTIONS -H "Origin: $APP_ORIGIN" -H 'Access-Control-Request-Method: POST' "$ORIGIN/api/smt/session"
+          tr -d '\r' < /tmp/options.headers > /tmp/options.clean
+          grep -Fi "access-control-allow-origin: $APP_ORIGIN" /tmp/options.clean >/dev/null
+
+          printf 'source_sha=%s\nget_http=%s\npost_invalid_http=%s\npairing_secret_authority=CONFIGURED\ncors_appassets=PASS\n' \
+            "${{ steps.req.outputs.source_sha }}" "$GET_CODE" "$POST_CODE" > evidence/summary.txt
+          cat evidence/summary.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smt-session-live-smoke-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
