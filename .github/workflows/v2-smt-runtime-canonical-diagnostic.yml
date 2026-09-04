@@ -66,6 +66,8 @@ jobs:
           runq catalog "SELECT store_id,catalog_revision,revision,updated_at,length(snapshot_json) AS snapshot_bytes FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
           runq orders "SELECT COUNT(*) AS accepted_projection_count FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL;"
           runq open_orders "SELECT COUNT(*) AS open_projection_count FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL AND json_extract(accepted_projection_json,'$.lifecycleStatus')='ACCEPTED';"
+          runq catalog_identity "SELECT store_id,catalog_revision,json_extract(snapshot_json,'$.storeId') AS snapshot_store_id,json_extract(snapshot_json,'$.catalogRevision') AS snapshot_catalog_revision,json_array_length(json_extract(snapshot_json,'$.categories')) AS category_count,json_array_length(json_extract(snapshot_json,'$.products')) AS product_count FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
+          runq order_identity "SELECT COUNT(*) AS total, SUM(CASE WHEN json_extract(accepted_projection_json,'$.orderId')!=order_id THEN 1 ELSE 0 END) AS order_id_mismatch, SUM(CASE WHEN CAST(json_extract(accepted_projection_json,'$.orderRevision') AS INTEGER)!=revision THEN 1 ELSE 0 END) AS revision_mismatch, SUM(CASE WHEN json_extract(accepted_projection_json,'$.storeId') IS NOT NULL AND json_extract(accepted_projection_json,'$.storeId')!=store_id THEN 1 ELSE 0 END) AS store_mismatch, SUM(CASE WHEN json_extract(accepted_projection_json,'$.lifecycleStatus') NOT IN ('ACCEPTED','COMPLETED','CANCELLED') THEN 1 ELSE 0 END) AS lifecycle_invalid FROM mfos_order_state WHERE store_id='$STORE_ID' AND accepted_projection_json IS NOT NULL;"
 
           node - <<'NODE' | tee "$GITHUB_WORKSPACE/evidence/summary.txt"
           const fs=require('fs'), p=process.env.GITHUB_WORKSPACE+'/evidence/';
@@ -75,6 +77,8 @@ jobs:
           const catalog=rows('catalog');
           const orders=rows('orders');
           const open=rows('open_orders');
+          const catalogIdentity=rows('catalog_identity');
+          const orderIdentity=rows('order_identity');
           const openDays=days.filter(x=>x.lifecycle_status==='OPEN');
           console.log('source_sha='+process.env.SOURCE_SHA);
           console.log('canonical_store_rows='+store.length);
@@ -87,6 +91,15 @@ jobs:
           console.log('catalog_snapshot_bytes='+(catalog[0]?.snapshot_bytes||0));
           console.log('accepted_projection_count='+(orders[0]?.accepted_projection_count??'UNKNOWN'));
           console.log('open_projection_count='+(open[0]?.open_projection_count??'UNKNOWN'));
+          console.log('catalog_snapshot_store_match='+(catalogIdentity[0]?.snapshot_store_id===catalogIdentity[0]?.store_id));
+          console.log('catalog_snapshot_revision_match='+(catalogIdentity[0]?.snapshot_catalog_revision===catalogIdentity[0]?.catalog_revision));
+          console.log('catalog_category_count='+(catalogIdentity[0]?.category_count??'UNKNOWN'));
+          console.log('catalog_product_count='+(catalogIdentity[0]?.product_count??'UNKNOWN'));
+          console.log('order_identity_total='+(orderIdentity[0]?.total??'UNKNOWN'));
+          console.log('order_id_mismatch='+(orderIdentity[0]?.order_id_mismatch??'UNKNOWN'));
+          console.log('order_revision_mismatch='+(orderIdentity[0]?.revision_mismatch??'UNKNOWN'));
+          console.log('order_store_mismatch='+(orderIdentity[0]?.store_mismatch??'UNKNOWN'));
+          console.log('order_lifecycle_invalid='+(orderIdentity[0]?.lifecycle_invalid??'UNKNOWN'));
           NODE
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
