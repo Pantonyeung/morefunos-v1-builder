@@ -1,0 +1,175 @@
+name: V2 MF01 Combined Menu Production Apply
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-mf01-combined-menu-production-apply-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-mf01-combined-menu-production-apply-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require source equals current V2 main HEAD
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "v2-main-pin=PASS sha=$MAIN_SHA"
+
+      - name: Require production credentials
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Build exact immutable menu payload
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          node scripts/menu/build-mf01-combined-menu-import.mjs > "$GITHUB_WORKSPACE/evidence/menu-import.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync(process.env.GITHUB_WORKSPACE+'/evidence/menu-import.json','utf8'));
+          const c=p.counts;
+          if(c.canonicalProducts!==203||c.directProducts!==188||c.keetaItems!==190||c.keetaSingleMappings!==170||c.keetaCompositions!==20) throw new Error('MENU_COUNTS_INVALID');
+          if(!/^[0-9a-f]{64}$/i.test(p.sha256)) throw new Error('MENU_DIGEST_INVALID');
+          console.log(JSON.stringify({counts:c,sha256:p.sha256}));
+          NODE
+
+      - name: Verify deployed Admin endpoint is protected
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o evidence/anon-import.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/admin/catalog/import-mf01-combined-menu" -H 'content-type: application/json' --data '{}')"
+          test "$CODE" = 401
+          echo "anonymous_import_http=$CODE" > evidence/security.txt
+
+      - name: Login to production Admin
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "require('fs').writeFileSync('/tmp/admin-login.json',JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))"
+          CODE="$(curl -sS -c /tmp/admin.cookies -o evidence/admin-login.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/admin/session" -H 'content-type: application/json' --data-binary @/tmp/admin-login.json)"
+          test "$CODE" = 200
+          node -e "const x=require('./evidence/admin-login.json');if(!x.authenticated||x.bootstrapAuthorized!==true)process.exit(1)"
+          echo "admin_login_http=$CODE" >> evidence/security.txt
+
+      - name: Apply immutable menu through protected canonical endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -b /tmp/admin.cookies -o evidence/import-response.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/admin/catalog/import-mf01-combined-menu" -H 'content-type: application/json' --data-binary @evidence/menu-import.json)"
+          test "$CODE" = 200
+          node - <<'NODE'
+          const x=require('./evidence/import-response.json');
+          const v=x?.value;
+          if(!x?.ok||!v?.ok) throw new Error('MENU_IMPORT_RESPONSE_INVALID');
+          if(v.importId!=='menu-combined-2026-09-05-v1') throw new Error('MENU_IMPORT_ID_INVALID');
+          const c=v.counts;
+          if(c.canonicalProducts!==203||c.directProducts!==188||c.keetaItems!==190||c.keetaSingleMappings!==170||c.keetaCompositions!==20) throw new Error('MENU_IMPORT_COUNTS_INVALID');
+          console.log(JSON.stringify({replayed:v.replayed,storeId:v.storeId,catalogRevision:v.catalogRevision,counts:c,sha256:v.sha256}));
+          NODE
+          echo "import_http=$CODE" >> evidence/security.txt
+
+      - name: Canonical Admin API readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -b /tmp/admin.cookies -o evidence/admin-products.json -w '%{http_code}' "$ADMIN_ORIGIN/api/admin/catalog/products")"
+          test "$CODE" = 200
+          node - <<'NODE'
+          const x=require('./evidence/admin-products.json');
+          if(!x?.ok||!Array.isArray(x?.value?.products)) throw new Error('ADMIN_PRODUCT_READBACK_INVALID');
+          if(x.value.products.length!==203) throw new Error('ADMIN_PRODUCT_COUNT:'+x.value.products.length);
+          const active=x.value.products.filter(p=>p.lifecycleStatus==='ACTIVE').length;
+          console.log(JSON.stringify({products:x.value.products.length,active}));
+          NODE
+
+      - name: Production D1 readback
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --json --command "SELECT catalog_revision, json_array_length(snapshot_json,'$.products') AS product_count FROM mfos_catalog_state WHERE store_id=(SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01');" > "$GITHUB_WORKSPACE/evidence/d1-catalog.json"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --json --command "SELECT COUNT(*) AS direct_price_count FROM mfos_pricing_profile WHERE store_id=(SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01') AND sales_price_context='DIRECT' AND subject_type='PRODUCT' AND lifecycle_status='ACTIVE';" > "$GITHUB_WORKSPACE/evidence/d1-direct-prices.json"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --json --command "SELECT COUNT(*) AS keeta_item_count, SUM(CASE WHEN mapping_type='SINGLE_PRODUCT' AND mapping_status='ACTIVE' THEN 1 ELSE 0 END) AS single_count, SUM(CASE WHEN mapping_type='TYPED_COMPOSITION' THEN 1 ELSE 0 END) AS composition_count FROM mfos_channel_menu_item WHERE store_id=(SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01') AND channel_context='KEETA' AND menu_revision='menu-combined-2026-09-05-v1';" > "$GITHUB_WORKSPACE/evidence/d1-keeta.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=(n)=>JSON.parse(fs.readFileSync(process.env.GITHUB_WORKSPACE+'/evidence/'+n,'utf8'));
+          const row=(x)=>{const a=Array.isArray(x)?x:[x];for(const v of a){if(Array.isArray(v?.results)&&v.results[0])return v.results[0];}throw new Error('D1_RESULT_MISSING')};
+          const c=row(read('d1-catalog.json')); const p=row(read('d1-direct-prices.json')); const k=row(read('d1-keeta.json'));
+          if(c.catalog_revision!=='menu-combined-2026-09-05-v1'||Number(c.product_count)!==203)throw new Error('D1_CATALOG_READBACK_INVALID:'+JSON.stringify(c));
+          if(Number(p.direct_price_count)!==188)throw new Error('D1_DIRECT_PRICE_READBACK_INVALID:'+JSON.stringify(p));
+          if(Number(k.keeta_item_count)!==190||Number(k.single_count)!==170||Number(k.composition_count)!==20)throw new Error('D1_KEETA_READBACK_INVALID:'+JSON.stringify(k));
+          console.log(JSON.stringify({catalog:c,direct:p,keeta:k}));
+          NODE
+
+      - name: Idempotent replay proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -b /tmp/admin.cookies -o evidence/import-replay.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/admin/catalog/import-mf01-combined-menu" -H 'content-type: application/json' --data-binary @evidence/menu-import.json)"
+          test "$CODE" = 200
+          node -e "const x=require('./evidence/import-replay.json');if(!x?.ok||x?.value?.replayed!==true)process.exit(1)"
+
+      - name: Write evidence summary
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nmenu_revision=menu-combined-2026-09-05-v1\nexpected_products=203\nexpected_direct_prices=188\nexpected_keeta_items=190\nmode=PRODUCTION_PROTECTED_ADMIN_IMPORT_PLUS_D1_READBACK\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-mf01-combined-menu-production-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
