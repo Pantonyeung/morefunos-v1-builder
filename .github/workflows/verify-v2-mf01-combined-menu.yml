@@ -93,6 +93,13 @@ jobs:
           set -euo pipefail
           mapfile -t ADMIN_TESTS < <(find packages/admin-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 'admin-session-worker.test.ts' ! -name 'admin-worker-session-runtime.test.ts' -print | sort)
           node --test packages/catalog/*.test.ts "${ADMIN_TESTS[@]}" 2>&1 | tee ../evidence/regression.log
+      - name: Customer DIRECT visibility regression
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test packages/customer-ui-integration/d1-ordering-source.test.ts 2>&1 | tee ../evidence/customer-direct-visibility.log
+
       - name: Admin typecheck and build
         working-directory: source/apps/admin-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
