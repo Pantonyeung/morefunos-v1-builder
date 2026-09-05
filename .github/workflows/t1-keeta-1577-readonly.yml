@@ -1,0 +1,47 @@
+name: T1 Keeta 1577 Readonly
+on:
+  push:
+    branches: [main]
+    paths: ['requests/t1-keeta-1577-readonly.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      SIT_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Read exact 1577 receipt and canonical order
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT record_json FROM mfos_keeta_durable_delivery WHERE record_json LIKE '%1577%' ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/sit-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/sit-q.json" > "$RUNNER_TEMP/sit.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/sit.json" >/dev/null
+          node - "$RUNNER_TEMP/sit.json" "$RUNNER_TEMP/facts.json" <<'NODE'
+          const fs=require('fs');const rec=JSON.parse(JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0].record_json);let msg={};try{msg=JSON.parse(rec.evidence.message)}catch{}
+          const out={shortCode:msg?.merchantOrder?.seqNoStr,providerOrderId:msg?.baseOrder?.orderViewIdStr,providerSkuId:String(msg?.products?.[0]?.skuId??''),skuOpenItemCode:msg?.products?.[0]?.skuOpenItemCode,merchantDecision:rec.merchantDecision,providerAction:rec.providerAction,providerActionStatus:rec.providerActionStatus,canonicalOrderId:rec.canonicalOrderId??null,canonicalRevision:rec.canonicalRevision??null,lastError:rec.lastError??null};
+          fs.writeFileSync(process.argv[3],JSON.stringify(out));console.log('RECEIPT='+JSON.stringify(out));
+          NODE
+          PID="$(jq -r '.providerOrderId' "$RUNNER_TEMP/facts.json")"
+          SKU="$(jq -r '.providerSkuId' "$RUNNER_TEMP/facts.json")"
+          MAP_SQL="SELECT provider_menu_item_id,provider_sku_id,mapping_type,mapping_status,canonical_product_id FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1"
+          jq -n --arg sql "$MAP_SQL" --arg store "$STORE_ID" --arg sku "$SKU" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/map-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/map.json" >/dev/null
+          echo "MAPPING=$(jq -c '.result[0].results[0]' "$RUNNER_TEMP/map.json")"
+          ORDER_SQL="SELECT order_id,store_id,revision,source,channel,provider_ref FROM mfos_order_state WHERE accepted_projection_json LIKE ? ORDER BY updated_at DESC LIMIT 5"
+          jq -n --arg sql "$ORDER_SQL" --arg like "%$PID%" '{sql:$sql,params:[$like]}' > "$RUNNER_TEMP/order-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/order-q.json" > "$RUNNER_TEMP/order.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/order.json" >/dev/null
+          echo "ORDER_COUNT=$(jq '.result[0].results|length' "$RUNNER_TEMP/order.json")"
+          jq -c '.result[0].results[]?' "$RUNNER_TEMP/order.json"
