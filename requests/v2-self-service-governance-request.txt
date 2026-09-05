@@ -1,4 +1,4 @@
-source_sha=180f5dd054c2dffc1e0d3453d84abe0fc28ce6c2
-base_sha=67c24c4c865d916c47aa4f31cabed8a1156cbe89
-branch_name=work/SMM/B0314-all-interfaces-r4
-request_id=SMM-B0314-R4-SELF-20260905
+source_sha=3e9294d026f1f56ea1b5fb68c34ecc50065aafae
+base_sha=07aacceee9056afe968af9de7b85eaff7d19d2b6
+branch_name=work/SMM/B0314-owner-phone-fail-r5
+request_id=SMM-B0314-R5-OWNER-PHONE-SELF-20260905
