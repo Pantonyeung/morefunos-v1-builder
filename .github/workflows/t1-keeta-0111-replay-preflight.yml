@@ -21,12 +21,15 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          for SQL in "PRAGMA table_info(keeta_webhook_evidence)" "SELECT * FROM keeta_webhook_evidence WHERE event_id=1001 AND message LIKE '%0111%' ORDER BY received_at DESC LIMIT 1"; do
-            jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
-            curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
-            jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/out.json" >/dev/null
-            node - "$RUNNER_TEMP/out.json" <<'NODE'
-            const fs=require('fs');const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results||[];
-            console.log(JSON.stringify(r.map(x=>{const y={...x};for(const k of Object.keys(y)){if(/sig|secret|token|phone|address|recipient|customer|user/i.test(k))y[k]='[REDACTED]'}return y})));
-            NODE
-          done
+          SQL="PRAGMA table_info(keeta_webhook_evidence)"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q1.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q1.json" > "$RUNNER_TEMP/o1.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/o1.json" >/dev/null
+          echo "schema_columns=$(jq -r '[.result[0].results[].name]|join(",")' "$RUNNER_TEMP/o1.json")"
+
+          SQL="SELECT * FROM keeta_webhook_evidence WHERE event_id=1001 AND message LIKE '%0111%' ORDER BY received_at DESC LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q2.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q2.json" > "$RUNNER_TEMP/o2.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/o2.json" >/dev/null
+          echo "row_keys=$(jq -r '[.result[0].results[0]|keys[]]|join(",")' "$RUNNER_TEMP/o2.json")"
+          echo "has_sig_column=$(jq -r '(.result[0].results[0]|has("sig"))' "$RUNNER_TEMP/o2.json")"
