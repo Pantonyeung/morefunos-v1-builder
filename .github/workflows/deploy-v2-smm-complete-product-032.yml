@@ -222,6 +222,11 @@ jobs:
               if(await btn.count())await btn.first().click();
             }
             await page.waitForTimeout(500);
+            const refreshOrders=page.getByRole('button',{name:'更新 Orders'});
+            if(await refreshOrders.count()){
+              await refreshOrders.click();
+              await page.waitForTimeout(750);
+            }
             if(result.orders.actionableCount>0&&result.orders.acceptedOrderId){
               const acceptedCard=page.locator('[aria-label="訂單 '+result.orders.acceptedOrderId+'"]');
               await acceptedCard.waitFor({state:'visible',timeout:5000});
