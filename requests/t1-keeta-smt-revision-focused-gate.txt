@@ -1,3 +1,3 @@
-source_sha=9e407eede88931baee15852130b1a003eb550a1d
+source_sha=612d10ed29f7f0a91a0fc368b7a1420ca599b326
 acceptance=keeta-smt-presentation-6893
 baseline_controls=33950736198,33950956510
