@@ -1,3 +1,3 @@
-source_sha=9410ad8b5397b0bc94193b691b3f436c0cd35203
+source_sha=f3652a06fc1946ead94d6cac6a22040ae3d159fb
 branch_name=main
-request_id=VARIATION-END-TO-END-PRINT-R1-20260905
+request_id=VARIATION-END-TO-END-PRINT-R2-20260906
