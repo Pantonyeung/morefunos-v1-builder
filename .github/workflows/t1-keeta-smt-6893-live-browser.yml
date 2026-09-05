@@ -51,7 +51,7 @@ jobs:
             const api=[];const responses=[];
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))api.push({origin:u.origin,path:u.pathname,method:r.method()});});
             page.on('response',async r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/')){const item={origin:u.origin,path:u.pathname,status:r.status()};if(u.pathname==='/api/smt/runtime'){try{item.body=await r.json()}catch{}}responses.push(item);}});
-            await page.goto(process.env.SMT_ORIGIN+'/orders',{waitUntil:'networkidle'});
+            await page.goto(process.env.SMT_ORIGIN+'/#/orders',{waitUntil:'networkidle'});
             const pair=await page.evaluate(async(secret)=>{
               const r=await fetch('/api/smt/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:secret}),cache:'no-store'});
               return {status:r.status,body:await r.json()};
