@@ -1,0 +1,67 @@
+name: T1 Keeta 0366 Mapping Preflight
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-0366-mapping-preflight.txt'
+      - '.github/workflows/t1-keeta-0366-mapping-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+      PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
+      MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
+      PROVIDER_SPU_ID: "119024973"
+      PROVIDER_SKU_ID: "115907604"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read exact production state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT catalog_revision,revision,snapshot_json FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/catalog-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/catalog-q.json" > "$RUNNER_TEMP/catalog.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/catalog.json" >/dev/null
+
+          MAP_SQL="SELECT mapping_id,provider_menu_item_id,provider_sku_id,canonical_product_id,mapping_type,mapping_status,provider_display_name,pickup_price_minor,delivery_price_minor FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=?"
+          jq -n --arg sql "$MAP_SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/map-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/map.json" >/dev/null
+
+          node - "$RUNNER_TEMP/catalog.json" "$RUNNER_TEMP/map.json" <<'NODE'
+          const fs=require('fs');
+          const [catPath,mapPath]=process.argv.slice(2);
+          const cat=JSON.parse(fs.readFileSync(catPath,'utf8')).result[0].results[0];
+          const snap=JSON.parse(cat.snapshot_json);
+          const pid=process.env.PRODUCT_ID;
+          const products=(snap.products||[]).filter(p=>p.productId===pid);
+          const maps=JSON.parse(fs.readFileSync(mapPath,'utf8')).result[0].results||[];
+          console.log('catalog_revision='+cat.catalog_revision);
+          console.log('catalog_row_revision='+cat.revision);
+          console.log('product_matches='+products.length);
+          if(products[0]){
+            console.log('product_name='+String(products[0].name));
+            console.log('product_lifecycle='+String(products[0].lifecycleStatus));
+            console.log('product_revision='+String(products[0].revision));
+            console.log('product_category_count='+String((products[0].categoryMemberships||[]).length));
+          }
+          console.log('mapping_matches='+maps.length);
+          if(maps[0]) console.log('mapping='+JSON.stringify(maps[0]));
+          if(products.length>1||maps.length>1) process.exit(2);
+          NODE
