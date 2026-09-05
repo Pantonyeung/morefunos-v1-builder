@@ -1,0 +1,181 @@
+name: Keeta V2 Order SIT Menu Prep
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-order-sit-menu-prep.sha'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keeta-v2-order-sit-menu-prep
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: ab58a9b1039ca70b94d1f4ccb78a729a27fdee00
+      EXPECTED_APP_ID: '3419700273'
+      SHOP_ID: '721578302'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Guard request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUESTED="$(tr -d '[:space:]' < .ci-requests/keeta-v2-order-sit-menu-prep.sha | tr '[:upper:]' '[:lower:]')"
+          test "$REQUESTED" = "$SOURCE_SHA"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify source
+        working-directory: source
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck:intg-keeta
+          npm run test:intg-keeta
+
+      - name: Deploy exact menu-capable Worker with ephemeral probe
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          PROBE_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$PROBE_KEY"
+          printf 'KEETA_SIT_PROBE_KEY=%s\n' "$PROBE_KEY" > "$RUNNER_TEMP/probe.env"
+          chmod 600 "$RUNNER_TEMP/probe.env"
+          echo "PROBE_KEY=$PROBE_KEY" >> "$GITHUB_ENV"
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc --secrets-file "$RUNNER_TEMP/probe.env"
+
+      - name: Configure 1202 with propagation retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          OK=0
+          for attempt in $(seq 1 8); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/config.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" "$WORKER_URL/sit/configure-webhook-1202" || true)"
+            if [[ "$HTTP" = '200' ]] && node - "$RUNNER_TEMP/config.json" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); process.exit(b.code===0?0:1);
+          NODE
+            then OK=1; break; fi
+            sleep 2
+          done
+          test "$OK" = '1'
+
+      - name: Build Order SIT menu
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/menu.json" <<'JSON'
+          {
+            "shopCategoryList":[
+              {"openItemCode":"MF-ORDER-CAT-01","name":"Order SIT 無選項","sourceLanguageType":"zh-HK","type":0},
+              {"openItemCode":"MF-ORDER-CAT-02","name":"Order SIT 多選項","sourceLanguageType":"zh-HK","type":0}
+            ],
+            "choiceGroupList":[
+              {
+                "openItemCode":"MF-ORDER-GRP-01","name":"主選項","sourceLanguageType":"zh-HK","minNumber":1,"maxNumber":1,"repeatable":0,
+                "choiceGroupSkuList":[
+                  {"openItemCode":"MF-ORDER-OPT-01A","name":"主選 A","sourceLanguageType":"zh-HK","status":1,"price":"0.00","currency":"HKD"},
+                  {"openItemCode":"MF-ORDER-OPT-01B","name":"主選 B","sourceLanguageType":"zh-HK","status":1,"price":"3.00","currency":"HKD"}
+                ]
+              },
+              {
+                "openItemCode":"MF-ORDER-GRP-02","name":"加配選項","sourceLanguageType":"zh-HK","minNumber":0,"maxNumber":2,"repeatable":0,
+                "choiceGroupSkuList":[
+                  {"openItemCode":"MF-ORDER-OPT-02A","name":"加配 A","sourceLanguageType":"zh-HK","status":1,"price":"2.00","currency":"HKD"},
+                  {"openItemCode":"MF-ORDER-OPT-02B","name":"加配 B","sourceLanguageType":"zh-HK","status":1,"price":"4.00","currency":"HKD"}
+                ]
+              }
+            ],
+            "spuList":[
+              {
+                "openItemCode":"MF-ORDER-SPU-NG-01","name":"SIT 無選項餐 A","description":"Order SIT no-group A","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,
+                "shopCategoryOpenItemCodeList":["MF-ORDER-CAT-01"],"userGetModeList":["delivery"],
+                "skuList":[{"openItemCode":"MF-ORDER-SKU-NG-01","price":"10.00","currency":"HKD","choiceGroupOpenItemCodeList":[]}]
+              },
+              {
+                "openItemCode":"MF-ORDER-SPU-NG-02","name":"SIT 無選項餐 B","description":"Order SIT no-group B","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,
+                "shopCategoryOpenItemCodeList":["MF-ORDER-CAT-01"],"userGetModeList":["delivery"],
+                "skuList":[{"openItemCode":"MF-ORDER-SKU-NG-02","price":"12.00","currency":"HKD","choiceGroupOpenItemCodeList":[]}]
+              },
+              {
+                "openItemCode":"MF-ORDER-SPU-MULTI-01","name":"SIT 多選項餐","description":"Order SIT multi-group","sourceLanguageType":"zh-HK","status":1,"availableTime":{"code":0},"isSpecialty":0,
+                "shopCategoryOpenItemCodeList":["MF-ORDER-CAT-02"],"userGetModeList":["delivery"],
+                "skuList":[{"openItemCode":"MF-ORDER-SKU-MULTI-01","price":"15.00","currency":"HKD","choiceGroupOpenItemCodeList":["MF-ORDER-GRP-01","MF-ORDER-GRP-02"]}]
+              }
+            ],
+            "spuSequenceCodeMap":{
+              "MF-ORDER-CAT-01":["MF-ORDER-SPU-NG-01","MF-ORDER-SPU-NG-02"],
+              "MF-ORDER-CAT-02":["MF-ORDER-SPU-MULTI-01"]
+            }
+          }
+          JSON
+
+      - name: Submit Order SIT menu once
+        id: submit
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/submit.json" -w '%{http_code}' -X POST -H "Authorization: Bearer $PROBE_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/menu.json" "$WORKER_URL/sit/menu-sync?shopId=$SHOP_ID" || true)"
+          echo "menu_submit_http=$HTTP"
+          test "$HTTP" = '200'
+          node - "$RUNNER_TEMP/submit.json" "$GITHUB_OUTPUT" <<'NODE'
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log(`provider_code=${b.code}`);
+          if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1);
+          fs.appendFileSync(process.argv[3],`task_id=${b.data.taskId}\n`);
+          console.log(`task_id=${b.data.taskId}`);
+          NODE
+
+      - name: Await provider 1202
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TASK_ID: ${{ steps.submit.outputs.task_id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 35); do
+            npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message FROM keeta_webhook_evidence WHERE event_id=1202 AND app_id=$EXPECTED_APP_ID AND shop_id=$SHOP_ID ORDER BY received_at DESC LIMIT 30" --json > "$RUNNER_TEMP/evidence.json"
+            if node - "$RUNNER_TEMP/evidence.json" "$TASK_ID" <<'NODE'
+          const fs=require('fs'); const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); const id=Number(process.argv[3]); const rows=(Array.isArray(raw)?raw[0]?.results:raw?.results)??[];
+          for(const r of rows){let m;try{m=JSON.parse(r.message)}catch{continue} if(Number(m.taskId)===id){const e=Array.isArray(m.errorSpuDTOList)?m.errorSpuDTOList:[]; console.log(`message_id_present=${typeof r.message_id==='string'&&r.message_id.length>0}`); console.log(`error_count=${e.length}`); process.exit(e.length?2:0)}} process.exit(1);
+          NODE
+            then echo "ORDER_SIT_MENU_PREP=PASS"; exit 0; fi
+            sleep 4
+          done
+          exit 1
+
+      - name: Evidence summary
+        shell: bash
+        env:
+          TASK_ID: ${{ steps.submit.outputs.task_id }}
+        run: |
+          printf 'builder_run_id=%s\nsource_sha=%s\nshop_id=%s\nmenu_task_id=%s\nno_group_products=2\nmulti_group_products=1\norder_sit_menu_prep=PASS\n' "$GITHUB_RUN_ID" "$SOURCE_SHA" "$SHOP_ID" "$TASK_ID"
