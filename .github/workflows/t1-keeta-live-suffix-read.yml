@@ -8,7 +8,7 @@ on:
       - requests/t1-keeta-live-suffix-read.txt
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   read:
@@ -29,13 +29,66 @@ jobs:
           [[ "$SUFFIX" =~ ^[0-9]{4}$ ]]
           SQL="SELECT dedup_key, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.evidence.providerShopId') AS provider_shop_id, json_extract(record_json,'$.merchantDecision') AS merchant_decision, record_json FROM mfos_keeta_durable_delivery WHERE record_json LIKE ? ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 3;"
           jq -n --arg sql "$SQL" --arg like "%$SUFFIX%" '{sql:$sql,params:[$like]}' > "$RUNNER_TEMP/q.json"
-          curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
-          cat "$RUNNER_TEMP/out.json"
+          curl --fail-with-body --silent --show-error --max-time 20 \
+            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
           jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/out.json" >/dev/null
           ROWS="$(jq '[.result[0].results[]?] | length' "$RUNNER_TEMP/out.json")"
           echo "matching_rows=$ROWS"
           test "$ROWS" -ge 1
-          jq -r '.result[0].results[] | {dedup_key,message_id,provider_shop_id,merchant_decision,record_json}' "$RUNNER_TEMP/out.json"
+
+          mkdir -p .ci-results
+          python3 - "$RUNNER_TEMP/out.json" ".ci-results/t1-keeta-live-suffix-read-$SUFFIX.json" <<'PY'
+          import json, re, sys
+          src, dst = sys.argv[1], sys.argv[2]
+          raw = json.load(open(src, encoding="utf-8"))
+          rows = raw.get("result", [{}])[0].get("results", [])
+          sensitive = re.compile(r"(phone|mobile|address|latitude|longitude|recipient|customer|contact|email|location|user(name|id)?$)", re.I)
+          def redact(v, key=""):
+              if sensitive.search(key):
+                  return "[REDACTED]"
+              if isinstance(v, dict):
+                  return {k: redact(x, k) for k, x in v.items()}
+              if isinstance(v, list):
+                  return [redact(x, key) for x in v]
+              return v
+          out=[]
+          for row in rows:
+              rec = json.loads(row.get("record_json") or "{}")
+              ev = rec.get("evidence") or {}
+              msg_raw = ev.get("message")
+              try:
+                  msg = json.loads(msg_raw) if isinstance(msg_raw, str) else msg_raw
+              except Exception:
+                  msg = {"parseError": True}
+              out.append({
+                  "dedup_key": row.get("dedup_key"),
+                  "message_id": row.get("message_id"),
+                  "provider_shop_id": row.get("provider_shop_id"),
+                  "merchant_decision": row.get("merchant_decision"),
+                  "first_seen_at": rec.get("firstSeenAt"),
+                  "canonical_store_id": rec.get("canonicalStoreId"),
+                  "canonical_order_id": rec.get("canonicalOrderId"),
+                  "canonical_revision": rec.get("canonicalRevision"),
+                  "provider_action": rec.get("providerAction"),
+                  "provider_action_status": rec.get("providerActionStatus"),
+                  "message": redact(msg),
+              })
+          json.dump({"matching_rows":len(out),"rows":out}, open(dst,"w",encoding="utf-8"), ensure_ascii=False, indent=2)
+          PY
+
+      - name: Commit sanitized evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUFFIX="$(sed -n 's/^suffix=//p' requests/t1-keeta-live-suffix-read.txt | tr -d '[:space:]')"
+          git config user.name "morefunos-v1-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add ".ci-results/t1-keeta-live-suffix-read-$SUFFIX.json"
+          git commit -m "evidence(keeta): sanitized live suffix $SUFFIX" || exit 0
+          git push
 
       - name: Upload evidence
         if: always()
