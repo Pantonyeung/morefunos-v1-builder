@@ -152,6 +152,8 @@ jobs:
             'refund.reconcile.v1',
             'print.job.request.v1',
             'print.job.observe.v1',
+            'business-day.read.current.v1',
+            'reporting.snapshot.read.v1',
           ];
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -233,6 +235,19 @@ jobs:
             await page.getByText('列印管理',{exact:true}).waitFor({state:'visible',timeout:5000});
             await page.getByText('營業日',{exact:true}).waitFor({state:'visible',timeout:5000});
             await page.getByText('營運報表',{exact:true}).waitFor({state:'visible',timeout:5000});
+
+            await page.getByRole('button',{name:'營業日：查看目前營業日期',exact:true}).click();
+            await page.getByRole('heading',{name:'目前營業狀態',exact:true}).waitFor({state:'visible',timeout:5000});
+            await page.getByRole('button',{name:'收起',exact:true}).click();
+
+            await page.getByRole('button',{name:'營運報表：今日營業額／訂單／退款',exact:true}).click();
+            await page.getByRole('heading',{name:'今日營運',exact:true}).waitFor({state:'visible',timeout:5000});
+            await page.getByRole('button',{name:'收起',exact:true}).click();
+
+            await page.getByRole('button',{name:'營運控制：售罄／暫停／恢復供應',exact:true}).click();
+            await page.getByRole('heading',{name:'售罄／暫停／恢復',exact:true}).waitFor({state:'visible',timeout:5000});
+            await page.getByPlaceholder('輸入商品名稱').waitFor({state:'visible',timeout:5000});
+            await page.getByRole('button',{name:'收起',exact:true}).click();
 
             await mainNav.getByRole('button',{name:'待處理',exact:true}).click();
             await page.getByText('平台訂單',{exact:true}).waitFor({state:'visible',timeout:5000});
