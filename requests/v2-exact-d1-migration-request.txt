@@ -1,3 +1,3 @@
-source_sha=55ab089730827bb1bc67de3c4d340755becf7c9c
-migration_file=0021-third-party-channel-net-estimate-policy.sql
-request_id=CORE-THIRD-PARTY-NET-ESTIMATE-20260905
+source_sha=87d18ff8b4149eddcb56c8cb16b785aef348ef48
+migration_file=0022-channel-menu-option-alias.sql
+request_id=KEETA-OPTION-IDENTITY-20260906
