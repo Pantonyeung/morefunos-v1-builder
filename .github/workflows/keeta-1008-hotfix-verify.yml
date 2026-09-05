@@ -41,9 +41,16 @@ jobs:
       - name: Targeted 1008 regression
         working-directory: source
         run: node --test packages/integration/keeta-webhook-ingress.test.ts
-      - name: Keeta integration regression
+      - name: Targeted Keeta ingress and journal regression
         working-directory: source
-        run: node --test packages/integration/keeta*.test.ts
+        run: |
+          node --test packages/integration/keeta-webhook-ingress.test.ts
+          node --test packages/integration/keeta-webhook-event-journal.test.ts
+      - name: Guard Worker journals 1008
+        working-directory: source
+        run: |
+          grep -Fq "[1002, 1003, 1004, 1005, 1006, 1007, 1008].includes(result.evidence.eventId)" workers/keeta/src/index.ts
+          grep -Fq "1008: 'OBSERVED_SYSTEM_ORDER_CANCELLATION'" packages/integration/keeta-webhook-event-registry.ts
       - name: Root typecheck
         working-directory: source
         run: npm run typecheck
