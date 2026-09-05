@@ -32,6 +32,7 @@ jobs:
             "name": "morefun-keeta-sit-rpc-probe",
             "main": "src/index.ts",
             "compatibility_date": "2026-09-05",
+            "workers_dev": true,
             "vars": {"PROBE_KEY": "$KEY"},
             "services": [
               {
@@ -63,7 +64,7 @@ jobs:
           echo "$DEPLOY"
           URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
           test -n "$URL"
-          BODY="$(curl --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
+          BODY="$(curl --retry 12 --retry-delay 1 --retry-all-errors --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
           echo "$BODY" | jq -e '.providerOrderId=="5133443347282396"' >/dev/null
           echo "$BODY" | jq -e '.providerCode==0' >/dev/null
           echo "ORDER_GET_2396=$(echo "$BODY" | jq -c '{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
