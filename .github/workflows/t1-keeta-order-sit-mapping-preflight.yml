@@ -53,5 +53,28 @@ jobs:
           curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/cat-q.json" > "$RUNNER_TEMP/cat.json"
           jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/cat.json" >/dev/null
           node - "$RUNNER_TEMP/cat.json" <<'NODE'
-          const fs=require('fs');const row=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0];const s=JSON.parse(row.snapshot_json);const ids=['cde33523-b6fb-529b-a4be-6b3e6a0884d9','acc44f97-f911-5536-8a37-919b390f9b9a','d63c5569-abb1-57b5-859f-8c38054f2661'];console.log('catalog_revision='+row.catalog_revision);console.log('catalog_row_revision='+row.revision);console.log('candidate_product_matches='+(s.products||[]).filter(p=>ids.includes(p.productId)).length);
+          const fs=require('fs');
+          const row=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0];
+          const s=JSON.parse(row.snapshot_json);
+          const ids=['cde33523-b6fb-529b-a4be-6b3e6a0884d9','acc44f97-f911-5536-8a37-919b390f9b9a','d63c5569-abb1-57b5-859f-8c38054f2661'];
+          const matches=(s.products||[]).filter(p=>ids.includes(p.productId));
+          console.log('catalog_revision='+row.catalog_revision);
+          console.log('catalog_row_revision='+row.revision);
+          console.log('candidate_product_matches='+matches.length);
+          const multi=matches.find(p=>p.productId==='d63c5569-abb1-57b5-859f-8c38054f2661');
+          console.log('MULTI_CANONICAL_SAFE='+JSON.stringify({
+            productId:multi?.productId??null,
+            name:multi?.name??null,
+            revision:multi?.revision??null,
+            optionGroups:Array.isArray(multi?.optionGroups)?multi.optionGroups.map(g=>({
+              optionGroupId:g.optionGroupId??null,
+              name:g.name??null,
+              options:Array.isArray(g.options)?g.options.map(o=>({
+                optionId:o.optionId??null,
+                name:o.name??null,
+                sku:o.sku??null,
+                status:o.status??null
+              })):[]
+            })):[]
+          }));
           NODE
