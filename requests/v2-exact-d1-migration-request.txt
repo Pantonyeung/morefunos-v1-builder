@@ -1,3 +1,3 @@
-source_sha=0c4271d2c638a442f17cc9c8ed1162931dd80a86
-migration_file=0014-staff-authentication-binding.sql
-request_id=SMM-B0314-R5-STAFF-AUTH-SCHEMA-20260905
+source_sha=55ab089730827bb1bc67de3c4d340755becf7c9c
+migration_file=0021-third-party-channel-net-estimate-policy.sql
+request_id=CORE-THIRD-PARTY-NET-ESTIMATE-20260905
