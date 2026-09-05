@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   verify:
@@ -15,6 +16,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
+      - name: Publish Team1 pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/t1-keeta-decision-integrity' \
+            -f description='Team1 Keeta verification running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -74,3 +86,27 @@ jobs:
       - name: Root TypeScript guard
         working-directory: source
         run: npm run typecheck
+
+      - name: Publish Team1 success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/t1-keeta-decision-integrity' \
+            -f description='Team1 Keeta verification passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish Team1 failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/t1-keeta-decision-integrity' \
+            -f description='Team1 Keeta verification failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
