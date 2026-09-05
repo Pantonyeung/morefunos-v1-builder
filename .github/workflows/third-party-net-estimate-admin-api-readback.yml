@@ -17,15 +17,17 @@ jobs:
       - name: Verify protected production Admin policy API
         shell: bash
         env:
-          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
         run: |
           set -euo pipefail
           ENDPOINT="$ADMIN_URL/api/admin/channels/net-estimate-policies"
           ANON="$(curl -sS -o /tmp/anon.json -w '%{http_code}' "$ENDPOINT")"
           test "$ANON" = 401
-          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}"
-          TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
-          AUTH="$(curl -sS -o /tmp/auth.json -w '%{http_code}' -H "Cookie: mf_admin_session=$TOKEN" "$ENDPOINT")"
+          test -n "${ADMIN_LOGIN_SECRET:-}"
+          LOGIN_BODY="$(node -e "process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))")"
+          LOGIN="$(curl -sS -c /tmp/admin-cookie -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          test "$LOGIN" = 200
+          AUTH="$(curl -sS -b /tmp/admin-cookie -o /tmp/auth.json -w '%{http_code}' "$ENDPOINT")"
           test "$AUTH" = 200
           node - <<'NODE'
           const fs=require('fs');
@@ -37,9 +39,10 @@ jobs:
             if(!Number.isSafeInteger(row.netRateBps)||row.netRateBps<0||row.netRateBps>10000)process.exit(1);
           }
           console.log('ANONYMOUS_HTTP=401');
+          console.log('LOGIN_HTTP=200');
           console.log('AUTHENTICATED_HTTP=200');
           console.log('POLICY_API=PASS');
           console.log('POLICY_ROWS='+body.value.length);
           console.log(JSON.stringify(body.value.map(({storeId,provider,enabled,estimationBasis,netRateBps,revision})=>({storeId,provider,enabled,estimationBasis,netRateBps,revision}))));
           NODE
-          rm -f /tmp/anon.json /tmp/auth.json
+          rm -f /tmp/anon.json /tmp/auth.json /tmp/login.json /tmp/admin-cookie
