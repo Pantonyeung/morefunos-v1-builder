@@ -30,7 +30,12 @@ jobs:
           ORDER_VIEW_ID="$(sed -n 's/^order_view_id=//p' requests/t1-keeta-d1-fast-read.txt | tail -n 1 | tr -d '[:space:]')"
           MESSAGE_ID="$(sed -n 's/^message_id=//p' requests/t1-keeta-d1-fast-read.txt | tail -n 1 | tr -d '[:space:]')"
 
-          if [ "$MODE" = "journal_latest" ]; then
+          if [ "$MODE" = "catalog_multi_2965" ]; then
+            PROD_D1_DATABASE_ID="1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+            SQL="SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_extract(j.value,'$.revision') AS revision,json_extract(j.value,'$.optionGroups') AS option_groups_json FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND json_extract(j.value,'$.productId')='d63c5569-abb1-57b5-859f-8c38054f2661' LIMIT 1;"
+            jq -n --arg sql "$SQL" '{sql:$sql,params:[]}' > "$RUNNER_TEMP/d1-query.json"
+            KEETA_D1_DATABASE_ID="$PROD_D1_DATABASE_ID"
+          elif [ "$MODE" = "journal_latest" ]; then
             SQL="SELECT event_id,message_id,provider_shop_id,order_view_id,status,logistics_status,op_time_ms,after_sale_order_id,provider_pushed_at FROM mfos_keeta_webhook_event_journal ORDER BY provider_pushed_at DESC, message_id DESC LIMIT 20;"
             jq -n --arg sql "$SQL" '{sql:$sql,params:[]}' > "$RUNNER_TEMP/d1-query.json"
           else
@@ -52,7 +57,10 @@ jobs:
           jq -e '.success == true and (.result | length) > 0 and (.result[0].success == true)' "$RUNNER_TEMP/d1-fast-read.txt" >/dev/null
 
           ROWS="$(jq '[.result[0].results[]?] | length' "$RUNNER_TEMP/d1-fast-read.txt")"
-          if [ "$MODE" = "journal_latest" ]; then
+          if [ "$MODE" = "catalog_multi_2965" ]; then
+            echo "catalog_rows_returned=$ROWS"
+            jq -c '.result[0].results[]?' "$RUNNER_TEMP/d1-fast-read.txt"
+          elif [ "$MODE" = "journal_latest" ]; then
             echo "journal_rows_returned=$ROWS"
             jq -c '.result[0].results[]?' "$RUNNER_TEMP/d1-fast-read.txt"
           else
