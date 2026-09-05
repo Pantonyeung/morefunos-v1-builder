@@ -21,12 +21,23 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      - name: Publish Builder pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/v2-self-service-governance' \
+            -f description='Builder verification started'
+
       - name: Checkout Builder definition
         uses: actions/checkout@v7
         with:
@@ -136,3 +147,26 @@ jobs:
           name: v2-self-service-governance-${{ steps.request.outputs.source_sha }}
           path: ${{ runner.temp }}/v2-self-service-governance-evidence.txt
           retention-days: 30
+
+
+      - name: Publish Builder success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-self-service-governance' \
+            -f description='Builder verification passed'
+
+      - name: Publish Builder failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-self-service-governance' \
+            -f description='Builder verification failed'
