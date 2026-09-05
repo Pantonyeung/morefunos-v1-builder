@@ -18,6 +18,7 @@ jobs:
       ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
       SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
       ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      FIXED_ORDER_KEETA: 9011ca2e-dd04-5198-b8d5-d96249564a15
       FIXED_ORDER_015: 6e95b49b-c529-4bdd-8f8a-99582f5eef05
       FIXED_ORDER_003: 094b2412-df92-4897-b0c2-3d67bcf85ef6
     steps:
@@ -89,12 +90,17 @@ jobs:
             await page.getByRole('button',{name:'連接 Runtime'}).click();
             await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
             await page.getByText('Orders 已由 trusted HTTP canonical projection 提供。',{exact:true}).waitFor({state:'visible',timeout:15000});
-            const candidates=[process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
+            const candidates=[process.env.FIXED_ORDER_KEETA,process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
             let visible=null;
             for(const id of candidates){
               if(await page.getByText(id,{exact:true}).count()){visible=id;break;}
             }
             if(!visible) throw new Error('SMM_FIXED_CANONICAL_ORDER_NOT_VISIBLE');
+            if(process.env.FIXED_ORDER_KEETA && visible===process.env.FIXED_ORDER_KEETA){
+              const cardText=(await page.locator('.smm-order-card',{hasText:visible}).textContent())||'';
+              if(!cardText.includes('Keeta')) throw new Error('SMM_KEETA_SOURCE_LABEL_NOT_VISIBLE');
+              if(!cardText.includes('$21')) throw new Error('SMM_KEETA_TOTAL_NOT_VISIBLE');
+            }
             const session=await page.evaluate(()=>JSON.parse(localStorage.getItem('morefunos.smm.device-session.v1')||'null'));
             if(!session?.sessionToken||!session.storeId||!session.sessionId||!session.deviceId||!session.runtimeBindingRef) throw new Error('SMM_TRUSTED_SESSION_STORAGE_INVALID');
             const publicOrigin=new URL(process.env.SMM_ORIGIN).origin;
