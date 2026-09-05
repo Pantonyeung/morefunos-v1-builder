@@ -51,8 +51,12 @@ jobs:
           export default {
             async fetch(request:Request,env:Env):Promise<Response>{
               if(request.headers.get("x-probe-key")!==env.PROBE_KEY)return new Response("forbidden",{status:403});
-              const result=await env.KEETA.readOrderCommercialReadback("KEETA:2096223475864846434");
-              return Response.json(result);
+              try {
+                const result=await env.KEETA.readOrderCommercialReadback("KEETA:2096223475864846434");
+                return Response.json({ok:true,result});
+              } catch(error) {
+                return Response.json({ok:false,error:error instanceof Error?error.message:String(error)});
+              }
             }
           };
           EOF
@@ -65,6 +69,8 @@ jobs:
           URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
           test -n "$URL"
           BODY="$(curl --retry 12 --retry-delay 1 --retry-all-errors --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
-          echo "$BODY" | jq -e '.providerOrderId=="5133443347282396"' >/dev/null
-          echo "$BODY" | jq -e '.providerCode==0' >/dev/null
-          echo "ORDER_GET_2396=$(echo "$BODY" | jq -c '{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
+          echo "RPC_RESULT=$(echo "$BODY" | jq -c '.')" 
+          echo "$BODY" | jq -e '.ok==true' >/dev/null
+          echo "$BODY" | jq -e '.result.providerOrderId=="5133443347282396"' >/dev/null
+          echo "$BODY" | jq -e '.result.providerCode==0' >/dev/null
+          echo "ORDER_GET_2396=$(echo "$BODY" | jq -c '.result|{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
