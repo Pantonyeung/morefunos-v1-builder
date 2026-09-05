@@ -1,0 +1,40 @@
+name: Keeta SIT Case17 Store Details Verify
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-requests/keeta-sit-case17-store-details.sha']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Resolve source
+        id: src
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/keeta-sit-case17-store-details.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.src.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Install
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Keeta store request regression
+        working-directory: source
+        run: node --test packages/integration/keeta-store-provider-requests.test.ts
+      - name: Full typecheck
+        working-directory: source
+        run: npm run typecheck
