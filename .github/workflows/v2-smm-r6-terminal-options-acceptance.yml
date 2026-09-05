@@ -1,0 +1,255 @@
+name: V2 SMM R6 Terminal and Options Acceptance
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-r6-options-acceptance.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify_deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-r6-options-acceptance.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+
+      - name: Install and terminal verify
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --test packages/smm-ui-integration/*.test.ts
+          cd apps/smm-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+
+      - name: Generate isolated options acceptance entry
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > apps/smm-web/src/main.tsx <<'EOF'
+          import {StrictMode} from 'react';
+          import {createRoot} from 'react-dom/client';
+          import '@morefunos/ui/tokens.css';
+          import '@morefunos/ui/base.css';
+          import '@morefunos/ui/mobile-ordering.css';
+          import './smm.css';
+          import {OrderingPage} from './OrderingPage.tsx';
+          import {InternalPortCompositionResolver} from '../../../packages/internal-port-runtime/composition.ts';
+          import {createCatalogMenuReadBindings,type ActiveCatalogSnapshot} from '../../../packages/catalog/catalog-menu-projection-port.ts';
+          import {createPricingQuoteBindings,type CanonicalPricingQuoteInput,type PricingQuoteProjection} from '../../../packages/pricing/pricing-quote-port.ts';
+
+          const STORE='smm-options-acceptance';
+          const now='2026-09-05T00:00:00.000Z';
+          const snapshot:ActiveCatalogSnapshot=Object.freeze({
+            storeId:STORE,
+            catalogRevision:'options-acceptance-v1',
+            categories:Object.freeze([
+              Object.freeze({categoryId:'acceptance-cat',name:'選項驗收',lifecycleStatus:'ACTIVE',position:1,revision:1,createdAt:now,updatedAt:now}),
+            ]),
+            products:Object.freeze([
+              Object.freeze({
+                productId:'required-product',
+                name:'必選測試商品',
+                lifecycleStatus:'ACTIVE',
+                revision:1,
+                createdAt:now,
+                updatedAt:now,
+                categoryMemberships:Object.freeze([Object.freeze({categoryId:'acceptance-cat',position:1})]),
+                optionGroups:Object.freeze([
+                  Object.freeze({
+                    optionGroupId:'required-group',
+                    name:'辣度',
+                    selectionMode:'SINGLE',
+                    required:true,
+                    minSelections:1,
+                    maxSelections:1,
+                    allowQuantities:false,
+                    position:1,
+                    options:Object.freeze([
+                      Object.freeze({optionId:'normal-spicy',name:'正常辣',position:1,status:'ACTIVE'}),
+                      Object.freeze({optionId:'less-spicy',name:'少辣',position:2,status:'ACTIVE'}),
+                    ]),
+                  }),
+                ]),
+              }),
+              Object.freeze({
+                productId:'optional-riceball',
+                name:'飯糰（可走配料）',
+                lifecycleStatus:'ACTIVE',
+                revision:1,
+                createdAt:now,
+                updatedAt:now,
+                categoryMemberships:Object.freeze([Object.freeze({categoryId:'acceptance-cat',position:2})]),
+                optionGroups:Object.freeze([
+                  Object.freeze({
+                    optionGroupId:'optional-group',
+                    name:'可選走配料',
+                    selectionMode:'MULTIPLE',
+                    required:false,
+                    minSelections:0,
+                    maxSelections:2,
+                    allowQuantities:false,
+                    position:1,
+                    options:Object.freeze([
+                      Object.freeze({optionId:'no-cucumber',name:'走青瓜',position:1,status:'ACTIVE'}),
+                      Object.freeze({optionId:'no-scallion',name:'走蔥',position:2,status:'ACTIVE'}),
+                    ]),
+                  }),
+                ]),
+              }),
+            ]),
+          });
+
+          const resolver=new InternalPortCompositionResolver();
+          const catalogSource={async readActive(){return snapshot;}};
+          for(const binding of createCatalogMenuReadBindings(catalogSource))if(binding.port==='SMM')resolver.register(binding);
+          const priceByProduct=new Map([['required-product',4500],['optional-riceball',4100]]);
+          const pricingAuthority={
+            async quote(input:CanonicalPricingQuoteInput):Promise<PricingQuoteProjection>{
+              const lines=input.lines.map(line=>{
+                const unit=priceByProduct.get(line.productId)??0;
+                return Object.freeze({
+                  lineId:line.lineId,
+                  currency:'HKD',
+                  quantity:line.quantity,
+                  listUnitPriceMinor:unit,
+                  adjustments:Object.freeze([]),
+                  finalUnitPriceMinor:unit,
+                  lineTotalMinor:unit*line.quantity,
+                  pricingRevisionOrRuleProvenance:Object.freeze(['options-acceptance-v1']),
+                });
+              });
+              return Object.freeze({
+                storeId:input.storeId,
+                salesPriceContext:'DIRECT',
+                currency:'HKD',
+                lines:Object.freeze(lines),
+                totalMinor:lines.reduce((sum,line)=>sum+line.lineTotalMinor,0),
+                pricingRevisionOrRuleProvenance:Object.freeze(['options-acceptance-v1']),
+              });
+            },
+          };
+          for(const binding of createPricingQuoteBindings(pricingAuthority))if(binding.port==='SMM')resolver.register(binding);
+          (globalThis as typeof globalThis & {__MOREFUNOS_V2_SMM_RUNTIME__?:unknown}).__MOREFUNOS_V2_SMM_RUNTIME__=Object.freeze({
+            resolver,
+            authorization:()=>Object.freeze({actorId:'acceptance-operator',authorizationContextRef:'acceptance-session',scopeRef:STORE}),
+            nextRequestId:()=>crypto.randomUUID(),
+          });
+
+          const root=document.getElementById('root');
+          if(!root)throw new Error('SMM_ROOT_REQUIRED');
+          createRoot(root).render(
+            <StrictMode>
+              <div role="status" style={{padding:'12px 16px',fontWeight:800,textAlign:'center'}}>
+                選項驗收模式｜只測介面，不會落單，不會寫入正式資料
+              </div>
+              <OrderingPage/>
+            </StrictMode>,
+          );
+          EOF
+
+          cd apps/smm-web
+          npm run typecheck
+          npm run build
+
+      - name: Assert acceptance markers
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -q '選項驗收模式' apps/smm-web/dist
+          grep -R -q '飯糰（可走配料）' apps/smm-web/dist
+          grep -R -q '走青瓜' apps/smm-web/dist
+          grep -R -q '走蔥' apps/smm-web/dist
+          grep -R -q '⋯ 選項' apps/smm-web/dist
+
+      - name: Generate isolated static Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > smm-options-acceptance-worker.ts <<'EOF'
+          interface AssetFetcher{fetch(request:Request):Promise<Response>}
+          interface Env{ASSETS:AssetFetcher}
+          export default{fetch(request:Request,env:Env){return env.ASSETS.fetch(request)}};
+          EOF
+          cat > smm-options-acceptance-wrangler.jsonc <<'EOF'
+          {
+            "$schema":"https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+            "name":"morefun-v2-smm-options-acceptance",
+            "main":"./smm-options-acceptance-worker.ts",
+            "compatibility_date":"2026-09-05",
+            "workers_dev":true,
+            "assets":{
+              "directory":"./apps/smm-web/dist",
+              "binding":"ASSETS",
+              "not_found_handling":"single-page-application"
+            }
+          }
+          EOF
+
+      - name: Deploy isolated options acceptance Preview
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config smm-options-acceptance-wrangler.jsonc 2>&1 | tee /tmp/deploy.log
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/deploy.log | tail -n1 | sed 's/[),.;]*$//')"
+          test -n "$URL"
+          curl -fsS "$URL/" | grep -q '<div id="root"></div>'
+          echo "OPTIONS_ACCEPTANCE_URL=$URL"
+          echo "$URL" > /tmp/options-url.txt
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_sha=%s\nterminal_smm_tests=PASS_IF_JOB_GREEN\nproduction_fixture_write=NONE\nproduction_d1_write=NONE\n' "${{ steps.req.outputs.source_sha }}" > evidence/summary.txt
+          test ! -f /tmp/options-url.txt || printf 'options_url=%s\n' "$(cat /tmp/options-url.txt)" >> evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smm-r6-options-acceptance-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
