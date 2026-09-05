@@ -69,6 +69,7 @@ jobs:
           node --test packages/integration/keeta-d1-product-alias-resolver.test.ts
           node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
           node --test packages/integration/keeta-acceptance-mode.test.ts
+          node --test packages/catalog/keeta-sit-canonical-identity.test.ts
           node --test packages/integration/keeta-provider-action-delivery.test.ts
           node --test packages/integration/keeta-sit-order-path-runtime.test.ts
           node --test packages/order/d1-accepted-order-projection-identity.test.ts
