@@ -71,13 +71,17 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage();
-            const api=[]; const consoleEvents=[]; const pageErrors=[]; const requestFailures=[];
+            const api=[]; const apiResponses=[]; const consoleEvents=[]; const pageErrors=[]; const requestFailures=[];
             page.on('console',m=>consoleEvents.push({type:m.type(),text:m.text()}));
             page.on('pageerror',e=>pageErrors.push(String(e?.stack||e)));
             page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
             page.on('request',r=>{
               const u=new URL(r.url());
               if(u.pathname.startsWith('/api/')) api.push({origin:u.origin,path:u.pathname,method:r.method()});
+            });
+            page.on('response',r=>{
+              const u=new URL(r.url());
+              if(u.pathname.startsWith('/api/')) apiResponses.push({origin:u.origin,path:u.pathname,status:r.status()});
             });
             await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
             await page.waitForTimeout(1500);
@@ -88,7 +92,14 @@ jobs:
             if(pairingInputCount!==1) throw new Error('SMM_UI_PAIRING_INPUT_MISSING');
             await page.getByPlaceholder('輸入店務連接碼').fill(process.env.ADMIN_LOGIN_SECRET);
             await page.getByRole('button',{name:'開始連接'}).click();
-            await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
+            try{
+              await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
+            }catch(error){
+              const sessionAfter=await page.evaluate(()=>JSON.parse(localStorage.getItem('morefunos.smm.device-session.v1')||'null'));
+              const bodyAfter=(await page.textContent('body'))||'';
+              console.log('SMM_PAIRING_AFTER_CLICK sessionStored='+Boolean(sessionAfter?.sessionToken)+' apiResponses='+JSON.stringify(apiResponses)+' body='+JSON.stringify(bodyAfter.slice(0,1400)));
+              throw error;
+            }
             await page.getByText('Orders 已由 trusted HTTP canonical projection 提供。',{exact:true}).waitFor({state:'visible',timeout:15000});
             const candidates=[process.env.FIXED_ORDER_KEETA,process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
             let visible=null;
