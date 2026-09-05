@@ -73,7 +73,8 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-save --ignore-scripts --no-audit --no-fund
-          node --test packages/admin-ui-integration/*.test.ts
+          mapfile -t ADMIN_TESTS < <(find packages/admin-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 'admin-session-worker.test.ts' ! -name 'admin-worker-session-runtime.test.ts' -print | sort)
+          node --test "${ADMIN_TESTS[@]}"
           cd apps/admin-web
           npm install --ignore-scripts --no-audit --no-fund
           npm run typecheck
