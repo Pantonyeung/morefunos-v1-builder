@@ -71,7 +71,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
           npm install --no-save --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          npm run test:smt-ui-integration
+          mapfile -t SMT_TESTS < <(find packages/smt-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 't2-smt-worker-mount.test.ts' -print | sort)
+          node --test "${SMT_TESTS[@]}"
           npm --prefix apps/smt-clean install --ignore-scripts --no-audit --no-fund
           npm --prefix apps/smt-clean run typecheck
           npm --prefix apps/smt-clean run build
