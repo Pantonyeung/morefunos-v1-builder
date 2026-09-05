@@ -1,2 +1,2 @@
-run=4
-purpose=readonly-channel-mapping-schema-preflight
+run=5
+purpose=readonly-option-alias-and-catalog-current-state
