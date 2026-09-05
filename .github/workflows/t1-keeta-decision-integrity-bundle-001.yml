@@ -60,6 +60,10 @@ jobs:
         working-directory: source
         run: npx --yes wrangler@4 deploy --dry-run --config workers/keeta/wrangler.jsonc
 
+      - name: Build Admin assets for Worker dry-run
+        working-directory: source/apps/admin-web
+        run: npm run build
+
       - name: Admin Worker Wrangler dry-run
         working-directory: source
         run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/admin-web-worker/wrangler.jsonc
