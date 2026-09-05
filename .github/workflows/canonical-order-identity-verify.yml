@@ -36,6 +36,8 @@ jobs:
         working-directory: source
         run: |
           node --test packages/order/canonical-order-identity.test.ts
+          node --test packages/integration/keeta-canonical-order-projection.test.ts
+          node --test apps/smm-web/src/smm-user-messages.test.ts
           node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
           node --test packages/integration/keeta-d1-canonical-acceptance-plan.test.ts
       - name: Typecheck
