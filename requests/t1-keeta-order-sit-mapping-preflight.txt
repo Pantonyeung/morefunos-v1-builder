@@ -1,2 +1,2 @@
-run=3
-purpose=readonly-canonical-option-identity-preflight
+run=4
+purpose=readonly-channel-mapping-schema-preflight
