@@ -41,6 +41,7 @@ jobs:
           node --test packages/integration/keeta-order-commercial-snapshot.test.ts
           node --test packages/integration/keeta-standard-order-facts.test.ts
           node --test packages/integration/keeta-canonical-order-projection.test.ts
+          node --test packages/integration/keeta-local-estimate-wire.test.ts
           node --test packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.test.ts
       - name: Admin web tests
         working-directory: source
@@ -56,6 +57,7 @@ jobs:
             packages/integration/keeta-order-commercial-snapshot.ts \
             packages/integration/keeta-standard-order-facts.ts \
             packages/integration/keeta-canonical-order-projection.ts \
+            packages/integration/keeta-d1-canonical-acceptance-runtime.ts \
             packages/order/order-validation.ts \
             packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.ts \
             apps/admin-web/src/admin-channel-net-estimate-network-port.ts \
