@@ -97,11 +97,16 @@ jobs:
           curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map-out.json"
           jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/map-out.json" >/dev/null
 
+          CAT_SQL="SELECT store_id, snapshot_json FROM mfos_catalog_state WHERE store_id=? AND snapshot_json LIKE ? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" --arg like "%SIT 測試餐 A 更新%" '{sql:$sql,params:[$store,$like]}' > "$RUNNER_TEMP/cat-q.json"
+          curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/cat-q.json" > "$RUNNER_TEMP/cat-out.json"
+          jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/cat-out.json" >/dev/null
+
           ORDER_SQL="SELECT order_id, store_id, revision, source, channel, provider_ref, accepted_projection_json FROM mfos_order_state WHERE accepted_projection_json LIKE ? ORDER BY updated_at DESC LIMIT 5"
           jq -n --arg sql "$ORDER_SQL" --arg like "%$PROVIDER_ORDER_ID%" '{sql:$sql,params:[$like]}' > "$RUNNER_TEMP/order-q.json"
           curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/order-q.json" > "$RUNNER_TEMP/order-out.json"
           jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/order-out.json" >/dev/null
-          jq -n --slurpfile map "$RUNNER_TEMP/map-out.json" --slurpfile order "$RUNNER_TEMP/order-out.json" '{mapping:$map[0],order:$order[0]}' > ".ci-results/t1-keeta-live-suffix-read-$SUFFIX-prod.json"
+          jq -n --slurpfile map "$RUNNER_TEMP/map-out.json" --slurpfile catalog "$RUNNER_TEMP/cat-out.json" --slurpfile order "$RUNNER_TEMP/order-out.json" '{mapping:$map[0],catalog:$catalog[0],order:$order[0]}' > ".ci-results/t1-keeta-live-suffix-read-$SUFFIX-prod.json"
 
       - name: Commit sanitized evidence
         shell: bash
