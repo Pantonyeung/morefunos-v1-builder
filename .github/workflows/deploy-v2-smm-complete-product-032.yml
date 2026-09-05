@@ -333,7 +333,18 @@ jobs:
             if(submitResponse.status()!==200)throw new Error('SMM_DIRECT_ORDER_HTTP_'+submitResponse.status()+':'+(submitBody.code||'UNKNOWN'));
             if(submitBody.disposition!=='ACCEPT'||!submitBody.orderId||!Number.isSafeInteger(submitBody.canonicalRevision))throw new Error('SMM_DIRECT_ORDER_NOT_ACCEPTED:'+JSON.stringify(submitBody));
             const submittedOrderId=submitBody.orderId;
-            await page.getByText(submittedOrderId,{exact:true}).waitFor({state:'visible',timeout:15000});
+            const submittedReadback=await page.evaluate(async(orderId)=>{
+              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              if(!raw)throw new Error('SMM_SUBMIT_READBACK_SESSION_MISSING');
+              const saved=JSON.parse(raw);
+              const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId}}),cache:'no-store'});
+              let body={};try{body=await r.json()}catch{}
+              return {status:r.status,body};
+            },submittedOrderId);
+            console.log('SMM_DIRECT_ORDER_READBACK status='+submittedReadback.status+' orderId='+(submittedReadback.body?.orderId||'none'));
+            if(submittedReadback.status!==200||submittedReadback.body?.orderId!==submittedOrderId)throw new Error('SMM_DIRECT_ORDER_READBACK_FAILED:'+JSON.stringify(submittedReadback));
+            const frontendText=await page.locator('body').innerText();
+            if(frontendText.includes(submittedOrderId))throw new Error('SMM_FRONTLINE_UUID_LEAK:'+submittedOrderId);
 
             const cleanup=await page.evaluate(async({orderId,revision})=>{
               const raw=localStorage.getItem('morefunos.smm.device-session.v1');
