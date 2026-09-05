@@ -121,3 +121,37 @@ jobs:
           NODE
           echo "target_shop=721578302"
           echo "target_next_orders=ONE_FRESH_ORDER_ONLY"
+
+      - name: Read-only OAuth and secret preflight
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler secret list --config prearm-wrangler.jsonc > "$RUNNER_TEMP/secrets.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const rows=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/secrets.json','utf8'));
+          const names=new Set(rows.map(x=>x.name));
+          for(const required of ['KEETA_APP_SECRET','KEETA_TOKEN_ENCRYPTION_KEY']){
+            if(!names.has(required)) throw new Error('MISSING_REQUIRED_SECRET:'+required);
+          }
+          console.log('required_secret_names=PASS');
+          NODE
+
+          wrangler d1 execute morefun-v2-keeta-sit-ingress --remote --config prearm-wrangler.jsonc \
+            --command "SELECT connection_id, expires_at, updated_at FROM keeta_oauth_token WHERE connection_id = 'default' LIMIT 1" \
+            --json > "$RUNNER_TEMP/oauth-row.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/oauth-row.json','utf8'));
+          const rows=raw?.[0]?.results ?? raw?.results ?? [];
+          if(!Array.isArray(rows)||rows.length!==1) throw new Error('KEETA_OAUTH_DEFAULT_TOKEN_ROW_REQUIRED');
+          const row=rows[0];
+          if(row.connection_id!=='default') throw new Error('KEETA_OAUTH_CONNECTION_MISMATCH');
+          if(!Number.isFinite(Number(row.expires_at)) || Number(row.expires_at)<=Date.now()) throw new Error('KEETA_OAUTH_TOKEN_EXPIRED_OR_INVALID');
+          console.log('oauth_default_token_row=PASS');
+          console.log('oauth_expires_at='+row.expires_at);
+          NODE
