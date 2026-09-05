@@ -1,0 +1,263 @@
+{
+  "matching_rows": 1,
+  "rows": [
+    {
+      "dedup_key": "KEETA:2096249754211164220",
+      "message_id": "2096249754211164220",
+      "provider_shop_id": 721578302,
+      "merchant_decision": "ACCEPTED",
+      "first_seen_at": "2026-09-05T14:51:03.075Z",
+      "canonical_store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+      "canonical_order_id": "530e6af7-7288-57a4-9d88-e2de9d0a97fe",
+      "canonical_revision": 1,
+      "provider_action": "CONFIRM",
+      "provider_action_status": "SENT",
+      "message": {
+        "baseOrder": {
+          "chooseTableware": 1,
+          "ctime": 1788619862774,
+          "currency": "HKD",
+          "deliveryInstruction": {
+            "deliveryLocationType": "[REDACTED]",
+            "deliveryType": 0,
+            "remark": ""
+          },
+          "deliveryTime": 1788622074938,
+          "estimatedTimeEnd": 1788622374938,
+          "estimatedTimeStart": 1788621774938,
+          "locale": "zh-HK",
+          "openPrivacyNumber": 1,
+          "orderViewId": 5133442346051095,
+          "orderViewIdStr": "5133442346051095",
+          "payType": "sailor_mock_alipay",
+          "payTypeDesc": "Alipay",
+          "remark": "~_Need cutlery~_",
+          "serverTime": 1788619862362,
+          "status": 20,
+          "userDevice": {
+            "appVersion": "3.11.330",
+            "cType": "c_ios",
+            "deviceUuid": "00000000000007F16787016AC49289031E8FCFD0207E2A173067639620246387",
+            "ip": "93.118.41.111"
+          }
+        },
+        "bigOrderTag": false,
+        "cssMerchantOrderDeliveries": [],
+        "deliveryInfos": [],
+        "feeDtl": {
+          "customerFee": "[REDACTED]",
+          "merchantFee": {
+            "activityFee": 0,
+            "activityFeeStr": "-$0.00",
+            "basicCommission": 1620,
+            "basicCommissionStr": "-$16.20",
+            "brokerage": 1620,
+            "brokerageStr": "-$16.20",
+            "commission": 1620,
+            "commissionStr": "-$16.20",
+            "diffPrice": 5000,
+            "diffPriceStr": "$50.00",
+            "earnings": 4380,
+            "earningsFormula": "Earnings = Total - Commission - Promotion funded by merchant + Top-up to minimum",
+            "earningsStr": "$43.80",
+            "i18n": {
+              "currency": "HKD"
+            },
+            "mealVoucherPayType": false,
+            "platformServiceFee": 200,
+            "platformServiceFeeStr": "$2.00",
+            "productPrice": 1000,
+            "productPriceStr": "$10.00",
+            "total": 4380,
+            "totalStr": "$43.80"
+          }
+        },
+        "feeDtls": [
+          {
+            "code": "productPrice",
+            "currency": "HKD",
+            "name": "Total",
+            "nameI18nEnum": "PRODUCT_PRICE",
+            "price": 1000,
+            "value": "$10.00"
+          },
+          {
+            "code": "shippingFee",
+            "currency": "HKD",
+            "name": "Delivery fee",
+            "nameI18nEnum": "SHIPPING_FEE",
+            "price": 290,
+            "value": "$2.90"
+          },
+          {
+            "code": "platformFee",
+            "currency": "HKD",
+            "name": "Service fee",
+            "nameI18nEnum": "PLATFORM_FEE",
+            "price": 200,
+            "value": "$2.00"
+          },
+          {
+            "code": "diffPrice",
+            "currency": "HKD",
+            "name": "Top-up to min. order",
+            "nameI18nEnum": "DIFF_PRICE",
+            "price": 5000,
+            "value": "$50.00"
+          },
+          {
+            "code": "payTotal",
+            "currency": "HKD",
+            "name": "Customer paid",
+            "nameI18nEnum": "CUSTOMER_FEE",
+            "price": 6490,
+            "value": "$64.90"
+          }
+        ],
+        "foodPrepareInfo": {},
+        "groupChoiceCompensationTag": false,
+        "labels": [],
+        "merchantOrder": {
+          "ctime": 1788619861806,
+          "deliveryMode": 1001,
+          "deliveryTimeMinute": 30,
+          "eta": {
+            "deliveryTimeAbsolute": 1788622074938,
+            "estimatedTimeLeft": 1788621774938,
+            "estimatedTimeRight": 1788622374938
+          },
+          "merchantOrderTraces": [
+            {
+              "ctime": 1788619861972,
+              "merchantOrderStatus": 20,
+              "opId": 721578302,
+              "opScene": 2000,
+              "opTime": 1788619861970,
+              "opType": 20,
+              "orderViewId": 5133442346051095,
+              "orderViewIdStr": "5133442346051095",
+              "shopId": 721578302,
+              "userId": "[REDACTED]",
+              "utime": 1788619861972
+            },
+            {
+              "ctime": 1788619861808,
+              "merchantOrderStatus": 10,
+              "opId": 10000000643153,
+              "opScene": 1000,
+              "opTime": 1788619861806,
+              "opType": 10,
+              "orderViewId": 5133442346051095,
+              "orderViewIdStr": "5133442346051095",
+              "shopId": 721578302,
+              "userId": "[REDACTED]",
+              "utime": 1788619861808
+            }
+          ],
+          "orderViewId": 5133442346051095,
+          "orderViewIdStr": "5133442346051095",
+          "partRefundTag": 0,
+          "refundTag": 0,
+          "seqNo": 1095,
+          "seqNoStr": "1095",
+          "shopCityId": 542600,
+          "shopCode": "",
+          "shopId": 721578302,
+          "shopName": "磨飯v2 - API測試門市",
+          "shopNameI18n": {
+            "default": "磨飯v2 - API測試門市",
+            "zh-HK": "磨飯v2 - API測試門市",
+            "en": "磨飯v2 - API測試門市"
+          },
+          "shopRegion": "HK",
+          "status": 20,
+          "syncStatusResult": 0,
+          "unconfirmedStatusTime": 1788619861963,
+          "userChooseCityId": 542600,
+          "userGetMode": "delivery",
+          "userId": "[REDACTED]",
+          "utime": 1788619861964
+        },
+        "merchantOrderDeliveries": [],
+        "orderPromotionDtlList": [],
+        "orderRules": {
+          "part_refund_rule": 3,
+          "merchant_provided_pickup_code_rule": 2,
+          "cancel_order_rule": 1
+        },
+        "partRefundOrderTag": false,
+        "printTemplateType": 1,
+        "privacy": false,
+        "products": [
+          {
+            "count": 1,
+            "currency": "HKD",
+            "desc": "",
+            "descI18n": {
+              "default": "",
+              "zh-HK": ""
+            },
+            "groups": [],
+            "id": 1425948024,
+            "name": "SIT 無選項餐 A",
+            "nameI18n": {
+              "default": "SIT 無選項餐 A",
+              "zh-HK": "SIT 無選項餐 A"
+            },
+            "notLast": false,
+            "orderViewId": 5133442346051095,
+            "orderViewIdStr": "5133442346051095",
+            "originPrice": 1000,
+            "originPriceStr": "$10.00",
+            "price": 1000,
+            "priceStr": "$10.00",
+            "priceWithGroup": {
+              "amount": 1000,
+              "amountStr": "$10.00",
+              "originAmount": 1000,
+              "originAmountStr": "$10.00",
+              "originUnitPrice": 1000,
+              "unitPrice": 1000
+            },
+            "priceWithoutGroup": {
+              "amount": 1000,
+              "amountStr": "$10.00",
+              "originAmount": 1000,
+              "originAmountStr": "$10.00",
+              "originUnitPrice": 1000,
+              "unitPrice": 1000
+            },
+            "productTags": [],
+            "promotions": [],
+            "remark": "",
+            "skuExtra": {},
+            "skuId": 116746882,
+            "skuOpenItemCode": "MF-ORDER-SKU-NG-01",
+            "spec": "",
+            "specI18n": {
+              "default": "",
+              "zh-HK": ""
+            },
+            "spuExtra": {},
+            "spuId": 119940091,
+            "spuOpenItemCode": "MF-ORDER-SPU-NG-01",
+            "spuPvList": [],
+            "tags": []
+          }
+        ],
+        "rebatesTag": false,
+        "recipientInfo": "[REDACTED]",
+        "refundInfo": {
+          "appealInfoList": [],
+          "appealRefundNums": 0,
+          "refundNodeList": []
+        },
+        "refundInfos": [],
+        "tagCodes": [
+          112005,
+          101000
+        ]
+      }
+    }
+  ]
+}
