@@ -1,4 +1,4 @@
-source_sha=6f26125b6d5c032957b05dbc2084781148b5f3eb
-base_sha=4509949e3b3dd489116445c6c8cd0a03a6b01bb3
-branch_name=work/SMM/B0314-owner-feedback-integrated-r1
-request_id=SMM-B0314-R2-SELF-20260905
+source_sha=dd48460343548f1464c57d028fad6fae14a4fb64
+base_sha=483782f0f89b06c591c1b18a48c329c91f974f29
+branch_name=work/SMM/B0314-owner-feedback-integrated-terminal
+request_id=SMM-B0314-TERMINAL-SELF-20260905
