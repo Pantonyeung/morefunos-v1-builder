@@ -1,0 +1,123 @@
+name: Deploy SMM Options Acceptance Preview
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-options-acceptance-deploy.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-options-acceptance-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Build isolated options acceptance app
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp fixtures/smm-options-acceptance/option-acceptance-runtime.ts source/apps/smm-web/src/option-acceptance-runtime.ts
+          cp fixtures/smm-options-acceptance/main.tsx source/apps/smm-web/src/main.tsx
+          cat >> source/apps/smm-web/src/smm.css <<'CSS'
+          .smm-acceptance-banner{position:sticky;top:0;z-index:50;padding:10px 14px;background:#fff2cf;border-bottom:1px solid rgba(90,55,30,.15);font-weight:800;text-align:center;color:#5b351f}
+          CSS
+          cd source
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smm-web install --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/smm-web run typecheck
+          npm --prefix apps/smm-web run build
+          test -s apps/smm-web/dist/index.html
+          ! grep -R -F 'morefun-v2-production' apps/smm-web/dist
+      - name: Deploy isolated static Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/options-acceptance-worker.mjs <<'JS'
+          export default {
+            async fetch(request,env){
+              const url=new URL(request.url);
+              if(url.pathname.startsWith('/api/'))return new Response(JSON.stringify({ok:false,code:'OPTIONS_ACCEPTANCE_API_DISABLED'}),{status:403,headers:{'content-type':'application/json','cache-control':'no-store'}});
+              return env.ASSETS.fetch(request);
+            }
+          };
+          JS
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy /tmp/options-acceptance-worker.mjs             --name morefun-v2-smm-options-acceptance             --compatibility-date 2026-09-05             --assets apps/smm-web/dist 2>&1 | tee /tmp/deploy.log
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/deploy.log | tail -n1 | sed 's/[),.;]*$//')"
+          test -n "$URL"
+          echo "$URL" > /tmp/url.txt
+      - name: Real Chromium required and optional option acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          export URL="$(cat /tmp/url.txt)"
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:430,height:932}});
+            await page.goto(process.env.URL,{waitUntil:'networkidle'});
+            await page.getByText('選項驗收模式 · 隔離資料 · 不會建立正式訂單',{exact:true}).waitFor({state:'visible'});
+
+            const requiredPrimary=page.getByRole('button',{name:'設定 必選商品驗收',exact:true});
+            await requiredPrimary.click();
+            const requiredDialog=page.getByRole('dialog').filter({hasText:'必選商品驗收'});
+            await requiredDialog.waitFor({state:'visible'});
+            const requiredBox=await requiredDialog.boundingBox();
+            const viewport=page.viewportSize();
+            if(!requiredBox||!viewport||requiredBox.y>=viewport.height)throw new Error('REQUIRED_OPTION_SHEET_OUTSIDE_VIEWPORT');
+            const requiredConfirm=requiredDialog.getByRole('button',{name:'確認加入',exact:true});
+            if(await requiredConfirm.isEnabled())throw new Error('REQUIRED_OPTION_CONFIRM_SHOULD_START_DISABLED');
+            await requiredDialog.getByRole('button',{name:'白飯',exact:true}).click();
+            if(!(await requiredConfirm.isEnabled()))throw new Error('REQUIRED_OPTION_CONFIRM_NOT_ENABLED_AFTER_SELECTION');
+            await requiredDialog.getByRole('button',{name:'取消',exact:true}).click();
+
+            const optionalPrimary=page.getByRole('button',{name:'加入 飯糰選項驗收',exact:true});
+            await optionalPrimary.click();
+            await page.getByRole('button',{name:'查看購物車',exact:true}).waitFor({state:'visible'});
+            const optionalEntry=page.getByRole('button',{name:'設定 飯糰選項驗收 選項',exact:true});
+            await optionalEntry.waitFor({state:'visible'});
+            await optionalEntry.click();
+            const optionalDialog=page.getByRole('dialog').filter({hasText:'飯糰選項驗收'});
+            await optionalDialog.waitFor({state:'visible'});
+            const optionalBox=await optionalDialog.boundingBox();
+            if(!optionalBox||!viewport||optionalBox.y>=viewport.height)throw new Error('OPTIONAL_OPTION_SHEET_OUTSIDE_VIEWPORT');
+            await optionalDialog.getByRole('button',{name:'走青瓜',exact:true}).click();
+            await optionalDialog.getByRole('button',{name:'走蔥',exact:true}).click();
+            const optionalConfirm=optionalDialog.getByRole('button',{name:'確認加入',exact:true});
+            if(!(await optionalConfirm.isEnabled()))throw new Error('OPTIONAL_OPTION_CONFIRM_DISABLED');
+            console.log('SMM_OPTIONS_ACCEPTANCE_GREEN required_forces_sheet=true optional_fast_add=true optional_entry=true no_cucumber=true no_scallion=true viewport=430x932');
+            await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          NODE
+      - name: Publish URL
+        run: |
+          echo "SMM options acceptance preview: $(cat /tmp/url.txt)"
