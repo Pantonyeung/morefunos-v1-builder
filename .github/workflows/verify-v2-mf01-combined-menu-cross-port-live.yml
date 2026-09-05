@@ -1,0 +1,147 @@
+name: V2 MF01 Combined Menu Cross Port Live Readback
+
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-mf01-combined-menu-cross-port-live-request.txt']
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      CUSTOMER_ORIGIN: https://morefun-v2-customer.pantonyeung.workers.dev
+      EXPECTED_REVISION: menu-combined-2026-09-05-v1
+      EXPECTED_DIRECT_PRODUCTS: '188'
+      PLATFORM_ONLY_PRODUCT_ID: 5cef7d6f-dfc0-521c-a5b2-de9cabe99f23
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-mf01-combined-menu-cross-port-live-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require source equals current V2 main HEAD
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "v2-main-pin=PASS sha=$MAIN_SHA"
+
+      - name: Require pairing credential
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        run: test -n "$ADMIN_LOGIN_SECRET"
+
+      - name: Customer canonical ordering live readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CODE="$(curl -sS -o evidence/customer.json -w '%{http_code}' "$CUSTOMER_ORIGIN/api/customer/ordering")"
+          test "$CODE" = 200
+          node - <<'NODE'
+          const x=require('./evidence/customer.json');
+          if(x.catalogVersion!==process.env.EXPECTED_REVISION) throw new Error('CUSTOMER_REVISION:'+x.catalogVersion);
+          if(!Array.isArray(x.products)||x.products.length!==Number(process.env.EXPECTED_DIRECT_PRODUCTS)) throw new Error('CUSTOMER_COUNT:'+x.products?.length);
+          if(x.products.some(p=>p.productId===process.env.PLATFORM_ONLY_PRODUCT_ID)) throw new Error('CUSTOMER_PLATFORM_ONLY_LEAK');
+          if(!x.products.every(p=>Number.isInteger(p.priceMinor)&&p.priceMinor>=0&&typeof p.name==='string'&&p.name)) throw new Error('CUSTOMER_PRODUCT_SHAPE');
+          console.log(JSON.stringify({revision:x.catalogVersion,products:x.products.length,storeStatus:x.storeStatus}));
+          NODE
+
+      - name: Pair SMT and SMM sessions
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))"
+          for port in smt smm; do
+            CODE="$(curl -sS -o "evidence/$port-session.json" -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/$port/session" -H 'content-type: application/json' --data-binary @/tmp/pair.json)"
+            test "$CODE" = 200
+            PORT="$port" node - <<'NODE'
+          const x=require('./evidence/'+process.env.PORT+'-session.json');
+          if(!x.authenticated||!x.sessionToken||!x.storeId) throw new Error(process.env.PORT+'_SESSION_INVALID');
+          if(!Array.isArray(x.mountedOperationIds)||!x.mountedOperationIds.includes('catalog.menu.active.read.v1')) throw new Error(process.env.PORT+'_MENU_OPERATION_NOT_MOUNTED');
+          NODE
+          done
+
+      - name: SMT canonical menu live readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(node -p "require('./evidence/smt-session.json').sessionToken")"
+          printf '%s' '{"operationId":"catalog.menu.active.read.v1","request":{}}' >/tmp/menu-request.json
+          CODE="$(curl -sS -o evidence/smt-menu.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/smt/runtime" -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/menu-request.json)"
+          test "$CODE" = 200
+          PORT=SMT FILE=evidence/smt-menu.json node - <<'NODE'
+          const x=require('./'+process.env.FILE);
+          if(x.catalogRevision!==process.env.EXPECTED_REVISION) throw new Error(process.env.PORT+'_REVISION:'+x.catalogRevision);
+          if(!Array.isArray(x.products)||x.products.length!==Number(process.env.EXPECTED_DIRECT_PRODUCTS)) throw new Error(process.env.PORT+'_COUNT:'+x.products?.length);
+          if(x.products.some(p=>p.productId===process.env.PLATFORM_ONLY_PRODUCT_ID)) throw new Error(process.env.PORT+'_PLATFORM_ONLY_LEAK');
+          console.log(JSON.stringify({port:process.env.PORT,revision:x.catalogRevision,products:x.products.length,categories:x.categories?.length}));
+          NODE
+
+      - name: SMM canonical menu live readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(node -p "require('./evidence/smm-session.json').sessionToken")"
+          printf '%s' '{"operationId":"catalog.menu.active.read.v1","request":{}}' >/tmp/menu-request.json
+          CODE="$(curl -sS -o evidence/smm-menu.json -w '%{http_code}' -X POST "$ADMIN_ORIGIN/api/smm/runtime" -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/menu-request.json)"
+          test "$CODE" = 200
+          PORT=SMM FILE=evidence/smm-menu.json node - <<'NODE'
+          const x=require('./'+process.env.FILE);
+          if(x.catalogRevision!==process.env.EXPECTED_REVISION) throw new Error(process.env.PORT+'_REVISION:'+x.catalogRevision);
+          if(!Array.isArray(x.products)||x.products.length!==Number(process.env.EXPECTED_DIRECT_PRODUCTS)) throw new Error(process.env.PORT+'_COUNT:'+x.products?.length);
+          if(x.products.some(p=>p.productId===process.env.PLATFORM_ONLY_PRODUCT_ID)) throw new Error(process.env.PORT+'_PLATFORM_ONLY_LEAK');
+          console.log(JSON.stringify({port:process.env.PORT,revision:x.catalogRevision,products:x.products.length,categories:x.categories?.length}));
+          NODE
+
+      - name: Cross-port identity proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const c=require('./evidence/customer.json');
+          const s=require('./evidence/smt-menu.json');
+          const m=require('./evidence/smm-menu.json');
+          const cid=c.products.map(x=>x.productId).sort();
+          const sid=s.products.map(x=>x.productId).sort();
+          const mid=m.products.map(x=>x.productId).sort();
+          if(JSON.stringify(cid)!==JSON.stringify(sid)||JSON.stringify(cid)!==JSON.stringify(mid)) throw new Error('CROSS_PORT_PRODUCT_ID_SET_MISMATCH');
+          require('fs').writeFileSync('evidence/cross-port-summary.json',JSON.stringify({
+            sourceSha:process.env.SOURCE_SHA,
+            revision:c.catalogVersion,
+            customerProducts:cid.length,
+            smtProducts:sid.length,
+            smmProducts:mid.length,
+            sameCanonicalProductSet:true,
+            platformOnlyLeak:false
+          },null,2));
+          NODE
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-mf01-menu-cross-port-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
