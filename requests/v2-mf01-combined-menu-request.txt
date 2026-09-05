@@ -1,2 +1,2 @@
-source_sha=dd8d239513b280a4599924af66270033d9b78a8d
-reason=builder-harness-fix-20260905
+source_sha=ce06ba71198253a8bb69077de6eac9488684cdf8
+reason=type-only-baseline-repair
