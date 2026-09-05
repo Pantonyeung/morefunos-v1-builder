@@ -1,2 +1,2 @@
-source_sha=1f60432955cf241c84e3fb55b83c94dc0fbf370c
-request_id=SMM-B0314-R3-UI-20260905
+source_sha=dd48460343548f1464c57d028fad6fae14a4fb64
+request_id=SMM-B0314-TERMINAL-UI-20260905
