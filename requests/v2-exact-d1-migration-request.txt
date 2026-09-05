@@ -1,3 +1,3 @@
-source_sha=b1a5991d12ca278c493a379908a77e2980ffdd3b
-migration_file=0015-payment-refund-canonical.sql
-request_id=SMM-B0314-EXACT-0015-FINAL-GREEN-20260905
+source_sha=0c4271d2c638a442f17cc9c8ed1162931dd80a86
+migration_file=0014-staff-authentication-binding.sql
+request_id=SMM-B0314-R5-STAFF-AUTH-SCHEMA-20260905
