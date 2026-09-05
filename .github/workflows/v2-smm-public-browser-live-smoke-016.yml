@@ -82,12 +82,12 @@ jobs:
             await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
             await page.waitForTimeout(1500);
             const bodyBefore=(await page.textContent('body'))||'';
-            const pairingInputCount=await page.getByPlaceholder('輸入可信配對憑證').count();
+            const pairingInputCount=await page.getByPlaceholder('輸入店務連接碼').count();
             fs.writeFileSync('evidence/browser-bootstrap.json',JSON.stringify({url:page.url(),title:await page.title(),bodyText:bodyBefore.slice(0,4000),pairingInputCount,consoleEvents,pageErrors,requestFailures},null,2));
             console.log('SMM_BOOTSTRAP_DIAGNOSTIC pairingInputCount='+pairingInputCount+' body='+JSON.stringify(bodyBefore.slice(0,1000))+' pageErrors='+JSON.stringify(pageErrors)+' requestFailures='+JSON.stringify(requestFailures));
             if(pairingInputCount!==1) throw new Error('SMM_UI_PAIRING_INPUT_MISSING');
-            await page.getByPlaceholder('輸入可信配對憑證').fill(process.env.ADMIN_LOGIN_SECRET);
-            await page.getByRole('button',{name:'連接 Runtime'}).click();
+            await page.getByPlaceholder('輸入店務連接碼').fill(process.env.ADMIN_LOGIN_SECRET);
+            await page.getByRole('button',{name:'開始連接'}).click();
             await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
             await page.getByText('Orders 已由 trusted HTTP canonical projection 提供。',{exact:true}).waitFor({state:'visible',timeout:15000});
             const candidates=[process.env.FIXED_ORDER_KEETA,process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
