@@ -361,6 +361,18 @@ jobs:
               return {status:r.status,body};
             },{orderId:submittedOrderId,revision:submitBody.canonicalRevision});
             if(cleanup.status!==200)throw new Error('SMM_DIRECT_ORDER_CLEANUP_'+cleanup.status+':'+JSON.stringify(cleanup.body));
+
+            const postCleanupOpen=await page.evaluate(async(cancelledOrderId)=>{
+              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              if(!raw)throw new Error('SMM_POST_CLEANUP_SESSION_MISSING');
+              const saved=JSON.parse(raw);
+              const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
+              let body={};try{body=await r.json()}catch{}
+              return {status:r.status,body,cancelledStillOpen:Array.isArray(body.orders)&&body.orders.some(order=>order?.orderId===cancelledOrderId)};
+            },submittedOrderId);
+            console.log('SMM_POST_CLEANUP_OPEN_LIST status='+postCleanupOpen.status+' cancelledStillOpen='+postCleanupOpen.cancelledStillOpen);
+            if(postCleanupOpen.status!==200)throw new Error('SMM_POST_CLEANUP_OPEN_LIST_'+postCleanupOpen.status+':'+JSON.stringify(postCleanupOpen.body));
+            if(postCleanupOpen.cancelledStillOpen)throw new Error('SMM_CANCELLED_ORDER_STILL_IN_OPEN_LIST:'+submittedOrderId);
             const publicOrigin=new URL(process.env.URL).origin;
             if(apiNetwork.some(x=>x.origin!==publicOrigin))throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN');
             if(pageErrors.length)throw new Error('SMM_PAGE_ERRORS:'+pageErrors.join('|'));
