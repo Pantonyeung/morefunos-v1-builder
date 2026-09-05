@@ -1,5 +1,5 @@
-source_sha=0cbc25dc2ec57a407d12b78a22078d1b6921f3ec
-base_sha=06fa950f08df16e87a3cac7c59a493cd766d9c99
-branch_name=work/CORE/B0277-fulfillment-server-closure-r2
+source_sha=b331ffe856bfc05a2122fefa617b04a0b2596059
+base_sha=40f3ad692e9526ee032980e8346f4cf4e8c7c06a
+branch_name=main
 verification_phase=CANDIDATE
-request_id=T2-B0277-CLEAN-R2-CORE-20260904
+request_id=T1-B2509-MAIN-TYPECHECK-CONTROL
