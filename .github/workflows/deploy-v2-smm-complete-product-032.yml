@@ -297,7 +297,22 @@ jobs:
             if(bodyText.includes('店務資料尚未連接'))throw new Error('SMM_UI_PROVIDER_NOT_READY');
             if(bodyText.includes('暫未開放直接落單'))throw new Error('SMM_DIRECT_ORDER_STALE_DISABLED_COPY');
 
-            const directAdd=page.locator('button[aria-label^="加入 "]').first();
+            let directAdd=null;
+            const categoryButtons=page.locator('.smm-category-rail__item');
+            const categoryCount=await categoryButtons.count();
+            for(let i=0;i<categoryCount;i++){
+              await categoryButtons.nth(i).click();
+              await page.waitForTimeout(120);
+              const candidate=page.getByRole('button',{name:/^加入 /}).first();
+              if(await candidate.count()){
+                directAdd=candidate;
+                break;
+              }
+            }
+            if(!directAdd){
+              const productLabels=await page.locator('.smm-product-card__primary').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')||node.textContent||''));
+              throw new Error('SMM_DIRECT_ADD_PRODUCT_NOT_FOUND:'+JSON.stringify(productLabels.slice(0,20)));
+            }
             await directAdd.waitFor({state:'visible',timeout:8000});
             await directAdd.click();
             const cartButton=page.getByRole('button',{name:'查看購物車',exact:true});
