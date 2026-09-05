@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'requests/v2-smm-r6-options-acceptance.txt'
+      - 'requests/v2-smm-r6b-options-acceptance.txt'
 
 permissions:
   contents: read
@@ -25,7 +26,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-r6-options-acceptance.txt | tr -d '[:space:]')"
+          REQUEST_FILE='requests/v2-smm-r6-options-acceptance.txt'
+          if [ -f requests/v2-smm-r6b-options-acceptance.txt ]; then REQUEST_FILE='requests/v2-smm-r6b-options-acceptance.txt'; fi
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$REQUEST_FILE" | tr -d '[:space:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
