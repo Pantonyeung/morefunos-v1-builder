@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['requests/keeta-sit-case17-store-details-live-probe.txt']
 permissions:
-  contents: read
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-24.04
@@ -14,7 +14,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7
-        with: { persist-credentials: false }
+        with: { persist-credentials: true }
       - uses: actions/setup-node@v7
         with: { node-version: '24' }
       - name: Deploy ephemeral protected probe, read Store Details, cleanup
@@ -60,14 +60,41 @@ jobs:
           cleanup(){ npx wrangler delete --name morefun-keeta-case17-store-probe --force >/dev/null 2>&1 || true; }
           trap cleanup EXIT
           DEPLOY="$(npx wrangler deploy)"
-          echo "$DEPLOY"
           URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
           test -n "$URL"
-          BODY="$(curl --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
+          BODY=""
+          for attempt in 1 2 3 4 5 6; do
+            if BODY="$(curl --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"; then
+              break
+            fi
+            sleep 5
+          done
+          test -n "$BODY"
           echo "$BODY" | jq -e '.providerCode==0' >/dev/null
           echo "$BODY" | jq -e '.shopId|type=="number"' >/dev/null
           echo "$BODY" | jq -e '.name|type=="string"' >/dev/null
           echo "$BODY" | jq -e '.address|type=="string"' >/dev/null
           echo "$BODY" | jq -e '.longitude|type=="number"' >/dev/null
           echo "$BODY" | jq -e '.latitude|type=="number"' >/dev/null
-          echo "CASE17_STORE_DETAILS=$(echo "$BODY" | jq -c '{providerCode,shopId,name,address,longitude,latitude,status,availableForOrder}')"
+          mkdir -p "$GITHUB_WORKSPACE/results"
+          echo "$BODY" | jq '{
+            providerCode,
+            shopId,
+            name,
+            address,
+            longitude,
+            latitude,
+            status,
+            availableForOrder,
+            certification:"CASE17_PROVIDER_LIVE_READBACK_PASS"
+          }' > "$GITHUB_WORKSPACE/results/keeta-sit-case17-store-details.json"
+      - name: Persist sanitized certification receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "morefunos-v1-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add results/keeta-sit-case17-store-details.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "evidence: record Keeta Case17 Store Details live readback"
+          git push
