@@ -57,7 +57,7 @@ jobs:
         run: node --test --experimental-strip-types packages/print/*.test.ts
       - name: Run accepted-order projection tests
         working-directory: source
-        run: node --test --experimental-strip-types packages/order/d1-accepted-order-projection.test.ts packages/order/d1-store-order-acceptance.test.ts
+        run: node --test --experimental-strip-types packages/order/d1-accepted-order-projection.test.ts packages/order/d1-store-order-acceptance.test.ts packages/order/direct-order-variation.test.ts packages/order/d1-customer-order-variation.test.ts
       - name: Run full TypeScript typecheck
         working-directory: source
         run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
