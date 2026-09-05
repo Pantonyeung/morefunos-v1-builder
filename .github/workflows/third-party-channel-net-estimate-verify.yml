@@ -44,7 +44,7 @@ jobs:
           node --test packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.test.ts
       - name: Admin web tests
         working-directory: source
-        run: npx vitest run apps/admin-web/src/ChannelNetEstimatePage.test.tsx
+        run: npx vitest run apps/admin-web/tests/ChannelNetEstimatePage.test.tsx
       - name: Targeted channel settlement typecheck
         working-directory: source
         run: |
