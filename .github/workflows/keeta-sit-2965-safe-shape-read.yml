@@ -1,0 +1,62 @@
+name: Keeta SIT 2965 Safe Shape Read
+on:
+  push:
+    branches: [main]
+    paths: ['requests/keeta-sit-2965-safe-shape-read.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      KEETA_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Read sanitized product option promotion shape
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT record_json FROM mfos_keeta_durable_delivery WHERE dedup_key='KEETA:2096375487671742477' LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
+          python3 - "$RUNNER_TEMP/out.json" <<'PY'
+          import json,sys
+          raw=json.load(open(sys.argv[1]))
+          rows=raw.get("result",[{}])[0].get("results",[])
+          assert len(rows)==1
+          rec=json.loads(rows[0]["record_json"])
+          msg=json.loads(rec["evidence"]["message"])
+          oi=msg.get("orderInfo",msg)
+          def clean_obj(o, allowed):
+            return {k:o.get(k) for k in allowed if k in o}
+          products=[]
+          for p in oi.get("products",[]):
+            groups=[]
+            for g in p.get("groups") or []:
+              gg=clean_obj(g,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount"])
+              items=[]
+              for key in ["items","products","skus","options","choiceGroupSkuList","subProducts"]:
+                if isinstance(g.get(key),list):
+                  items=[clean_obj(x,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount","unitPrice","originUnitPrice"]) for x in g[key] if isinstance(x,dict)]
+                  gg["itemContainer"]=key
+                  break
+              gg["items"]=items
+              gg["keys"]=sorted(g.keys())
+              groups.append(gg)
+            products.append({
+              "product":clean_obj(p,["id","name","count","skuId","spuId","skuOpenItemCode","spuOpenItemCode","currency"]),
+              "priceWithGroup":p.get("priceWithGroup"),
+              "groups":groups
+            })
+          promos=[]
+          for p in oi.get("orderPromotionDtlList") or []:
+            if isinstance(p,dict):
+              promos.append({"keys":sorted(p.keys()),"safe":clean_obj(p,["id","name","promotionName","promotionType","discountAmount","amount","merchantAmount","platformAmount","currency","promoCode","activityId"])})
+          out={"products":products,"promotions":promos,"feeCodes":[clean_obj(x,["code","price","currency"]) for x in oi.get("feeDtls",[]) if isinstance(x,dict)]}
+          print("SAFE_SHAPE="+json.dumps(out,ensure_ascii=False,separators=(",",":")))
+          PY
