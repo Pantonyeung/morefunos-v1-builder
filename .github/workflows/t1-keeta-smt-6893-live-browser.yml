@@ -48,8 +48,9 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1920,height:1080}});
-            const api=[];
+            const api=[];const responses=[];
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))api.push({origin:u.origin,path:u.pathname,method:r.method()});});
+            page.on('response',async r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/')){const item={origin:u.origin,path:u.pathname,status:r.status()};if(u.pathname==='/api/smt/runtime'){try{item.body=await r.json()}catch{}}responses.push(item);}});
             await page.goto(process.env.SMT_ORIGIN+'/orders',{waitUntil:'networkidle'});
             const pair=await page.evaluate(async(secret)=>{
               const r=await fetch('/api/smt/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:secret}),cache:'no-store'});
@@ -60,7 +61,7 @@ jobs:
             await page.reload({waitUntil:'networkidle'});
             await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible',timeout:15000});
             const orderButton=page.locator('.orders-source-pools button',{hasText:process.env.ORDER_CODE}).first();
-            await orderButton.waitFor({state:'visible',timeout:15000});
+            try{await orderButton.waitFor({state:'visible',timeout:15000});}catch(error){const body=(await page.textContent('body'))||'';console.log('SMT_6893_DIAGNOSTIC url='+page.url()+' body='+JSON.stringify(body.slice(0,5000))+' responses='+JSON.stringify(responses));throw error;}
             const card=(await orderButton.textContent())||'';
             if(!card.includes('6893'))throw new Error('SMT_6893_SHORT_CODE_NOT_VISIBLE');
             if(!card.includes('Keeta'))throw new Error('SMT_6893_KEETA_NOT_VISIBLE');
