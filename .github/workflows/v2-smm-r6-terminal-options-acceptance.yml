@@ -206,21 +206,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat > smm-options-acceptance-worker.ts <<'EOF'
-          interface AssetFetcher{fetch(request:Request):Promise<Response>}
-          interface Env{ASSETS:AssetFetcher}
-          export default{fetch(request:Request,env:Env){return env.ASSETS.fetch(request)}};
-          EOF
           cat > smm-options-acceptance-wrangler.jsonc <<'EOF'
           {
             "$schema":"https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
             "name":"morefun-v2-smm-options-acceptance",
-            "main":"./smm-options-acceptance-worker.ts",
             "compatibility_date":"2026-09-05",
             "workers_dev":true,
             "assets":{
               "directory":"./apps/smm-web/dist",
-              "binding":"ASSETS",
               "not_found_handling":"single-page-application"
             }
           }
