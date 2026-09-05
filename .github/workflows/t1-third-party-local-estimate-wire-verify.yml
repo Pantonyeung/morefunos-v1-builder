@@ -1,0 +1,48 @@
+name: T1 Third Party Local Estimate Wire Verify
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-requests/t1-third-party-local-estimate-wire.sha']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Resolve SHA
+        id: src
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/t1-third-party-local-estimate-wire.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.src.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Install
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Local estimate wiring tests
+        working-directory: source
+        run: |
+          node --test packages/channel-settlement/third-party-net-estimate.test.ts
+          node --test packages/channel-settlement/d1-third-party-order-net-estimate.test.ts
+          node --test packages/integration/keeta-order-commercial-snapshot.test.ts
+          node --test packages/integration/keeta-local-estimate-wire.test.ts
+      - name: Local estimate wiring typecheck
+        working-directory: source
+        run: |
+          tsc --ignoreConfig --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions             packages/channel-settlement/third-party-net-estimate.ts             packages/channel-settlement/third-party-commercial-snapshot.ts             packages/channel-settlement/d1-third-party-order-net-estimate.ts             packages/integration/keeta-order-commercial-snapshot.ts             packages/integration/keeta-d1-canonical-acceptance-runtime.ts             packages/integration/keeta-canonical-order-projection.ts
+      - name: Full repo typecheck signal
+        working-directory: source
+        run: npm run typecheck
