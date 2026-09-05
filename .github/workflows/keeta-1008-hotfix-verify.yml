@@ -43,7 +43,7 @@ jobs:
         run: node --test packages/integration/keeta-webhook-ingress.test.ts
       - name: Keeta integration regression
         working-directory: source
-        run: npm run test:intg-keeta
-      - name: Keeta typecheck
+        run: node --test packages/integration/keeta*.test.ts
+      - name: Root typecheck
         working-directory: source
-        run: npm run typecheck:intg-keeta
+        run: npm run typecheck
