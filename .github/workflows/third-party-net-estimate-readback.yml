@@ -1,0 +1,41 @@
+name: Third Party Net Estimate Readback
+on:
+  push:
+    branches: [main]
+    paths: ['requests/third-party-net-estimate-readback.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Read production schema and policies
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DATABASE_ID/query"
+          node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/schema.json',JSON.stringify({sql:"SELECT name,sql FROM sqlite_master WHERE type='table' AND name='mfos_third_party_net_estimate_policy'"}));
+          fs.writeFileSync('/tmp/policies.json',JSON.stringify({sql:"SELECT store_id,provider,enabled,estimation_basis,net_rate_bps,revision,effective_from,updated_at,updated_by FROM mfos_third_party_net_estimate_policy WHERE store_id=? ORDER BY provider",params:[process.env.STORE_ID]}));
+          NODE
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/schema.json > /tmp/schema-result.json
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/policies.json > /tmp/policy-result.json
+          node - <<'NODE'
+          const s=require('/tmp/schema-result.json'),p=require('/tmp/policy-result.json');
+          const sr=s.result?.[0]?.results||[],pr=p.result?.[0]?.results||[];
+          if(!s.success||!s.result?.[0]?.success||sr.length!==1)process.exit(1);
+          if(!p.success||!p.result?.[0]?.success)process.exit(1);
+          console.log('SCHEMA=PASS table='+sr[0].name);
+          console.log('POLICY_ROWS='+pr.length);
+          console.log(JSON.stringify(pr));
+          NODE
