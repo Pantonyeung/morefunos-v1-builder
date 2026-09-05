@@ -114,6 +114,40 @@ jobs:
           const adminBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ');
           if(!adminBody.includes('MoreFunOS')) throw new Error('ADMIN_SHELL_MISSING');
           if(adminBody.includes('需要正式 Admin session')) throw new Error('ADMIN_STILL_LOGIN_GATE');
+
+          const productApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/catalog/products');
+          if(productApi.status()!==200) throw new Error('ADMIN_PRODUCT_API:'+productApi.status());
+          const productJson=await productApi.json();
+          if(!productJson?.ok||!Array.isArray(productJson?.value?.products)) throw new Error('ADMIN_PRODUCT_API_RESPONSE_INVALID');
+
+          const overviewApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/overview');
+          if(overviewApi.status()!==200) throw new Error('ADMIN_OVERVIEW_API:'+overviewApi.status());
+          const overviewJson=await overviewApi.json();
+          const overviewValue=overviewJson?.value;
+          if(!overviewJson?.ok||!overviewValue
+            ||!Number.isInteger(overviewValue.products)
+            ||!Number.isInteger(overviewValue.enabled)
+            ||!Number.isInteger(overviewValue.soldOut)
+            ||!Number.isInteger(overviewValue.orderable)
+            ||!Number.isInteger(overviewValue.operationalRevision)
+            ||typeof overviewValue.businessDate!=='string') throw new Error('ADMIN_OVERVIEW_API_RESPONSE_INVALID');
+
+          await admin.goto(ADMIN_ORIGIN+'/admin/overview',{waitUntil:'networkidle'});
+          await admin.getByRole('heading',{name:'營運總覽',exact:true}).waitFor({timeout:15000});
+          await admin.getByText('正式商品',{exact:true}).waitFor({timeout:15000});
+
+          await admin.goto(ADMIN_ORIGIN+'/admin/catalog/products',{waitUntil:'networkidle'});
+          await admin.getByRole('heading',{name:'商品管理',exact:true}).waitFor({timeout:15000});
+          await admin.getByRole('heading',{name:'商品列表',exact:true}).waitFor({timeout:15000});
+          if(productJson.value.products.length){
+            const firstProductId=productJson.value.products[0].productId;
+            await admin.goto(ADMIN_ORIGIN+'/admin/catalog/products/'+encodeURIComponent(firstProductId),{waitUntil:'networkidle'});
+            await admin.getByRole('heading',{name:'商品管理',exact:true}).waitFor({timeout:15000});
+            const save=admin.getByRole('button',{name:'保存 Catalog 商品資料',exact:true});
+            await save.waitFor({timeout:15000});
+            if(!(await save.isDisabled())) throw new Error('ADMIN_PRODUCT_MANAGE_UNEXPECTEDLY_ENABLED');
+          }
+
           const manifest=await context.request.get(ADMIN_ORIGIN+'/manifest.webmanifest');
           const sw=await context.request.get(ADMIN_ORIGIN+'/sw.js');
           if(manifest.status()!==200||sw.status()!==200) throw new Error('ADMIN_PWA_ASSET_FAIL');
@@ -122,7 +156,7 @@ jobs:
           if(adminSession2.status()!==200) throw new Error('ADMIN_REFRESH_SESSION_LOST');
           if(adminErrors.length||adminFailures.length) throw new Error('ADMIN_BROWSER_ERROR:'+adminErrors.join('|')+';'+adminFailures.join('|'));
           await admin.screenshot({path:'evidence/admin.png',fullPage:true});
-          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,productApi:200,overviewApi:200,overviewUi:'PASS',productReadOnlyUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           const owner=await context.newPage();
           const ownerErrors=[]; const ownerFailures=[];
