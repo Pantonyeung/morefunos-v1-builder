@@ -53,6 +53,11 @@ jobs:
           curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/schema-q.json" > "$RUNNER_TEMP/schema.json"
           jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/schema.json" >/dev/null
           echo "CHANNEL_MAPPING_COLUMNS=$(jq -c '[.result[0].results[].name]' "$RUNNER_TEMP/schema.json")"
+          OPTION_ALIAS_SQL="SELECT provider_group_code,provider_option_code,canonical_product_id,canonical_option_id,mapping_status,mapping_revision FROM mfos_channel_menu_option_alias WHERE store_id=? AND channel_context='KEETA' AND provider_group_code IN ('MF-ORDER-GRP-01','MF-ORDER-GRP-02') ORDER BY provider_group_code,provider_option_code"
+          jq -n --arg sql "$OPTION_ALIAS_SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/option-alias-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/option-alias-q.json" > "$RUNNER_TEMP/option-alias.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/option-alias.json" >/dev/null
+          echo "OPTION_ALIAS_SAFE=$(jq -c '.result[0].results' "$RUNNER_TEMP/option-alias.json")"
           CAT_SQL="SELECT catalog_revision,revision,snapshot_json FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
           jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/cat-q.json"
           curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/cat-q.json" > "$RUNNER_TEMP/cat.json"
