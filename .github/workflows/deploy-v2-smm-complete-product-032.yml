@@ -164,7 +164,7 @@ jobs:
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiNetwork.push({origin:u.origin,path:u.pathname,method:r.method()})});
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
-            await page.getByRole('button',{name:'連接 Runtime'}).click();
+            await page.getByRole('button',{name:'開始連接',exact:true}).click();
             await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
               const raw=localStorage.getItem('morefunos.smm.device-session.v1');
@@ -218,7 +218,7 @@ jobs:
             const mainNav=page.getByRole('navigation',{name:'主要功能'});
             await mainNav.getByRole('button',{name:'訂單',exact:true}).click();
             await page.waitForTimeout(500);
-            const refreshOrders=page.getByRole('button',{name:'更新 Orders'});
+            const refreshOrders=page.getByRole('button',{name:'更新訂單',exact:true});
             if(await refreshOrders.count()){
               await refreshOrders.click();
               await page.waitForTimeout(750);
