@@ -1,4 +1,4 @@
-source_sha=45926dc31c34c996824db62a2209b939ae65d465
-base_sha=67a37021d55a306e851deed5a204fb41c43f877d
-branch_name=work/SMM/B0314-order-read-options-r12
-request_id=SMM-B0314-R12-TERMINAL2-SELF-20260905
+source_sha=282a97738175be56c9763c8c48a3b0556108ae76
+base_sha=13df1b24ceb8e312f736b3175de1dc8b7dac0d6f
+branch_name=work/SMM/keeta-operational-dual-d1-4028-20260905
+request_id=SMM-KEETA-4028-DUAL-D1-SELF
