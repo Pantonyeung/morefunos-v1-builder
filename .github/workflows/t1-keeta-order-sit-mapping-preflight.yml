@@ -1,0 +1,57 @@
+name: T1 Keeta Order SIT Mapping Preflight
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-order-sit-mapping-preflight.txt'
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SIT_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Resolve provider identities from 0128 and 2396
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT message FROM keeta_webhook_evidence WHERE event_id=1001 AND (message LIKE '%0128%' OR message LIKE '%2396%') ORDER BY received_at DESC LIMIT 10"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/sit-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/sit-q.json" > "$RUNNER_TEMP/sit.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/sit.json" >/dev/null
+          node - "$RUNNER_TEMP/sit.json" "$RUNNER_TEMP/ids.json" <<'NODE'
+          const fs=require('fs');const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));const rows=raw.result[0].results||[];const out={};
+          for(const r of rows){let m;try{m=JSON.parse(r.message)}catch{continue}const body=m?.data??m;for(const p of body.products||[]){const code=p.skuOpenItemCode;if(['MF-ORDER-SKU-NG-01','MF-ORDER-SKU-NG-02','MF-ORDER-SKU-MULTI-01'].includes(code))out[code]={skuId:String(p.skuId),spuId:String(p.spuId),name:p.name,price:Number(p.price),spuOpenItemCode:p.spuOpenItemCode};}}
+          for(const k of ['MF-ORDER-SKU-NG-01','MF-ORDER-SKU-NG-02','MF-ORDER-SKU-MULTI-01']) if(!out[k]) throw new Error('MISSING_'+k);
+          fs.writeFileSync(process.argv[3],JSON.stringify(out,null,2));console.log(JSON.stringify(out));
+          NODE
+      - name: Read exact production mapping and catalog preconditions
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node - "$RUNNER_TEMP/ids.json" "$RUNNER_TEMP/prod-q.json" <<'NODE'
+          const fs=require('fs');const ids=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));const skus=Object.values(ids).map(x=>x.skuId);fs.writeFileSync(process.argv[3],JSON.stringify({sql:"SELECT provider_menu_item_id,provider_sku_id,mapping_id,canonical_product_id,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id IN (?,?,?)",params:[process.env.STORE_ID,...skus]}));
+          NODE
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/prod-q.json" > "$RUNNER_TEMP/prod.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/prod.json" >/dev/null
+          echo "existing_mapping_count=$(jq '.result[0].results|length' "$RUNNER_TEMP/prod.json")"
+          jq -c '.result[0].results[]?' "$RUNNER_TEMP/prod.json"
+          CAT_SQL="SELECT catalog_revision,revision,snapshot_json FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/cat-q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/cat-q.json" > "$RUNNER_TEMP/cat.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/cat.json" >/dev/null
+          node - "$RUNNER_TEMP/cat.json" <<'NODE'
+          const fs=require('fs');const row=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0];const s=JSON.parse(row.snapshot_json);const ids=['cde33523-b6fb-529b-a4be-6b3e6a0884d9','acc44f97-f911-5536-8a37-919b390f9b9a','d63c5569-abb1-57b5-859f-8c38054f2661'];console.log('catalog_revision='+row.catalog_revision);console.log('catalog_row_revision='+row.revision);console.log('candidate_product_matches='+(s.products||[]).filter(p=>ids.includes(p.productId)).length);
+          NODE
