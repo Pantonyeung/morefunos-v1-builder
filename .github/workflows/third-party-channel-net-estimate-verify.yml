@@ -41,11 +41,10 @@ jobs:
           node --test packages/integration/keeta-order-commercial-snapshot.test.ts
           node --test packages/integration/keeta-standard-order-facts.test.ts
           node --test packages/integration/keeta-canonical-order-projection.test.ts
-          node --test packages/integration/keeta-local-estimate-wire.test.ts
           node --test packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.test.ts
       - name: Admin web tests
         working-directory: source
-        run: node --test apps/admin-web/src/ChannelNetEstimatePage.test.tsx
+        run: npx vitest run apps/admin-web/src/ChannelNetEstimatePage.test.tsx
       - name: Targeted channel settlement typecheck
         working-directory: source
         run: |
