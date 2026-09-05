@@ -1,4 +1,4 @@
-source_sha=42e6912e53c5d0ddfc3db27bc5e669a20970f971
-base_sha=7e416ae00bedcd8f56ca5e61b8ed80c554c58ce0
-branch_name=work/SMM/B0314-r8-fresh-main-c163
-request_id=SMM-B0314-R9-POST-ADMISSION-SELF-20260905
+source_sha=bbefa495a705ce608c4bb162308eb0cf78f0211a
+base_sha=42e6912e53c5d0ddfc3db27bc5e669a20970f971
+branch_name=work/SMM/B0314-r10-trusted-staff-bootstrap
+request_id=SMM-B0314-R10-TERMINAL-SELF-20260905
