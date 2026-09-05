@@ -166,7 +166,13 @@ jobs:
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiNetwork.push({origin:u.origin,path:u.pathname,method:r.method()})});
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
+            const pairResponsePromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/smm/session'&&r.request().method()==='POST',{timeout:15000});
             await page.getByRole('button',{name:'開始連接',exact:true}).click();
+            const pairResponse=await pairResponsePromise;
+            let pairBody={};
+            try{pairBody=await pairResponse.json()}catch{}
+            console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' mounted='+((pairBody.mountedOperationIds||[]).length));
+            if(pairResponse.status()!==200)throw new Error('SMM_PAIR_HTTP_'+pairResponse.status()+':'+(pairBody.code||'UNKNOWN'));
             await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
               const raw=localStorage.getItem('morefunos.smm.device-session.v1');
