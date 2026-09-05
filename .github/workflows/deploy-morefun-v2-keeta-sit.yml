@@ -122,7 +122,7 @@ jobs:
 
       - name: Run Keeta regression before deployment
         working-directory: source
-        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-order-get-reconciliation.test.ts packages/integration/fulfillment-ready-keeta-prepare.test.ts packages/integration/d1-keeta-ready-runtime.test.ts packages/smm-ui-integration/fulfillment-runtime.test.ts apps/smt-clean/src/runtime/fulfillment-runtime.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
+        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-acceptance-mode.test.ts packages/integration/keeta-business-fast-lane.test.ts packages/integration/keeta-sit-order-path-runtime.test.ts
 
       - name: Require existing Keeta runtime secrets
         working-directory: source/workers/keeta
