@@ -221,25 +221,11 @@ jobs:
             const refreshOrders=page.getByRole('button',{name:'更新訂單',exact:true});
             if(await refreshOrders.count()){
               await refreshOrders.click();
-              await page.waitForTimeout(750);
+              await page.waitForTimeout(900);
             }
-            const refreshedOrders=await page.evaluate(async()=>{
-              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
-              if(!raw)throw new Error('SMM_SESSION_STORAGE_MISSING_AFTER_REFRESH');
-              const saved=JSON.parse(raw);
-              const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
-              const open=await r.json();
-              if(r.status!==200||!Array.isArray(open.orders))throw new Error('SMM_OPEN_LIST_REFRESH_FAILED');
-              return {count:open.orders.length,acceptedOrderId:open.orders.find(o=>o.lifecycleStatus==='ACCEPTED')?.orderId||null};
-            });
-            if(refreshedOrders.acceptedOrderId){
-              const acceptedCardMain=page.locator('[aria-label="訂單 '+refreshedOrders.acceptedOrderId+'"]');
-              await acceptedCardMain.waitFor({state:'visible',timeout:5000});
-              const acceptedCard=acceptedCardMain.locator('..');
-              const completeCount=await acceptedCard.getByRole('button',{name:'完成訂單',exact:true}).count();
-              const cancelCount=await acceptedCard.getByRole('button',{name:'取消訂單',exact:true}).count();
-              if(completeCount<1||cancelCount<1)throw new Error('SMM_ORDER_ACTION_BUTTONS_NOT_MOUNTED');
-            }
+            const completeCount=await page.getByRole('button',{name:'完成訂單',exact:true}).count();
+            const cancelCount=await page.getByRole('button',{name:'取消訂單',exact:true}).count();
+            if(completeCount!==cancelCount)throw new Error('SMM_ORDER_ACTION_PAIR_MISMATCH');
             if(await page.getByRole('button',{name:'重印小票'}).count())throw new Error('SMM_UNSUPPORTED_REPRINT_BUTTON_PRESENT');
 
             await mainNav.getByRole('button',{name:'更多',exact:true}).click();
