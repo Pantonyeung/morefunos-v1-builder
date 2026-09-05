@@ -169,7 +169,9 @@ jobs:
               if(!u.pathname.startsWith('/api/smm/'))return;
               let body={};
               try{body=await r.json()}catch{}
-              console.log('SMM_API_HTTP method='+r.request().method()+' path='+u.pathname+' status='+r.status()+' code='+(body.code||'none')+' operation='+(body.operationId||'none'));
+              let requestOperation='none';
+              try{requestOperation=r.request().postDataJSON()?.operationId||'none'}catch{}
+              console.log('SMM_API_HTTP method='+r.request().method()+' path='+u.pathname+' status='+r.status()+' code='+(body.code||'none')+' operation='+requestOperation);
             });
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
