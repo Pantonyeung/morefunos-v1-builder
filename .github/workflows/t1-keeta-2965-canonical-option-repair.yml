@@ -1,0 +1,191 @@
+name: T1 Keeta 2965 Canonical Option Repair
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-2965-canonical-option-repair.txt'
+permissions:
+  contents: read
+concurrency:
+  group: t1-keeta-2965-canonical-option-repair
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+      PRODUCT_ID: "d63c5569-abb1-57b5-859f-8c38054f2661"
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Resolve exact latest V2 source
+        id: req
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-2965-canonical-option-repair.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Apply canonical option alias schema
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote             --config infra/cloudflare/admin-web-worker/wrangler.jsonc             --file infra/cloudflare/d1/migrations/0022-channel-menu-option-alias.sql
+      - name: Read guarded production preconditions
+        shell: bash
+        run: |
+          set -euo pipefail
+          CAT_SQL="SELECT catalog_revision,revision,snapshot_json FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/cat-q.json"
+          curl --fail-with-body --silent --show-error -X POST             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/cat-q.json" > "$RUNNER_TEMP/cat.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/cat.json" >/dev/null
+
+          ALIAS_SQL="SELECT provider_group_code,provider_option_code,canonical_product_id,canonical_option_id,mapping_status FROM mfos_channel_menu_option_alias WHERE store_id=? AND channel_context='KEETA' AND canonical_product_id=?"
+          jq -n --arg sql "$ALIAS_SQL" --arg store "$STORE_ID" --arg product "$PRODUCT_ID" '{sql:$sql,params:[$store,$product]}' > "$RUNNER_TEMP/alias-q.json"
+          curl --fail-with-body --silent --show-error -X POST             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/alias-q.json" > "$RUNNER_TEMP/alias.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/alias.json" >/dev/null
+
+          node - "$RUNNER_TEMP/cat.json" "$RUNNER_TEMP/alias.json" <<'NODE'
+          const fs=require('fs');
+          const row=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0];
+          const aliases=JSON.parse(fs.readFileSync(process.argv[3],'utf8')).result[0].results||[];
+          const snap=JSON.parse(row.snapshot_json);
+          const product=(snap.products||[]).find(p=>p.productId===process.env.PRODUCT_ID);
+          if(!product) throw new Error('SIT_MULTI_CANONICAL_PRODUCT_MISSING');
+          if(product.revision!==1) throw new Error('SIT_MULTI_PRODUCT_REVISION_UNEXPECTED:'+product.revision);
+          if(!Array.isArray(product.optionGroups)||product.optionGroups.length!==0) throw new Error('SIT_MULTI_OPTION_GROUP_PRECONDITION_NOT_EMPTY');
+          if(aliases.length!==0) throw new Error('SIT_MULTI_OPTION_ALIAS_PRECONDITION_NOT_EMPTY');
+          console.log('catalog_precondition=PASS');
+          console.log('product_revision=1');
+          console.log('option_groups_before=0');
+          console.log('option_aliases_before=0');
+          NODE
+      - name: Build guarded canonical catalog and alias batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$RUNNER_TEMP/cat.json" "$RUNNER_TEMP/batch.json" <<'NODE'
+          const fs=require('fs');
+          const row=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results[0];
+          const snap=JSON.parse(row.snapshot_json);
+          const at=new Date().toISOString();
+          const rev=String(row.catalog_revision).includes('+keeta-option-map-001')
+            ? String(row.catalog_revision)
+            : String(row.catalog_revision)+'+keeta-option-map-001';
+          const groups=[
+            {
+              optionGroupId:'76c91f6a-5f71-5a4f-8586-7f2dab6a97dc',
+              name:'主選項',selectionMode:'SINGLE',required:true,minSelections:1,maxSelections:1,
+              allowQuantities:false,position:0,
+              options:[
+                {optionId:'2bd62276-92d8-58da-b9de-e80c2319d2c3',name:'主選 A',position:0,status:'ACTIVE'},
+                {optionId:'44c62f1d-8efd-5d42-a5f0-f798d2832281',name:'主選 B',position:1,status:'ACTIVE'}
+              ]
+            },
+            {
+              optionGroupId:'267365f9-bd2a-5dea-8742-97f90f8eab80',
+              name:'加配選項',selectionMode:'MULTIPLE',required:false,minSelections:0,maxSelections:2,
+              allowQuantities:false,position:1,
+              options:[
+                {optionId:'b4bd1e6b-34fc-5ee4-9ae8-469ac9e9221d',name:'加配 A',position:0,status:'ACTIVE'},
+                {optionId:'53ce3845-eef9-5be2-845d-60d11b593c80',name:'加配 B',position:1,status:'ACTIVE'}
+              ]
+            }
+          ];
+          let found=false;
+          const products=(snap.products||[]).map(p=>{
+            if(p.productId!==process.env.PRODUCT_ID)return p;
+            found=true;
+            return {...p,revision:2,updatedAt:at,optionGroups:groups};
+          });
+          if(!found)throw new Error('SIT_MULTI_CANONICAL_PRODUCT_MISSING');
+          const next={...snap,catalogRevision:rev,products};
+          const aliases=[
+            ['MF-ORDER-GRP-01','MF-ORDER-OPT-01A','2bd62276-92d8-58da-b9de-e80c2319d2c3'],
+            ['MF-ORDER-GRP-01','MF-ORDER-OPT-01B','44c62f1d-8efd-5d42-a5f0-f798d2832281'],
+            ['MF-ORDER-GRP-02','MF-ORDER-OPT-02A','b4bd1e6b-34fc-5ee4-9ae8-469ac9e9221d'],
+            ['MF-ORDER-GRP-02','MF-ORDER-OPT-02B','53ce3845-eef9-5be2-845d-60d11b593c80']
+          ];
+          const batch=[
+            {sql:"UPDATE mfos_catalog_state SET catalog_revision=?,snapshot_json=?,revision=revision+1,updated_at=? WHERE store_id=? AND revision=?",params:[rev,JSON.stringify(next),at,process.env.STORE_ID,row.revision]}
+          ];
+          for(const [groupCode,optionCode,optionId] of aliases){
+            batch.push({sql:"INSERT INTO mfos_channel_menu_option_alias (store_id,channel_context,provider_group_code,provider_option_code,canonical_product_id,canonical_option_id,mapping_status,mapping_revision,updated_at) VALUES (?,'KEETA',?,?,?,?, 'ACTIVE',1,?)",params:[process.env.STORE_ID,groupCode,optionCode,process.env.PRODUCT_ID,optionId,at]});
+          }
+          batch.push({
+            sql:"INSERT INTO mfos_catalog_audit (audit_id,store_id,actor_id,authorization_context_ref,request_id,catalog_revision,event_type,recorded_at,metadata_json) VALUES (?,?,?,?,?,?,?,?,?)",
+            params:[
+              'catalog-keeta-option-map-001',process.env.STORE_ID,'builder:team1-keeta-option-map',
+              'admin:keeta-option-map','catalog-keeta-option-map-001',rev,
+              'KEETA_CANONICAL_OPTION_MAPPING_RESTORED',at,
+              JSON.stringify({productId:process.env.PRODUCT_ID,providerGroups:['MF-ORDER-GRP-01','MF-ORDER-GRP-02'],providerOptions:['MF-ORDER-OPT-01A','MF-ORDER-OPT-01B','MF-ORDER-OPT-02A','MF-ORDER-OPT-02B']})
+            ]
+          });
+          fs.writeFileSync(process.argv[3],JSON.stringify({batch},null,2));
+          console.log('guarded_batch_build=PASS statements='+batch.length);
+          NODE
+      - name: Execute guarded production batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error -X POST             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/batch.json" > "$RUNNER_TEMP/out.json"
+          jq -e '.success==true and ([.result[]|select(.success!=true)]|length)==0 and (.result|length)==6 and ([.result[].meta.changes|tonumber]|add)==6' "$RUNNER_TEMP/out.json" >/dev/null
+          echo "production_option_repair_batch=PASS"
+      - name: Exact canonical readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          CAT_SQL="SELECT catalog_revision,revision,snapshot_json FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/read-cat-q.json"
+          curl --fail-with-body --silent --show-error -X POST             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-cat-q.json" > "$RUNNER_TEMP/read-cat.json"
+
+          ALIAS_SQL="SELECT provider_group_code,provider_option_code,canonical_product_id,canonical_option_id,mapping_status,mapping_revision FROM mfos_channel_menu_option_alias WHERE store_id=? AND channel_context='KEETA' AND canonical_product_id=? ORDER BY provider_group_code,provider_option_code"
+          jq -n --arg sql "$ALIAS_SQL" --arg store "$STORE_ID" --arg product "$PRODUCT_ID" '{sql:$sql,params:[$store,$product]}' > "$RUNNER_TEMP/read-alias-q.json"
+          curl --fail-with-body --silent --show-error -X POST             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-alias-q.json" > "$RUNNER_TEMP/read-alias.json"
+
+          node - "$RUNNER_TEMP/read-cat.json" "$RUNNER_TEMP/read-alias.json" <<'NODE'
+          const fs=require('fs');
+          const cat=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const alias=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          if(!cat.success||!cat.result?.[0]?.success)throw new Error('CATALOG_READBACK_FAILED');
+          if(!alias.success||!alias.result?.[0]?.success)throw new Error('ALIAS_READBACK_FAILED');
+          const row=cat.result[0].results[0]; const snap=JSON.parse(row.snapshot_json);
+          const p=(snap.products||[]).find(x=>x.productId===process.env.PRODUCT_ID);
+          if(!p||p.revision!==2||p.optionGroups?.length!==2)throw new Error('CATALOG_OPTION_GROUP_READBACK_MISMATCH');
+          const options=p.optionGroups.flatMap(g=>g.options||[]);
+          if(options.length!==4||options.some(o=>o.status!=='ACTIVE'))throw new Error('CATALOG_OPTIONS_READBACK_MISMATCH');
+          const rows=alias.result[0].results||[];
+          if(rows.length!==4||rows.some(x=>x.mapping_status!=='ACTIVE'||x.canonical_product_id!==process.env.PRODUCT_ID))throw new Error('OPTION_ALIAS_READBACK_MISMATCH');
+          const expected=new Set([
+            'MF-ORDER-GRP-01|MF-ORDER-OPT-01A|2bd62276-92d8-58da-b9de-e80c2319d2c3',
+            'MF-ORDER-GRP-01|MF-ORDER-OPT-01B|44c62f1d-8efd-5d42-a5f0-f798d2832281',
+            'MF-ORDER-GRP-02|MF-ORDER-OPT-02A|b4bd1e6b-34fc-5ee4-9ae8-469ac9e9221d',
+            'MF-ORDER-GRP-02|MF-ORDER-OPT-02B|53ce3845-eef9-5be2-845d-60d11b593c80'
+          ]);
+          for(const x of rows)expected.delete(x.provider_group_code+'|'+x.provider_option_code+'|'+x.canonical_option_id);
+          if(expected.size)throw new Error('OPTION_ALIAS_IDENTITY_READBACK_MISMATCH');
+          console.log('canonical_product_revision='+p.revision);
+          console.log('option_groups=2');
+          console.log('canonical_options=4');
+          console.log('active_provider_option_aliases=4');
+          console.log('KEETA_2965_OPTION_IDENTITY_REPAIR=PASS');
+          NODE
