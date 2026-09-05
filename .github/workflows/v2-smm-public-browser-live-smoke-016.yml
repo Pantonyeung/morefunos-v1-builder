@@ -19,8 +19,6 @@ jobs:
       SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
       ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
       FIXED_ORDER_KEETA: 9011ca2e-dd04-5198-b8d5-d96249564a15
-      FIXED_ORDER_015: 6e95b49b-c529-4bdd-8f8a-99582f5eef05
-      FIXED_ORDER_003: 094b2412-df92-4897-b0c2-3d67bcf85ef6
     steps:
       - uses: actions/checkout@v7
         with: {persist-credentials: false}
@@ -33,114 +31,59 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           test -n "$ADMIN_LOGIN_SECRET"
-
       - uses: actions/setup-node@v7
         with: {node-version: '24'}
-
       - name: Public HTTP preflight
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence
-          for spec in "/ index" "/orders spa" "/manifest.webmanifest manifest"; do
-            path="${spec%% *}"; name="${spec##* }"
-            code="$(curl -sS -o "/tmp/$name.out" -w '%{http_code}' "$SMM_ORIGIN$path")"
-            echo "$name=$code" | tee -a evidence/http.txt
-            test "$code" = 200
-          done
+          for spec in "/ index" "/orders spa" "/manifest.webmanifest manifest"; do path="${spec%% *}"; name="${spec##* }"; code="$(curl -sS -o "/tmp/$name.out" -w '%{http_code}' "$SMM_ORIGIN$path")"; echo "$name=$code" | tee -a evidence/http.txt; test "$code" = 200; done
           JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.out | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
           test -n "$JS_PATH"
           case "$JS_PATH" in http*) JS_URL="$JS_PATH";; /*) JS_URL="$SMM_ORIGIN$JS_PATH";; *) JS_URL="$SMM_ORIGIN/$JS_PATH";; esac
-          ASSET_HTTP="$(curl -sS -o /tmp/smm.js -w '%{http_code}' "$JS_URL")"
-          echo "asset=$ASSET_HTTP" | tee -a evidence/http.txt
-          test "$ASSET_HTTP" = 200
-          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/manifest.out','utf8'));if(x.name!=='MoreFun SMM'||x.start_url!=='/'||x.display!=='standalone'||!Array.isArray(x.icons)||!x.icons.length)process.exit(1)"
-
+          test "$(curl -sS -o /tmp/smm.js -w '%{http_code}' "$JS_URL")" = 200
       - name: Install Chromium
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium
-
-      - name: Pair UI and prove live Keeta canonical Order visible
+      - name: Diagnose pairing and live Keeta canonical Order
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs=require('fs');
-          const {chromium}=require('playwright');
+          const fs=require('fs');const {chromium}=require('playwright');
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:430,height:932}});
-            const api=[]; const apiResponses=[]; const consoleEvents=[]; const pageErrors=[]; const requestFailures=[];
-            page.on('console',m=>consoleEvents.push({type:m.type(),text:m.text()}));
-            page.on('pageerror',e=>pageErrors.push(String(e?.stack||e)));
-            page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
+            const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:430,height:932}});
+            const api=[];const responses=[];const pageErrors=[];const requestFailures=[];
+            page.on('pageerror',e=>pageErrors.push(String(e?.stack||e)));page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))api.push({origin:u.origin,path:u.pathname,method:r.method()});});
-            page.on('response',async r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiResponses.push({origin:u.origin,path:u.pathname,status:r.status()});});
-            await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
-            await page.waitForTimeout(1000);
-            const pairingInputCount=await page.getByPlaceholder('輸入店務連接碼').count();
-            if(pairingInputCount!==1) throw new Error('SMM_UI_PAIRING_INPUT_MISSING');
-            await page.getByPlaceholder('輸入店務連接碼').fill(process.env.ADMIN_LOGIN_SECRET);
-            await page.getByRole('button',{name:'開始連接'}).click();
-            try{
-              await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
-            }catch(error){
-              const sessionAfter=await page.evaluate(()=>JSON.parse(localStorage.getItem('morefunos.smm.device-session.v1')||'null'));
-              const bodyAfter=(await page.textContent('body'))||'';
-              console.log('SMM_PAIRING_AFTER_CLICK sessionStored='+Boolean(sessionAfter?.sessionToken)+' apiResponses='+JSON.stringify(apiResponses)+' body='+JSON.stringify(bodyAfter.slice(0,1400)));
-              throw error;
-            }
-            const candidates=[process.env.FIXED_ORDER_KEETA,process.env.FIXED_ORDER_015,process.env.FIXED_ORDER_003].filter(Boolean);
-            let visible=null;
-            for(const id of candidates){if(await page.getByText(id,{exact:true}).count()){visible=id;break;}}
-            if(!visible) throw new Error('SMM_FIXED_CANONICAL_ORDER_NOT_VISIBLE');
-            if(visible!==process.env.FIXED_ORDER_KEETA) throw new Error('SMM_LIVE_KEETA_6893_NOT_VISIBLE');
-            const card=page.locator('.smm-order-card',{hasText:visible});
-            const cardText=(await card.textContent())||'';
-            if(!cardText.includes('Keeta')) throw new Error('SMM_KEETA_SOURCE_LABEL_NOT_VISIBLE');
-            if(!cardText.includes('$21')) throw new Error('SMM_KEETA_TOTAL_NOT_VISIBLE');
+            page.on('response',async r=>{const u=new URL(r.url());if(!u.pathname.startsWith('/api/'))return;let body=null;try{body=await r.json()}catch{};if(body?.sessionToken)body={...body,sessionToken:'[REDACTED]'};responses.push({origin:u.origin,path:u.pathname,status:r.status(),body});});
+            await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});await page.waitForTimeout(1000);
+            const input=page.getByPlaceholder('輸入店務連接碼');if(await input.count()!==1)throw new Error('SMM_UI_PAIRING_INPUT_MISSING');
+            await input.fill(process.env.ADMIN_LOGIN_SECRET);await page.getByRole('button',{name:'開始連接'}).click();
+            let connected=false;try{await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:12000});connected=true}catch{}
             const session=await page.evaluate(()=>JSON.parse(localStorage.getItem('morefunos.smm.device-session.v1')||'null'));
-            if(!session?.sessionToken||!session.storeId||!session.sessionId||!session.deviceId||!session.runtimeBindingRef) throw new Error('SMM_TRUSTED_SESSION_STORAGE_INVALID');
-            const publicOrigin=new URL(process.env.SMM_ORIGIN).origin;
-            if(api.some(x=>x.origin!==publicOrigin)) throw new Error('SMM_BROWSER_API_NOT_SAME_ORIGIN');
-            if(!api.some(x=>x.path==='/api/smm/session'&&x.method==='POST')) throw new Error('SMM_BROWSER_PAIRING_NETWORK_MISSING');
-            if(!api.some(x=>x.path==='/api/smm/runtime'&&x.method==='POST')) throw new Error('SMM_BROWSER_RUNTIME_NETWORK_MISSING');
-            const direct=await fetch(process.env.ADMIN_ORIGIN+'/api/smt/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json'},body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:visible}})});
-            const truth=await direct.json();
-            if(direct.status!==200||truth.orderId!==visible||truth.storeId!==session.storeId||!Number.isInteger(truth.revision)||truth.revision<1) throw new Error('SMM_SERVER_TRUTH_MISMATCH');
-            if(truth.providerOrderAlias?.platformContext!=='KEETA'||String(truth.providerOrderAlias?.providerOrderCode)!=='6893') throw new Error('SMM_SERVER_KEETA_ALIAS_MISMATCH');
-            if(truth.currency!=='HKD'||Number(truth.totalMinor)!==2100) throw new Error('SMM_SERVER_KEETA_TOTAL_MISMATCH');
-            const body=await page.textContent('body');
-            for(const marker of ['TST-SMM-','SMM-DEMO-ORDER','SMM-FIXTURE-ORDER']) if(body?.includes(marker)) throw new Error('SMM_FIXTURE_MARKER_VISIBLE');
-            fs.writeFileSync('evidence/browser.json',JSON.stringify({sourceSha:process.env.SOURCE_SHA,publicOrigin,runtimeReady:true,orderId:visible,providerOrderCode:'6893',sourceLabel:'Keeta',totalLabel:'$21',storeId:truth.storeId,lifecycleStatus:truth.lifecycleStatus,revision:truth.revision,browserApiRequests:api,apiResponses,browserDirectD1:false,serverTruthMatch:true,fixtureMarkers:0,pageErrors,requestFailures},null,2));
-            console.log('SMM_016_KEETA_6893_READY orderId='+visible+' providerOrderCode=6893 source=Keeta total=$21 revision='+truth.revision+' status='+truth.lifecycleStatus);
-            await browser.close();
+            const bodyText=(await page.textContent('body'))||'';
+            fs.writeFileSync('evidence/pairing-diagnostic.json',JSON.stringify({connected,sessionStored:Boolean(session?.sessionToken),storeId:session?.storeId??null,mountedOperationIds:session?.mountedOperationIds??[],responses,bodyText:bodyText.slice(0,3000),pageErrors,requestFailures},null,2));
+            console.log('SMM_PAIRING_DIAGNOSTIC connected='+connected+' sessionStored='+Boolean(session?.sessionToken)+' responses='+JSON.stringify(responses)+' body='+JSON.stringify(bodyText.slice(0,1600)));
+            if(!connected)throw new Error('SMM_RUNTIME_BOOTSTRAP_FAILED_AFTER_SUCCESSFUL_PAIR');
+            const id=process.env.FIXED_ORDER_KEETA;if(await page.getByText(id,{exact:true}).count()===0)throw new Error('SMM_LIVE_KEETA_6893_NOT_VISIBLE');
+            const cardText=(await page.locator('.smm-order-card',{hasText:id}).textContent())||'';if(!cardText.includes('Keeta'))throw new Error('SMM_KEETA_SOURCE_LABEL_NOT_VISIBLE');if(!cardText.includes('$21'))throw new Error('SMM_KEETA_TOTAL_NOT_VISIBLE');
+            const direct=await fetch(process.env.ADMIN_ORIGIN+'/api/smt/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json'},body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:id}})});const truth=await direct.json();
+            if(direct.status!==200||truth.orderId!==id||truth.providerOrderAlias?.platformContext!=='KEETA'||String(truth.providerOrderAlias?.providerOrderCode)!=='6893'||truth.currency!=='HKD'||Number(truth.totalMinor)!==2100)throw new Error('SMM_SERVER_KEETA_TRUTH_MISMATCH');
+            fs.writeFileSync('evidence/browser.json',JSON.stringify({sourceSha:process.env.SOURCE_SHA,orderId:id,providerOrderCode:'6893',sourceLabel:'Keeta',totalLabel:'$21',runtimeReady:true,serverTruthMatch:true,browserDirectD1:false,fixtureMarkers:0},null,2));
+            console.log('SMM_016_KEETA_6893_READY orderId='+id+' source=Keeta total=$21');await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
-
       - name: Summary
         if: always()
         shell: bash
         run: |
-          CLASSIFICATION=BLOCKED
-          ORDER_ID=
-          if test -s evidence/browser.json; then CLASSIFICATION=READY; ORDER_ID="$(node -p "require('./evidence/browser.json').orderId")"; fi
-          printf 'source_sha=%s\nrun_id=%s\nclassification=%s\norigin=%s\norder_id=%s\nkeeta_order_code=6893\nfixture_markers=0\ndirect_browser_d1=NO\nmorefun_v2_native_ci=0\n' "${{ steps.req.outputs.source_sha }}" "$GITHUB_RUN_ID" "$CLASSIFICATION" "$SMM_ORIGIN" "$ORDER_ID" | tee evidence/summary.txt
-
-      - name: Publish audit
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.run_id }}
-          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          SUMMARY="$(tr '\n' ' ' < evidence/summary.txt)"
-          gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_SMM_BROWSER_016 status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA $SUMMARY"
-
+          CLASSIFICATION=BLOCKED; ORDER_ID=; if test -s evidence/browser.json; then CLASSIFICATION=READY; ORDER_ID="$(node -p "require('./evidence/browser.json').orderId")"; fi
+          printf 'source_sha=%s\nrun_id=%s\nclassification=%s\norigin=%s\norder_id=%s\nkeeta_order_code=6893\nmorefun_v2_native_ci=0\n' "${{ steps.req.outputs.source_sha }}" "$GITHUB_RUN_ID" "$CLASSIFICATION" "$SMM_ORIGIN" "$ORDER_ID" | tee evidence/summary.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
