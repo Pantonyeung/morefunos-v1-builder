@@ -20,13 +20,20 @@ jobs:
     timeout-minutes: 15
     env:
       WRANGLER_VERSION: "4.125.0"
-      DONOR_SHA: "967a8e09dfbc53655380665824d5687c0ccd177b"
-      SOURCE_SHA: "fe436016ce86672a9d08a634635380f845a2e985"
       WORKER_URL: "https://morefun-v2-keeta-sit.pantonyeung.workers.dev"
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Resolve exact admitted source
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-prearm-auto-confirm.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v7
         with:
@@ -49,30 +56,16 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
-          ref: ${{ env.SOURCE_SHA }}
+          ref: ${{ steps.request.outputs.source_sha }}
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Checkout OAuth donor
-        uses: actions/checkout@v7
-        with:
-          repository: Pantonyeung/Morefun-v2
-          ref: ${{ env.DONOR_SHA }}
-          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
-          path: donor
-          persist-credentials: false
-          fetch-depth: 1
-
-      - name: Assemble pre-armed worker
+      - name: Assemble limited auto-accept deployment
         shell: bash
         run: |
           set -euo pipefail
-          cp donor/workers/keeta/src/oauth-runtime.ts source/workers/keeta/src/oauth-runtime.ts
-          cp donor/packages/integration/keeta-standard-oauth.ts source/packages/integration/keeta-standard-oauth.ts
-          python3 scripts/t1-keeta-auto-confirm-probe.py
-
           ARM_AFTER_MS="$(date +%s%3N)"
           ARM_UNTIL_MS="$((ARM_AFTER_MS + 900000))"
           export ARM_AFTER_MS ARM_UNTIL_MS
@@ -86,13 +79,16 @@ jobs:
           src.vars={
             ...(src.vars||{}),
             KEETA_APP_ID:'3419700273',
-            KEETA_SIT_AUTO_CONFIRM_AFTER_MS:process.env.ARM_AFTER_MS,
-            KEETA_SIT_AUTO_CONFIRM_UNTIL_MS:process.env.ARM_UNTIL_MS
+            KEETA_ACCEPTANCE_MODE:'AUTO',
+            KEETA_STORM_MODE_ACTIVE:'false',
+            KEETA_AUTO_ACCEPT_AFTER_MS:process.env.ARM_AFTER_MS,
+            KEETA_AUTO_ACCEPT_UNTIL_MS:process.env.ARM_UNTIL_MS
           };
           fs.writeFileSync('source/workers/keeta/prearm-wrangler.jsonc',JSON.stringify(src,null,2));
           const verify=JSON.parse(fs.readFileSync('source/workers/keeta/prearm-wrangler.jsonc','utf8'));
-          if(verify.vars.KEETA_SIT_AUTO_CONFIRM_AFTER_MS!==process.env.ARM_AFTER_MS) throw new Error('ARM_AFTER_WRITE_MISMATCH');
-          if(verify.vars.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS!==process.env.ARM_UNTIL_MS) throw new Error('ARM_UNTIL_WRITE_MISMATCH');
+          if(verify.vars.KEETA_ACCEPTANCE_MODE!=='AUTO') throw new Error('AUTO_MODE_WRITE_MISMATCH');
+          if(verify.vars.KEETA_AUTO_ACCEPT_AFTER_MS!==process.env.ARM_AFTER_MS) throw new Error('ARM_AFTER_WRITE_MISMATCH');
+          if(verify.vars.KEETA_AUTO_ACCEPT_UNTIL_MS!==process.env.ARM_UNTIL_MS) throw new Error('ARM_UNTIL_WRITE_MISMATCH');
           console.log('arm_config_write=PASS');
           NODE
 
@@ -117,10 +113,11 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const cfg=JSON.parse(fs.readFileSync('source/workers/keeta/prearm-wrangler.jsonc','utf8'));
-          if(!cfg.vars?.KEETA_SIT_AUTO_CONFIRM_AFTER_MS || !cfg.vars?.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS) process.exit(1);
+          if(cfg.vars?.KEETA_ACCEPTANCE_MODE!=='AUTO') process.exit(1);
+          if(!cfg.vars?.KEETA_AUTO_ACCEPT_AFTER_MS || !cfg.vars?.KEETA_AUTO_ACCEPT_UNTIL_MS) process.exit(1);
           console.log('AUTO_CONFIRM_ARMED=true');
-          console.log('auto_confirm_after_ms='+cfg.vars.KEETA_SIT_AUTO_CONFIRM_AFTER_MS);
-          console.log('auto_confirm_until_ms='+cfg.vars.KEETA_SIT_AUTO_CONFIRM_UNTIL_MS);
+          console.log('auto_confirm_after_ms='+cfg.vars.KEETA_AUTO_ACCEPT_AFTER_MS);
+          console.log('auto_confirm_until_ms='+cfg.vars.KEETA_AUTO_ACCEPT_UNTIL_MS);
           NODE
           echo "target_shop=721578302"
           echo "target_next_orders=ONE_FRESH_ORDER_ONLY"
