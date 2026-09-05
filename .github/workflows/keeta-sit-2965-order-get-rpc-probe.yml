@@ -46,14 +46,22 @@ jobs:
           cat > "$WORK/src/index.ts" <<'EOF'
           interface Env {
             PROBE_KEY: string;
-            KEETA: {\n              decideMerchantReceipt(dedupKey:string,canonicalStoreId:string,decision:{decision:"ACCEPT";evidenceRef:string}):Promise<unknown>;\n              readOrderCommercialReadback(dedupKey:string):Promise<unknown>;\n            };
+            KEETA: {
+              decideMerchantReceipt(dedupKey:string,canonicalStoreId:string,decision:{decision:"ACCEPT";evidenceRef:string}):Promise<unknown>;
+              readOrderCommercialReadback(dedupKey:string):Promise<unknown>;
+            };
           }
           export default {
             async fetch(request:Request,env:Env):Promise<Response>{
               if(request.headers.get("x-probe-key")!==env.PROBE_KEY)return new Response("forbidden",{status:403});
               try {
-                const result=await env.KEETA.readOrderCommercialReadback("KEETA:2096375487671742477");
-                return Response.json({ok:true,result});
+                const recovery=await env.KEETA.decideMerchantReceipt(
+                  "KEETA:2096375487671742477",
+                  "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+                  {decision:"ACCEPT",evidenceRef:"KEETA_AUTO_ACCEPT:0MS:2096375487671742477"}
+                );
+                const commercial=await env.KEETA.readOrderCommercialReadback("KEETA:2096375487671742477");
+                return Response.json({ok:true,recovery,commercial});
               } catch(error) {
                 return Response.json({ok:false,error:error instanceof Error?error.message:String(error)});
               }
@@ -74,6 +82,9 @@ jobs:
             sleep 1
           done
           printf '%s' "$BODY" | jq -e '.ok==true' >/dev/null
-          echo "$BODY" | jq -e '.result.providerOrderId=="5143440812062965"' >/dev/null
-          echo "$BODY" | jq -e '.result.providerCode==0' >/dev/null
-          echo "ORDER_GET_2965=$(echo "$BODY" | jq -c '.result|{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
+          echo "$BODY" | jq -e '.recovery.disposition=="COMPLETE"' >/dev/null
+          echo "$BODY" | jq -e '.recovery.record.status=="DELIVERED" and .recovery.record.canonicalOrderId!=null' >/dev/null
+          echo "$BODY" | jq -e '.commercial.providerOrderId=="5143440812062965"' >/dev/null
+          echo "$BODY" | jq -e '.commercial.providerCode==0' >/dev/null
+          echo "RECOVERY_2965=$(echo "$BODY" | jq -c '.recovery|{disposition,record:{status:.record.status,canonicalOrderId:.record.canonicalOrderId,canonicalRevision:.record.canonicalRevision,merchantDecision:.record.merchantDecision,providerActionStatus:.record.providerActionStatus,lastError:.record.lastError}}')"
+          echo "ORDER_GET_2965=$(echo "$BODY" | jq -c '.commercial|{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
