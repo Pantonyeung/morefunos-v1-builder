@@ -1,4 +1,4 @@
-source_sha=62d7c3106a8a74caf82b9c1fd7892ff44cb50831
-base_sha=7c744d5ef67c51a70e00321c536e05371d1c3898
-branch_name=work/SMM/B0311-ordering-product-sheet-live-cart
-request_id=SMM-B0311-TERMINAL-SELF-20260905
+source_sha=a79901f77962dd4c761d22b87580cdcb63730cf7
+base_sha=9786139fb6f26968fbdbed8011e3b678a6789911
+branch_name=work/SMM/B0312-active-work-orders-queue
+request_id=SMM-B0312-TERMINAL-SELF-20260905
