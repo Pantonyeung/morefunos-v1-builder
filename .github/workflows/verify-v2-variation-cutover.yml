@@ -53,6 +53,9 @@ jobs:
       - name: Print variation tests
         working-directory: source
         run: node --experimental-strip-types --test packages/print/print-plan-generator.test.ts packages/print/print-template-renderer.test.ts
+      - name: SMT canonical Direct Order mount tests
+        working-directory: source
+        run: node --experimental-strip-types --test packages/smt-ui-integration/smt-direct-order-mount.test.ts packages/smt-ui-integration/production-runtime-composition.test.ts
       - name: Root typecheck
         working-directory: source
         run: npm run typecheck
