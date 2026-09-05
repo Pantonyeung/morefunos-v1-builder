@@ -292,8 +292,14 @@ jobs:
             await mainNav.getByRole('button',{name:'待處理',exact:true}).click();
             await page.getByText('平台訂單',{exact:true}).waitFor({state:'visible',timeout:5000});
 
+            const orderingMenuResponsePromise=page.waitForResponse(r=>{
+              if(new URL(r.url()).pathname!=='/api/smm/runtime'||r.request().method()!=='POST')return false;
+              try{return r.request().postDataJSON()?.operationId==='catalog.menu.active.read.v1'}catch{return false}
+            },{timeout:15000});
             await mainNav.getByRole('button',{name:'點單',exact:true}).click();
-            await page.waitForTimeout(500);
+            const orderingMenuResponse=await orderingMenuResponsePromise;
+            if(orderingMenuResponse.status()!==200)throw new Error('SMM_ORDERING_MENU_HTTP_'+orderingMenuResponse.status());
+            await page.locator('.smm-product-card__primary').first().waitFor({state:'visible',timeout:15000});
             const bodyText=await page.locator('body').innerText();
             if(bodyText.includes('店務資料尚未連接'))throw new Error('SMM_UI_PROVIDER_NOT_READY');
             if(bodyText.includes('暫未開放直接落單'))throw new Error('SMM_DIRECT_ORDER_STALE_DISABLED_COPY');
