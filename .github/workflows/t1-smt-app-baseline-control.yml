@@ -1,0 +1,42 @@
+name: T1 SMT App Baseline Control
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-smt-app-baseline-control.txt'
+      - '.github/workflows/t1-smt-app-baseline-control.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact source
+        id: req
+        run: |
+          SHA="$(sed -n 's/^source_sha=//p' requests/t1-smt-app-baseline-control.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Exact baseline SMT app tests
+        working-directory: source/apps/smt-clean
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
