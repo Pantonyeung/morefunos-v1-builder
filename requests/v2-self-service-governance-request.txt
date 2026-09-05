@@ -1,4 +1,4 @@
-source_sha=bc779e7f3002eadee47ce780606abbc88c50aa70
+source_sha=71d727dadabc8772edbca5c66b9675b10cd549b4
 base_sha=42e6912e53c5d0ddfc3db27bc5e669a20970f971
 branch_name=work/SMM/B0314-r10-trusted-staff-bootstrap
-request_id=SMM-B0314-R10-TERMINAL2-SELF-20260905
+request_id=SMM-B0314-R10-POST-ADMISSION-SELF-20260905
