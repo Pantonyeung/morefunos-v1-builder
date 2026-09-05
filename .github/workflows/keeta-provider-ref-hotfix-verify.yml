@@ -33,9 +33,11 @@ jobs:
       - name: Install
         working-directory: source
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Targeted bridge regression
+      - name: Targeted Keeta providerRef regressions
         working-directory: source
-        run: node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
+        run: |
+          node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
+          node --test packages/integration/keeta-d1-canonical-acceptance-plan.test.ts
       - name: Typecheck
         working-directory: source
         run: npm run typecheck
