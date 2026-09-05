@@ -89,4 +89,4 @@ jobs:
 
       - name: Keeta ingress and durable delivery regression
         working-directory: source
-        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
+        run: node --test packages/integration/keeta-webhook-ingress.test.ts packages/integration/keeta-durable-delivery.test.ts packages/integration/keeta-worker-durable-receipt-linkup.test.ts workers/keeta/src/d1-durable-delivery.test.ts workers/keeta/src/index.test.ts
