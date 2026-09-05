@@ -1,0 +1,82 @@
+name: Keeta V2 Order Shortcode Readonly
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-v2-order-shortcode-readonly.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
+      TARGET_CODES: '0128,9624,2396'
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: 7c2a3dc3acf059667baf09983a6e37f769112b43
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Read recent 1001 evidence
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message,received_at FROM keeta_webhook_evidence WHERE event_id=1001 ORDER BY received_at DESC LIMIT 80" --json > "$RUNNER_TEMP/evidence.json"
+          node - "$RUNNER_TEMP/evidence.json" <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const rows=(Array.isArray(raw)?raw.flatMap(x=>x.results??[]):raw.results??[]);
+          const targets=new Set((process.env.TARGET_CODES||'').split(','));
+          const pick=(o,paths)=>{for(const p of paths){let v=o;for(const k of p.split('.'))v=v?.[k];if(v!==undefined&&v!==null)return v}return null};
+          let found=0;
+          for(const row of rows){
+            let m; try{m=JSON.parse(row.message)}catch{continue}
+            const body=m?.data??m;
+            const short=String(pick(body,['merchantOrder.seqNoStr','merchantOrder.seqNo'])??'');
+            if(!targets.has(short)) continue;
+            found++;
+            const products=pick(body,['products','merchantOrder.products','baseOrder.products']) ?? [];
+            const itemCount=Array.isArray(products)?products.reduce((s,p)=>s+Number(p?.count??0),0):0;
+            const feeDtls=pick(body,['feeDtls','merchantOrder.feeDtls','baseOrder.feeDtls']) ?? [];
+            const feeMap={};
+            if(Array.isArray(feeDtls)) for(const f of feeDtls) feeMap[String(f?.code??'')]=Number(f?.amount??f?.money??f?.value??NaN);
+            const merchantFee=pick(body,['merchantFee','merchantOrder.merchantFee','baseOrder.merchantFee']) ?? {};
+            const productRows=Array.isArray(products)?products.map(p=>({
+              name:p?.productName??p?.name??null,
+              count:Number(p?.count??0),
+              skuOpenItemCode:p?.skuOpenItemCode??null,
+              spuOpenItemCode:p?.spuOpenItemCode??null,
+              unitPrice:Number(p?.price??p?.unitPrice??NaN),
+              groups:Array.isArray(p?.choiceGroups)?p.choiceGroups.length:Array.isArray(p?.groups)?p.groups.length:Array.isArray(p?.attributes)?p.attributes.length:0
+            })):[];
+            const orderViewId=String(pick(body,['baseOrder.orderViewIdStr','merchantOrder.orderViewIdStr','orderViewIdStr','orderViewId'])??'');
+            const productPrice=Number(pick(body,['productPrice','merchantOrder.productPrice','baseOrder.productPrice'])??NaN);
+            const payTotal=Number(feeMap.payTotal ?? pick(body,['payTotal','merchantOrder.payTotal','baseOrder.payTotal']) ?? NaN);
+            const merchantEarnings=Number(pick(merchantFee,['earnings'])??NaN);
+            console.log('ORDER_EVIDENCE='+JSON.stringify({
+              shortCode:short,orderViewId,messageId:row.message_id,receivedAt:row.received_at,itemCount,
+              productPrice:Number.isFinite(productPrice)?productPrice:null,
+              payTotal:Number.isFinite(payTotal)?payTotal:null,
+              merchantEarnings:Number.isFinite(merchantEarnings)?merchantEarnings:null,
+              products:productRows
+            }));
+          }
+          if(found!==targets.size){console.error(`TARGET_MATCH_COUNT=${found}/${targets.size}`);process.exit(2)}
+          console.log(`TARGET_MATCH_COUNT=${found}/${targets.size}`);
+          NODE
