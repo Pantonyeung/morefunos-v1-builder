@@ -1,0 +1,45 @@
+name: Third Party Net Estimate Admin API Readback
+on:
+  push:
+    branches: [main]
+    paths: ['requests/third-party-net-estimate-admin-api-readback.txt']
+permissions:
+  contents: read
+jobs:
+  readback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Verify protected production Admin policy API
+        shell: bash
+        env:
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+        run: |
+          set -euo pipefail
+          ENDPOINT="$ADMIN_URL/api/admin/channels/net-estimate-policies"
+          ANON="$(curl -sS -o /tmp/anon.json -w '%{http_code}' "$ENDPOINT")"
+          test "$ANON" = 401
+          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}"
+          TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
+          AUTH="$(curl -sS -o /tmp/auth.json -w '%{http_code}' -H "Cookie: mf_admin_session=$TOKEN" "$ENDPOINT")"
+          test "$AUTH" = 200
+          node - <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync('/tmp/auth.json','utf8'));
+          if(body?.ok!==true||!Array.isArray(body.value))process.exit(1);
+          for(const row of body.value){
+            if(row.provider!=='KEETA'&&row.provider!=='FOODPANDA')process.exit(1);
+            if(row.estimationBasis!=='DIRECT_STORE_PRICE')process.exit(1);
+            if(!Number.isSafeInteger(row.netRateBps)||row.netRateBps<0||row.netRateBps>10000)process.exit(1);
+          }
+          console.log('ANONYMOUS_HTTP=401');
+          console.log('AUTHENTICATED_HTTP=200');
+          console.log('POLICY_API=PASS');
+          console.log('POLICY_ROWS='+body.value.length);
+          console.log(JSON.stringify(body.value.map(({storeId,provider,enabled,estimationBasis,netRateBps,revision})=>({storeId,provider,enabled,estimationBasis,netRateBps,revision}))));
+          NODE
+          rm -f /tmp/anon.json /tmp/auth.json
