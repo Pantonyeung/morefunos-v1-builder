@@ -40,9 +40,9 @@ jobs:
             for g in p.get("groups") or []:
               gg=clean_obj(g,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount"])
               items=[]
-              for key in ["items","products","skus","options","choiceGroupSkuList","subProducts"]:
+              for key in ["shopProductGroupSkuList","items","products","skus","options","choiceGroupSkuList","subProducts"]:
                 if isinstance(g.get(key),list):
-                  items=[clean_obj(x,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount","unitPrice","originUnitPrice"]) for x in g[key] if isinstance(x,dict)]
+                  items=[clean_obj(x,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount","unitPrice","originUnitPrice","skuName","skuNameI18n","groupSkuId","groupSkuOpenItemCode","pickPrice","pickPriceStr"]) for x in g[key] if isinstance(x,dict)]
                   gg["itemContainer"]=key
                   break
               gg["items"]=items
@@ -56,7 +56,7 @@ jobs:
           promos=[]
           for p in oi.get("orderPromotionDtlList") or []:
             if isinstance(p,dict):
-              promos.append({"keys":sorted(p.keys()),"safe":clean_obj(p,["id","name","promotionName","promotionType","discountAmount","amount","merchantAmount","platformAmount","currency","promoCode","activityId"])})
+              promos.append({"keys":sorted(p.keys()),"safe":clean_obj(p,["id","name","promotionName","promotionType","discountAmount","amount","merchantAmount","platformAmount","currency","promoCode","activityId","merchantActivityFee","merchantActivityFeeStr","reduceFee","sillAmount","type","typeName","promotionRuleDesc","remark"])})
           out={"products":products,"promotions":promos,"feeCodes":[clean_obj(x,["code","price","currency"]) for x in oi.get("feeDtls",[]) if isinstance(x,dict)]}
           print("SAFE_SHAPE="+json.dumps(out,ensure_ascii=False,separators=(",",":")))
           PY
