@@ -165,7 +165,7 @@ jobs:
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
             await page.getByRole('button',{name:'連接 Runtime'}).click();
-            await page.getByText('Runtime Ready',{exact:true}).waitFor({state:'visible',timeout:15000});
+            await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
               const raw=localStorage.getItem('morefunos.smm.device-session.v1');
               if(!raw)throw new Error('SMM_SESSION_STORAGE_MISSING');
