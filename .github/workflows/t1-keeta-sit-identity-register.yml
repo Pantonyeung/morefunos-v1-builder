@@ -1,0 +1,180 @@
+name: T1 Keeta SIT Canonical Identity Register
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - requests/t1-keeta-sit-identity-register.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t1-keeta-sit-identity-register
+  cancel-in-progress: false
+
+jobs:
+  register:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      WRANGLER_VERSION: "4.125.0"
+      TEMP_WORKER_NAME: "morefun-v2-b2517-register"
+      TEMP_WORKER_URL: "https://morefun-v2-b2517-register.pantonyeung.workers.dev"
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+      PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
+      MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
+      PROVIDER_SPU_ID: "119024973"
+      PROVIDER_SKU_ID: "115907604"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact admitted source
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-sit-identity-register.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install exact source dependencies and verify B2517
+        working-directory: source
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          node --test packages/catalog/keeta-sit-canonical-identity.test.ts
+          npm run typecheck
+
+      - name: Install Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+
+      - name: Assemble one-time registration Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > b2517-register.ts <<'TS'
+          import type { D1DatabaseLike } from './packages/production-persistence/d1.ts';
+          import { registerKeetaSitCanonicalIdentity } from './packages/catalog/keeta-sit-canonical-identity.ts';
+
+          interface Env { readonly DB:D1DatabaseLike; readonly REGISTER_TOKEN?:string; }
+
+          export default {
+            async fetch(request:Request,env:Env):Promise<Response>{
+              const url=new URL(request.url);
+              if(request.method!=='POST'||url.pathname!=='/register') return new Response('NOT_FOUND',{status:404});
+              const expected=env.REGISTER_TOKEN;
+              const supplied=request.headers.get('x-register-token');
+              if(!expected||!supplied||supplied!==expected) return new Response('FORBIDDEN',{status:403});
+              try{
+                const result=await registerKeetaSitCanonicalIdentity(env.DB,{
+                  storeId:'d2d882b4-5c7b-40f9-ad59-91f8faabb8e8',
+                  actorId:'builder:B2517',
+                  occurredAt:new Date().toISOString(),
+                });
+                return Response.json(result);
+              }catch(error){
+                return Response.json({ok:false,code:error instanceof Error?error.message:'B2517_REGISTER_FAILED'},{status:500});
+              }
+            }
+          };
+          TS
+
+          cat > b2517-register-wrangler.jsonc <<'JSON'
+          {
+            "name":"morefun-v2-b2517-register",
+            "main":"./b2517-register.ts",
+            "compatibility_date":"2026-09-05",
+            "compatibility_flags":["nodejs_compat"],
+            "workers_dev":true,
+            "preview_urls":false,
+            "d1_databases":[{
+              "binding":"DB",
+              "database_name":"morefun-v2-production",
+              "database_id":"1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+            }]
+          }
+          JSON
+
+      - name: Deploy one-time Worker and register secret
+        working-directory: source
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          TOKEN="$(python3 - <<'PY'
+          import secrets
+          print(secrets.token_urlsafe(32))
+          PY
+          )"
+          echo "::add-mask::$TOKEN"
+          echo "REGISTER_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          wrangler deploy --config b2517-register-wrangler.jsonc
+          printf '%s' "$TOKEN" | wrangler secret put REGISTER_TOKEN --config b2517-register-wrangler.jsonc
+
+      - name: Execute registration exactly once
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl --silent --show-error --max-time 20 -o "$RUNNER_TEMP/register.json" -w '%{http_code}'             -X POST "$TEMP_WORKER_URL/register"             -H "x-register-token: $REGISTER_TOKEN")"
+          cat "$RUNNER_TEMP/register.json"
+          test "$HTTP" = "200"
+          jq -e '.ok == true and .productId == env.PRODUCT_ID and .mappingId == env.MAPPING_ID' "$RUNNER_TEMP/register.json" >/dev/null
+
+      - name: Read back production identity
+        working-directory: source
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler d1 execute morefun-v2-production --remote --config infra/cloudflare/admin-web-worker/wrangler.jsonc             --command "SELECT provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,pickup_price_minor,delivery_price_minor FROM mfos_channel_menu_item WHERE store_id='$STORE_ID' AND channel_context='KEETA' AND provider_sku_id='$PROVIDER_SKU_ID' LIMIT 1"             --json > "$RUNNER_TEMP/mapping.json"
+          jq -e --arg spu "$PROVIDER_SPU_ID" --arg sku "$PROVIDER_SKU_ID" --arg mid "$MAPPING_ID" --arg pid "$PRODUCT_ID" '
+            (.[0].results // .results // []) as $r
+            | ($r|length)==1
+            and $r[0].provider_menu_item_id==$spu
+            and $r[0].provider_sku_id==$sku
+            and $r[0].mapping_id==$mid
+            and $r[0].mapping_type=="SINGLE_PRODUCT"
+            and $r[0].mapping_status=="ACTIVE"
+            and $r[0].canonical_product_id==$pid
+          ' "$RUNNER_TEMP/mapping.json" >/dev/null
+
+          wrangler d1 execute morefun-v2-production --remote --config infra/cloudflare/admin-web-worker/wrangler.jsonc             --command "SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_extract(j.value,'$.lifecycleStatus') AS lifecycle_status,json_array_length(json_extract(j.value,'$.categoryMemberships')) AS category_count FROM mfos_catalog_state c, json_each(c.snapshot_json,'$.products') j WHERE c.store_id='$STORE_ID' AND json_extract(j.value,'$.productId')='$PRODUCT_ID' LIMIT 1"             --json > "$RUNNER_TEMP/product.json"
+          jq -e --arg pid "$PRODUCT_ID" '
+            (.[0].results // .results // []) as $r
+            | ($r|length)==1
+            and $r[0].product_id==$pid
+            and $r[0].lifecycle_status=="ACTIVE"
+            and ($r[0].category_count|tonumber)==0
+          ' "$RUNNER_TEMP/product.json" >/dev/null
+          echo "b2517_production_identity_readback=PASS"
+
+      - name: Delete one-time Worker
+        if: always()
+        working-directory: source
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          wrangler delete --config b2517-register-wrangler.jsonc --force || true
