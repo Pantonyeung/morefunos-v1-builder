@@ -1,0 +1,3 @@
+authorized_cycle_sha=09220871c26a403ef972d7c604f3e3b760ad2345
+source_live_regression=0366
+provider_sku_id=115907604
