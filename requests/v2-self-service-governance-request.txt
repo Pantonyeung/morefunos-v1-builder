@@ -1,2 +1,3 @@
-source_sha=e3faf0d9e31aa9e84f21e8d8e5e33d50c0f00ece
-request_id=SMM-B0314-R6-TERMINAL-SELF-20260905
+source_sha=9438c242d9dd18a661901fd8c832f7f25d2cb877
+base_sha=ff5a27db73a62df1ab1fc81eb39c320a4e61f95e
+branch_name=work/SMM/B0314-owner-options-identity-r6
