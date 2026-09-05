@@ -1,4 +1,4 @@
-request_id=T1-KEETA-8687-POST-MERCHANT-ACCEPT
-mode=journal_latest
-order_view_id=5133443578318687
-message_id=unused
+request_id=KEETA-2965-CANONICAL-OPTION-CATALOG
+mode=catalog_multi_2965
+order_view_id=5143440812062965
+message_id=2096375487671742477
