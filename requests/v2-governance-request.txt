@@ -1,3 +1,4 @@
-source_sha=fcb4a4883e55f8782c7f73ea97363a4ca6bbe9a1
-base_sha=c1632edca2d3089ab50d8dd1b64e392b7006af86
-branch_name=work/SMM/B0314-owner-options-identity-r6b
+source_sha=c5b9f27cf87abebc5a541e33e615688a4bbbf75d
+base_sha=7e416ae00bedcd8f56ca5e61b8ed80c554c58ce0
+branch_name=work/SMM/b0314-r9-canonical-paired-identity-20260905
+request_id=SMM-B0314-R9-GOV-20260905
