@@ -35,6 +35,35 @@ jobs:
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+      - name: Diagnose live trusted principal shape
+        env:
+          ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}"
+          TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
+          curl -fsS -H "Cookie: mf_admin_session=${TOKEN}" https://morefun-v2-admin.pantonyeung.workers.dev/api/admin/session > /tmp/admin-session.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/admin-session.json','utf8'));
+          const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          console.log('ADMIN_PRINCIPAL_SHAPE actor_uuid='+uuid.test(x.actorId||'')+' staff_uuid='+uuid.test(x.staffId||'')+' scope_present='+Boolean(x.scopeRef));
+          fs.writeFileSync('/tmp/admin-principal-shape.json',JSON.stringify({actorId:x.actorId,staffId:x.staffId,scopeRef:x.scopeRef}));
+          NODE
+          CFG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CFG" --command "SELECT store_id FROM mfos_store_code_binding WHERE store_code='MF01' LIMIT 1;" > /tmp/store-binding.txt
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('/tmp/admin-principal-shape.json','utf8'));
+          const raw=fs.readFileSync('/tmp/store-binding.txt','utf8');
+          const match=raw.match(/"store_id":\s*"([^"]+)"/);
+          if(!match)throw new Error('CANONICAL_STORE_BINDING_MISSING');
+          console.log('ADMIN_PRINCIPAL_SCOPE_MATCHES_CANONICAL='+(p.scopeRef===match[1]));
+          NODE
+          rm -f /tmp/admin-session.json /tmp/admin-principal-shape.json /tmp/store-binding.txt
+
       - name: Read production identity and catalog shape
         working-directory: source
         shell: bash
