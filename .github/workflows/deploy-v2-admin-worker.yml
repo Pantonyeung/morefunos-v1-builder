@@ -67,6 +67,23 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - name: Diagnose reporting canonical source read-only
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          echo '=== PRICING_CURRENCY ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT store_id,currency,lifecycle_status,COUNT(*) AS n FROM mfos_pricing_profile WHERE lifecycle_status='ACTIVE' GROUP BY store_id,currency,lifecycle_status ORDER BY store_id,currency;"
+          echo '=== REPORTING_ORDERS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT order_id,store_id,lifecycle_status,revision,order_snapshot_json IS NULL AS snapshot_null,accepted_projection_json IS NULL AS accepted_null,json_extract(COALESCE(order_snapshot_json,accepted_projection_json),'$.currency') AS currency,json_extract(COALESCE(order_snapshot_json,accepted_projection_json),'$.totalMinor') AS total_minor,json_extract(COALESCE(order_snapshot_json,accepted_projection_json),'$.storeId') AS snapshot_store,json_extract(COALESCE(order_snapshot_json,accepted_projection_json),'$.orderId') AS snapshot_order FROM mfos_order_state WHERE lifecycle_status IN ('ACCEPTED','COMPLETED') ORDER BY order_id;"
+          echo '=== REPORTING_PAYMENTS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT payment_id,store_id,json_extract(payment_json,'$.paymentId') AS json_payment_id,json_extract(payment_json,'$.orderId') AS order_id,json_extract(payment_json,'$.currency') AS currency,json_extract(payment_json,'$.amountMinor') AS amount_minor FROM mfos_payment_state ORDER BY payment_id;"
+          echo '=== REPORTING_REFUNDS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT refund_id,store_id,json_extract(refund_json,'$.refundId') AS json_refund_id,json_extract(refund_json,'$.paymentId') AS payment_id,json_extract(refund_json,'$.orderId') AS order_id,json_extract(refund_json,'$.currency') AS currency,json_extract(refund_json,'$.amountMinor') AS amount_minor FROM mfos_refund_state ORDER BY refund_id;"
+          echo '=== REPORTING_CACHE ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT projection_key,store_id,currency,projection_revision,source_fingerprint,updated_at FROM mfos_reporting_projection ORDER BY projection_key;"
+
       - name: Install and build exact Admin source
         working-directory: source
         shell: bash
