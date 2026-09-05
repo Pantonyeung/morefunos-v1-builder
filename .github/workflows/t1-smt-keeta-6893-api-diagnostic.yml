@@ -1,0 +1,54 @@
+name: T1 SMT Keeta 6893 API Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-smt-keeta-6893-api-diagnostic.txt'
+      - '.github/workflows/t1-smt-keeta-6893-api-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SMT_ORIGIN: https://morefun-v2-smt-preview.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      ORDER_ID: 9011ca2e-dd04-5198-b8d5-d96249564a15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read live SMT API
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMT_ORIGIN/api/smt/session")"
+          test "$HTTP" = 200
+          TOKEN="$(node -p "require('/tmp/session.json').sessionToken||''")"
+          test -n "$TOKEN"
+
+          printf '%s' '{"operationId":"order.open-list.read.v1","request":{"limit":50}}' >/tmp/open.json
+          OPEN_HTTP="$(curl -sS -o /tmp/open.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/open.json "$SMT_ORIGIN/api/smt/runtime")"
+          echo "open_http=$OPEN_HTTP"
+          node - <<'NODE'
+          const x=require('/tmp/open.out.json');
+          const orders=Array.isArray(x?.orders)?x.orders:[];
+          const found=orders.find(o=>o.orderId===process.env.ORDER_ID);
+          console.log('open_count='+orders.length);
+          console.log('open_has_6893='+Boolean(found));
+          if(found) console.log('open_6893='+JSON.stringify(found));
+          NODE
+
+          ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+          DETAIL_HTTP="$(curl -sS -o /tmp/detail.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/detail.json "$SMT_ORIGIN/api/smt/runtime")"
+          echo "detail_http=$DETAIL_HTTP"
+          node - <<'NODE'
+          const x=require('/tmp/detail.out.json');
+          console.log('detail='+JSON.stringify(x));
+          NODE
