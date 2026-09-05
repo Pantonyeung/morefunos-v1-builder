@@ -97,6 +97,18 @@ jobs:
           npm run typecheck
           npm run build
           test -f dist/index.html
+      - name: Ensure Product Media R2 bucket
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUCKET='morefun-v2-product-media'
+          if npx --yes wrangler@4 r2 bucket list | grep -Fq "$BUCKET"; then
+            echo "r2-product-media=EXISTS bucket=$BUCKET"
+          else
+            npx --yes wrangler@4 r2 bucket create "$BUCKET"
+            echo "r2-product-media=CREATED bucket=$BUCKET"
+          fi
       - name: Deploy Admin Worker and assets
         working-directory: source
         shell: bash
