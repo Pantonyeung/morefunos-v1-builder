@@ -1,0 +1,76 @@
+name: V2 SMM Keeta Short Code Live Read
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-keeta-short-code-live-read.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+
+      - name: Read live SMM order by Keeta short code
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(sed -n 's/^short_code=//p' requests/v2-smm-keeta-short-code-live-read.txt | tr -d '[:space:]')"
+          [[ "$CODE" =~ ^[0-9]{4}$ ]]
+          test -n "$ADMIN_LOGIN_SECRET"
+          mkdir -p evidence
+          CODE="$CODE" node <<'NODE'
+          const fs=require('fs');
+          const code=process.env.CODE;
+          const origin=process.env.SMM_ORIGIN;
+          const loginSecret=process.env.ADMIN_LOGIN_SECRET;
+          (async()=>{
+            const pair=await fetch(origin+'/api/smm/session',{method:'POST',headers:{'content-type':'application/json',accept:'application/json'},body:JSON.stringify({loginSecret})});
+            const session=await pair.json();
+            if(pair.status!==200||!session.sessionToken)throw new Error('SMM_PAIR_FAILED_'+pair.status);
+            const r=await fetch(origin+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}})});
+            const body=await r.json();
+            if(r.status!==200||!Array.isArray(body.orders))throw new Error('SMM_OPEN_LIST_FAILED_'+r.status);
+            const match=body.orders.find(o=>String(o?.providerOrderAlias?.providerOrderCode||'')===code);
+            const out={
+              shortCode:code,
+              openListStatus:r.status,
+              orderCount:body.orders.length,
+              visible:Boolean(match),
+              order:match?{
+                orderId:match.orderId,
+                lifecycleStatus:match.lifecycleStatus,
+                currency:match.currency,
+                totalMinor:match.totalMinor,
+                itemCount:(Array.isArray(match.lineItems)?match.lineItems:[]).reduce((n,x)=>n+(Number.isSafeInteger(Number(x?.quantity))&&Number(x.quantity)>0?Number(x.quantity):1),0),
+                providerOrderAlias:match.providerOrderAlias,
+                operationalOnly:Boolean(match.operationalOnly),
+                operationalStatusLabel:match.operationalStatusLabel,
+                refundRequest:match.refundRequest?{statusLabel:match.refundRequest.statusLabel,merchantActionMode:match.refundRequest.merchantActionMode}:undefined,
+              }:null,
+            };
+            console.log('SMM_KEETA_SHORT_CODE_LIVE '+JSON.stringify(out));
+            fs.writeFileSync('evidence/smm-keeta-short-code-live.json',JSON.stringify(out,null,2));
+            if(!match)process.exit(2);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: v2-smm-keeta-short-code-live-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 14
