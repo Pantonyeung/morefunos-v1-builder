@@ -1,6 +1,6 @@
-source_sha=cc29a9c7b0bf4e80ee97edc75b297d00da971833
+source_sha=6cf5f257c0859c731fc222685194de0d031311f2
 branch_name=work/COMMANDER/order-auto-print-consumer-composition-20260906-02
-request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R6-OBS2-20260906
-run_id=33998726633
+request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R7-DIAG-20260906
+run_id=33998780403
 run_attempt=1
 conclusion=failure
