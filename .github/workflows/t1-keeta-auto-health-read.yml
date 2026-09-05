@@ -1,0 +1,34 @@
+name: T1 Keeta AUTO Health Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-auto-health-read.txt'
+      - '.github/workflows/t1-keeta-auto-health-read.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read deployed Keeta health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error             https://morefun-v2-keeta-sit.pantonyeung.workers.dev/health             | tee "$RUNNER_TEMP/health.json"
+          node - "$RUNNER_TEMP/health.json" <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log('service='+String(b.service));
+          console.log('status='+String(b.status));
+          console.log('acceptanceMode='+String(b.acceptanceMode));
+          if(b.service!=='morefun-v2-keeta-sit'||b.status!=='ok'||b.acceptanceMode!=='AUTO') process.exit(1);
+          NODE
