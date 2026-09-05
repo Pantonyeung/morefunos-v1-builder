@@ -1,0 +1,42 @@
+name: Keeta SIT 2965 Canonical Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['requests/keeta-sit-2965-canonical-diagnostic.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      KEETA_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Read sanitized 2965 durable admission state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT record_json FROM mfos_keeta_durable_delivery WHERE dedup_key='KEETA:2096375487671742477' LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/out.json" >/dev/null
+          python3 - "$RUNNER_TEMP/out.json" <<'PY'
+          import json,sys
+          raw=json.load(open(sys.argv[1]))
+          rows=raw.get("result",[{}])[0].get("results",[])
+          assert len(rows)==1, f"matching_rows={len(rows)}"
+          rec=json.loads(rows[0].get("record_json") or "{}")
+          safe={k:rec.get(k) for k in [
+            "dedupKey","status","attempts","firstSeenAt","updatedAt","lastAttemptAt","lastError",
+            "deliveredAt","canonicalOrderId","canonicalRevision","canonicalStoreId","storeBindingEvidenceRef",
+            "merchantDecision","merchantDecisionEvidenceRef","merchantDecidedAt",
+            "providerAction","providerActionStatus","providerActionAttempts","providerActionLastAttemptAt",
+            "providerActionLastError","providerActionSentAt","signalStatus","signalLastError"
+          ]}
+          print("CANONICAL_DIAGNOSTIC="+json.dumps(safe,ensure_ascii=False,separators=(",",":")))
+          PY
