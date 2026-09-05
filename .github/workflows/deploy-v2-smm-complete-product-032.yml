@@ -181,7 +181,8 @@ jobs:
             const pairResponse=await pairResponsePromise;
             let pairBody={};
             try{pairBody=await pairResponse.json()}catch{}
-            console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' mounted='+((pairBody.mountedOperationIds||[]).length));
+            const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' mounted='+((pairBody.mountedOperationIds||[]).length)+' staff_uuid='+uuid.test(pairBody.staffId||'')+' operator_same='+(pairBody.operatorId===pairBody.staffId));
             if(pairResponse.status()!==200)throw new Error('SMM_PAIR_HTTP_'+pairResponse.status()+':'+(pairBody.code||'UNKNOWN'));
             if(!pairBody.sessionToken)throw new Error('SMM_PAIR_TOKEN_MISSING');
             const diagnostic=await page.evaluate(async(token)=>{
