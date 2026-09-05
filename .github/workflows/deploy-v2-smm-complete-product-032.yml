@@ -211,7 +211,7 @@ jobs:
                 menu:{catalogRevision:menu.catalogRevision,productCount:menu.products.length,firstProductId:product.productId},
                 pricing:{currency:pricing.currency,totalMinor:pricing.totalMinor},
                 availability:{ok:availability.ok,hasValue:availability.value!==null},
-                orders:{count:open.orders.length,firstOrderId:open.orders[0]?.orderId||null},
+                orders:{count:open.orders.length,actionableCount:open.orders.filter(o=>o.lifecycleStatus==='ACCEPTED').length,firstOrderId:open.orders[0]?.orderId||null},
               };
             },expected);
 
@@ -222,7 +222,7 @@ jobs:
               if(await btn.count())await btn.first().click();
             }
             await page.waitForTimeout(500);
-            if(result.orders.count>0){
+            if(result.orders.actionableCount>0){
               const completeCount=await page.getByRole('button',{name:'完成訂單'}).count();
               const cancelCount=await page.getByRole('button',{name:'取消訂單'}).count();
               if(completeCount<1||cancelCount<1)throw new Error('SMM_ORDER_ACTION_BUTTONS_NOT_MOUNTED');
