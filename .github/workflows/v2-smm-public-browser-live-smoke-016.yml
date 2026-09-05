@@ -79,9 +79,15 @@ jobs:
               const u=new URL(r.url());
               if(u.pathname.startsWith('/api/')) api.push({origin:u.origin,path:u.pathname,method:r.method()});
             });
-            page.on('response',r=>{
+            page.on('response',async r=>{
               const u=new URL(r.url());
-              if(u.pathname.startsWith('/api/')) apiResponses.push({origin:u.origin,path:u.pathname,status:r.status()});
+              if(u.pathname.startsWith('/api/')){
+                const item={origin:u.origin,path:u.pathname,status:r.status()};
+                if(u.pathname==='/api/smm/runtime'){
+                  try{item.body=await r.json()}catch{}
+                }
+                apiResponses.push(item);
+              }
             });
             await page.goto(process.env.SMM_ORIGIN+'/',{waitUntil:'networkidle'});
             await page.waitForTimeout(1500);
