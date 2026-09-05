@@ -226,7 +226,7 @@ jobs:
           echo "menu_submit_http=$HTTP"
           if [[ "$HTTP" != '200' ]]; then echo 'MENU_SUBMIT_TRANSPORT_UNCERTAIN_NO_RETRY=true' >&2; exit 1; fi
           TASK_ID="$(node - "$RUNNER_TEMP/submit.json" <<'NODE'
-          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.log(`menu_submit_provider_code=${b.code}`); if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1); process.stdout.write(String(b.data.taskId));
+          const fs=require('fs'); const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); console.error(`menu_submit_provider_code=${b.code}`); if(b.code!==0||!Number.isSafeInteger(b.data?.taskId)||b.data.taskId<=0) process.exit(1); process.stdout.write(String(b.data.taskId));
           NODE
           )"
           [[ "$TASK_ID" =~ ^[0-9]+$ ]]
