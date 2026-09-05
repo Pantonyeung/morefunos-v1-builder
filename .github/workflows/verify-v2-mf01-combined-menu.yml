@@ -61,8 +61,8 @@ jobs:
           if(c.canonicalProducts!==203)throw new Error('canonicalProducts');
           if(c.directProducts!==188)throw new Error('directProducts');
           if(c.keetaItems!==190)throw new Error('keetaItems');
-          if(c.keetaSingleMappings!==154)throw new Error('keetaSingleMappings');
-          if(c.keetaCompositions!==36)throw new Error('keetaCompositions');
+          if(c.keetaSingleMappings!==170)throw new Error('keetaSingleMappings');
+          if(c.keetaCompositions!==20)throw new Error('keetaCompositions');
           if(!/^[0-9a-f]{64}$/.test(p.sha256))throw new Error('sha256');
           if(new Set(p.directPrices.map(x=>x.subjectId)).size!==188)throw new Error('direct-price-uniqueness');
           if(new Set(p.channelItems.map(x=>x.providerMenuItemId)).size!==190)throw new Error('provider-id-uniqueness');
