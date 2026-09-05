@@ -1,1 +1,2 @@
 suffix=7900
+probe_revision=2
