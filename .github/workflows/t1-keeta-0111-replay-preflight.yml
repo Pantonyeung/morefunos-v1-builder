@@ -26,7 +26,7 @@ jobs:
             curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
             jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/out.json" >/dev/null
             node - "$RUNNER_TEMP/out.json" <<'NODE'
-          const fs=require('fs');const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results||[];
-          console.log(JSON.stringify(r.map(x=>{const y={...x};for(const k of Object.keys(y)){if(/sig|secret|token|phone|address|recipient|customer|user/i.test(k))y[k]='[REDACTED]'}return y})));
-NODE
+            const fs=require('fs');const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).result[0].results||[];
+            console.log(JSON.stringify(r.map(x=>{const y={...x};for(const k of Object.keys(y)){if(/sig|secret|token|phone|address|recipient|customer|user/i.test(k))y[k]='[REDACTED]'}return y})));
+            NODE
           done
