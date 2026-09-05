@@ -1,0 +1,28 @@
+name: T1 Keeta 4132 Last Error
+on:
+  push:
+    branches: [main]
+    paths: ['requests/t1-keeta-4132-last-error.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      SIT_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Read 4132 durable state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT json_extract(record_json,'$.merchantDecision') AS merchant_decision,json_extract(record_json,'$.providerAction') AS provider_action,json_extract(record_json,'$.providerActionStatus') AS provider_action_status,json_extract(record_json,'$.canonicalOrderId') AS canonical_order_id,json_extract(record_json,'$.canonicalRevision') AS canonical_revision,json_extract(record_json,'$.lastError') AS last_error,json_extract(record_json,'$.attempts') AS attempts FROM mfos_keeta_durable_delivery WHERE record_json LIKE '%4132%' ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$SIT_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/out.json" >/dev/null
+          jq -c '.result[0].results[0]' "$RUNNER_TEMP/out.json"
