@@ -187,6 +187,29 @@ jobs:
           console.log('keeta_required_d1_schema=present');
           NODE
 
+      - name: Verify usable Keeta OAuth token metadata
+        working-directory: source/workers/keeta
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
+            --command "SELECT connection_id, expires_at, updated_at FROM keeta_oauth_token WHERE connection_id='default' LIMIT 1;" \
+            > "$RUNNER_TEMP/keeta-oauth-token.json"
+          node - "$RUNNER_TEMP/keeta-oauth-token.json" <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const rows = Array.isArray(payload) ? payload.flatMap((entry) => entry?.results ?? []) : [];
+          const row = rows[0];
+          if (!row || row.connection_id !== 'default') throw new Error('KEETA_OAUTH_DEFAULT_TOKEN_MISSING');
+          const expiresAt = Number(row.expires_at);
+          if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) throw new Error('KEETA_OAUTH_DEFAULT_TOKEN_EXPIRED');
+          console.log('keeta_oauth_default_token=present');
+          console.log('keeta_oauth_expires_at='+expiresAt);
+          NODE
+
       - name: Deploy exact Keeta SIT Worker
         working-directory: source/workers/keeta
         shell: bash
