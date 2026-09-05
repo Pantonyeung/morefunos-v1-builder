@@ -37,6 +37,10 @@ jobs:
         run: |
           node --test packages/channel-settlement/third-party-net-estimate.test.ts
           node --test packages/channel-settlement/d1-third-party-net-estimate-policy.test.ts
+          node --test packages/channel-settlement/d1-third-party-order-net-estimate.test.ts
+          node --test packages/integration/keeta-order-commercial-snapshot.test.ts
+          node --test packages/integration/keeta-standard-order-facts.test.ts
+          node --test packages/integration/keeta-canonical-order-projection.test.ts
           node --test packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.test.ts
       - name: Admin web tests
         working-directory: source
