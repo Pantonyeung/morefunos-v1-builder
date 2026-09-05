@@ -1,0 +1,51 @@
+name: Diagnose V2 SMM Owner Phone
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smm-owner-phone-diagnose.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-owner-phone-diagnose.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Read production identity and catalog shape
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CFG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          echo '=== STAFF_AUTH_BINDINGS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CFG" --command "SELECT actor_alias,staff_alias,scope_ref,actor_id,staff_id,status,revision,(actor_alias=actor_id) AS actor_alias_is_canonical,(staff_alias=staff_id) AS staff_alias_is_canonical FROM mfos_staff_auth_binding ORDER BY scope_ref,staff_alias;"
+          echo '=== RBAC_STAFF ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CFG" --command "SELECT staff_id,display_name,lifecycle_status,revision FROM mfos_rbac_staff ORDER BY staff_id;"
+          echo '=== CATALOG_OPTION_COUNTS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CFG" --command "WITH products AS (SELECT json_extract(p.value,'$.productId') AS product_id,json_extract(p.value,'$.name') AS product_name,json_extract(p.value,'$.lifecycleStatus') AS product_status,p.value AS product_json FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') p), groups AS (SELECT product_id,product_name,product_status,json_extract(g.value,'$.optionGroupId') AS group_id,json_extract(g.value,'$.name') AS group_name,json_extract(g.value,'$.required') AS required,json_extract(g.value,'$.minSelections') AS min_selections,json_array_length(json_extract(g.value,'$.options')) AS option_count FROM products,json_each(products.product_json,'$.optionGroups') g) SELECT COUNT(DISTINCT CASE WHEN product_status='ACTIVE' THEN product_id END) AS active_products_with_groups,SUM(CASE WHEN product_status='ACTIVE' AND (required=1 OR min_selections>0) THEN 1 ELSE 0 END) AS required_groups,SUM(CASE WHEN product_status='ACTIVE' AND COALESCE(required,0)=0 AND COALESCE(min_selections,0)=0 THEN 1 ELSE 0 END) AS optional_groups FROM groups;"
+          echo '=== ACTIVE_PRODUCTS_WITH_OPTIONS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CFG" --command "WITH products AS (SELECT json_extract(p.value,'$.productId') AS product_id,json_extract(p.value,'$.name') AS product_name,json_extract(p.value,'$.lifecycleStatus') AS product_status,p.value AS product_json FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') p), groups AS (SELECT product_id,product_name,product_status,json_extract(g.value,'$.optionGroupId') AS group_id,json_extract(g.value,'$.name') AS group_name,json_extract(g.value,'$.required') AS required,json_extract(g.value,'$.minSelections') AS min_selections,json_array_length(json_extract(g.value,'$.options')) AS option_count FROM products,json_each(products.product_json,'$.optionGroups') g) SELECT product_id,product_name,group_id,group_name,required,min_selections,option_count FROM groups WHERE product_status='ACTIVE' ORDER BY product_name,group_name LIMIT 50;"
