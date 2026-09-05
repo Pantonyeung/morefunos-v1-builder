@@ -1,0 +1,70 @@
+name: Verify V2 MF01 Combined Menu
+
+on:
+  push:
+    paths:
+      - 'requests/v2-mf01-combined-menu-request.txt'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-mf01-combined-menu-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+      - name: Verify combined menu identity and three-price model
+        working-directory: source
+        run: node --test --experimental-strip-types packages/catalog/mf01-combined-menu-data.test.ts
+      - name: Root TypeScript guard
+        working-directory: source
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+      - name: Admin typecheck and build
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+      - name: Admin Worker Wrangler dry-run
+        working-directory: source
+        run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/admin-web-worker/wrangler.jsonc --outdir ../evidence/admin-worker-dry-run
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-mf01-combined-menu-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
