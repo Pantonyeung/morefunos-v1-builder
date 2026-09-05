@@ -1,4 +1,4 @@
-source_sha=3e9294d026f1f56ea1b5fb68c34ecc50065aafae
+source_sha=1b3440b47a3e44f14716de3b3282eaa9353a2689
 base_sha=07aacceee9056afe968af9de7b85eaff7d19d2b6
 branch_name=work/SMM/B0314-owner-phone-fail-r5
-request_id=SMM-B0314-R5-OWNER-PHONE-SELF-20260905
+request_id=SMM-B0314-R5-TERMINAL-SELF-20260905
