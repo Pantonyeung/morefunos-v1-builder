@@ -1,0 +1,188 @@
+name: T1 Keeta 0366 Canonical Mapping Repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-0366-canonical-mapping-repair.txt'
+      - '.github/workflows/t1-keeta-0366-canonical-mapping-repair.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t1-keeta-0366-canonical-mapping-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
+      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+      PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
+      MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
+      PROVIDER_SPU_ID: "119024973"
+      PROVIDER_SKU_ID: "115907604"
+      PRODUCT_NAME: "SIT 測試餐 A 更新"
+      PRICE_MINOR: "2100"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read production preconditions
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT catalog_revision,snapshot_json,revision FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/catalog-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/catalog-q.json" > "$RUNNER_TEMP/catalog.json"
+          jq -e '.success == true and (.result[0].success == true) and ((.result[0].results|length)==1)' "$RUNNER_TEMP/catalog.json" >/dev/null
+
+          MAP_SQL="SELECT mapping_id,provider_menu_item_id,provider_sku_id,canonical_product_id,mapping_type,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1"
+          jq -n --arg sql "$MAP_SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/map-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
+          jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/map.json" >/dev/null
+
+          node --input-type=module - "$RUNNER_TEMP/catalog.json" "$RUNNER_TEMP/map.json" <<'NODE'
+          import fs from 'node:fs';
+          const [catalogPath,mapPath]=process.argv.slice(2);
+          const cat=JSON.parse(fs.readFileSync(catalogPath,'utf8')).result[0].results[0];
+          const snap=JSON.parse(cat.snapshot_json);
+          const maps=JSON.parse(fs.readFileSync(mapPath,'utf8')).result[0].results;
+          const productId=process.env.PRODUCT_ID;
+          const productName=process.env.PRODUCT_NAME;
+          const providerSku=process.env.PROVIDER_SKU_ID;
+          if (!snap || snap.storeId!==process.env.STORE_ID || !Array.isArray(snap.products)) throw new Error('CATALOG_SNAPSHOT_INVALID');
+          const byId=snap.products.find(p=>p.productId===productId);
+          const byName=snap.products.find(p=>p.name===productName && p.productId!==productId);
+          if (byName) throw new Error('SIT_PRODUCT_NAME_CONFLICT');
+          if (byId && (byId.name!==productName || byId.lifecycleStatus!=='ACTIVE' || !Number.isSafeInteger(byId.revision) || byId.revision<1)) {
+            throw new Error('SIT_PRODUCT_ID_CONFLICT');
+          }
+          if (maps.length>1) throw new Error('SIT_MAPPING_DUPLICATE');
+          if (maps.length===1) {
+            const m=maps[0];
+            const exact=m.mapping_id===process.env.MAPPING_ID
+              && m.provider_menu_item_id===process.env.PROVIDER_SPU_ID
+              && m.provider_sku_id===providerSku
+              && m.canonical_product_id===productId
+              && m.mapping_type==='SINGLE_PRODUCT'
+              && m.mapping_status==='ACTIVE';
+            if(!exact) throw new Error('SIT_MAPPING_CONFLICT');
+          }
+          console.log('precondition_product_present='+String(Boolean(byId)));
+          console.log('precondition_mapping_present='+String(maps.length===1));
+          NODE
+
+      - name: Build guarded atomic D1 batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module - "$RUNNER_TEMP/catalog.json" "$RUNNER_TEMP/map.json" "$RUNNER_TEMP/batch.json" <<'NODE'
+          import fs from 'node:fs';
+          const [catalogPath,mapPath,dst]=process.argv.slice(2);
+          const cat=JSON.parse(fs.readFileSync(catalogPath,'utf8')).result[0].results[0];
+          const snap=JSON.parse(cat.snapshot_json);
+          const maps=JSON.parse(fs.readFileSync(mapPath,'utf8')).result[0].results;
+          const at=new Date().toISOString();
+          const productId=process.env.PRODUCT_ID;
+          const next={...snap,products:[...snap.products]};
+          const existing=next.products.find(p=>p.productId===productId);
+          if(!existing){
+            next.products.push({
+              productId,
+              name:process.env.PRODUCT_NAME,
+              shortName:'SIT A',
+              lifecycleStatus:'ACTIVE',
+              revision:1,
+              createdAt:at,
+              updatedAt:at,
+              categoryMemberships:[],
+              optionGroups:[]
+            });
+          }
+          const baseRev=String(snap.catalogRevision||'').trim();
+          if(!baseRev) throw new Error('CATALOG_REVISION_REQUIRED');
+          const nextRev=baseRev.includes('+keeta-sit-repair-0366')?baseRev:baseRev+'+keeta-sit-repair-0366';
+          next.catalogRevision=nextRev;
+          const eventId='catalog-keeta-sit-repair-0366:'+process.env.STORE_ID;
+          const batch=[];
+          if(!existing){
+            batch.push({
+              sql:"UPDATE mfos_catalog_state SET catalog_revision=?,snapshot_json=?,revision=revision+1,updated_at=? WHERE store_id=? AND revision=?",
+              params:[nextRev,JSON.stringify(next),at,process.env.STORE_ID,String(cat.revision)]
+            });
+          }
+          if(maps.length===0){
+            batch.push({
+              sql:"INSERT INTO mfos_channel_menu_item (store_id,channel_context,provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,provider_categories_json,option_group_names_json,pickup_price_minor,delivery_price_minor,dine_in_fact_minor,menu_revision,updated_at) VALUES (?,'KEETA',?,?,?,'SINGLE_PRODUCT','ACTIVE',?,?,'[]','[]',?,?,NULL,?,?)",
+              params:[process.env.STORE_ID,process.env.PROVIDER_SPU_ID,process.env.PROVIDER_SKU_ID,process.env.MAPPING_ID,productId,process.env.PRODUCT_NAME,process.env.PRICE_MINOR,process.env.PRICE_MINOR,nextRev,at]
+            });
+          }
+          batch.push({
+            sql:"INSERT OR IGNORE INTO mfos_catalog_audit (audit_id,store_id,actor_id,authorization_context_ref,request_id,catalog_revision,event_type,recorded_at,metadata_json) VALUES (?,?,?,?,?,?,?,?,?)",
+            params:[eventId,process.env.STORE_ID,'builder:keeta-0366-repair','admin:keeta-sit-identity-repair',eventId,nextRev,'KEETA_SIT_CANONICAL_IDENTITY_RESTORED',at,JSON.stringify({productId,mappingId:process.env.MAPPING_ID,providerSpuId:process.env.PROVIDER_SPU_ID,providerSkuId:process.env.PROVIDER_SKU_ID,source:'LIVE_0366_REGRESSION'})]
+          });
+          batch.push({
+            sql:"INSERT OR IGNORE INTO mfos_outbox (event_id,domain,aggregate_id,event_type,metadata_json,payload_json,status,recorded_at,store_id) VALUES (?,'CATALOG',?,'KEETA_SIT_CANONICAL_IDENTITY_RESTORED',?,?,'PENDING',?,?)",
+            params:[eventId,process.env.STORE_ID,JSON.stringify({source:'LIVE_0366_REGRESSION',actorId:'builder:keeta-0366-repair'}),JSON.stringify({productId,providerSpuId:process.env.PROVIDER_SPU_ID,providerSkuId:process.env.PROVIDER_SKU_ID}),at,process.env.STORE_ID]
+          });
+          fs.writeFileSync(dst,JSON.stringify({batch},null,2));
+          console.log('batch_statement_count='+batch.length);
+          NODE
+
+      - name: Execute atomic production D1 batch
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/batch.json" > "$RUNNER_TEMP/batch-out.json"
+          jq -e '.success == true and ([.result[] | select(.success != true)] | length)==0' "$RUNNER_TEMP/batch-out.json" >/dev/null
+          echo "production_batch=PASS"
+
+      - name: Readback exact mapping and hidden product
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,pickup_price_minor,delivery_price_minor FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/read-map-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-map-q.json" > "$RUNNER_TEMP/read-map.json"
+
+          CAT_SQL="SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_extract(j.value,'$.lifecycleStatus') AS lifecycle_status,json_extract(j.value,'$.revision') AS product_revision,json_array_length(json_extract(j.value,'$.categoryMemberships')) AS category_count FROM mfos_catalog_state c, json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.productId')=? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" --arg pid "$PRODUCT_ID" '{sql:$sql,params:[$store,$pid]}' > "$RUNNER_TEMP/read-product-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-product-q.json" > "$RUNNER_TEMP/read-product.json"
+
+          jq -e --arg spu "$PROVIDER_SPU_ID" --arg sku "$PROVIDER_SKU_ID" --arg mid "$MAPPING_ID" --arg pid "$PRODUCT_ID" '
+            .success == true
+            and ((.result[0].results|length)==1)
+            and .result[0].results[0].provider_menu_item_id==$spu
+            and .result[0].results[0].provider_sku_id==$sku
+            and .result[0].results[0].mapping_id==$mid
+            and .result[0].results[0].mapping_type=="SINGLE_PRODUCT"
+            and .result[0].results[0].mapping_status=="ACTIVE"
+            and .result[0].results[0].canonical_product_id==$pid
+          ' "$RUNNER_TEMP/read-map.json" >/dev/null
+
+          jq -e --arg pid "$PRODUCT_ID" --arg name "$PRODUCT_NAME" '
+            .success == true
+            and ((.result[0].results|length)==1)
+            and .result[0].results[0].product_id==$pid
+            and .result[0].results[0].name==$name
+            and .result[0].results[0].lifecycle_status=="ACTIVE"
+            and (.result[0].results[0].product_revision|tonumber)>=1
+            and (.result[0].results[0].category_count|tonumber)==0
+          ' "$RUNNER_TEMP/read-product.json" >/dev/null
+          echo "mapping_readback=PASS"
+          echo "product_readback=PASS"
