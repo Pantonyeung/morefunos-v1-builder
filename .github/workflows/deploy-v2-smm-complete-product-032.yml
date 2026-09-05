@@ -164,6 +164,13 @@ jobs:
             page.on('pageerror',e=>pageErrors.push(String(e)));
             page.on('requestfailed',r=>requestFailures.push({url:r.url(),failure:r.failure()?.errorText||''}));
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiNetwork.push({origin:u.origin,path:u.pathname,method:r.method()})});
+            page.on('response',async r=>{
+              const u=new URL(r.url());
+              if(!u.pathname.startsWith('/api/smm/'))return;
+              let body={};
+              try{body=await r.json()}catch{}
+              console.log('SMM_API_HTTP method='+r.request().method()+' path='+u.pathname+' status='+r.status()+' code='+(body.code||'none')+' operation='+(body.operationId||'none'));
+            });
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
             const pairResponsePromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/smm/session'&&r.request().method()==='POST',{timeout:15000});
