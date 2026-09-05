@@ -47,10 +47,28 @@ jobs:
           if x.get('status') not in ('ahead','identical'):
               print('SOURCE_NOT_ANCESTOR_OF_MAIN',file=sys.stderr); sys.exit(1)
           changed=[f['filename'] for f in x.get('files',[])]
-          product=[p for p in changed if p.startswith(('apps/','packages/','infra/'))]
-          if product:
-              print('PRODUCT_PATHS_MOVED_AFTER_DEPLOY=' + ','.join(product),file=sys.stderr); sys.exit(1)
-          print('CURRENT_MAIN_DOCS_GOVERNANCE_ONLY_AHEAD=' + str(len(changed)))
+          relevant_prefixes=(
+              'apps/admin-web/',
+              'apps/owner-web/',
+              'infra/cloudflare/admin-web-worker/',
+              'infra/cloudflare/owner-web-worker/',
+              'packages/admin-ui-integration/',
+              'packages/owner-ui-integration/',
+              'packages/catalog/',
+              'packages/availability/',
+              'packages/merchant-store/',
+              'packages/business-day-cash/',
+              'packages/reporting-projection/',
+              'packages/order/',
+              'packages/identity-rbac/',
+              'packages/security-context-gateway/',
+              'packages/session-device-trust/',
+              'packages/production-persistence/',
+          )
+          relevant=[p for p in changed if p.startswith(relevant_prefixes)]
+          if relevant:
+              print('ADMIN_OWNER_RELEVANT_PATHS_MOVED_AFTER_DEPLOY=' + ','.join(relevant),file=sys.stderr); sys.exit(1)
+          print('CURRENT_MAIN_UNRELATED_PATHS_ONLY_AHEAD=' + str(len(changed)))
           PY
           fi
           echo "deployed_source_sha=$SOURCE_SHA"
