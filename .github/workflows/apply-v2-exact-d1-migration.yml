@@ -40,19 +40,16 @@ jobs:
           path: source
           persist-credentials: false
       - name: Apply exact migration
+        working-directory: source
         shell: bash
         env:
           MIGRATION_FILE: ${{ steps.req.outputs.migration_file }}
         run: |
           set -euo pipefail
-          SQL_FILE="source/infra/cloudflare/d1/migrations/$MIGRATION_FILE"
+          SQL_FILE="infra/cloudflare/d1/migrations/$MIGRATION_FILE"
           test -s "$SQL_FILE"
-          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
-          node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
-          HTTP_CODE="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/body.json)"
-          if [ "$HTTP_CODE" != 200 ]; then cat /tmp/result.json; exit 1; fi
-          node -e "const x=require('/tmp/result.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x));process.exit(1)}"
-          echo "migration=$MIGRATION_FILE http=$HTTP_CODE"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config infra/cloudflare/admin-web-worker/wrangler.jsonc --file "$SQL_FILE"
+          echo "migration=$MIGRATION_FILE executor=wrangler_file PASS"
       - name: Verify refund and reporting tables
         shell: bash
         run: |
