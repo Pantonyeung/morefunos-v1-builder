@@ -46,7 +46,7 @@ jobs:
           cat > "$WORK/src/index.ts" <<'EOF'
           interface Env {
             PROBE_KEY: string;
-            KEETA: { readOrderCommercialReadback(dedupKey:string):Promise<unknown> };
+            KEETA: {\n              decideMerchantReceipt(dedupKey:string,canonicalStoreId:string,decision:{decision:"ACCEPT";evidenceRef:string}):Promise<unknown>;\n              readOrderCommercialReadback(dedupKey:string):Promise<unknown>;\n            };
           }
           export default {
             async fetch(request:Request,env:Env):Promise<Response>{
