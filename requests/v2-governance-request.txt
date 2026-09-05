@@ -1,4 +1,3 @@
-source_sha=52dbb1798435a59d58d1ee37d315a253c329b343
-base_sha=7cb036a50179176688420de176ffc1209e444ae4
-branch_name=work/SMM/B0314-r8-keeta-operational-refund-visibility
-request_id=SMM-B0314-R8-RESERVATIONFIX-GOV-20260905
+source_sha=374189fe8bce1fe4dc0796b66f7baf7a70a4ea1f
+base_sha=c1632edca2d3089ab50d8dd1b64e392b7006af86
+branch_name=work/SMM/B0314-owner-options-identity-r6b
