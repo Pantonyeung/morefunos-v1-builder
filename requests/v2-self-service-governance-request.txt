@@ -1,4 +1,4 @@
-source_sha=871ac9c162e793eb5af1f6bccc739d3f46c224ce
+source_sha=45926dc31c34c996824db62a2209b939ae65d465
 base_sha=67a37021d55a306e851deed5a204fb41c43f877d
 branch_name=work/SMM/B0314-order-read-options-r12
-request_id=SMM-B0314-R12-TERMINAL-SELF-20260905
+request_id=SMM-B0314-R12-TERMINAL2-SELF-20260905
