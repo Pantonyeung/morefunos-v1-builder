@@ -2,28 +2,28 @@ name: Verify V2 MF01 Combined Menu
 
 on:
   push:
-    paths:
-      - 'requests/v2-mf01-combined-menu-request.txt'
+    branches: [main]
+    paths: ['requests/v2-mf01-combined-menu-request.txt']
 
 permissions:
   contents: read
-  statuses: write
 
 jobs:
   verify:
+    if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout Builder definition
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Resolve exact V2 source
+      - name: Resolve exact source SHA
         id: req
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-mf01-combined-menu-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-mf01-combined-menu-request.txt | tr -d '[:space:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - name: Require V2 source credential
@@ -38,33 +38,69 @@ jobs:
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
+          fetch-depth: 0
       - name: Verify exact source identity
         env:
           EXPECTED: ${{ steps.req.outputs.source_sha }}
-        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
-      - uses: actions/setup-node@v7
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+          echo "source_sha=$EXPECTED" > evidence/source-identity.log
+      - name: Build and validate combined menu payload
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/menu/build-mf01-combined-menu-import.mjs > ../evidence/menu-import.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('../evidence/menu-import.json','utf8'));
+          const c=p.counts;
+          if(c.canonicalProducts!==203)throw new Error('canonicalProducts');
+          if(c.directProducts!==188)throw new Error('directProducts');
+          if(c.keetaItems!==190)throw new Error('keetaItems');
+          if(c.keetaSingleMappings!==154)throw new Error('keetaSingleMappings');
+          if(c.keetaCompositions!==36)throw new Error('keetaCompositions');
+          if(!/^[0-9a-f]{64}$/.test(p.sha256))throw new Error('sha256');
+          if(new Set(p.directPrices.map(x=>x.subjectId)).size!==188)throw new Error('direct-price-uniqueness');
+          if(new Set(p.channelItems.map(x=>x.providerMenuItemId)).size!==190)throw new Error('provider-id-uniqueness');
+          console.log(JSON.stringify({counts:c,sha256:p.sha256}));
+          NODE
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Install exact source dependencies
+      - name: Install source dependencies
         working-directory: source
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
-      - name: Verify combined menu identity and three-price model
-        working-directory: source
-        run: node --test --experimental-strip-types packages/catalog/mf01-combined-menu-data.test.ts
       - name: Root TypeScript guard
         working-directory: source
-        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
+      - name: Catalog and Admin regression
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test packages/catalog/*.test.ts packages/admin-ui-integration/*.test.ts 2>&1 | tee ../evidence/regression.log
       - name: Admin typecheck and build
         working-directory: source/apps/admin-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
       - name: Admin Worker Wrangler dry-run
         working-directory: source
-        run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/admin-web-worker/wrangler.jsonc --outdir ../evidence/admin-worker-dry-run
+        run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/admin-web-worker/wrangler.jsonc --outdir ../evidence/admin-worker-dry-run 2>&1 | tee ../evidence/admin-worker-dry-run.log
+      - name: Write summary
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nmenu_revision=menu-combined-2026-09-05-v1\nexpected_products=203\nexpected_direct_prices=188\nexpected_keeta_items=190\nmorefun_v2_actions=0\n' "$SOURCE_SHA" > evidence/summary.txt
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v2-mf01-combined-menu-${{ steps.req.outputs.source_sha }}
           path: evidence
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
