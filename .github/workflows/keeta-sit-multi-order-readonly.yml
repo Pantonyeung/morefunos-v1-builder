@@ -1,0 +1,51 @@
+name: Keeta SIT Multi Order Readonly
+on:
+  push:
+    branches: [main]
+    paths: ['requests/keeta-sit-multi-order-readonly.txt']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      KEETA_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Find current durable multi-option orders
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT dedup_key, json_extract(record_json,'$.evidence.messageId') AS message_id, json_extract(record_json,'$.firstSeenAt') AS first_seen_at, json_extract(record_json,'$.merchantDecision') AS merchant_decision, json_extract(record_json,'$.canonicalOrderId') AS canonical_order_id, record_json FROM mfos_keeta_durable_delivery WHERE record_json LIKE '%SIT 多選項餐%' ORDER BY json_extract(record_json,'$.firstSeenAt') DESC LIMIT 10"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
+          curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/out.json"
+          jq -e '.success==true and .result[0].success==true' "$RUNNER_TEMP/out.json" >/dev/null
+          python3 - "$RUNNER_TEMP/out.json" <<'PY'
+          import json,sys
+          raw=json.load(open(sys.argv[1]))
+          rows=raw.get("result",[{}])[0].get("results",[])
+          out=[]
+          for r in rows:
+            rec=json.loads(r.get("record_json") or "{}")
+            try: msg=json.loads(rec.get("evidence",{}).get("message") or "{}")
+            except: msg={}
+            base=msg.get("baseOrder") or (msg.get("orderInfo") or {}).get("baseOrder") or {}
+            merch=msg.get("merchantOrder") or (msg.get("orderInfo") or {}).get("merchantOrder") or {}
+            products=msg.get("products") or (msg.get("orderInfo") or {}).get("products") or []
+            out.append({
+              "dedup_key":r.get("dedup_key"),
+              "message_id":r.get("message_id"),
+              "first_seen_at":r.get("first_seen_at"),
+              "merchant_decision":r.get("merchant_decision"),
+              "canonical_order_id":r.get("canonical_order_id"),
+              "provider_order_id":str(base.get("orderViewIdStr") or base.get("orderViewId") or ""),
+              "short_code":str(merch.get("seqNoStr") or ""),
+              "products":[{"name":p.get("name"),"groups":len(p.get("groups") or [])} for p in products]
+            })
+          print("MULTI_ROWS="+json.dumps(out,ensure_ascii=False,separators=(',',':')))
+          PY
