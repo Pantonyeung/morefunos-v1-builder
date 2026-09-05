@@ -1,2 +1,2 @@
-source_sha=8475e055f372defe9dd6fdbc3e54c4c836d2f07b
-request_id=VARIATION-END-TO-END-SMM-R1-20260905
+source_sha=d503e480a30596cfff23c04e0f4f0faf28c65ce1
+request_id=VARIATION-END-TO-END-SMM-R2-20260905
