@@ -1,3 +1,3 @@
-source_sha=83c7274f1c3b0dbace7e491c6fae53db6baf3a8d
+source_sha=ebc84786473a809db28659f36ebc4c81a1a8a341
 branch_name=work/COMMANDER/order-auto-print-consumer-composition-20260906-02
-request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R3-20260906
+request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R4-20260906
