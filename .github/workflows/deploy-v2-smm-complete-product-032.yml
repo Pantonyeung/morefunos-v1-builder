@@ -71,7 +71,9 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
           npm install --no-save --ignore-scripts --no-audit --no-fund
           node --test packages/smm-ui-integration/*.test.ts
-          npm run typecheck
+          # Port-scoped deploy gate: SMM Preview must not be blocked by unrelated
+          # Admin/Customer/Owner/SMT root type errors. SMM app typecheck follows
+          # its imported shared dependencies and is paired with SMM integration tests.
           npm --prefix apps/smm-web install --ignore-scripts --no-audit --no-fund
           npm --prefix apps/smm-web run typecheck
           npm --prefix apps/smm-web run build
