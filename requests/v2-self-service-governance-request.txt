@@ -1,3 +1,4 @@
-source_sha=374189fe8bce1fe4dc0796b66f7baf7a70a4ea1f
+source_sha=dabb588cc003ae9d5dbc4c6d16ffe9a7e228d7b8
 base_sha=c1632edca2d3089ab50d8dd1b64e392b7006af86
-branch_name=work/SMM/B0314-owner-options-identity-r6b
+branch_name=work/SMM/B0314-r8-fresh-main-c163
+request_id=SMM-B0314-R8-FRESHMAIN-SELF-20260905
