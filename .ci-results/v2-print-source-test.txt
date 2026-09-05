@@ -1,0 +1,6 @@
+source_sha=cc29a9c7b0bf4e80ee97edc75b297d00da971833
+branch_name=work/COMMANDER/order-auto-print-consumer-composition-20260906-02
+request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R6-OBS2-20260906
+run_id=33998726633
+run_attempt=1
+conclusion=failure
