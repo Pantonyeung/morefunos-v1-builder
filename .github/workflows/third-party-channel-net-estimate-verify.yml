@@ -48,7 +48,7 @@ jobs:
       - name: Targeted channel settlement typecheck
         working-directory: source
         run: |
-          tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --jsx react-jsx --allowImportingTsExtensions \
+          tsc --ignoreConfig --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --jsx react-jsx --allowImportingTsExtensions \
             packages/channel-settlement/third-party-net-estimate.ts \
             packages/channel-settlement/third-party-commercial-snapshot.ts \
             packages/channel-settlement/d1-third-party-net-estimate-policy.ts \
