@@ -1,0 +1,255 @@
+{
+  "matching_rows": 1,
+  "rows": [
+    {
+      "dedup_key": "KEETA:2096128780274790459",
+      "message_id": "2096128780274790459",
+      "provider_shop_id": 721578302,
+      "merchant_decision": "PENDING",
+      "first_seen_at": "2026-09-05T06:50:20.486Z",
+      "canonical_store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+      "canonical_order_id": null,
+      "canonical_revision": null,
+      "provider_action": null,
+      "provider_action_status": null,
+      "message": {
+        "baseOrder": {
+          "chooseTableware": 1,
+          "ctime": 1788591020692,
+          "currency": "HKD",
+          "deliveryInstruction": {
+            "deliveryLocationType": "[REDACTED]",
+            "deliveryType": 0,
+            "remark": ""
+          },
+          "deliveryTime": 1788593291835,
+          "estimatedTimeEnd": 1788593591835,
+          "estimatedTimeStart": 1788592991835,
+          "locale": "zh-HK",
+          "openPrivacyNumber": 1,
+          "orderViewId": 5133443378907900,
+          "orderViewIdStr": "5133443378907900",
+          "payType": "sailor_mock_alipay",
+          "payTypeDesc": "Alipay",
+          "remark": "~_Need cutlery~_",
+          "serverTime": 1788591019921,
+          "status": 20,
+          "userDevice": {
+            "appVersion": "3.11.330",
+            "cType": "c_ios",
+            "deviceUuid": "00000000000007F16787016AC49289031E8FCFD0207E2A173067639620246387",
+            "ip": "89.117.42.22"
+          }
+        },
+        "bigOrderTag": false,
+        "cssMerchantOrderDeliveries": [],
+        "deliveryInfos": [],
+        "feeDtl": {
+          "customerFee": "[REDACTED]",
+          "merchantFee": {
+            "activityFeeStr": "Processing",
+            "basicCommissionStr": "Processing",
+            "brokerageStr": "Processing",
+            "commissionStr": "Processing",
+            "diffPriceStr": "Processing",
+            "earningsStr": "Processing",
+            "i18n": {
+              "currency": ""
+            },
+            "platformServiceFeeStr": "Processing",
+            "productPriceStr": "Processing",
+            "totalStr": "Processing"
+          }
+        },
+        "feeDtls": [
+          {
+            "code": "productPrice",
+            "currency": "HKD",
+            "name": "Total",
+            "nameI18nEnum": "PRODUCT_PRICE",
+            "price": 2100,
+            "value": "$21.00"
+          },
+          {
+            "code": "shippingFee",
+            "currency": "HKD",
+            "name": "Delivery fee",
+            "nameI18nEnum": "SHIPPING_FEE",
+            "price": 290,
+            "value": "$2.90"
+          },
+          {
+            "code": "platformFee",
+            "currency": "HKD",
+            "name": "Service fee",
+            "nameI18nEnum": "PLATFORM_FEE",
+            "price": 200,
+            "value": "$2.00"
+          },
+          {
+            "code": "diffPrice",
+            "currency": "HKD",
+            "name": "Top-up to min. order",
+            "nameI18nEnum": "DIFF_PRICE",
+            "price": 3900,
+            "value": "$39.00"
+          },
+          {
+            "code": "payTotal",
+            "currency": "HKD",
+            "name": "Customer paid",
+            "nameI18nEnum": "CUSTOMER_FEE",
+            "price": 6490,
+            "value": "$64.90"
+          }
+        ],
+        "foodPrepareInfo": {},
+        "groupChoiceCompensationTag": false,
+        "labels": [],
+        "merchantOrder": {
+          "ctime": 1788591019719,
+          "deliveryMode": 1001,
+          "deliveryTimeMinute": 30,
+          "eta": {
+            "deliveryTimeAbsolute": 1788593291835,
+            "estimatedTimeLeft": 1788592991835,
+            "estimatedTimeRight": 1788593591835
+          },
+          "merchantOrderTraces": [
+            {
+              "ctime": 1788591019861,
+              "merchantOrderStatus": 20,
+              "opId": 721578302,
+              "opScene": 2000,
+              "opTime": 1788591019860,
+              "opType": 20,
+              "orderViewId": 5133443378907900,
+              "orderViewIdStr": "5133443378907900",
+              "shopId": 721578302,
+              "userId": "[REDACTED]",
+              "utime": 1788591019861
+            },
+            {
+              "ctime": 1788591019721,
+              "merchantOrderStatus": 10,
+              "opId": 10000000643153,
+              "opScene": 1000,
+              "opTime": 1788591019719,
+              "opType": 10,
+              "orderViewId": 5133443378907900,
+              "orderViewIdStr": "5133443378907900",
+              "shopId": 721578302,
+              "userId": "[REDACTED]",
+              "utime": 1788591019721
+            }
+          ],
+          "orderViewId": 5133443378907900,
+          "orderViewIdStr": "5133443378907900",
+          "partRefundTag": 0,
+          "refundTag": 0,
+          "seqNo": 7900,
+          "seqNoStr": "7900",
+          "shopCityId": 542600,
+          "shopCode": "",
+          "shopId": 721578302,
+          "shopName": "磨飯v2 - API測試門市",
+          "shopNameI18n": {
+            "default": "磨飯v2 - API測試門市",
+            "zh-HK": "磨飯v2 - API測試門市",
+            "en": "磨飯v2 - API測試門市"
+          },
+          "shopRegion": "HK",
+          "status": 20,
+          "syncStatusResult": 0,
+          "unconfirmedStatusTime": 1788591019852,
+          "userChooseCityId": 542600,
+          "userGetMode": "delivery",
+          "userId": "[REDACTED]",
+          "utime": 1788591019853
+        },
+        "merchantOrderDeliveries": [],
+        "orderPromotionDtlList": [],
+        "orderRules": {
+          "part_refund_rule": 3,
+          "merchant_provided_pickup_code_rule": 2,
+          "cancel_order_rule": 1
+        },
+        "partRefundOrderTag": false,
+        "printTemplateType": 1,
+        "privacy": false,
+        "products": [
+          {
+            "count": 1,
+            "currency": "HKD",
+            "desc": "",
+            "descI18n": {
+              "default": "",
+              "zh-HK": ""
+            },
+            "groups": [],
+            "id": 1424914887,
+            "name": "SIT 測試餐 A 更新",
+            "nameI18n": {
+              "default": "SIT 測試餐 A 更新",
+              "zh-HK": "SIT 測試餐 A 更新"
+            },
+            "notLast": false,
+            "orderViewId": 5133443378907900,
+            "orderViewIdStr": "5133443378907900",
+            "originPrice": 2100,
+            "originPriceStr": "$21.00",
+            "picList": [
+              "http://img-ap-hongkong.mykeeta.net/sailorproduct/3f7a31f33bccb3aff4ccea7a67e26a701880.png"
+            ],
+            "price": 2100,
+            "priceStr": "$21.00",
+            "priceWithGroup": {
+              "amount": 2100,
+              "amountStr": "$21.00",
+              "originAmount": 2100,
+              "originAmountStr": "$21.00",
+              "originUnitPrice": 2100,
+              "unitPrice": 2100
+            },
+            "priceWithoutGroup": {
+              "amount": 2100,
+              "amountStr": "$21.00",
+              "originAmount": 2100,
+              "originAmountStr": "$21.00",
+              "originUnitPrice": 2100,
+              "unitPrice": 2100
+            },
+            "productTags": [],
+            "promotions": [],
+            "remark": "",
+            "skuExtra": {},
+            "skuId": 115907604,
+            "skuOpenItemCode": "MF-SIT-SKU-01",
+            "spec": "",
+            "specI18n": {
+              "default": "",
+              "zh-HK": ""
+            },
+            "spuExtra": {},
+            "spuId": 119024973,
+            "spuOpenItemCode": "MF-SIT-SPU-01",
+            "spuPvList": [],
+            "tags": []
+          }
+        ],
+        "rebatesTag": false,
+        "recipientInfo": "[REDACTED]",
+        "refundInfo": {
+          "appealInfoList": [],
+          "appealRefundNums": 0,
+          "refundNodeList": []
+        },
+        "refundInfos": [],
+        "tagCodes": [
+          112005,
+          101000
+        ]
+      }
+    }
+  ]
+}
