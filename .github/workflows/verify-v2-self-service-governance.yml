@@ -43,6 +43,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Mark request validation pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context='builder/v2-self-service/request' -f description='Request validation running'
+
       - name: Resolve and validate exact request
         id: request
         shell: bash
@@ -73,6 +79,20 @@ jobs:
           echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Mark request validation success
+        if: ${{ steps.request.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=success -f context='builder/v2-self-service/request' -f description='Request validation passed'
+
+      - name: Mark request validation failure
+        if: ${{ failure() && steps.request.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=failure -f context='builder/v2-self-service/request' -f description='Request validation failed'
+
       - name: Require V2 source credential
         shell: bash
         env:
@@ -99,7 +119,14 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
 
+      - name: Mark self-service unit tests pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context='builder/v2-self-service/tests' -f description='Self-service tests running'
+
       - name: Run self-service governance unit tests
+        id: self_tests
         shell: bash
         run: |
           set -euo pipefail
@@ -110,7 +137,29 @@ jobs:
             scripts/test_governance_guard_self_service_reservation.py \
             scripts/test_governance_guard_port_package_ownership.py
 
+      - name: Mark self-service unit tests success
+        if: ${{ steps.self_tests.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=success -f context='builder/v2-self-service/tests' -f description='Self-service tests passed'
+
+      - name: Mark self-service unit tests failure
+        if: ${{ failure() && steps.self_tests.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=failure -f context='builder/v2-self-service/tests' -f description='Self-service tests failed'
+
+      - name: Mark self-service guard pending
+        if: ${{ steps.self_tests.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context='builder/v2-self-service/guard' -f description='Self-service guard running'
+
       - name: Run self-service governance guard
+        id: self_guard
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
@@ -122,6 +171,20 @@ jobs:
           if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
           cd source
           python3 scripts/governance_self_service_guard.py "${ARGS[@]}"
+
+      - name: Mark self-service guard success
+        if: ${{ steps.self_guard.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=success -f context='builder/v2-self-service/guard' -f description='Self-service guard passed'
+
+      - name: Mark self-service guard failure
+        if: ${{ failure() && steps.self_guard.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=failure -f context='builder/v2-self-service/guard' -f description='Self-service guard failed'
 
       - name: Write evidence
         if: always()
