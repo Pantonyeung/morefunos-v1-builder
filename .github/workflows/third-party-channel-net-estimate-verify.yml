@@ -1,0 +1,46 @@
+name: Third Party Channel Net Estimate Verify
+on:
+  push:
+    branches: [main]
+    paths: ['.ci-requests/third-party-channel-net-estimate.sha']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Resolve SHA
+        id: src
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(tr -d '[:space:]' < .ci-requests/third-party-channel-net-estimate.sha)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.src.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Install
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Targeted channel settlement tests
+        working-directory: source
+        run: |
+          node --test packages/channel-settlement/third-party-net-estimate.test.ts
+          node --test packages/channel-settlement/d1-third-party-net-estimate-policy.test.ts
+          node --test packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.test.ts
+      - name: Admin web tests
+        working-directory: source
+        run: npx vitest run apps/admin-web/src/ChannelNetEstimatePage.test.tsx
+      - name: Full typecheck
+        working-directory: source
+        run: npm run typecheck
