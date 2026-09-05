@@ -6,7 +6,7 @@ on:
     paths: ['requests/v2-print-source-test.txt']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -61,3 +61,35 @@ jobs:
       - name: Run full TypeScript typecheck
         working-directory: source
         run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+
+      - name: Seal Builder result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-results
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-print-source-test.txt | tr -d '\r\n')"
+          {
+            echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+            echo "branch_name=${BRANCH_NAME:-UNKNOWN}"
+            echo "request_id=${REQUEST_ID:-UNKNOWN}"
+            echo "run_id=$RUN_ID"
+            echo "run_attempt=$RUN_ATTEMPT"
+            echo "conclusion=$CONCLUSION"
+          } > .ci-results/v2-print-source-test.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci-results/v2-print-source-test.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "ci(result): V2 Print source ${CONCLUSION} ${SOURCE_SHA:-UNKNOWN}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:main
