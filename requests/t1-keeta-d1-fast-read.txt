@@ -1,4 +1,4 @@
-request_id=T1-KEETA-REFUND-3976-POST-MERCHANT-REJECT
+request_id=T1-B2516-LIVE-6615-JOURNAL
 mode=journal_latest
-order_view_id=5123440322953976
+order_view_id=6615
 message_id=unused
