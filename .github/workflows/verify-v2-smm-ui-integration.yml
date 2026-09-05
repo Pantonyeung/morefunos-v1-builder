@@ -93,14 +93,33 @@ jobs:
         run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context='builder/v2-smm-ui-integration/tests' -f description='SMM integration tests running'
 
       - name: SMM UI integration tests
+        id: smm_tests
         working-directory: source
-        run: node --test packages/smm-ui-integration/*.test.ts
+        shell: bash
+        run: |
+          set +e
+          node --test packages/smm-ui-integration/*.test.ts 2>&1 | tee /tmp/smm-tests.log
+          code=${PIPESTATUS[0]}
+          first_fail="$(grep -m1 '^not ok ' /tmp/smm-tests.log | cut -c1-110)"
+          printf 'first_fail=%s\n' "$first_fail" >> "$GITHUB_OUTPUT"
+          exit "$code"
 
       - name: Mark tests success
+        if: ${{ steps.smm_tests.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
         run: gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=success -f context='builder/v2-smm-ui-integration/tests' -f description='SMM integration tests passed'
+
+      - name: Mark tests failure
+        if: ${{ failure() && steps.smm_tests.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          FIRST_FAIL: ${{ steps.smm_tests.outputs.first_fail }}
+        run: |
+          desc="${FIRST_FAIL:-SMM integration tests failed}"
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" -f state=failure -f context='builder/v2-smm-ui-integration/tests' -f description="$desc"
 
       - name: Mark typecheck pending
         if: ${{ hashFiles('source/apps/smm-web/package.json') != '' }}
