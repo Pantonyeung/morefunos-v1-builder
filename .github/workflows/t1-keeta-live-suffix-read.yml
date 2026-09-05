@@ -79,6 +79,25 @@ jobs:
           json.dump({"matching_rows":len(out),"rows":out}, open(dst,"w",encoding="utf-8"), ensure_ascii=False, indent=2)
           PY
 
+      - name: Read production canonical mapping and order by provider order
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROD_D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+        run: |
+          set -euo pipefail
+          SUFFIX="$(sed -n 's/^suffix=//p' requests/t1-keeta-live-suffix-read.txt | tr -d '[:space:]')"
+          PROVIDER_ORDER_ID="$(jq -r '.rows[0].message.baseOrder.orderViewIdStr // empty' ".ci-results/t1-keeta-live-suffix-read-$SUFFIX.json")"
+          PROVIDER_SKU_ID="$(jq -r '.rows[0].message.products[0].skuId // empty' ".ci-results/t1-keeta-live-suffix-read-$SUFFIX.json")"
+          STORE_ID="$(jq -r '.rows[0].canonical_store_id // empty' ".ci-results/t1-keeta-live-suffix-read-$SUFFIX.json")"
+          test -n "$PROVIDER_ORDER_ID"; test -n "$PROVIDER_SKU_ID"; test -n "$STORE_ID"
+          SQL="SELECT provider_menu_item_id, provider_sku_id, mapping_type, mapping_status, canonical_product_id FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 5; SELECT order_id, store_id, revision, source, channel, provider_ref, accepted_projection_json FROM mfos_order_state WHERE accepted_projection_json LIKE ? ORDER BY updated_at DESC LIMIT 5;"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" --arg like "%$PROVIDER_ORDER_ID%" '{sql:$sql,params:[$store,$sku,$like]}' > "$RUNNER_TEMP/prod-q.json"
+          curl --fail-with-body --silent --show-error --max-time 20             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/prod-q.json" > "$RUNNER_TEMP/prod-out.json"
+          jq -e '.success == true' "$RUNNER_TEMP/prod-out.json" >/dev/null
+          cp "$RUNNER_TEMP/prod-out.json" ".ci-results/t1-keeta-live-suffix-read-$SUFFIX-prod.json"
+
       - name: Commit sanitized evidence
         shell: bash
         run: |
