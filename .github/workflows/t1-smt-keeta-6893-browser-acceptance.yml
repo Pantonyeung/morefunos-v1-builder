@@ -75,7 +75,12 @@ jobs:
             await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible',timeout:15000});
 
             const card=page.locator('.orders-source-pools section',{hasText:'6893'}).first();
-            await card.waitFor({state:'visible',timeout:15000});
+            try{
+              await card.waitFor({state:'visible',timeout:15000});
+            }catch(error){
+              console.log('SMT_ORDERS_BODY='+JSON.stringify(((await page.textContent('body'))||'').slice(0,5000)));
+              throw error;
+            }
             const cardText=(await card.textContent())||'';
             if(!cardText.includes('6893')) throw new Error('SMT_6893_SHORT_CODE_MISSING');
             if(!cardText.includes('Keeta')) throw new Error('SMT_6893_SOURCE_MISSING');
