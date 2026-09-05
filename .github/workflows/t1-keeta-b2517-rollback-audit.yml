@@ -18,7 +18,6 @@ jobs:
       PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
       STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
       PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
-      MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
       PROVIDER_SKU_ID: "115907604"
       EVENT_ID: "catalog-keeta-sit-identity:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:001"
     steps:
@@ -32,22 +31,33 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          query() {
-            local sql="$1"; shift
-            jq -n --arg sql "$sql" --args '$ARGS.positional' -- "$@" > "$RUNNER_TEMP/q.json"
-            node - "$RUNNER_TEMP/q.json" <<'NODE'
-const fs=require('fs');const f=process.argv[2];const x=JSON.parse(fs.readFileSync(f,'utf8'));x.params=x[0]??[];fs.writeFileSync(f,JSON.stringify(x));
-NODE
-            curl --fail-with-body --silent --show-error -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json"
-          }
-          query "SELECT provider_sku_id,mapping_id,canonical_product_id,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1" "$STORE_ID" "$PROVIDER_SKU_ID" > "$RUNNER_TEMP/map.json"
-          query "SELECT json_extract(j.value,'$.productId') product_id,json_extract(j.value,'$.name') name FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.productId')=? LIMIT 1" "$STORE_ID" "$PRODUCT_ID" > "$RUNNER_TEMP/product.json"
-          query "SELECT audit_id,event_type FROM mfos_catalog_audit WHERE audit_id=? LIMIT 1" "$EVENT_ID" > "$RUNNER_TEMP/audit.json"
-          query "SELECT event_id,event_type,status FROM mfos_outbox WHERE event_id=? LIMIT 1" "$EVENT_ID" > "$RUNNER_TEMP/outbox.json"
-          for f in map product audit outbox; do echo "=== $f ==="; cat "$RUNNER_TEMP/$f.json"; done
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"
+          H1="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          jq -n --arg sql "SELECT provider_sku_id,mapping_id,canonical_product_id,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1" --arg a "$STORE_ID" --arg b "$PROVIDER_SKU_ID" '{sql:$sql,params:[$a,$b]}' > "$RUNNER_TEMP/map-q.json"
+          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
+
+          jq -n --arg sql "SELECT json_extract(j.value,'$.productId') product_id,json_extract(j.value,'$.name') name FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.productId')=? LIMIT 1" --arg a "$STORE_ID" --arg b "$PRODUCT_ID" '{sql:$sql,params:[$a,$b]}' > "$RUNNER_TEMP/product-q.json"
+          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/product-q.json" > "$RUNNER_TEMP/product.json"
+
+          jq -n --arg sql "SELECT audit_id,event_type FROM mfos_catalog_audit WHERE audit_id=? LIMIT 1" --arg a "$EVENT_ID" '{sql:$sql,params:[$a]}' > "$RUNNER_TEMP/audit-q.json"
+          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/audit-q.json" > "$RUNNER_TEMP/audit.json"
+
+          jq -n --arg sql "SELECT event_id,event_type,status FROM mfos_outbox WHERE event_id=? LIMIT 1" --arg a "$EVENT_ID" '{sql:$sql,params:[$a]}' > "$RUNNER_TEMP/outbox-q.json"
+          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/outbox-q.json" > "$RUNNER_TEMP/outbox.json"
+
+          for f in map product audit outbox; do
+            jq -e '.success == true and (.result[0].success == true)' "$RUNNER_TEMP/$f.json" >/dev/null
+            echo "=== $f ==="
+            jq -c '.result[0].results' "$RUNNER_TEMP/$f.json"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: t1-keeta-b2517-rollback-audit-${{ github.run_id }}
-          path: ${{ runner.temp }}/*.json
+          path: |
+            ${{ runner.temp }}/map.json
+            ${{ runner.temp }}/product.json
+            ${{ runner.temp }}/audit.json
+            ${{ runner.temp }}/outbox.json
           retention-days: 7
