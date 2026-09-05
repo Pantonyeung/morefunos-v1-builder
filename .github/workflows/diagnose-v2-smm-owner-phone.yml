@@ -66,6 +66,7 @@ jobs:
           rm -f /tmp/admin-session.json /tmp/admin-principal-shape.json /tmp/store-binding.txt
 
       - name: Read live SMM pairing identity shape
+        if: ${{ always() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -87,6 +88,7 @@ jobs:
           NODE
           rm -f /tmp/smm-pair.json
       - name: Read production identity and catalog shape
+        if: ${{ always() }}
         working-directory: source
         shell: bash
         run: |
