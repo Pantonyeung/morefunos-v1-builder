@@ -180,6 +180,17 @@ jobs:
             try{pairBody=await pairResponse.json()}catch{}
             console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' mounted='+((pairBody.mountedOperationIds||[]).length));
             if(pairResponse.status()!==200)throw new Error('SMM_PAIR_HTTP_'+pairResponse.status()+':'+(pairBody.code||'UNKNOWN'));
+            if(!pairBody.sessionToken)throw new Error('SMM_PAIR_TOKEN_MISSING');
+            const diagnostic=await page.evaluate(async(token)=>{
+              const sessionResponse=await fetch('/api/smm/session',{headers:{authorization:'Bearer '+token,accept:'application/json'},cache:'no-store'});
+              let sessionBody={};try{sessionBody=await sessionResponse.json()}catch{}
+              const orderResponse=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
+              let orderBody={};try{orderBody=await orderResponse.json()}catch{}
+              return {sessionStatus:sessionResponse.status,sessionCode:sessionBody.code||'none',orderStatus:orderResponse.status,orderCode:orderBody.code||'none',orderCount:Array.isArray(orderBody.orders)?orderBody.orders.length:null};
+            },pairBody.sessionToken);
+            console.log('SMM_PAIR_DIAGNOSTIC '+JSON.stringify(diagnostic));
+            if(diagnostic.sessionStatus!==200)throw new Error('SMM_PAIR_DIAG_SESSION_'+diagnostic.sessionStatus+':'+diagnostic.sessionCode);
+            if(diagnostic.orderStatus!==200)throw new Error('SMM_PAIR_DIAG_ORDER_'+diagnostic.orderStatus+':'+diagnostic.orderCode);
             await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
               const raw=localStorage.getItem('morefunos.smm.device-session.v1');
