@@ -1,4 +1,4 @@
-source_sha=c5b9f27cf87abebc5a541e33e615688a4bbbf75d
-base_sha=dabb588cc003ae9d5dbc4c6d16ffe9a7e228d7b8
+source_sha=42e6912e53c5d0ddfc3db27bc5e669a20970f971
+base_sha=7e416ae00bedcd8f56ca5e61b8ed80c554c58ce0
 branch_name=work/SMM/B0314-r8-fresh-main-c163
-request_id=SMM-B0314-R9-SELF-COMPLIANT-20260905
+request_id=SMM-B0314-R9-CANONICAL-IDENTITY-FALLBACK-SELF-20260905
