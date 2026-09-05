@@ -1,2 +1,2 @@
-suffix=1095
-probe_revision=1
+suffix=2396
+probe_revision=2
