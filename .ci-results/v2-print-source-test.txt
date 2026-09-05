@@ -1,6 +1,6 @@
-source_sha=a2475f359fa2bd6c589c11128a0209f1f1068945
-branch_name=work/COMMANDER/order-auto-print-consumer-composition-20260906-02
-request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R9-20260906
-run_id=33998881899
+source_sha=67ff71170543fc083dd9f8da108cd98b08c7cd41
+branch_name=work/COMMANDER/order-auto-print-r9-fresh-main-20260906
+request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R10-FRESH-MAIN-20260906
+run_id=33998987744
 run_attempt=1
 conclusion=success
