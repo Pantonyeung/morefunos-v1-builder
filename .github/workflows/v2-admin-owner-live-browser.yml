@@ -150,6 +150,11 @@ jobs:
             ||!Number.isInteger(overviewValue.operationalRevision)
             ||typeof overviewValue.businessDate!=='string') throw new Error('ADMIN_OVERVIEW_API_RESPONSE_INVALID');
 
+          const historyApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/orders/history?businessDate='+encodeURIComponent(overviewValue.businessDate));
+          if(historyApi.status()!==200) throw new Error('ADMIN_ORDERS_HISTORY_API:'+historyApi.status());
+          const historyJson=await historyApi.json();
+          if(!historyJson?.ok||!Array.isArray(historyJson?.value)) throw new Error('ADMIN_ORDERS_HISTORY_API_RESPONSE_INVALID');
+
           await admin.goto(ADMIN_ORIGIN+'/admin/overview',{waitUntil:'networkidle'});
           await admin.getByRole('heading',{name:'營運總覽',exact:true}).waitFor({timeout:15000});
           await admin.getByText('正式商品',{exact:true}).waitFor({timeout:15000});
@@ -166,6 +171,12 @@ jobs:
             if(!(await save.isDisabled())) throw new Error('ADMIN_PRODUCT_MANAGE_UNEXPECTEDLY_ENABLED');
           }
 
+          await admin.goto(ADMIN_ORIGIN+'/admin/orders/history',{waitUntil:'networkidle'});
+          await admin.getByRole('heading',{name:'歷史訂單',exact:true}).waitFor({timeout:15000});
+          await admin.getByLabel('營業日期').fill(overviewValue.businessDate);
+          await admin.getByRole('button',{name:'查詢歷史訂單',exact:true}).click();
+          await admin.getByText(/已讀取 \d+ 張 canonical 歷史訂單/).waitFor({timeout:15000});
+
           const manifest=await context.request.get(ADMIN_ORIGIN+'/manifest.webmanifest');
           const sw=await context.request.get(ADMIN_ORIGIN+'/sw.js');
           if(manifest.status()!==200||sw.status()!==200) throw new Error('ADMIN_PWA_ASSET_FAIL');
@@ -174,7 +185,7 @@ jobs:
           if(adminSession2.status()!==200) throw new Error('ADMIN_REFRESH_SESSION_LOST');
           if(adminErrors.length||adminFailures.length) throw new Error('ADMIN_BROWSER_ERROR:'+adminErrors.join('|')+';'+adminFailures.join('|'));
           await admin.screenshot({path:'evidence/admin.png',fullPage:true});
-          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,productApi:200,overviewApi:200,overviewUi:'PASS',productReadOnlyUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,productApi:200,overviewApi:200,ordersHistoryApi:200,overviewUi:'PASS',productReadOnlyUi:'PASS',ordersHistoryUi:'PASS',ordersHistoryCount:historyJson.value.length,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           const owner=await context.newPage();
           const ownerErrors=[]; const ownerFailures=[];
