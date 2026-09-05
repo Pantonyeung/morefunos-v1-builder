@@ -1,0 +1,67 @@
+name: Keeta AUTO_INSTANT Restore After Menu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/keeta-auto-instant-restore-after-menu.sha'
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: '356277055550074a3e654a3e5b0948c1fb778862'
+      WRANGLER_VERSION: '4.125.0'
+      WORKER_URL: 'https://morefun-v2-keeta-sit.pantonyeung.workers.dev'
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: Guard request
+        run: |
+          set -euo pipefail
+          test "$(tr -d '[:space:]' < .ci-requests/keeta-auto-instant-restore-after-menu.sha)" = "$SOURCE_SHA"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact accepted source
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          grep -Fq 'KEETA_AUTO_ACCEPT_DELAY_MS' workers/keeta/src/index.ts
+          grep -Fq 'resolveKeetaAcceptanceMode' workers/keeta/src/index.ts
+      - name: Deploy accepted AUTO_INSTANT runtime
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes "wrangler@$WRANGLER_VERSION" deploy --config wrangler.jsonc
+      - name: Verify health AUTO delay 0
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP=000
+          for attempt in $(seq 1 20); do
+            HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$WORKER_URL/health" || true)"
+            if [[ "$HTTP" = '200' ]] && node - "$RUNNER_TEMP/health.json" <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          console.log('health='+JSON.stringify({status:b.status,acceptanceMode:b.acceptanceMode,autoAcceptDelayMs:b.autoAcceptDelayMs}));
+          process.exit(b.status==='ok'&&b.acceptanceMode==='AUTO'&&Number(b.autoAcceptDelayMs)===0?0:1);
+          NODE
+            then exit 0; fi
+            sleep 2
+          done
+          exit 1
