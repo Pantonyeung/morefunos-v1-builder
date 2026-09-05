@@ -1,0 +1,63 @@
+name: Apply V2 Exact D1 Migration
+
+on:
+  push:
+    paths:
+      - 'requests/v2-exact-d1-migration-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-exact-d1-migration-request.txt | tr -d '[:space:]')"
+          MIGRATION_FILE="$(sed -n 's/^migration_file=//p' requests/v2-exact-d1-migration-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$MIGRATION_FILE" =~ ^[0-9]{4}-[A-Za-z0-9._-]+\.sql$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "migration_file=$MIGRATION_FILE" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Apply exact migration
+        shell: bash
+        env:
+          MIGRATION_FILE: ${{ steps.req.outputs.migration_file }}
+        run: |
+          set -euo pipefail
+          SQL_FILE="source/infra/cloudflare/d1/migrations/$MIGRATION_FILE"
+          test -s "$SQL_FILE"
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
+          HTTP_CODE="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/body.json)"
+          test "$HTTP_CODE" = 200
+          node -e "const x=require('/tmp/result.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x));process.exit(1)}"
+          echo "migration=$MIGRATION_FILE http=$HTTP_CODE"
+      - name: Verify refund and reporting tables
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_refund_state','mfos_payment_refund_audit','mfos_reporting_projection') ORDER BY name\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
+          node -e "const x=require('/tmp/verify-result.json');const n=(x.result?.[0]?.results||[]).map(r=>r.name).sort();const e=['mfos_payment_refund_audit','mfos_refund_state','mfos_reporting_projection'];if(JSON.stringify(n)!==JSON.stringify(e)){console.error(n);process.exit(1)};console.log('refund_reporting_schema=PASS '+n.join(','))"
