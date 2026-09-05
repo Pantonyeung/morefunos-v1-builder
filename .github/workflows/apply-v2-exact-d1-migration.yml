@@ -50,7 +50,7 @@ jobs:
           URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
           node -e "const fs=require('fs');fs.writeFileSync('/tmp/body.json',JSON.stringify({sql:fs.readFileSync(process.argv[1],'utf8')}))" "$SQL_FILE"
           HTTP_CODE="$(curl -sS -o /tmp/result.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/body.json)"
-          test "$HTTP_CODE" = 200
+          if [ "$HTTP_CODE" != 200 ]; then cat /tmp/result.json; exit 1; fi
           node -e "const x=require('/tmp/result.json');if(!x.success||!(x.result||[]).every(r=>r.success!==false)){console.error(JSON.stringify(x));process.exit(1)}"
           echo "migration=$MIGRATION_FILE http=$HTTP_CODE"
       - name: Verify refund and reporting tables
