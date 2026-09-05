@@ -16,6 +16,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -64,6 +65,27 @@ jobs:
           NODE
           rm -f /tmp/admin-session.json /tmp/admin-principal-shape.json /tmp/store-binding.txt
 
+      - name: Read live SMM pairing identity shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          CODE="$(curl -sS -o /tmp/smm-pair.json -w '%{http_code}' -H 'content-type: application/json' --data "$(node -e "process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))")" https://morefun-v2-smm.pantonyeung.workers.dev/api/smm/session)"
+          test "$CODE" = 200
+          node - <<'NODE'
+          const x=require('/tmp/smm-pair.json');
+          const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          console.log(JSON.stringify({
+            pair_http:200,
+            actor_uuid:uuid.test(x.actorId||''),
+            staff_uuid:uuid.test(x.staffId||''),
+            operator_same:x.operatorId===x.staffId,
+            store_uuid:uuid.test(x.storeId||''),
+            scope_matches_store:x.scopeRef===x.storeId,
+            mounted_count:Array.isArray(x.mountedOperationIds)?x.mountedOperationIds.length:null
+          }));
+          NODE
+          rm -f /tmp/smm-pair.json
       - name: Read production identity and catalog shape
         working-directory: source
         shell: bash
