@@ -1,4 +1,4 @@
-source_sha=017374257b6aa43454513a86b6c31f89e14561d0
-base_sha=d3fcae0c88fd74afea2e5dcc289bb224c5f24f34
-branch_name=work/SMM/B0313-visual-north-star-chinese-hierarchy
-request_id=SMM-B0313-TERMINAL-SELF-20260905
+source_sha=98ba47dde899be526e59b7dfe5ad56aad3324cf7
+base_sha=4509949e3b3dd489116445c6c8cd0a03a6b01bb3
+branch_name=work/SMM/B0314-owner-feedback-integrated-r1
+request_id=SMM-B0314-R1-SELF-20260905
