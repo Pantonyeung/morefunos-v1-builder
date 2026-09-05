@@ -51,6 +51,7 @@ jobs:
           node --test packages/integration/keeta-decision-integrity.test.ts
           node --test packages/integration/keeta-merchant-decision-internal-runtime.test.ts
           node --test packages/integration/keeta-canonical-order-projection.test.ts
+          node --test packages/integration/keeta-d1-canonical-acceptance-plan.test.ts
           node --test packages/order/d1-accepted-order-projection-identity.test.ts
           node --test packages/smm-ui-integration/keeta-merchant-inbox-runtime.test.ts
 
