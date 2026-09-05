@@ -1,0 +1,101 @@
+name: T1 SMT Keeta 6893 Browser Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-smt-keeta-6893-browser-acceptance.txt'
+      - '.github/workflows/t1-smt-keeta-6893-browser-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  accept:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SMT_ORIGIN: https://morefun-v2-smt-preview.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      ORDER_ID: 9011ca2e-dd04-5198-b8d5-d96249564a15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/t1-smt-keeta-6893-browser-acceptance.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Prove 6893 on 1920x1080 SMT Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            if(!process.env.ADMIN_LOGIN_SECRET) throw new Error('ADMIN_LOGIN_SECRET_MISSING');
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1920,height:1080}});
+            const pageErrors=[];
+            page.on('pageerror',e=>pageErrors.push(String(e)));
+
+            await page.goto(process.env.SMT_ORIGIN+'/',{waitUntil:'networkidle'});
+            const pair=await page.evaluate(async(secret)=>{
+              const response=await fetch('/api/smt/session',{
+                method:'POST',
+                headers:{'content-type':'application/json'},
+                body:JSON.stringify({loginSecret:secret}),
+                cache:'no-store',
+              });
+              return {status:response.status,body:await response.json()};
+            },process.env.ADMIN_LOGIN_SECRET);
+            if(pair.status!==200||!pair.body?.sessionToken) throw new Error('SMT_PAIR_FAILED');
+
+            await page.evaluate(session=>{
+              localStorage.setItem('morefunos.smt.device-session.v1',JSON.stringify(session));
+            },pair.body);
+
+            await page.goto(process.env.SMT_ORIGIN+'/orders',{waitUntil:'networkidle'});
+            await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible',timeout:15000});
+
+            const card=page.locator('.orders-source-pools section',{hasText:'6893'}).first();
+            await card.waitFor({state:'visible',timeout:15000});
+            const cardText=(await card.textContent())||'';
+            if(!cardText.includes('6893')) throw new Error('SMT_6893_SHORT_CODE_MISSING');
+            if(!cardText.includes('Keeta')) throw new Error('SMT_6893_SOURCE_MISSING');
+            if(!cardText.includes('$21')) throw new Error('SMT_6893_TOTAL_MISSING');
+
+            await card.locator('button').click();
+            await page.getByText('1 × SIT 測試餐 A 更新',{exact:true}).waitFor({state:'visible',timeout:15000});
+            const detail=(await page.locator('.orders-selected-detail').textContent())||'';
+            if(!detail.includes('6893')) throw new Error('SMT_6893_DETAIL_CODE_MISSING');
+            if(!detail.includes('Keeta')) throw new Error('SMT_6893_DETAIL_SOURCE_MISSING');
+            if(!detail.includes('$21')) throw new Error('SMT_6893_DETAIL_TOTAL_MISSING');
+            if(!detail.includes('SIT 測試餐 A 更新')) throw new Error('SMT_6893_LOCAL_PRODUCT_NAME_MISSING');
+
+            if(pageErrors.length) throw new Error('SMT_PAGE_ERROR:'+pageErrors.join('|'));
+            console.log('SMT_KEETA_6893_BROWSER_PASS');
+            console.log('orderId='+process.env.ORDER_ID);
+            console.log('shortCode=6893');
+            console.log('source=Keeta');
+            console.log('total=$21');
+            console.log('product=SIT 測試餐 A 更新');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
