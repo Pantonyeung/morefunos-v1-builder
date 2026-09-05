@@ -1,0 +1,76 @@
+name: Bootstrap V2 First Principal
+
+on:
+  push:
+    paths:
+      - 'requests/v2-first-principal-bootstrap.txt'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  bootstrap:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require trusted credentials
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Authenticate trusted Admin session
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          ADMIN_LOGIN_SECRET="$ADMIN_LOGIN_SECRET" node -e "require('fs').writeFileSync('/tmp/login.json',JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))"
+          HTTP="$(curl -sS -c /tmp/admin.cookies -H 'content-type: application/json' --data-binary @/tmp/login.json -o /tmp/login-response.json -w '%{http_code}' "$ADMIN_URL/api/admin/session")"
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/login-response.json');if(!x.authenticated||!x.staffId)process.exit(1);const uuid=/^[0-9a-f-]{36}$/i;console.log('admin_session=PASS staff_uuid='+uuid.test(x.staffId))" | tee evidence/admin-session.txt
+
+      - name: Execute protected first-principal bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{}\n' >/tmp/bootstrap.json
+          HTTP="$(curl -sS -b /tmp/admin.cookies -H 'content-type: application/json' --data-binary @/tmp/bootstrap.json -o /tmp/bootstrap-response.json -w '%{http_code}' "$ADMIN_URL/api/admin/identity-rbac/first-principal-bootstrap")"
+          cat /tmp/bootstrap-response.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;console.log('bootstrap_ok='+Boolean(x.ok)+' actor_uuid='+uuid.test(x.actorId||'')+' staff_uuid='+uuid.test(x.staffId||'')+' replayed='+Boolean(x.replayed));if(!x.ok||!uuid.test(x.actorId||'')||!uuid.test(x.staffId||''))process.exit(1)})" | tee evidence/bootstrap.txt
+          test "$HTTP" = 200
+
+      - name: Production D1 canonical identity readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          SQL="SELECT (SELECT COUNT(*) FROM mfos_rbac_staff WHERE json_extract(record_json,'$.lifecycleStatus')='ACTIVE') AS active_staff, (SELECT COUNT(*) FROM mfos_rbac_roles WHERE role_id='runtime-owner-bootstrap') AS bootstrap_roles, (SELECT COUNT(*) FROM mfos_staff_auth_binding WHERE status='ACTIVE') AS active_bindings, (SELECT COUNT(*) FROM mfos_staff_auth_binding b JOIN mfos_rbac_staff s ON s.staff_id=b.staff_id WHERE b.status='ACTIVE' AND json_extract(s.record_json,'$.lifecycleStatus')='ACTIVE') AS valid_join"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -sS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json >/tmp/readback.json
+          node -e "const x=require('/tmp/readback.json');if(!x.success||!x.result?.[0]?.success)process.exit(1);const r=x.result[0].results?.[0]||{};console.log('active_staff='+r.active_staff+' bootstrap_roles='+r.bootstrap_roles+' active_bindings='+r.active_bindings+' valid_join='+r.valid_join);if(r.active_staff<1||r.bootstrap_roles!==1||r.active_bindings<1||r.valid_join<1)process.exit(1)" | tee evidence/d1-readback.txt
+
+      - name: Sanitize and upload evidence
+        if: always()
+        run: |
+          rm -f /tmp/login.json /tmp/login-response.json /tmp/admin.cookies /tmp/bootstrap.json /tmp/bootstrap-response.json /tmp/query.json /tmp/readback.json
+          printf 'source=protected_admin_bootstrap\nsecrets_logged=NO\n' > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-first-principal-bootstrap-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
