@@ -1,4 +1,4 @@
-source_sha=47bb7b1a59e6b7b547c85539d5c3960388cd8617
-base_sha=b4bc9db1c469d26b74cd321c970d96e2d47aa696
-branch_name=work/SMM/B0314-all-interfaces-r3
-request_id=SMM-B0314-R3-FINAL-GOV-20260905
+source_sha=180f5dd054c2dffc1e0d3453d84abe0fc28ce6c2
+base_sha=67c24c4c865d916c47aa4f31cabed8a1156cbe89
+branch_name=work/SMM/B0314-all-interfaces-r4
+request_id=SMM-B0314-R4-GOV-20260905
