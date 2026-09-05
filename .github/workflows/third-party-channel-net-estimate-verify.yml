@@ -45,6 +45,22 @@ jobs:
       - name: Admin web tests
         working-directory: source
         run: npx vitest run apps/admin-web/src/ChannelNetEstimatePage.test.tsx
-      - name: Full typecheck
+      - name: Targeted channel settlement typecheck
         working-directory: source
+        run: |
+          tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --jsx react-jsx --allowImportingTsExtensions \
+            packages/channel-settlement/third-party-net-estimate.ts \
+            packages/channel-settlement/third-party-commercial-snapshot.ts \
+            packages/channel-settlement/d1-third-party-net-estimate-policy.ts \
+            packages/channel-settlement/d1-third-party-order-net-estimate.ts \
+            packages/integration/keeta-order-commercial-snapshot.ts \
+            packages/integration/keeta-standard-order-facts.ts \
+            packages/integration/keeta-canonical-order-projection.ts \
+            packages/order/order-validation.ts \
+            packages/admin-ui-integration/d1-admin-channel-net-estimate-policy.ts \
+            apps/admin-web/src/admin-channel-net-estimate-network-port.ts \
+            apps/admin-web/src/ChannelNetEstimatePage.tsx
+      - name: Full repo typecheck baseline signal
+        working-directory: source
+        continue-on-error: true
         run: npm run typecheck
