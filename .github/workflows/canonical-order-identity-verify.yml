@@ -36,6 +36,7 @@ jobs:
         working-directory: source
         run: |
           node --test packages/order/canonical-order-identity.test.ts
+          node --test packages/order/order-display-code.test.ts
           node --test packages/integration/keeta-canonical-order-projection.test.ts
           node --test apps/smm-web/src/smm-user-messages.test.ts
           npx vitest run apps/smt-clean/src/runtime/network-production-runtime.test.ts
