@@ -67,8 +67,13 @@ jobs:
           DEPLOY="$(npx wrangler deploy)"
           URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
           test -n "$URL"
-          BODY="$(curl --retry 12 --retry-delay 1 --retry-all-errors --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
-          echo "$BODY" | jq -e '.ok==true' >/dev/null
+          BODY=""
+          for attempt in $(seq 1 20); do
+            BODY="$(curl --silent --show-error -H "x-probe-key: $KEY" "$URL" || true)"
+            if printf '%s' "$BODY" | jq -e '.ok==true' >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          printf '%s' "$BODY" | jq -e '.ok==true' >/dev/null
           echo "$BODY" | jq -e '.result.providerOrderId=="5143440812062965"' >/dev/null
           echo "$BODY" | jq -e '.result.providerCode==0' >/dev/null
           echo "ORDER_GET_2965=$(echo "$BODY" | jq -c '.result|{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
