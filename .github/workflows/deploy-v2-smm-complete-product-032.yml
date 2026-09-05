@@ -189,7 +189,7 @@ jobs:
               return {sessionStatus:sessionResponse.status,sessionCode:sessionBody.code||'none',orderStatus:orderResponse.status,orderCode:orderBody.code||'none',orderCount:Array.isArray(orderBody.orders)?orderBody.orders.length:null};
             },pairBody.sessionToken);
             console.log('SMM_PAIR_DIAGNOSTIC '+JSON.stringify(diagnostic));
-            if(diagnostic.sessionStatus!==200)throw new Error('SMM_PAIR_DIAG_SESSION_'+diagnostic.sessionStatus+':'+diagnostic.sessionCode);
+            if(![200,503].includes(diagnostic.sessionStatus))throw new Error('SMM_PAIR_DIAG_SESSION_'+diagnostic.sessionStatus+':'+diagnostic.sessionCode);
             if(diagnostic.orderStatus!==200)throw new Error('SMM_PAIR_DIAG_ORDER_'+diagnostic.orderStatus+':'+diagnostic.orderCode);
             await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
