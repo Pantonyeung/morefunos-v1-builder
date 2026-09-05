@@ -1,5 +1,5 @@
-source_sha=b331ffe856bfc05a2122fefa617b04a0b2596059
-base_sha=40f3ad692e9526ee032980e8346f4cf4e8c7c06a
-branch_name=main
+source_sha=ed72477417da059334205cadfb74fc33283c3950
+base_sha=42e6912e53c5d0ddfc3db27bc5e669a20970f971
+branch_name=work/CORE/r10-first-principal-production-bootstrap-20260905
 verification_phase=CANDIDATE
-request_id=T1-B2509-MAIN-TYPECHECK-CONTROL
+request_id=SMM-R10-FIRST-PRINCIPAL-IDENTITY-BOOTSTRAP
