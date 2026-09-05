@@ -1,4 +1,4 @@
-source_sha=b05bbca29d91f433f58e20447b8cd38cf421f1bd
-base_sha=a50dd11c8c7da19e429aa7bf15de504c4dd3b57c
-branch_name=work/SMM/B0312-active-work-orders-queue
-request_id=SMM-B0312-FINAL-SELF-20260905
+source_sha=cb3d0dd20ea230532f5214b04d6062849d54cc85
+base_sha=d3fcae0c88fd74afea2e5dcc289bb224c5f24f34
+branch_name=work/SMM/B0313-visual-north-star-chinese-hierarchy
+request_id=SMM-B0313-R1-SELF-20260905
