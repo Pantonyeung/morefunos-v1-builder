@@ -20,18 +20,12 @@ jobs:
     timeout-minutes: 8
     env:
       PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
-      STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
-      PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
-      PRODUCT_NAME: "SIT 測試餐 A 更新"
-      MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
-      PROVIDER_SKU_ID: "115907604"
-      EVENT_ID: "catalog-keeta-sit-identity:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:001"
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Read and validate exact rollback preconditions
+      - name: Execute exact B2517 rollback transaction
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -39,68 +33,25 @@ jobs:
         run: |
           set -euo pipefail
           URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"
-          H1="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          STORE="d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+          PRODUCT="4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
+          SKU="115907604"
+          MAPPING="335d9c23-7c40-52ba-a24e-cd78619110f4"
+          EVENT="catalog-keeta-sit-identity:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:001"
 
-          jq -n --arg sql "SELECT catalog_revision,snapshot_json,revision,updated_at FROM mfos_catalog_state WHERE store_id=? LIMIT 1" --arg a "$STORE_ID" '{sql:$sql,params:[$a]}' > "$RUNNER_TEMP/catalog-q.json"
-          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/catalog-q.json" > "$RUNNER_TEMP/catalog.json"
+          SQL1="UPDATE mfos_catalog_state SET snapshot_json=json_set(json_remove(snapshot_json,'$.products[' || (SELECT key FROM json_each(snapshot_json,'$.products') WHERE json_extract(value,'$.productId')='$PRODUCT' AND json_extract(value,'$.name')='SIT 測試餐 A 更新' AND json_extract(value,'$.lifecycleStatus')='ACTIVE' AND json_array_length(json_extract(value,'$.categoryMemberships'))=0 LIMIT 1) || ']'),'$.catalogRevision',replace(json_extract(snapshot_json,'$.catalogRevision'),'+keeta-sit-001','')),catalog_revision=replace(catalog_revision,'+keeta-sit-001',''),revision=revision+1,updated_at=datetime('now') WHERE store_id='$STORE' AND instr(catalog_revision,'+keeta-sit-001')>0 AND (SELECT COUNT(*) FROM json_each(snapshot_json,'$.products') WHERE json_extract(value,'$.productId')='$PRODUCT' AND json_extract(value,'$.name')='SIT 測試餐 A 更新' AND json_extract(value,'$.lifecycleStatus')='ACTIVE' AND json_array_length(json_extract(value,'$.categoryMemberships'))=0)=1;"
+          SQL2="DELETE FROM mfos_channel_menu_item WHERE store_id='$STORE' AND channel_context='KEETA' AND provider_sku_id='$SKU' AND mapping_id='$MAPPING' AND canonical_product_id='$PRODUCT' AND mapping_status='ACTIVE';"
+          SQL3="DELETE FROM mfos_catalog_audit WHERE audit_id='$EVENT' AND event_type='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED';"
+          SQL4="DELETE FROM mfos_outbox WHERE event_id='$EVENT' AND event_type='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED' AND status='PENDING';"
 
-          jq -n --arg sql "SELECT provider_sku_id,mapping_id,canonical_product_id,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1" --arg a "$STORE_ID" --arg b "$PROVIDER_SKU_ID" '{sql:$sql,params:[$a,$b]}' > "$RUNNER_TEMP/map-q.json"
-          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
-
-          jq -n --arg sql "SELECT audit_id,event_type FROM mfos_catalog_audit WHERE audit_id=? LIMIT 1" --arg a "$EVENT_ID" '{sql:$sql,params:[$a]}' > "$RUNNER_TEMP/audit-q.json"
-          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/audit-q.json" > "$RUNNER_TEMP/audit.json"
-
-          jq -n --arg sql "SELECT event_id,event_type,status FROM mfos_outbox WHERE event_id=? LIMIT 1" --arg a "$EVENT_ID" '{sql:$sql,params:[$a]}' > "$RUNNER_TEMP/outbox-q.json"
-          curl --fail-with-body --silent --show-error -X POST "$URL" -H "$H1" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/outbox-q.json" > "$RUNNER_TEMP/outbox.json"
-
-          node - "$RUNNER_TEMP/catalog.json" "$RUNNER_TEMP/map.json" "$RUNNER_TEMP/audit.json" "$RUNNER_TEMP/outbox.json" "$RUNNER_TEMP/batch.json" <<'NODE'
-const fs=require('fs');
-const [catalogFile,mapFile,auditFile,outboxFile,batchFile]=process.argv.slice(2);
-const rows=f=>JSON.parse(fs.readFileSync(f,'utf8')).result?.[0]?.results??[];
-const catalog=rows(catalogFile)[0]; if(!catalog) throw new Error('CATALOG_ROW_MISSING');
-const snapshot=JSON.parse(catalog.snapshot_json);
-const products=snapshot.products??[];
-const matches=products.filter(p=>p.productId===process.env.PRODUCT_ID);
-if(matches.length!==1) throw new Error('B2517_PRODUCT_EXACTLY_ONE_REQUIRED');
-const p=matches[0];
-if(p.name!==process.env.PRODUCT_NAME || p.lifecycleStatus!=='ACTIVE' || (p.categoryMemberships??[]).length!==0) throw new Error('B2517_PRODUCT_SHAPE_CONFLICT');
-const map=rows(mapFile)[0];
-if(!map || map.provider_sku_id!==process.env.PROVIDER_SKU_ID || map.mapping_id!==process.env.MAPPING_ID || map.canonical_product_id!==process.env.PRODUCT_ID || map.mapping_status!=='ACTIVE') throw new Error('B2517_MAPPING_CONFLICT');
-const audit=rows(auditFile)[0];
-if(!audit || audit.audit_id!==process.env.EVENT_ID || audit.event_type!=='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED') throw new Error('B2517_AUDIT_CONFLICT');
-const outbox=rows(outboxFile)[0];
-if(!outbox || outbox.event_id!==process.env.EVENT_ID || outbox.event_type!=='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED' || outbox.status!=='PENDING') throw new Error('B2517_OUTBOX_NOT_PENDING_EXACT');
-const next={...snapshot,products:products.filter(p=>p.productId!==process.env.PRODUCT_ID)};
-if(typeof next.catalogRevision!=='string' || !next.catalogRevision.includes('+keeta-sit-001')) throw new Error('B2517_CATALOG_REVISION_MARKER_MISSING');
-next.catalogRevision=next.catalogRevision.replace('+keeta-sit-001','');
-const now=new Date().toISOString();
-const batch=[
- {sql:"UPDATE mfos_catalog_state SET catalog_revision=?,snapshot_json=?,revision=revision+1,updated_at=? WHERE store_id=? AND revision=?",params:[next.catalogRevision,JSON.stringify(next),now,process.env.STORE_ID,String(catalog.revision)]},
- {sql:"DELETE FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? AND mapping_id=? AND canonical_product_id=?",params:[process.env.STORE_ID,process.env.PROVIDER_SKU_ID,process.env.MAPPING_ID,process.env.PRODUCT_ID]},
- {sql:"DELETE FROM mfos_catalog_audit WHERE audit_id=? AND event_type='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED'",params:[process.env.EVENT_ID]},
- {sql:"DELETE FROM mfos_outbox WHERE event_id=? AND event_type='KEETA_SIT_CANONICAL_IDENTITY_REGISTERED' AND status='PENDING'",params:[process.env.EVENT_ID]}
-];
-fs.writeFileSync(batchFile,JSON.stringify({batch}));
-console.log('rollback_preconditions=PASS');
-console.log('catalog_revision_before='+catalog.catalog_revision);
-console.log('catalog_revision_after='+next.catalogRevision);
-console.log('catalog_row_revision_before='+catalog.revision);
-NODE
-
-      - name: Execute exact CAS rollback batch
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"
+          jq -n --arg a "$SQL1" --arg b "$SQL2" --arg c "$SQL3" --arg d "$SQL4" '{batch:[{sql:$a,params:[]},{sql:$b,params:[]},{sql:$c,params:[]},{sql:$d,params:[]}]}' > "$RUNNER_TEMP/batch.json"
           curl --fail-with-body --silent --show-error -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/batch.json" > "$RUNNER_TEMP/rollback.json"
-          jq -e '.success == true and ([.result[] | select(.success != true)] | length)==0' "$RUNNER_TEMP/rollback.json" >/dev/null
-          jq -e '(.result|length)==4 and ([.result[].meta.changes|tonumber] | all(. >= 1))' "$RUNNER_TEMP/rollback.json" >/dev/null
-          echo "rollback_batch=PASS"
 
-      - name: Prove residue fully removed
+          jq -e '.success == true and (.result|length)==4 and ([.result[] | select(.success != true)] | length)==0' "$RUNNER_TEMP/rollback.json" >/dev/null
+          jq -e '([.result[].meta.changes|tonumber] | all(. == 1))' "$RUNNER_TEMP/rollback.json" >/dev/null
+          echo "b2517_exact_rollback=PASS"
+
+      - name: Prove zero residue
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -108,12 +59,8 @@ NODE
         run: |
           set -euo pipefail
           URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"
-          SQL="SELECT
-            (SELECT COUNT(*) FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=?) AS mapping_count,
-            (SELECT COUNT(*) FROM mfos_catalog_audit WHERE audit_id=?) AS audit_count,
-            (SELECT COUNT(*) FROM mfos_outbox WHERE event_id=?) AS outbox_count,
-            (SELECT COUNT(*) FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.productId')=?) AS product_count"
-          jq -n --arg sql "$SQL" --arg s "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" --arg e "$EVENT_ID" --arg p "$PRODUCT_ID" '{sql:$sql,params:[$s,$sku,$e,$e,$s,$p]}' > "$RUNNER_TEMP/readback-q.json"
+          SQL="SELECT (SELECT COUNT(*) FROM mfos_channel_menu_item WHERE store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND channel_context='KEETA' AND provider_sku_id='115907604') mapping_count,(SELECT COUNT(*) FROM mfos_catalog_audit WHERE audit_id='catalog-keeta-sit-identity:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:001') audit_count,(SELECT COUNT(*) FROM mfos_outbox WHERE event_id='catalog-keeta-sit-identity:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:001') outbox_count,(SELECT COUNT(*) FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8' AND json_extract(j.value,'$.productId')='4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae') product_count;"
+          jq -n --arg sql "$SQL" '{sql:$sql,params:[]}' > "$RUNNER_TEMP/readback-q.json"
           curl --fail-with-body --silent --show-error -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/readback-q.json" > "$RUNNER_TEMP/readback.json"
           jq -e '.success==true and .result[0].success==true and (.result[0].results[0].mapping_count|tonumber)==0 and (.result[0].results[0].audit_count|tonumber)==0 and (.result[0].results[0].outbox_count|tonumber)==0 and (.result[0].results[0].product_count|tonumber)==0' "$RUNNER_TEMP/readback.json" >/dev/null
           jq -c '.result[0].results[0]' "$RUNNER_TEMP/readback.json"
