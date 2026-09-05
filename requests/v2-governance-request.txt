@@ -1,4 +1,4 @@
-source_sha=a128e764dde261b4f463d7f5c12d9ccaaa31b54d
+source_sha=017374257b6aa43454513a86b6c31f89e14561d0
 base_sha=d3fcae0c88fd74afea2e5dcc289bb224c5f24f34
 branch_name=work/SMM/B0313-visual-north-star-chinese-hierarchy
-request_id=SMM-B0313-R3-GOV-20260905
+request_id=SMM-B0313-TERMINAL-GOV-20260905
