@@ -42,7 +42,7 @@ jobs:
               items=[]
               for key in ["shopProductGroupSkuList","items","products","skus","options","choiceGroupSkuList","subProducts"]:
                 if isinstance(g.get(key),list):
-                  items=[dict(clean_obj(x,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount","unitPrice","originUnitPrice","skuName","skuNameI18n","groupSkuId","groupSkuName","groupSkuOpenItemCode","pickPrice","pickPriceStr"]),keys=sorted(x.keys())) for x in g[key] if isinstance(x,dict)]
+                  items=[dict(clean_obj(x,["id","name","count","skuId","spuId","openItemCode","skuOpenItemCode","spuOpenItemCode","currency","price","originPrice","amount","originAmount","unitPrice","originUnitPrice","skuName","skuNameI18n","groupSkuId","groupSkuName","groupSkuOpenItemCode","pickPrice","pickPriceStr","spuName"]),keys=sorted(x.keys())) for x in g[key] if isinstance(x,dict)]
                   gg["itemContainer"]=key
                   break
               gg["items"]=items
