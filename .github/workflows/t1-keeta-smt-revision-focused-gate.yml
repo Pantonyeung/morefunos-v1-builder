@@ -1,0 +1,70 @@
+name: T1 Keeta SMT Revision Focused Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/t1-keeta-smt-revision-focused-gate.txt'
+      - '.github/workflows/t1-keeta-smt-revision-focused-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve exact candidate
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/t1-keeta-smt-revision-focused-gate.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install source
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+      - name: Prove exact identity
+        working-directory: source
+        run: test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.sha }}"
+      - name: Keeta SMT revision regression tests
+        working-directory: source
+        run: node --test packages/smt-ui-integration/trusted-worker-order-projection.test.ts packages/smt-ui-integration/order-runtime.test.ts
+      - name: Remaining SMT integration regression excluding baseline Node24 Cloudflare loader test
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TESTS < <(find packages/smt-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 't2-smt-worker-mount.test.ts' ! -name 'trusted-worker-order-projection.test.ts' ! -name 'order-runtime.test.ts' -print | sort)
+          node --test "${TESTS[@]}"
+      - name: Root TypeScript
+        working-directory: source
+        run: npm run typecheck
+      - name: SMT app tests typecheck build
+        working-directory: source/apps/smt-clean
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run typecheck
+          npm run build
+      - name: Evidence
+        if: always()
+        shell: bash
+        run: |
+          printf 'source_sha=%s\nbaseline_control_run=33950736198\nbaseline_known_failure=t2-smt-worker-mount.test.ts:cloudflare-esm-node24\nfocused_gate=keeta-revision-plus-all-other-smt-tests-plus-root-typecheck-plus-app\n' "${{ steps.req.outputs.sha }}" > evidence.txt
