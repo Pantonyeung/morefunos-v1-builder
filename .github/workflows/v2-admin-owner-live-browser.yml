@@ -139,7 +139,7 @@ jobs:
           if(!productJson?.ok||!Array.isArray(productJson?.value?.products)) throw new Error('ADMIN_PRODUCT_API_RESPONSE_INVALID');
 
           const overviewApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/overview');
-          if(overviewApi.status()!==200) throw new Error('ADMIN_OVERVIEW_API:'+overviewApi.status());
+          if(overviewApi.status()!==200) throw new Error('ADMIN_OVERVIEW_API:'+overviewApi.status()+':'+await overviewApi.text());
           const overviewJson=await overviewApi.json();
           const overviewValue=overviewJson?.value;
           if(!overviewJson?.ok||!overviewValue
