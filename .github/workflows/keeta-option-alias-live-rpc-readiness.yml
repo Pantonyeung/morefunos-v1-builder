@@ -1,0 +1,97 @@
+name: Keeta Option Alias Live RPC Readiness
+on:
+  push:
+    branches: [main]
+    paths: ['requests/keeta-option-alias-live-rpc-readiness.txt']
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Read canonical option aliases through live Admin RPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/option-alias-rpc"
+          mkdir -p "$WORK/src"
+          KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEY"
+          cat > "$WORK/package.json" <<'EOF'
+          {"private":true,"type":"module","devDependencies":{"wrangler":"4.37.1"}}
+          EOF
+          cat > "$WORK/wrangler.jsonc" <<EOF
+          {
+            "name":"morefun-keeta-option-alias-readiness",
+            "main":"src/index.ts",
+            "compatibility_date":"2026-09-05",
+            "workers_dev":true,
+            "vars":{"PROBE_KEY":"$KEY"},
+            "services":[{
+              "binding":"ADMIN",
+              "service":"morefun-v2-admin",
+              "entrypoint":"KeetaCanonicalOrderService"
+            }]
+          }
+          EOF
+          cat > "$WORK/src/index.ts" <<'EOF'
+          interface Env {
+            PROBE_KEY:string;
+            ADMIN:{
+              resolveOptionAlias(storeId:string,request:{
+                canonicalProductId:string;
+                providerGroupCode:string;
+                providerOptionCode:string;
+              }):Promise<{optionId:string}|null>;
+            };
+          }
+          const STORE='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8';
+          const PRODUCT='d63c5569-abb1-57b5-859f-8c38054f2661';
+          export default {
+            async fetch(request:Request,env:Env):Promise<Response>{
+              if(request.headers.get('x-probe-key')!==env.PROBE_KEY)return new Response('forbidden',{status:403});
+              const mainB=await env.ADMIN.resolveOptionAlias(STORE,{
+                canonicalProductId:PRODUCT,
+                providerGroupCode:'MF-ORDER-GRP-01',
+                providerOptionCode:'MF-ORDER-OPT-01B',
+              });
+              const addonB=await env.ADMIN.resolveOptionAlias(STORE,{
+                canonicalProductId:PRODUCT,
+                providerGroupCode:'MF-ORDER-GRP-02',
+                providerOptionCode:'MF-ORDER-OPT-02B',
+              });
+              const unknown=await env.ADMIN.resolveOptionAlias(STORE,{
+                canonicalProductId:PRODUCT,
+                providerGroupCode:'MF-ORDER-GRP-01',
+                providerOptionCode:'MF-ORDER-OPT-UNKNOWN',
+              });
+              return Response.json({mainB,addonB,unknown});
+            }
+          };
+          EOF
+          cd "$WORK"
+          npm install --ignore-scripts --no-audit --no-fund
+          cleanup(){ npx wrangler delete --name morefun-keeta-option-alias-readiness --force >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          DEPLOY="$(npx wrangler deploy)"
+          URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
+          test -n "$URL"
+          BODY=""
+          for attempt in $(seq 1 20); do
+            BODY="$(curl --silent --show-error -H "x-probe-key: $KEY" "$URL" || true)"
+            if printf '%s' "$BODY" | jq -e '.mainB.optionId and .addonB.optionId' >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          printf '%s' "$BODY" | jq -e '.mainB.optionId=="44c62f1d-8efd-5d42-a5f0-f798d2832281"' >/dev/null
+          printf '%s' "$BODY" | jq -e '.addonB.optionId=="53ce3845-eef9-5be2-845d-60d11b593c80"' >/dev/null
+          printf '%s' "$BODY" | jq -e '.unknown==null' >/dev/null
+          echo "OPTION_ALIAS_RPC=$(printf '%s' "$BODY" | jq -c '{mainB,addonB,unknown}')"
