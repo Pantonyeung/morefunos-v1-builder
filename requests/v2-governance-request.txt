@@ -1,4 +1,4 @@
-source_sha=dd48460343548f1464c57d028fad6fae14a4fb64
-base_sha=483782f0f89b06c591c1b18a48c329c91f974f29
-branch_name=work/SMM/B0314-owner-feedback-integrated-terminal
-request_id=SMM-B0314-TERMINAL-GOV-20260905
+source_sha=9cd15aaa2317dc24f0bbb66f7cfb76729db03c7a
+base_sha=4b2c2cf6afb80aae7cf94ea6e9b4626973a892ed
+branch_name=work/SMM/B0314-all-interfaces-r2
+request_id=SMM-B0314-ALL-R2-GOV-20260905
