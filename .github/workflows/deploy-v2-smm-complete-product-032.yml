@@ -233,10 +233,11 @@ jobs:
               return {count:open.orders.length,acceptedOrderId:open.orders.find(o=>o.lifecycleStatus==='ACCEPTED')?.orderId||null};
             });
             if(refreshedOrders.acceptedOrderId){
-              const acceptedCard=page.locator('[aria-label="訂單 '+refreshedOrders.acceptedOrderId+'"]');
-              await acceptedCard.waitFor({state:'visible',timeout:5000});
-              const completeCount=await acceptedCard.getByRole('button',{name:'完成訂單'}).count();
-              const cancelCount=await acceptedCard.getByRole('button',{name:'取消訂單'}).count();
+              const acceptedCardMain=page.locator('[aria-label="訂單 '+refreshedOrders.acceptedOrderId+'"]');
+              await acceptedCardMain.waitFor({state:'visible',timeout:5000});
+              const acceptedCard=acceptedCardMain.locator('..');
+              const completeCount=await acceptedCard.getByRole('button',{name:'完成訂單',exact:true}).count();
+              const cancelCount=await acceptedCard.getByRole('button',{name:'取消訂單',exact:true}).count();
               if(completeCount<1||cancelCount<1)throw new Error('SMM_ORDER_ACTION_BUTTONS_NOT_MOUNTED');
             }
             if(await page.getByRole('button',{name:'重印小票'}).count())throw new Error('SMM_UNSUPPORTED_REPRINT_BUTTON_PRESENT');
