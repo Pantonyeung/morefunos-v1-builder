@@ -18,9 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      WRANGLER_VERSION: "4.125.0"
-      TEMP_WORKER_NAME: "morefun-v2-b2517-register"
-      TEMP_WORKER_URL: "https://morefun-v2-b2517-register.pantonyeung.workers.dev"
+      PROD_D1_DATABASE_ID: "1ed17fcb-7e7a-4e13-a922-ae141aff4142"
       STORE_ID: "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
       PRODUCT_ID: "4a7fe38e-5cf7-5994-9fa1-00ec0efec7ae"
       MAPPING_ID: "335d9c23-7c40-52ba-a24e-cd78619110f4"
@@ -53,7 +51,7 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install exact source dependencies and verify B2517
+      - name: Verify exact B2517 source
         working-directory: source
         run: |
           set -euo pipefail
@@ -61,120 +59,113 @@ jobs:
           node --test packages/catalog/keeta-sit-canonical-identity.test.ts
           npm run typecheck
 
-      - name: Install Wrangler
-        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
-
-      - name: Assemble one-time registration Worker
-        working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > b2517-register.ts <<'TS'
-          import type { D1DatabaseLike } from './packages/production-persistence/d1.ts';
-          import { registerKeetaSitCanonicalIdentity } from './packages/catalog/keeta-sit-canonical-identity.ts';
-
-          interface Env { readonly DB:D1DatabaseLike; readonly REGISTER_TOKEN?:string; }
-
-          export default {
-            async fetch(request:Request,env:Env):Promise<Response>{
-              const url=new URL(request.url);
-              if(request.method!=='POST'||url.pathname!=='/register') return new Response('NOT_FOUND',{status:404});
-              const expected=env.REGISTER_TOKEN;
-              const supplied=request.headers.get('x-register-token');
-              if(!expected||!supplied||supplied!==expected) return new Response('FORBIDDEN',{status:403});
-              try{
-                const result=await registerKeetaSitCanonicalIdentity(env.DB,{
-                  storeId:'d2d882b4-5c7b-40f9-ad59-91f8faabb8e8',
-                  actorId:'builder:B2517',
-                  occurredAt:new Date().toISOString(),
-                });
-                return Response.json(result);
-              }catch(error){
-                return Response.json({ok:false,code:error instanceof Error?error.message:'B2517_REGISTER_FAILED'},{status:500});
-              }
-            }
-          };
-          TS
-
-          cat > b2517-register-wrangler.jsonc <<'JSON'
-          {
-            "name":"morefun-v2-b2517-register",
-            "main":"./b2517-register.ts",
-            "compatibility_date":"2026-09-05",
-            "compatibility_flags":["nodejs_compat"],
-            "workers_dev":true,
-            "preview_urls":false,
-            "d1_databases":[{
-              "binding":"DB",
-              "database_name":"morefun-v2-production",
-              "database_id":"1ed17fcb-7e7a-4e13-a922-ae141aff4142"
-            }]
-          }
-          JSON
-
-      - name: Deploy one-time Worker and register secret
-        working-directory: source
+      - name: Read production preconditions
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          TOKEN="$(python3 - <<'PY'
-          import secrets
-          print(secrets.token_urlsafe(32))
-          PY
-          )"
-          echo "::add-mask::$TOKEN"
-          echo "REGISTER_TOKEN=$TOKEN" >> "$GITHUB_ENV"
-          wrangler deploy --config b2517-register-wrangler.jsonc
-          printf '%s' "$TOKEN" | wrangler secret put REGISTER_TOKEN --config b2517-register-wrangler.jsonc
+          SQL="SELECT catalog_revision,snapshot_json,revision FROM mfos_catalog_state WHERE store_id=? LIMIT 1"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" '{sql:$sql,params:[$store]}' > "$RUNNER_TEMP/catalog-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/catalog-q.json" > "$RUNNER_TEMP/catalog.json"
+          jq -e '.success == true and (.result[0].success == true) and ((.result[0].results|length)==1)' "$RUNNER_TEMP/catalog.json" >/dev/null
 
-      - name: Execute registration exactly once
+          MAP_SQL="SELECT mapping_id,provider_menu_item_id,provider_sku_id,canonical_product_id,mapping_type,mapping_status FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1"
+          jq -n --arg sql "$MAP_SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/map-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/map-q.json" > "$RUNNER_TEMP/map.json"
+          jq -e '.success == true and (.result[0].success == true) and ((.result[0].results|length)==0)' "$RUNNER_TEMP/map.json" >/dev/null
+          echo "production_preconditions=PASS"
+
+      - name: Build exact B2517 D1 batch from product code
         shell: bash
         run: |
           set -euo pipefail
-          HTTP="$(curl --silent --show-error --max-time 20 -o "$RUNNER_TEMP/register.json" -w '%{http_code}'             -X POST "$TEMP_WORKER_URL/register"             -H "x-register-token: $REGISTER_TOKEN")"
-          cat "$RUNNER_TEMP/register.json"
-          test "$HTTP" = "200"
-          jq -e '.ok == true and .productId == env.PRODUCT_ID and .mappingId == env.MAPPING_ID' "$RUNNER_TEMP/register.json" >/dev/null
+          node --input-type=module - "$RUNNER_TEMP/catalog.json" "$RUNNER_TEMP/batch.json" <<'NODE'
+          import fs from 'node:fs';
+          import {
+            buildKeetaSitCanonicalCatalogSnapshot,
+            KEETA_SIT_CANONICAL_PRODUCT_ID,
+            KEETA_SIT_MAPPING_ID,
+            KEETA_SIT_PRODUCT_NAME,
+            KEETA_SIT_PROVIDER_SPU_ID,
+            KEETA_SIT_PROVIDER_SKU_ID,
+            KEETA_SIT_PRICE_MINOR,
+            KEETA_SIT_SKU_OPEN_ITEM_CODE,
+            KEETA_SIT_SPU_OPEN_ITEM_CODE,
+          } from './source/packages/catalog/keeta-sit-canonical-identity.ts';
+
+          const [src,dst]=process.argv.slice(2);
+          const raw=JSON.parse(fs.readFileSync(src,'utf8'));
+          const row=raw.result[0].results[0];
+          const current=JSON.parse(row.snapshot_json);
+          const occurredAt=new Date().toISOString();
+          const next=buildKeetaSitCanonicalCatalogSnapshot(current,occurredAt);
+          if(next===current) throw new Error('B2517_PRODUCT_ALREADY_PRESENT_UNEXPECTED');
+          const eventId=`catalog-keeta-sit-identity:${process.env.STORE_ID}:001`;
+          const batch=[
+            {
+              sql:"UPDATE mfos_catalog_state SET catalog_revision=?,snapshot_json=?,revision=revision+1,updated_at=? WHERE store_id=? AND revision=?",
+              params:[next.catalogRevision,JSON.stringify(next),occurredAt,process.env.STORE_ID,String(row.revision)]
+            },
+            {
+              sql:"INSERT INTO mfos_channel_menu_item (store_id,channel_context,provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,provider_categories_json,option_group_names_json,pickup_price_minor,delivery_price_minor,dine_in_fact_minor,menu_revision,updated_at) VALUES (?,'KEETA',?,?,?,'SINGLE_PRODUCT','ACTIVE',?,?,'[]','[]',?,?,NULL,?,?)",
+              params:[process.env.STORE_ID,KEETA_SIT_PROVIDER_SPU_ID,KEETA_SIT_PROVIDER_SKU_ID,KEETA_SIT_MAPPING_ID,KEETA_SIT_CANONICAL_PRODUCT_ID,KEETA_SIT_PRODUCT_NAME,String(KEETA_SIT_PRICE_MINOR),String(KEETA_SIT_PRICE_MINOR),next.catalogRevision,occurredAt]
+            },
+            {
+              sql:"INSERT INTO mfos_catalog_audit (audit_id,store_id,actor_id,authorization_context_ref,request_id,catalog_revision,event_type,recorded_at,metadata_json) VALUES (?,?,?,?,?,?,?,?,?)",
+              params:[eventId,process.env.STORE_ID,'builder:B2517','admin:keeta-sit-identity',eventId,next.catalogRevision,'KEETA_SIT_CANONICAL_IDENTITY_REGISTERED',occurredAt,JSON.stringify({productId:KEETA_SIT_CANONICAL_PRODUCT_ID,mappingId:KEETA_SIT_MAPPING_ID,providerSpuId:KEETA_SIT_PROVIDER_SPU_ID,providerSkuId:KEETA_SIT_PROVIDER_SKU_ID,spuOpenItemCode:KEETA_SIT_SPU_OPEN_ITEM_CODE,skuOpenItemCode:KEETA_SIT_SKU_OPEN_ITEM_CODE})]
+            },
+            {
+              sql:"INSERT INTO mfos_outbox (event_id,domain,aggregate_id,event_type,metadata_json,payload_json,status,recorded_at,store_id) VALUES (?,'CATALOG',?,'KEETA_SIT_CANONICAL_IDENTITY_REGISTERED',?,?,'PENDING',?,?)",
+              params:[eventId,process.env.STORE_ID,JSON.stringify({source:'KEETA_SIT',actorId:'builder:B2517'}),JSON.stringify({productId:KEETA_SIT_CANONICAL_PRODUCT_ID,providerSpuId:KEETA_SIT_PROVIDER_SPU_ID,providerSkuId:KEETA_SIT_PROVIDER_SKU_ID}),occurredAt,process.env.STORE_ID]
+            }
+          ];
+          fs.writeFileSync(dst,JSON.stringify({batch},null,2));
+          console.log('b2517_batch_build=PASS');
+          NODE
+
+      - name: Execute one production D1 batch
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/batch.json" > "$RUNNER_TEMP/batch-out.json"
+          jq -e '.success == true and ([.result[] | select(.success != true)] | length)==0' "$RUNNER_TEMP/batch-out.json" >/dev/null
+          jq -e '(.result[0].meta.changes|tonumber) >= 1' "$RUNNER_TEMP/batch-out.json" >/dev/null
+          echo "b2517_production_batch=PASS"
 
       - name: Read back production identity
-        working-directory: source
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          wrangler d1 execute morefun-v2-production --remote --config infra/cloudflare/admin-web-worker/wrangler.jsonc             --command "SELECT provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,pickup_price_minor,delivery_price_minor FROM mfos_channel_menu_item WHERE store_id='$STORE_ID' AND channel_context='KEETA' AND provider_sku_id='$PROVIDER_SKU_ID' LIMIT 1"             --json > "$RUNNER_TEMP/mapping.json"
+          SQL="SELECT provider_menu_item_id,provider_sku_id,mapping_id,mapping_type,mapping_status,canonical_product_id,provider_display_name,pickup_price_minor,delivery_price_minor FROM mfos_channel_menu_item WHERE store_id=? AND channel_context='KEETA' AND provider_sku_id=? LIMIT 1"
+          jq -n --arg sql "$SQL" --arg store "$STORE_ID" --arg sku "$PROVIDER_SKU_ID" '{sql:$sql,params:[$store,$sku]}' > "$RUNNER_TEMP/read-map-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-map-q.json" > "$RUNNER_TEMP/read-map.json"
           jq -e --arg spu "$PROVIDER_SPU_ID" --arg sku "$PROVIDER_SKU_ID" --arg mid "$MAPPING_ID" --arg pid "$PRODUCT_ID" '
-            (.[0].results // .results // []) as $r
-            | ($r|length)==1
-            and $r[0].provider_menu_item_id==$spu
-            and $r[0].provider_sku_id==$sku
-            and $r[0].mapping_id==$mid
-            and $r[0].mapping_type=="SINGLE_PRODUCT"
-            and $r[0].mapping_status=="ACTIVE"
-            and $r[0].canonical_product_id==$pid
-          ' "$RUNNER_TEMP/mapping.json" >/dev/null
+            .success == true
+            and ((.result[0].results|length)==1)
+            and .result[0].results[0].provider_menu_item_id==$spu
+            and .result[0].results[0].provider_sku_id==$sku
+            and .result[0].results[0].mapping_id==$mid
+            and .result[0].results[0].mapping_type=="SINGLE_PRODUCT"
+            and .result[0].results[0].mapping_status=="ACTIVE"
+            and .result[0].results[0].canonical_product_id==$pid
+          ' "$RUNNER_TEMP/read-map.json" >/dev/null
 
-          wrangler d1 execute morefun-v2-production --remote --config infra/cloudflare/admin-web-worker/wrangler.jsonc             --command "SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_extract(j.value,'$.lifecycleStatus') AS lifecycle_status,json_array_length(json_extract(j.value,'$.categoryMemberships')) AS category_count FROM mfos_catalog_state c, json_each(c.snapshot_json,'$.products') j WHERE c.store_id='$STORE_ID' AND json_extract(j.value,'$.productId')='$PRODUCT_ID' LIMIT 1"             --json > "$RUNNER_TEMP/product.json"
+          CAT_SQL="SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_extract(j.value,'$.lifecycleStatus') AS lifecycle_status,json_array_length(json_extract(j.value,'$.categoryMemberships')) AS category_count FROM mfos_catalog_state c, json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.productId')=? LIMIT 1"
+          jq -n --arg sql "$CAT_SQL" --arg store "$STORE_ID" --arg pid "$PRODUCT_ID" '{sql:$sql,params:[$store,$pid]}' > "$RUNNER_TEMP/read-product-q.json"
+          curl --fail-with-body --silent --show-error             -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$PROD_D1_DATABASE_ID/query"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H "Content-Type: application/json"             --data-binary @"$RUNNER_TEMP/read-product-q.json" > "$RUNNER_TEMP/read-product.json"
           jq -e --arg pid "$PRODUCT_ID" '
-            (.[0].results // .results // []) as $r
-            | ($r|length)==1
-            and $r[0].product_id==$pid
-            and $r[0].lifecycle_status=="ACTIVE"
-            and ($r[0].category_count|tonumber)==0
-          ' "$RUNNER_TEMP/product.json" >/dev/null
+            .success == true
+            and ((.result[0].results|length)==1)
+            and .result[0].results[0].product_id==$pid
+            and .result[0].results[0].lifecycle_status=="ACTIVE"
+            and (.result[0].results[0].category_count|tonumber)==0
+          ' "$RUNNER_TEMP/read-product.json" >/dev/null
           echo "b2517_production_identity_readback=PASS"
-
-      - name: Delete one-time Worker
-        if: always()
-        working-directory: source
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler delete --config b2517-register-wrangler.jsonc --force || true
