@@ -71,7 +71,7 @@ jobs:
               localStorage.setItem('morefunos.smt.device-session.v1',JSON.stringify(session));
             },pair.body);
 
-            await page.goto(process.env.SMT_ORIGIN+'/orders',{waitUntil:'networkidle'});
+            await page.goto(process.env.SMT_ORIGIN+'/#/orders',{waitUntil:'networkidle'});
             await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible',timeout:15000});
 
             const card=page.locator('.orders-source-pools section',{hasText:'6893'}).first();
