@@ -1,0 +1,74 @@
+name: Keeta SIT 2965 Order Get RPC Probe
+on:
+  push:
+    branches: [main]
+    paths: ['requests/keeta-sit-2965-order-get-rpc-probe.txt']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Deploy ephemeral RPC probe, read 2965, cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/keeta-rpc-probe"
+          mkdir -p "$WORK/src"
+          KEY="$(openssl rand -hex 32)"
+          cat > "$WORK/package.json" <<'EOF'
+          {"private":true,"type":"module","devDependencies":{"wrangler":"4.37.1"}}
+          EOF
+          cat > "$WORK/wrangler.jsonc" <<EOF
+          {
+            "name": "morefun-keeta-sit-2965-rpc-probe",
+            "main": "src/index.ts",
+            "compatibility_date": "2026-09-05",
+            "workers_dev": true,
+            "vars": {"PROBE_KEY": "$KEY"},
+            "services": [
+              {
+                "binding": "KEETA",
+                "service": "morefun-v2-keeta-sit",
+                "entrypoint": "KeetaMerchantDecisionService"
+              }
+            ]
+          }
+          EOF
+          cat > "$WORK/src/index.ts" <<'EOF'
+          interface Env {
+            PROBE_KEY: string;
+            KEETA: { readOrderCommercialReadback(dedupKey:string):Promise<unknown> };
+          }
+          export default {
+            async fetch(request:Request,env:Env):Promise<Response>{
+              if(request.headers.get("x-probe-key")!==env.PROBE_KEY)return new Response("forbidden",{status:403});
+              try {
+                const result=await env.KEETA.readOrderCommercialReadback("KEETA:2096375487671742477");
+                return Response.json({ok:true,result});
+              } catch(error) {
+                return Response.json({ok:false,error:error instanceof Error?error.message:String(error)});
+              }
+            }
+          };
+          EOF
+          cd "$WORK"
+          npm install --ignore-scripts --no-audit --no-fund
+          cleanup(){ npx wrangler delete --name morefun-keeta-sit-2965-rpc-probe --force >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          DEPLOY="$(npx wrangler deploy)"
+          URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
+          test -n "$URL"
+          BODY="$(curl --retry 12 --retry-delay 1 --retry-all-errors --fail-with-body --silent --show-error -H "x-probe-key: $KEY" "$URL")"
+          echo "$BODY" | jq -e '.ok==true' >/dev/null
+          echo "$BODY" | jq -e '.result.providerOrderId=="5143440812062965"' >/dev/null
+          echo "$BODY" | jq -e '.result.providerCode==0' >/dev/null
+          echo "ORDER_GET_2965=$(echo "$BODY" | jq -c '.result|{providerOrderId,providerShopId,providerCode,promotionCount,commercialSnapshot}')"
