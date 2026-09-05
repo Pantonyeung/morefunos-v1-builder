@@ -35,7 +35,7 @@ jobs:
             local name="$1"
             local sql="$2"
             SQL="$sql" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
-            curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > "/tmp/${name}.json"
+            curl -sS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/query.json > "/tmp/${name}.json"
             NAME="$name" node -e "const x=require('/tmp/'+process.env.NAME+'.json');if(!x.success||!x.result?.[0]?.success){console.error(JSON.stringify(x.errors||x.result||x));process.exit(1)};for(const row of x.result[0].results||[])console.log(JSON.stringify(row))" | tee "evidence/${name}.txt"
           }
 
@@ -45,13 +45,12 @@ jobs:
           query business_days "SELECT store_id, business_date, lifecycle_status, opened_at, closed_at, revision FROM mfos_business_day ORDER BY opened_at DESC LIMIT 10"
           query reporting_currency "SELECT store_id, currency, COUNT(*) AS active_profiles FROM mfos_pricing_profile WHERE lifecycle_status='ACTIVE' GROUP BY store_id, currency ORDER BY store_id, currency"
           query reporting_orders_health "SELECT store_id, lifecycle_status, COUNT(*) AS orders, SUM(CASE WHEN order_snapshot_json IS NULL THEN 1 ELSE 0 END) AS missing_snapshot, SUM(CASE WHEN json_extract(order_snapshot_json,'$.currency') IS NULL THEN 1 ELSE 0 END) AS missing_currency, SUM(CASE WHEN json_extract(order_snapshot_json,'$.totalMinor') IS NULL THEN 1 ELSE 0 END) AS missing_total FROM mfos_order_state WHERE lifecycle_status IN ('ACCEPTED','COMPLETED') GROUP BY store_id,lifecycle_status ORDER BY store_id,lifecycle_status"
-          query reporting_projection_schema "PRAGMA table_info(mfos_reporting_projection)"
           query reporting_projection "SELECT projection_key, store_id, currency, projection_revision, updated_at FROM mfos_reporting_projection ORDER BY updated_at DESC LIMIT 20"
           query reporting_payments_health "SELECT store_id, COUNT(*) AS payments, SUM(CASE WHEN payment_json IS NULL THEN 1 ELSE 0 END) AS missing_json, SUM(CASE WHEN json_extract(payment_json,'$.paymentId') IS NULL THEN 1 ELSE 0 END) AS missing_payment_id, SUM(CASE WHEN json_extract(payment_json,'$.orderId') IS NULL THEN 1 ELSE 0 END) AS missing_order_id, SUM(CASE WHEN json_extract(payment_json,'$.currency') IS NULL THEN 1 ELSE 0 END) AS missing_currency FROM mfos_payment_state GROUP BY store_id ORDER BY store_id"
           query reporting_refunds_health "SELECT store_id, COUNT(*) AS refunds, SUM(CASE WHEN refund_json IS NULL THEN 1 ELSE 0 END) AS missing_json, SUM(CASE WHEN json_extract(refund_json,'$.refundId') IS NULL THEN 1 ELSE 0 END) AS missing_refund_id, SUM(CASE WHEN json_extract(refund_json,'$.paymentId') IS NULL THEN 1 ELSE 0 END) AS missing_payment_id FROM mfos_refund_state GROUP BY store_id ORDER BY store_id"
 
           printf 'database_name=morefun-v2-production\nsecrets_or_tokens_logged=NO\n' > evidence/summary.txt
-          rm -f /tmp/query.json /tmp/counts.json /tmp/latest.json /tmp/stores.json /tmp/business_days.json /tmp/reporting_currency.json /tmp/reporting_orders_health.json /tmp/reporting_projection_schema.json /tmp/reporting_projection.json /tmp/reporting_payments_health.json /tmp/reporting_refunds_health.json
+          rm -f /tmp/query.json /tmp/counts.json /tmp/latest.json /tmp/stores.json /tmp/business_days.json /tmp/reporting_currency.json /tmp/reporting_orders_health.json /tmp/reporting_projection.json /tmp/reporting_payments_health.json /tmp/reporting_refunds_health.json
 
       - uses: actions/upload-artifact@v4
         if: always()
