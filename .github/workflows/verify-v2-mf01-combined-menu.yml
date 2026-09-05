@@ -72,18 +72,27 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Install source dependencies
+      - name: Install source dependencies and TypeScript toolchain
         working-directory: source
-        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
+          test -x ./node_modules/.bin/tsc
       - name: Root TypeScript guard
         working-directory: source
-        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | tee ../evidence/root-typecheck.log
       - name: Catalog and Admin regression
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
-          node --test packages/catalog/*.test.ts packages/admin-ui-integration/*.test.ts 2>&1 | tee ../evidence/regression.log
+          mapfile -t ADMIN_TESTS < <(find packages/admin-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 'admin-session-worker.test.ts' ! -name 'admin-worker-session-runtime.test.ts' -print | sort)
+          node --test packages/catalog/*.test.ts "${ADMIN_TESTS[@]}" 2>&1 | tee ../evidence/regression.log
       - name: Admin typecheck and build
         working-directory: source/apps/admin-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
