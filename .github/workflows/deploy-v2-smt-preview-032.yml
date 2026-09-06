@@ -133,38 +133,29 @@ jobs:
             if(missingOperations.length)throw new Error('SMT_PREVIEW_REQUIRED_OPS_MISSING:'+missingOperations.join(','));
             await page.evaluate(session=>localStorage.setItem('morefunos.smt.device-session.v1',JSON.stringify(session)),pair.session);
             await page.reload({waitUntil:'networkidle'});
-            await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible'});
-            const notice=page.getByText('NOT_AVAILABLE_IN_BROWSER',{exact:false});
-            if(await notice.count()===0)throw new Error('SMT_PREVIEW_NATIVE_BOUNDARY_NOTICE_MISSING');
-            const runtime=await page.evaluate(async(token)=>{
-              const invoke=async(operationId,request)=>{
-                const r=await fetch('/api/smt/runtime',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({operationId,request}),cache:'no-store'});
-                return {status:r.status,body:await r.json()};
-              };
-              const menu=await invoke('catalog.menu.active.read.v1',{});
-              const orders=await invoke('order.open-list.read.v1',{limit:50});
-              return {
-                menuStatus:menu.status,
-                productCount:Array.isArray(menu.body?.products)?menu.body.products.length:-1,
-                ordersStatus:orders.status,
-                orderCount:Array.isArray(orders.body?.orders)?orders.body.orders.length:-1,
-              };
-            },pair.session.sessionToken);
-            if(runtime.menuStatus!==200||runtime.productCount<1)throw new Error('SMT_PREVIEW_MENU_UNAVAILABLE');
-            if(runtime.ordersStatus!==200||runtime.orderCount<0)throw new Error('SMT_PREVIEW_OPEN_ORDERS_UNAVAILABLE');
+            await page.getByRole('main',{name:'SMT 員工登入'}).waitFor({state:'visible'});
+            await page.getByLabel('員工編號').waitFor({state:'visible'});
+            await page.getByLabel('員工 PIN').waitFor({state:'visible'});
+            await page.getByRole('button',{name:'登入並開始營運'}).waitFor({state:'visible'});
+            if(await page.getByLabel('Owner 管理密碼').count()!==0)throw new Error('SMT_PREVIEW_OWNER_PASSWORD_REPROMPTED');
+            if((await page.locator('body').innerText()).includes('Runtime 已連接'))throw new Error('SMT_PREVIEW_FALSE_RUNTIME_CONNECTED_BEFORE_STAFF_AUTH');
             const publicOrigin=new URL(process.env.URL).origin;
             if(apiNetwork.some(x=>x.origin!==publicOrigin))throw new Error('SMT_PREVIEW_CROSS_ORIGIN_API_FORBIDDEN');
             if(pageErrors.length)throw new Error('SMT_PREVIEW_PAGE_ERROR:'+pageErrors.join('|'));
+            if(requestFailures.length)throw new Error('SMT_PREVIEW_REQUEST_FAILED:'+requestFailures.map(x=>x.url).join('|'));
             const result={
               sourceSha:process.env.SOURCE_SHA||null,
               publicOrigin,
               viewport:{width:1920,height:1080},
               documentSize:{scrollWidth:pre.scrollWidth,scrollHeight:pre.scrollHeight},
-              runtimeConnected:true,
+              devicePaired:true,
+              staffLoginGateVisible:true,
+              runtimeConnected:false,
+              runtimeAcceptance:'BLOCKED_BY_REQUIRED_STAFF_AUTH',
               mountedOperations:pair.session.mountedOperationIds.length,
-              productCount:runtime.productCount,
-              openOrderCount:runtime.orderCount,
-              nativeOnlyNotice:true,
+              productCount:null,
+              openOrderCount:null,
+              nativeOnlyNotice:false,
               browserPhysicalPrintSuccessClaim:false,
               directBrowserD1:false,
               apiNetwork,
