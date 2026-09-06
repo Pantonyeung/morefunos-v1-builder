@@ -1,4 +1,4 @@
-source_sha=3192d0a4f6b118628b10be47f3f2ad3b9921b448
-base_sha=901a27f85667890aba083ada94c42cab4b9cd155
-branch_name=work/TEAM-A/smm-performance-orders-nav-capacity-20260906-01
-request_id=TEAMA-SMM-PERF-ORDERS-NAV-CAPACITY-R2-20260906-01
+source_sha=f6ae4bb879c090f82a50393acefc756b1310368b
+base_sha=cfc92606d2274a762b3c24ab9a219377674d3292
+branch_name=work/TEAM1/smm-performance-orders-nav-capacity-20260906-01
+request_id=TEAMA-SMM-P0-CAPACITY-CONFIRM-20260906-01
