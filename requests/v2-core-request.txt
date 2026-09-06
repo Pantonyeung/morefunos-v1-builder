@@ -1,2 +1,2 @@
-source_sha=bc606f64e1e974d95b4089ee8340e3141c71ac33
-branch_name=work/P0/staff-pin-admin-smt-auth-fresh-main-20260906-02
+source_sha=9e929315a2d3057ad48e91b083792f785053fab1
+branch_name=work/P0/staff-pin-admin-smt-auth-fresh-main-20260906-01
