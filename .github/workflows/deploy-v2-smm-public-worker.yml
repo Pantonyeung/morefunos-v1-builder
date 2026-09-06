@@ -112,7 +112,7 @@ jobs:
           PAIR_HTTP="$(curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
           echo "invalid_pair_http=$PAIR_HTTP body=$(cat /tmp/pair-response.json)"
           test "$PAIR_HTTP" = 401
-          node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMT_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
+          node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMM_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
           FIXTURE_MARKERS=0
           for marker in 'TST-SMM-' 'SMM-DEMO-ORDER' 'SMM-FIXTURE-ORDER'; do
             if grep -Fq "$marker" /tmp/smm.js; then FIXTURE_MARKERS=$((FIXTURE_MARKERS+1)); fi
