@@ -1,2 +1,2 @@
-source_sha=a752991ab8a7eae5b19d62ca03b177b3534c1cca
-request_id=PRICING-A752-SMM-STRICT-02
+source_sha=842c350c10de9e9c9ab6dc75c5b166bbdaee7512
+request_id=PRICING-842C-SMM-EXACT-15
