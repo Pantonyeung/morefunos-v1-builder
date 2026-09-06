@@ -1,0 +1,66 @@
+name: Team A Order Display Code Production Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-order-display-code-production-readback.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-order-display-code-production-readback.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Read production D1 display-code schema
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DATABASE_ID/query"
+          SQL="SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_display_code_counter','mfos_order_display_code') ORDER BY name"
+          node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))" SQL="$SQL"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl --fail-with-body --silent --show-error -X POST "$URL"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'content-type: application/json'             --data-binary @/tmp/query.json > /tmp/result.json
+          node - <<'NODE'
+          const x=require('/tmp/result.json');
+          const rows=x.result?.[0]?.results||[];
+          if(!x.success||!x.result?.[0]?.success) throw new Error('D1_QUERY_FAILED');
+          const names=rows.map(r=>r.name).sort();
+          const expected=['mfos_order_display_code','mfos_order_display_code_counter'];
+          if(JSON.stringify(names)!==JSON.stringify(expected)) throw new Error('DISPLAY_CODE_TABLES_MISSING:'+JSON.stringify(names));
+          const by=Object.fromEntries(rows.map(r=>[r.name,String(r.sql||'')]));
+          if(!/PRIMARY KEY/i.test(by.mfos_order_display_code_counter)) throw new Error('COUNTER_PK_MISSING');
+          if(!/UNIQUE/i.test(by.mfos_order_display_code)) throw new Error('ASSIGNMENT_UNIQUE_MISSING');
+          console.log('display_code_schema=PASS');
+          console.log(JSON.stringify(rows));
+          NODE
+
+      - name: Upload readback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-a-order-display-code-production-readback-${{ steps.req.outputs.source_sha }}
+          path: /tmp/result.json
+          if-no-files-found: error
+          retention-days: 30
