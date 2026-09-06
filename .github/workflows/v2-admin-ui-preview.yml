@@ -1,0 +1,83 @@
+name: V2 Admin UI Preview
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-ui-preview-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-ui-preview-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+
+      - name: Verify and build exact Admin source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          cd apps/admin-web
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          test -f dist/index.html
+
+      - name: Upload non-production Worker version
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias owner-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
+          URL="$(grep -Eo 'https://[a-z0-9-]+-morefun-v2-admin\.[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/upload.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+
+      - name: Smoke preview shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          test "$(curl -sS -o /tmp/index.html -w '%{http_code}' "$URL/admin/overview")" = 200
+          test "$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/admin/session")" = 401
+          printf 'overview=200\nanonymous_session=401\n' > evidence/runtime.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-ui-preview-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
