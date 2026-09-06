@@ -1,5 +1,5 @@
-source_sha=05cb7270ab671222029d65768262b070cc38a99b
-base_sha=71d727dadabc8772edbca5c66b9675b10cd549b4
-branch_name=work/CORE/r10-first-principal-fresh-main-20260905
+source_sha=f6b4ba22bfa022927812db1c7246693da4f27d45
+base_sha=c87220068859ea9d3857c74995555aac67785b2a
+branch_name=work/TEAM2/inventory-recipe-d1-20260906-01
 verification_phase=CANDIDATE
-request_id=SMM-R10-FIRST-PRINCIPAL-FRESH-MAIN
+request_id=TEAM-B-INVENTORY-RECIPE-CORE-20260906-R2
