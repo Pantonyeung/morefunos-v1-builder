@@ -58,7 +58,7 @@ jobs:
 
       - name: Install
         working-directory: source
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
 
       - name: A1+A2 canonical identity and pickup tests
         working-directory: source
@@ -75,11 +75,19 @@ jobs:
       - name: A1+A2 targeted typecheck
         working-directory: source
         run: |
-          npx tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions             packages/order/canonical-order-identity.ts             packages/order/order-validation.ts             packages/integration/keeta-canonical-order-projection.ts
+          ./node_modules/.bin/tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions \
+            packages/order/canonical-order-identity.ts \
+            packages/order/order-display-code.ts \
+            packages/order/d1-order-display-code.ts \
+            packages/order/order-validation.ts \
+            packages/order/d1-acceptance.ts \
+            packages/order/d1-store-order-acceptance.ts \
+            packages/order/d1-customer-order-service.ts \
+            packages/integration/keeta-canonical-order-projection.ts
 
       - name: Full repo typecheck
         working-directory: source
-        run: npm run typecheck
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
 
       - name: Write evidence
         if: always()
