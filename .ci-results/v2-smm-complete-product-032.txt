@@ -1,5 +1,5 @@
-source_sha=f38319bceab7bb9e46758e41d8cd6a1f457f6a95
-request_id=PRICING-F383-SMM-EXACT-10
-run_id=34066575645
+source_sha=5c4e0bc4d4d76c3fa56fa01983d1f160cdbc1211
+request_id=TEAMA-SMM-P0-BACKEND-MIDCHECK-20260907
+run_id=34066921505
 run_attempt=1
-conclusion=success
+conclusion=failure
