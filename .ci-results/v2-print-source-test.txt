@@ -1,6 +1,6 @@
-source_sha=2a38f1867816fdfb0b55d29e9e9303a83c9ff0ab
+source_sha=f849d4173803e0f14ba6b042ed4d7577e8a97280
 branch_name=work/TEAM2/fresh-main-full-chain-reconcile-20260906-02
-request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-PRINT-20260906
-run_id=34015023016
+request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-PRINT-R10-20260906
+run_id=34017010777
 run_attempt=1
 conclusion=success
