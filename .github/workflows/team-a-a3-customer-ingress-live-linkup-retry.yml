@@ -1,0 +1,213 @@
+name: Team A A3 Customer Ingress Live Linkup Retry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-customer-ingress-live-linkup-retry.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+      PRODUCT_ID: 01c3ed11-3656-5786-a46b-2d90ce1413d5
+      CUSTOMER_ORIGIN: https://morefun-v2-customer.pantonyeung.workers.dev
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a3-customer-ingress-live-linkup.txt | tr -d '[:space:]')"
+          SUBMISSION_ID="$(sed -n 's/^submission_id=//p' requests/team-a-a3-customer-ingress-live-linkup.txt | tr -d '[:space:]')"
+          IDEMPOTENCY_KEY="$(sed -n 's/^idempotency_key=//p' requests/team-a-a3-customer-ingress-live-linkup.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$SUBMISSION_ID"
+          test -n "$IDEMPOTENCY_KEY"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "submission_id=$SUBMISSION_ID" >> "$GITHUB_OUTPUT"
+          echo "idempotency_key=$IDEMPOTENCY_KEY" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+
+      - name: Require deployed source still contained in current main
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git ls-remote "https://x-access-token:$GH_TOKEN@github.com/Pantonyeung/Morefun-v2.git" "$SOURCE_SHA" >/dev/null 2>&1 || true
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          gh api repos/Pantonyeung/Morefun-v2/compare/"$SOURCE_SHA"..."$MAIN_SHA" > /tmp/compare.json
+          STATUS="$(node -e "const x=require('/tmp/compare.json');process.stdout.write(String(x.status||''))")"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || test "$STATUS" = "ahead"
+          printf 'deployed_source=%s\ncurrent_main=%s\ncompare_status=%s\n' "$SOURCE_SHA" "$MAIN_SHA" "$STATUS" > evidence/source.txt
+
+      - name: Preflight unused submission and production schema
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT (SELECT COUNT(*) FROM mfos_customer_order_ownership WHERE submission_id=?) AS submission_rows,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mfos_order_display_code') AS display_table,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mfos_order_display_code_counter') AS counter_table"
+          SUBMISSION_ID="$SUBMISSION_ID" SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/preflight.json',JSON.stringify({sql:process.env.SQL,params:[process.env.SUBMISSION_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/preflight.json > /tmp/preflight-result.json
+          node - <<'NODE' | tee evidence/preflight.txt
+          const x=require('/tmp/preflight-result.json'),r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('D1_PREFLIGHT_FAILED');
+          if(Number(r.submission_rows)!==0) throw new Error('SUBMISSION_ALREADY_EXISTS');
+          if(Number(r.display_table)!==1||Number(r.counter_table)!==1) throw new Error('DISPLAY_CODE_SCHEMA_MISSING');
+          console.log(JSON.stringify(r));
+          NODE
+
+      - name: Public Customer ordering must expose known safe product
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl -sS -o /tmp/ordering.json -w '%{http_code}' "$CUSTOMER_ORIGIN/api/customer/ordering")"
+          test "$HTTP" = 200
+          node - <<'NODE' | tee evidence/ordering.txt
+          const x=require('/tmp/ordering.json');
+          if(x.storeStatus!=='open') throw new Error('STORE_NOT_OPEN');
+          const p=(x.products||[]).find(v=>v.productId===process.env.PRODUCT_ID);
+          if(!p||p.available!==true) throw new Error('SAFE_PRODUCT_NOT_AVAILABLE');
+          console.log(JSON.stringify({http:200,productId:p.productId,name:p.name,currency:p.currency,priceMinor:p.priceMinor,available:p.available}));
+          NODE
+
+      - name: Submit one real order through Customer public Worker
+        id: submit
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+          IDEMPOTENCY_KEY: ${{ steps.req.outputs.idempotency_key }}
+        run: |
+          set -euo pipefail
+          node -e "require('fs').writeFileSync('/tmp/order.json',JSON.stringify({submissionId:process.env.SUBMISSION_ID,idempotencyKey:process.env.IDEMPOTENCY_KEY,payload:{lines:[{productId:process.env.PRODUCT_ID,quantity:1}]}}))"
+          HTTP="$(curl -sS -D /tmp/customer.headers -c /tmp/customer.cookies -o /tmp/submit.json -w '%{http_code}' -H 'content-type: application/json' --data-binary @/tmp/order.json "$CUSTOMER_ORIGIN/api/customer/orders")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const fs=require('fs'),x=require('/tmp/submit.json');
+          if(!x.ok||x.status!=='ACCEPTED'||typeof x.orderId!=='string'||!x.orderId) throw new Error('SUBMIT_NOT_ACCEPTED');
+          if(typeof x.lookupToken!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(x.lookupToken)) throw new Error('LOOKUP_TOKEN_INVALID');
+          fs.writeFileSync('/tmp/order-id',x.orderId);
+          fs.writeFileSync('/tmp/lookup-token',x.lookupToken,{mode:0o600});
+          fs.writeFileSync('evidence/submit-safe.json',JSON.stringify({ok:x.ok,submissionId:x.submissionId,orderId:x.orderId,orderRevision:x.orderRevision,status:x.status,lookupTokenLength:x.lookupToken.length},null,2));
+          NODE
+          ORDER_ID="$(cat /tmp/order-id)"
+          echo "order_id=$ORDER_ID" >> "$GITHUB_OUTPUT"
+          printf 'submit_http=%s\norder_id=%s\n' "$HTTP" "$ORDER_ID" | tee evidence/live.txt
+
+      - name: Replay and protected lifecycle through Customer public Worker
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+          ORDER_ID: ${{ steps.submit.outputs.order_id }}
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/lookup-token)"
+          REPLAY="$(curl -sS -b /tmp/customer.cookies -o /tmp/replay.json -w '%{http_code}' -H 'content-type: application/json' --data-binary @/tmp/order.json "$CUSTOMER_ORIGIN/api/customer/orders")"
+          test "$REPLAY" = 200
+          node -e "const a=require('/tmp/submit.json'),b=require('/tmp/replay.json');if(a.orderId!==b.orderId||a.submissionId!==b.submissionId)process.exit(1)"
+          STATUS="$(curl -sS -b /tmp/customer.cookies -o /tmp/status.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$CUSTOMER_ORIGIN/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          test "$STATUS" = 200
+          node -e "const s=require('/tmp/status.json');if(s.orderId!==process.env.ORDER_ID||s.submissionId!==process.env.SUBMISSION_ID||s.lifecycleStatus!=='ACCEPTED')process.exit(1)"
+          printf 'replay_http=%s\nlifecycle_http=%s\n' "$REPLAY" "$STATUS" >> evidence/live.txt
+          cp /tmp/status.json evidence/status.json
+
+      - name: Prove one canonical D1 Order with canonical Customer identity and pickup code
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+          ORDER_ID: ${{ steps.submit.outputs.order_id }}
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT s.order_id,s.store_id,s.accepted_projection_json,o.submission_id,d.display_code,d.source_order_key,d.business_date FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id JOIN mfos_order_display_code d ON d.order_id=s.order_id WHERE s.order_id=? AND o.submission_id=?"
+          ORDER_ID="$ORDER_ID" SUBMISSION_ID="$SUBMISSION_ID" SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/d1.json',JSON.stringify({sql:process.env.SQL,params:[process.env.ORDER_ID,process.env.SUBMISSION_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/d1.json > /tmp/d1-result.json
+          node - <<'NODE' | tee evidence/d1-canonical.txt
+          const x=require('/tmp/d1-result.json'),rows=x.result?.[0]?.results||[];
+          if(!x.success||rows.length!==1) throw new Error('D1_EXACTLY_ONE_FAILED');
+          const r=rows[0],p=JSON.parse(r.accepted_projection_json||'null'),id=p?.canonicalIdentity;
+          if(r.order_id!==process.env.ORDER_ID||r.submission_id!==process.env.SUBMISSION_ID) throw new Error('D1_ORDER_CORRELATION_FAILED');
+          if(!id||id.orderId!==process.env.ORDER_ID||id.storeId!==process.env.STORE_ID) throw new Error('CANONICAL_IDENTITY_BINDING_FAILED');
+          if(id.sourceType!=='CUSTOMER'||id.sourceProvider!==null||id.sourceChannel!=='CUSTOMER_WEB') throw new Error('CANONICAL_IDENTITY_SOURCE_FAILED');
+          if(id.externalOrderId!==process.env.SUBMISSION_ID||id.sourceOrderKey!=='CUSTOMER:'+process.env.SUBMISSION_ID) throw new Error('CANONICAL_IDENTITY_EXTERNAL_FAILED');
+          if(!/^\d{4}$/.test(String(id.displayOrderCode||''))||id.displayOrderCode!==r.display_code) throw new Error('DISPLAY_CODE_FAILED');
+          if(r.source_order_key!=='CUSTOMER:'+process.env.SUBMISSION_ID) throw new Error('DISPLAY_SOURCE_KEY_FAILED');
+          console.log(JSON.stringify({orderId:r.order_id,submissionId:r.submission_id,displayOrderCode:r.display_code,sourceOrderKey:r.source_order_key,businessDate:r.business_date,canonicalIdentity:id}));
+          NODE
+
+      - name: Prove same order visible in SMM
+        shell: bash
+        env:
+          ORDER_ID: ${{ steps.submit.outputs.order_id }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE' | tee evidence/smm.txt
+          const fs=require('fs');
+          (async()=>{
+            const pair=await fetch(process.env.SMM_ORIGIN+'/api/smm/session',{method:'POST',headers:{'content-type':'application/json',accept:'application/json'},body:JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET})});
+            const session=await pair.json();
+            if(pair.status!==200||!session.sessionToken) throw new Error('SMM_SESSION_FAILED_'+pair.status);
+            const r=await fetch(process.env.SMM_ORIGIN+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:100}})});
+            const body=await r.json();
+            if(r.status!==200||!Array.isArray(body.orders)) throw new Error('SMM_OPEN_LIST_FAILED_'+r.status);
+            const match=body.orders.find(o=>o?.orderId===process.env.ORDER_ID);
+            if(!match) throw new Error('SMM_ORDER_NOT_VISIBLE');
+            console.log(JSON.stringify({visible:true,orderId:match.orderId,lifecycleStatus:match.lifecycleStatus}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Prove same order visible in SMT exact detail
+        shell: bash
+        env:
+          ORDER_ID: ${{ steps.submit.outputs.order_id }}
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/admin.headers -o /tmp/admin.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_ORIGIN/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/admin.headers | tr -d '\r' | head -n1)"
+          TOKEN="${COOKIE#mf_admin_session=}"
+          test -n "$TOKEN"
+          ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/smt.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o /tmp/smt.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/smt.json "$ADMIN_ORIGIN/api/smt/runtime")"
+          test "$HTTP" = 200
+          node - <<'NODE' | tee evidence/smt.txt
+          const x=require('/tmp/smt.out.json');
+          if(x.orderId!==process.env.ORDER_ID) throw new Error('SMT_ORDER_ID_MISMATCH');
+          if(x.storeId!==process.env.STORE_ID) throw new Error('SMT_STORE_ID_MISMATCH');
+          if(x.submissionId!==process.env.SUBMISSION_ID) throw new Error('SMT_SUBMISSION_ID_MISMATCH');
+          console.log(JSON.stringify({visible:true,orderId:x.orderId,storeId:x.storeId,submissionId:x.submissionId,lifecycleStatus:x.lifecycleStatus}));
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-customer-ingress-live-linkup-${{ steps.submit.outputs.order_id || 'no-order' }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
