@@ -1,0 +1,156 @@
+name: Verify V2 Pricing Realtime Golden Thread
+
+on:
+  push:
+    paths:
+      - 'requests/v2-pricing-realtime-golden-thread-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact latest source
+        id: req
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-pricing-realtime-golden-thread-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-pricing-realtime-golden-thread-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Prove live Admin mutation -> revision -> WebSocket -> unchanged Pricebook
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" || { echo "::error::PRICING_GOLDEN_THREAD_ADMIN_SESSION_SECRET_REQUIRED"; exit 1; }
+          node - <<'NODE'
+          const base=process.env.ADMIN_URL.replace(/\/$/,'');
+          const sessions=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);
+          const token=Array.isArray(sessions)&&sessions[0]?.sessionToken;
+          if(!token)throw new Error('PRICING_GOLDEN_THREAD_SESSION_INVALID');
+          const cookie='mf_admin_session='+token;
+          const json=async(url,init={})=>{
+            const r=await fetch(url,{...init,headers:{accept:'application/json',...(init.headers||{})}});
+            let body=null;try{body=await r.json()}catch{}
+            if(!r.ok)throw new Error('HTTP_'+r.status+':'+url+':'+JSON.stringify(body));
+            return body;
+          };
+
+          const session=await json(base+'/api/admin/session',{headers:{cookie}});
+          if(session?.authenticated!==true||session?.bootstrapAuthorized!==true)throw new Error('PRICING_GOLDEN_THREAD_SESSION_NOT_AUTHORIZED');
+
+          const before=await json(base+'/api/pricing/revision');
+          const beforeRevision=Number(before?.value?.revision);
+          const beforeToken=String(before?.value?.revisionToken||'');
+          if(!Number.isSafeInteger(beforeRevision)||beforeRevision<1||!beforeToken)throw new Error('PRICING_GOLDEN_THREAD_BEFORE_REVISION_INVALID');
+
+          const pricing=await json(base+'/api/admin/pricing/profiles',{headers:{cookie}});
+          const profile=(pricing?.value?.profiles||[]).find(p=>p?.subjectType==='PRODUCT'&&Number.isSafeInteger(p?.fixedPriceMinor)&&Number.isSafeInteger(p?.revision));
+          if(!profile)throw new Error('PRICING_GOLDEN_THREAD_PRODUCT_PROFILE_REQUIRED');
+
+          const productId=String(profile.subjectId);
+          const fixedPriceMinor=Number(profile.fixedPriceMinor);
+          const profileRevision=Number(profile.revision);
+
+          const activeBefore=await json(base+'/api/pricing/active');
+          const publishedBefore=activeBefore?.value?.products?.[productId];
+          if(!publishedBefore||Number(publishedBefore.baseUnitPriceMinor)!==fixedPriceMinor)throw new Error('PRICING_GOLDEN_THREAD_BEFORE_PRICEBOOK_MISMATCH');
+
+          const wsUrl=base.replace(/^https:/,'wss:').replace(/^http:/,'ws:')+'/api/pricing/socket';
+          const ws=new WebSocket(wsUrl);
+          const opened=new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(new Error('PRICING_GOLDEN_THREAD_WS_OPEN_TIMEOUT')),5000);
+            ws.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
+            ws.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('PRICING_GOLDEN_THREAD_WS_OPEN_FAILED'));},{once:true});
+          });
+          await opened;
+
+          const broadcast=new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(new Error('PRICING_GOLDEN_THREAD_BROADCAST_TIMEOUT')),8000);
+            ws.addEventListener('message',event=>{
+              let value;try{value=JSON.parse(String(event.data))}catch{return}
+              if(value?.type!=='PRICING_REVISION_ACTIVATED')return;
+              clearTimeout(timer);resolve(value);
+            });
+          });
+
+          const mutation=await json(base+'/api/admin/pricing/profiles',{
+            method:'PATCH',
+            headers:{cookie,'content-type':'application/json'},
+            body:JSON.stringify({productId,fixedPriceMinor,expectedRevision:profileRevision}),
+          });
+          const mutationRevision=Number(mutation?.value?.pricingRevision);
+          const mutationToken=String(mutation?.value?.pricingRevisionToken||'');
+          if(mutationRevision!==beforeRevision+1||!mutationToken)throw new Error('PRICING_GOLDEN_THREAD_MUTATION_REVISION_INVALID');
+
+          const event=await broadcast;
+          if(Number(event.revision)!==mutationRevision||String(event.revisionToken||'')!==mutationToken)throw new Error('PRICING_GOLDEN_THREAD_BROADCAST_REVISION_MISMATCH');
+
+          const after=await json(base+'/api/pricing/revision');
+          if(Number(after?.value?.revision)!==mutationRevision||String(after?.value?.revisionToken||'')!==mutationToken)throw new Error('PRICING_GOLDEN_THREAD_AFTER_REVISION_MISMATCH');
+
+          const activeAfter=await json(base+'/api/pricing/active');
+          const publishedAfter=activeAfter?.value?.products?.[productId];
+          if(!publishedAfter||Number(publishedAfter.baseUnitPriceMinor)!==fixedPriceMinor)throw new Error('PRICING_GOLDEN_THREAD_PRICE_CHANGED');
+
+          ws.close(1000,'golden-thread-complete');
+          console.log('pricing_golden_thread=PASS');
+          console.log('revision_before='+beforeRevision);
+          console.log('revision_after='+mutationRevision);
+          console.log('price_unchanged=true');
+          console.log('websocket_broadcast=PASS');
+          NODE
+
+      - name: Seal result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+              echo "request_id=${REQUEST_ID:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-pricing-realtime-golden-thread.txt
+            git add .ci-results/v2-pricing-realtime-golden-thread.txt
+            git commit -m "ci(result): Pricing realtime golden thread $CONCLUSION ${SOURCE_SHA:-UNKNOWN}" || exit 0
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
