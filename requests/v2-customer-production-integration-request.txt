@@ -1,2 +1,2 @@
-source_sha=fa0bbf0060bfafabd2e2c167f937b42277e98ad7
-attempt=pricing-local-first-customer-20260906-01
+source_sha=b60ca97e24e034c002943e683a650c2cdc17b986
+attempt=pricing-local-first-customer-20260907-02
