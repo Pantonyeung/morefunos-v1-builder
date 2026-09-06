@@ -1,2 +1,2 @@
 source_sha=c685887234a2797af74bb1b29c603247d991737b
-attempt=pricing-atomic-customer-c685-20260907
+attempt=pricing-c685-customer-serial-02
