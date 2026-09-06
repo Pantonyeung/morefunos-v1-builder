@@ -1,5 +1,5 @@
-source_sha=7afca696e32a4a3ca82968c7dee80ef2f5d0c4ce
-base_sha=493b62424397a59c53105bf0b8d34601a50692d7
-branch_name=main
+source_sha=e6c2649d444afe6dcc1f055eb86b31182d95c293
+base_sha=44a272bf04de01401fc56e6317eec52e00c9623c
+branch_name=work/P0/staff-pin-admin-smt-auth-20260906-01
 verification_phase=CANDIDATE
-request_id=TEAM-B-LATEST-MAIN-IMPACT-CORE-20260906
+request_id=TEAMA-STAFF-POS-CREDENTIAL-20260906-01
