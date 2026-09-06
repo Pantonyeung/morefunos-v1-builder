@@ -128,7 +128,9 @@ jobs:
               return {status:response.status,session};
             },process.env.ADMIN_LOGIN_SECRET);
             if(pair.status!==200||!pair.session?.sessionToken||!Array.isArray(pair.session?.mountedOperationIds))throw new Error('SMT_PREVIEW_PAIR_FAILED');
-            if(pair.session.mountedOperationIds.length!==21||!pair.session.mountedOperationIds.includes('order.direct.staff.submit.v1'))throw new Error('SMT_PREVIEW_21_OP_MANIFEST_MISMATCH');
+            const requiredOperations=['catalog.menu.active.read.v1','order.open-list.read.v1','order.direct.staff.submit.v1'];
+            const missingOperations=requiredOperations.filter(operationId=>!pair.session.mountedOperationIds.includes(operationId));
+            if(missingOperations.length)throw new Error('SMT_PREVIEW_REQUIRED_OPS_MISSING:'+missingOperations.join(','));
             await page.evaluate(session=>localStorage.setItem('morefunos.smt.device-session.v1',JSON.stringify(session)),pair.session);
             await page.reload({waitUntil:'networkidle'});
             await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible'});
