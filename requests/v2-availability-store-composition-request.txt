@@ -1,3 +1,3 @@
-source_sha=93aa00564334fb3f4e67594f12e735a0e0466893
-branch_name=work/TEAM2/admin-owner-linkup-fresh-main-20260906-02
-request_id=TEAM-B-FULL-LINKUP-AVAILABILITY-R2-20260906
+source_sha=f800de3dccc0f694b31954743c078cf703fd3b2a
+branch_name=work/TEAM2/general-batch-product-setting-20260906-01
+request_id=TEAM-B-FULL-CHAIN-AVAILABILITY-20260906
