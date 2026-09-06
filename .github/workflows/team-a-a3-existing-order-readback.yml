@@ -1,0 +1,93 @@
+name: Team A A3 Existing Order Continuation Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-existing-order-readback.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+      ORDER_ID: 1cff5665-94df-4452-a547-b40fdc51ea63
+      SUBMISSION_ID: team-a-a3-live-20260906-01
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: D1 canonical identity and idempotency readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT s.order_id,s.store_id,s.revision,s.lifecycle_status,s.accepted_projection_json,o.submission_id,d.display_code,d.source_order_key,d.business_date,i.request_fingerprint,i.result_json FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id JOIN mfos_order_display_code d ON d.order_id=s.order_id LEFT JOIN mfos_d1_idempotency i ON i.scope='order.acceptance' AND i.idempotency_key=? WHERE s.order_id=? AND o.submission_id=?"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL,params:[process.env.SUBMISSION_ID,process.env.ORDER_ID,process.env.SUBMISSION_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json >/tmp/r.json
+          node - <<'NODE' | tee evidence/d1.txt
+          const x=require('/tmp/r.json'),rows=x.result?.[0]?.results||[];
+          if(!x.success||rows.length!==1) throw new Error('D1_CORRELATION_FAILED');
+          const r=rows[0],p=JSON.parse(r.accepted_projection_json||'null'),id=p?.canonicalIdentity;
+          if(r.order_id!==process.env.ORDER_ID||r.submission_id!==process.env.SUBMISSION_ID) throw new Error('ORDER_CORRELATION_FAILED');
+          if(!id||id.orderId!==process.env.ORDER_ID||id.sourceType!=='CUSTOMER'||id.sourceProvider!==null||id.sourceChannel!=='CUSTOMER_WEB') throw new Error('CANONICAL_IDENTITY_FAILED');
+          if(id.externalOrderId!==process.env.SUBMISSION_ID||id.sourceOrderKey!=='CUSTOMER:'+process.env.SUBMISSION_ID) throw new Error('SOURCE_KEY_FAILED');
+          if(!/^\d{4}$/.test(String(id.displayOrderCode||''))||id.displayOrderCode!==r.display_code) throw new Error('DISPLAY_CODE_FAILED');
+          console.log(JSON.stringify({orderId:r.order_id,revision:r.revision,lifecycleStatus:r.lifecycle_status,submissionId:r.submission_id,displayOrderCode:r.display_code,sourceOrderKey:r.source_order_key,businessDate:r.business_date,canonicalIdentity:id,idempotencyFingerprintPresent:Boolean(r.request_fingerprint),idempotencyResult:JSON.parse(r.result_json||'null')},null,2));
+          NODE
+
+      - name: Same order visible in SMM
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE' | tee evidence/smm.txt
+          (async()=>{
+            const pair=await fetch(process.env.SMM_ORIGIN+'/api/smm/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET})});
+            const s=await pair.json();if(pair.status!==200||!s.sessionToken)throw new Error('SMM_SESSION_FAILED');
+            const r=await fetch(process.env.SMM_ORIGIN+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+s.sessionToken,'content-type':'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:100}})});
+            const b=await r.json();if(r.status!==200||!Array.isArray(b.orders))throw new Error('SMM_LIST_FAILED_'+r.status);
+            const m=b.orders.find(o=>o?.orderId===process.env.ORDER_ID);
+            if(!m)throw new Error('SMM_ORDER_NOT_VISIBLE');
+            console.log(JSON.stringify({visible:true,orderId:m.orderId,lifecycleStatus:m.lifecycleStatus,canonicalIdentity:m.canonicalIdentity??null}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Same order visible in SMT
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -D /tmp/h -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$ADMIN_ORIGIN/api/admin/session")"
+          test "$HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/h | tr -d '\r' | head -n1)"
+          TOKEN="${COOKIE#mf_admin_session=}"
+          test -n "$TOKEN"
+          node -e "require('fs').writeFileSync('/tmp/smt.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o /tmp/smt.out -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/smt.json "$ADMIN_ORIGIN/api/smt/runtime")"
+          test "$HTTP" = 200
+          node - <<'NODE' | tee evidence/smt.txt
+          const x=JSON.parse(require('fs').readFileSync('/tmp/smt.out','utf8'));
+          if(x.orderId!==process.env.ORDER_ID||x.storeId!==process.env.STORE_ID||x.submissionId!==process.env.SUBMISSION_ID)throw new Error('SMT_CORRELATION_FAILED');
+          console.log(JSON.stringify({visible:true,orderId:x.orderId,storeId:x.storeId,submissionId:x.submissionId,lifecycleStatus:x.lifecycleStatus,canonicalIdentity:x.canonicalIdentity??null}));
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-existing-order-readback
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
