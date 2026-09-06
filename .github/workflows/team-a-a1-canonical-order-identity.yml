@@ -1,0 +1,96 @@
+name: Team A A1 Canonical Order Identity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a1-canonical-order-identity.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact V2 source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a1-canonical-order-identity.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: A1 canonical identity tests
+        working-directory: source
+        run: |
+          node --test packages/order/canonical-order-identity.test.ts
+          node --test packages/order/order-validation.test.ts
+          node --test packages/integration/keeta-canonical-order-projection.test.ts
+          node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
+
+      - name: A1 targeted typecheck
+        working-directory: source
+        run: |
+          npx tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions             packages/order/canonical-order-identity.ts             packages/order/order-validation.ts             packages/integration/keeta-canonical-order-projection.ts
+
+      - name: Full repo typecheck
+        working-directory: source
+        run: npm run typecheck
+
+      - name: Write evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=team-a-a1-canonical-order-identity.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-a-a1-canonical-order-identity-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
