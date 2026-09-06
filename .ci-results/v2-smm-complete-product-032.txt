@@ -1,5 +1,5 @@
-source_sha=439031babee06fe3560404de33b899090564dfb5
-request_id=PRICING-439031-SMM-EXACT-05
-run_id=34065252132
+source_sha=58754feca3683a28ec16f560ee6dc134e36ebf16
+request_id=TEAMA-SMM-OPS-WORKFLOW-R1-COMPLETE-R2-20260907
+run_id=34065302302
 run_attempt=1
-conclusion=success
+conclusion=failure
