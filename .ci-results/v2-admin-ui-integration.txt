@@ -1,5 +1,5 @@
-source_sha=873c0ce5a3d55de80b90924aa67309a793fa9533
-request_id=TEAM-B-ANNOUNCEMENT-NOTIFICATION-ADMIN-UI-FIX-20260906
-run_id=34011787846
+source_sha=bc4d5da2a89dd55e9e939739c18bd2b9074f8dfc
+request_id=TEAM-B-INVENTORY-RECIPE-ADMIN-UI-20260906
+run_id=34011968142
 run_attempt=1
 conclusion=success
