@@ -1,6 +1,6 @@
-source_sha=67ff71170543fc083dd9f8da108cd98b08c7cd41
-branch_name=work/COMMANDER/order-auto-print-r9-fresh-main-20260906
-request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R10-FRESH-MAIN-20260906
-run_id=33998987744
+source_sha=UNKNOWN
+branch_name=UNKNOWN
+request_id=TEAM-B-ALL-LINKUPS-PRINT-R1-20260906
+run_id=34004697336
 run_attempt=1
-conclusion=success
+conclusion=failure
