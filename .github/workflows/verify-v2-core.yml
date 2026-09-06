@@ -29,7 +29,7 @@ on:
       - 'requests/v2-core-request.txt'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -325,3 +325,42 @@ jobs:
             ${{ runner.temp }}/v2-core-merge-request.log
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Seal durable Builder result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+          if [[ -z "$REQUEST_ID" ]]; then
+            REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+              echo "request_id=${REQUEST_ID:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "run_attempt=$RUN_ATTEMPT"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-core.txt
+            git add .ci-results/v2-core.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): V2 Core ${CONCLUSION} ${SOURCE_SHA:-UNKNOWN}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          echo "RESULT_SEAL_PUSH_FAILED" >&2
+          exit 1
+
