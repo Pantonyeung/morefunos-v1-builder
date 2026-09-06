@@ -228,7 +228,7 @@ jobs:
           set -euo pipefail
           cd source
           if compgen -G 'packages/integration/*.test.ts' > /dev/null; then
-            node --test packages/integration/*.test.ts | tee "$RUNNER_TEMP/v2-integration-tests.log"
+            node --experimental-loader "$GITHUB_WORKSPACE/scripts/cloudflare-workers-node-test-loader.mjs" --test packages/integration/*.test.ts | tee "$RUNNER_TEMP/v2-integration-tests.log"
           else
             echo 'no integration tests present' | tee "$RUNNER_TEMP/v2-integration-tests.log"
           fi
