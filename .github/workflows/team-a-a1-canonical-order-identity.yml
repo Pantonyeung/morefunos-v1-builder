@@ -26,8 +26,11 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a1-canonical-order-identity.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          BASELINE_SHA="$(sed -n 's/^baseline_sha=//p' requests/team-a-a1-canonical-order-identity.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "baseline_sha=$BASELINE_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         env:
@@ -41,6 +44,16 @@ jobs:
           ref: ${{ steps.request.outputs.source_sha }}
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Checkout exact latest-main baseline
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.baseline_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: baseline
           persist-credentials: false
           fetch-depth: 0
 
@@ -60,6 +73,10 @@ jobs:
         working-directory: source
         run: npm install --ignore-scripts --no-audit --no-fund && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
 
+      - name: Install baseline TypeScript toolchain
+        working-directory: baseline
+        run: npm install --ignore-scripts --no-audit --no-fund && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22
+
       - name: A1+A2 canonical identity and pickup tests
         working-directory: source
         run: |
@@ -72,20 +89,46 @@ jobs:
           node --test packages/integration/keeta-canonical-order-projection.test.ts
           node --test packages/integration/keeta-standard-canonical-acceptance-bridge.test.ts
 
-      - name: A1+A2 targeted typecheck
+      - name: A1+A2 changed-file typecheck
         working-directory: source
+        shell: bash
         run: |
+          set -o pipefail
+          set +e
           ./node_modules/.bin/tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions \
             packages/order/canonical-order-identity.ts \
             packages/order/order-display-code.ts \
             packages/order/d1-order-display-code.ts \
             packages/order/order-validation.ts \
-            packages/integration/keeta-canonical-order-projection.ts
+            packages/order/d1-acceptance.ts \
+            packages/order/d1-store-order-acceptance.ts \
+            packages/order/d1-customer-order-service.ts \
+            packages/integration/keeta-canonical-order-projection.ts 2>&1 | tee /tmp/team-a-targeted.log
+          set -e
+          if grep -E '^(packages/order/(canonical-order-identity|order-display-code|d1-order-display-code|order-validation|d1-acceptance|d1-store-order-acceptance|d1-customer-order-service)\.ts|packages/integration/keeta-canonical-order-projection\.ts)\(' /tmp/team-a-targeted.log; then
+            echo 'Team A changed-file TypeScript diagnostic detected' >&2
+            exit 1
+          fi
 
-      - name: Full repo typecheck baseline signal
-        continue-on-error: true
-        working-directory: source
-        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+      - name: Full repo typecheck regression control
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          (cd source && ./node_modules/.bin/tsc --noEmit -p tsconfig.json) 2>&1 | sed -E 's/\([0-9]+,[0-9]+\)//g' | sort -u > /tmp/candidate-ts.txt
+          CANDIDATE_RC=${PIPESTATUS[0]}
+          (cd baseline && ./node_modules/.bin/tsc --noEmit -p tsconfig.json) 2>&1 | sed -E 's/\([0-9]+,[0-9]+\)//g' | sort -u > /tmp/baseline-ts.txt
+          BASELINE_RC=${PIPESTATUS[0]}
+          set -e
+          comm -23 /tmp/candidate-ts.txt /tmp/baseline-ts.txt > /tmp/new-ts.txt
+          if [ -s /tmp/new-ts.txt ]; then
+            echo 'New TypeScript diagnostics introduced by Team A candidate:' >&2
+            cat /tmp/new-ts.txt >&2
+            exit 1
+          fi
+          echo "candidate_typecheck_rc=$CANDIDATE_RC"
+          echo "baseline_typecheck_rc=$BASELINE_RC"
+          echo 'No new full-repo TypeScript diagnostics versus exact latest-main baseline.'
 
       - name: Write evidence
         if: always()
