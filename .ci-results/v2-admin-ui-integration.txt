@@ -1,5 +1,5 @@
-source_sha=b61f3c9731efe93a9d2041e10d5530817469ded8
-request_id=TEAM-B-CAPACITY-STOP-PLAN-R1-20260906
-run_id=34021359081
+source_sha=dac47187109c665fd4db9629eb208ceb1dae356d
+request_id=TEAM-B-CAPACITY-ADMIN-AUTHORITY-R1-20260906
+run_id=34021478200
 run_attempt=1
 conclusion=success
