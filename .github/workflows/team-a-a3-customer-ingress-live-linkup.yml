@@ -20,7 +20,7 @@ jobs:
       ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
       D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
       STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
-      PRODUCT_ID: 29e9e173-087f-46f4-bae3-0c29f4d51417
+      PRODUCT_ID: 01c3ed11-3656-5786-a46b-2d90ce1413d5
       CUSTOMER_ORIGIN: https://morefun-v2-customer.pantonyeung.workers.dev
       ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
       SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
