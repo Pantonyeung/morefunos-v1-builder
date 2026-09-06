@@ -1,0 +1,121 @@
+name: Team A A4 SMM Canonical Identity Live Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a4-smm-canonical-live-readback.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+      CUSTOMER_ORDER_ID: c7a57d7b-7273-4f8b-a77b-3d7984a9d7ba
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a4-smm-canonical-live-readback.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Read live SMM canonical orders
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          PAIR_HTTP="$(curl -sS -o /tmp/pair.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$SMM_ORIGIN/api/smm/session")"
+          test "$PAIR_HTTP" = 200
+          TOKEN="$(node -e "const x=require('/tmp/pair.json');if(!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          printf '%s' "$TOKEN" > /tmp/smm-token
+          for OP in order.open-list.read.v1 order.history-list.read.v1; do
+            SAFE="$(printf '%s' "$OP" | tr '.-' '__')"
+            OP="$OP" node -e "require('fs').writeFileSync('/tmp/request.json',JSON.stringify({operationId:process.env.OP,request:{limit:100}}))"
+            HTTP="$(curl -sS -o "/tmp/$SAFE.json" -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/request.json "$SMM_ORIGIN/api/smm/runtime")"
+            if [ "$HTTP" != 200 ]; then echo "{}" > "/tmp/$SAFE.json"; fi
+            echo "$OP http=$HTTP"
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=(p)=>{try{const x=JSON.parse(fs.readFileSync(p,'utf8'));return Array.isArray(x.orders)?x.orders:[]}catch{return []}};
+          const orders=[...read('/tmp/order_open_list_read_v1.json'),...read('/tmp/order_history_list_read_v1.json')];
+          const uniq=[...new Map(orders.map(o=>[o.orderId,o])).values()];
+          const customer=uniq.find(o=>o.orderId===process.env.CUSTOMER_ORDER_ID);
+          const keeta=uniq.find(o=>o?.canonicalIdentity?.sourceType==='PLATFORM'&&o?.canonicalIdentity?.sourceProvider==='KEETA');
+          fs.writeFileSync('/tmp/live-orders.json',JSON.stringify({customer,keeta,canonicalOrders:uniq.filter(o=>o?.canonicalIdentity)},null,2));
+          if(!customer) throw new Error('A4_CUSTOMER_ORDER_NOT_VISIBLE_IN_SMM');
+          const cid=customer.canonicalIdentity;
+          if(!cid||cid.orderId!==customer.orderId||cid.sourceType!=='CUSTOMER'||cid.sourceChannel!=='CUSTOMER_WEB'||cid.displayOrderCode!=='0003') throw new Error('A4_CUSTOMER_CANONICAL_IDENTITY_INVALID');
+          if(!keeta) throw new Error('A4_KEETA_CANONICAL_ORDER_NOT_FOUND_IN_SMM');
+          const kid=keeta.canonicalIdentity;
+          if(kid.orderId!==keeta.orderId||kid.sourceType!=='PLATFORM'||kid.sourceProvider!=='KEETA'||kid.sourceChannel!=='DELIVERY_PLATFORM'||!String(kid.displayOrderCode||'').trim()) throw new Error('A4_KEETA_CANONICAL_IDENTITY_INVALID');
+          console.log('customer_order_id='+customer.orderId+' display='+cid.displayOrderCode);
+          console.log('keeta_order_id='+keeta.orderId+' display='+kid.displayOrderCode);
+          NODE
+          cp /tmp/live-orders.json evidence/live-orders.json
+
+      - name: Prove exact SMM presentation uses canonical identity
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          node --experimental-strip-types - <<'NODE' | tee ../evidence/presentation.txt
+          const fs=require('fs');
+          (async()=>{
+            const {friendlyOrderSource,frontlineOrderCode,frontlineOrderTitle}=await import('./apps/smm-web/src/smm-user-messages.ts');
+            const x=JSON.parse(fs.readFileSync('../evidence/live-orders.json','utf8'));
+            const c=x.customer,k=x.keeta;
+            const cp={source:friendlyOrderSource(c),code:frontlineOrderCode(c),title:frontlineOrderTitle(c)};
+            const kp={source:friendlyOrderSource(k),code:frontlineOrderCode(k),title:frontlineOrderTitle(k)};
+            if(cp.source!=='自家客戶端'||cp.code!==c.canonicalIdentity.displayOrderCode||cp.title!=='取餐碼 #'+c.canonicalIdentity.displayOrderCode) throw new Error('CUSTOMER_PRESENTATION_NOT_CANONICAL');
+            if(kp.source!=='Keeta'||kp.code!==k.canonicalIdentity.displayOrderCode||kp.title!=='Keeta #'+k.canonicalIdentity.displayOrderCode) throw new Error('KEETA_PRESENTATION_NOT_CANONICAL');
+            console.log(JSON.stringify({customer:cp,keeta:kp}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Prove SMM actions remain machine orderId bound
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "id:order.orderId" apps/smm-web/src/SmmOrdersPage.tsx
+          grep -F "orderId:order.id" apps/smm-web/src/SmmOrdersPage.tsx
+          echo "smm_action_machine_order_id=PASS" | tee ../evidence/action-binding.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a4-smm-canonical-live-readback-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
