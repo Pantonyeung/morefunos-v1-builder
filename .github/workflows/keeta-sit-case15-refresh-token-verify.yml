@@ -42,15 +42,15 @@ jobs:
 
       - name: Install exact dependencies
         working-directory: source
-        run: npm ci --ignore-scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Exact Case15 token tests
         working-directory: source
         shell: bash
         run: |
           set -euo pipefail
-          node --import tsx --test packages/integration/keeta-token-refresh-retry.test.ts
-          node --import tsx --test packages/integration/keeta-token-refresh-certification.test.ts
+          node --test packages/integration/keeta-token-refresh-retry.test.ts
+          node --test packages/integration/keeta-token-refresh-certification.test.ts
 
       - name: Keeta Worker dry-run
         working-directory: source/workers/keeta
