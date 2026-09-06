@@ -1,0 +1,113 @@
+name: Team A A3 Idempotency Semantic Fingerprint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-idempotency-semantic.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a3-idempotency-semantic.txt | tr -d '[:space:]')"
+          BASELINE_SHA="$(sed -n 's/^baseline_sha=//p' requests/team-a-a3-idempotency-semantic.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "baseline_sha=$BASELINE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.baseline_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: baseline
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install candidate and baseline toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd source && npm install --ignore-scripts --no-audit --no-fund && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22)
+          (cd baseline && npm install --ignore-scripts --no-audit --no-fund && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22)
+
+      - name: A3 idempotency and Customer ingress tests
+        working-directory: source
+        run: |
+          node --test packages/order/d1-store-order-acceptance.test.ts
+          node --test packages/order/d1-acceptance-replay.test.ts
+          node --test packages/order/order-acceptance-idempotency.test.ts
+          node --test packages/customer-ui-integration/d1-customer-worker-runtime.test.ts
+
+      - name: A3 changed-file TypeScript
+        working-directory: source
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          ./node_modules/.bin/tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --allowImportingTsExtensions packages/order/d1-store-order-acceptance.ts packages/order/d1-store-order-acceptance.test.ts 2>&1 | tee /tmp/a3-targeted.log
+          set -e
+          if grep -E '^packages/order/d1-store-order-acceptance(\.test)?\.ts\(' /tmp/a3-targeted.log; then
+            echo 'A3 changed-file TypeScript diagnostic detected' >&2
+            exit 1
+          fi
+
+      - name: Full repo TypeScript regression control
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          (cd source && ./node_modules/.bin/tsc --noEmit -p tsconfig.json) 2>&1 | sed -E 's/\([0-9]+,[0-9]+\)//g' | sort -u > /tmp/candidate.txt
+          CANDIDATE_RC=${PIPESTATUS[0]}
+          (cd baseline && ./node_modules/.bin/tsc --noEmit -p tsconfig.json) 2>&1 | sed -E 's/\([0-9]+,[0-9]+\)//g' | sort -u > /tmp/baseline.txt
+          BASELINE_RC=${PIPESTATUS[0]}
+          set -e
+          comm -23 /tmp/candidate.txt /tmp/baseline.txt > /tmp/new.txt
+          test ! -s /tmp/new.txt || { cat /tmp/new.txt; exit 1; }
+          echo "candidate_typecheck_rc=$CANDIDATE_RC"
+          echo "baseline_typecheck_rc=$BASELINE_RC"
+          echo "No new full-repo diagnostics."
+
+      - name: Evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          printf 'source_sha=%s\nbaseline_sha=%s\n' "${{ steps.req.outputs.source_sha }}" "${{ steps.req.outputs.baseline_sha }}" > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-idempotency-semantic-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
