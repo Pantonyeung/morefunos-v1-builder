@@ -1,5 +1,5 @@
-source_sha=bd5e21bc36d9f40711cd534ec3447b28a4c296dc
-request_id=TEAM-B-ADMIN-PRODUCT-HUMANIZATION-P0-R2-20260906
-run_id=34024430492
+source_sha=723cb550cf29fa6a457aa39acf045ca709f3d99a
+request_id=TEAM-B-ADMIN-TECHNICAL-COPY-POST-ADMISSION-20260906
+run_id=34024450178
 run_attempt=1
 conclusion=success
