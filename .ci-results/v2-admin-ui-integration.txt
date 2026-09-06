@@ -1,5 +1,5 @@
-source_sha=f800de3dccc0f694b31954743c078cf703fd3b2a
-request_id=TEAM-B-GENERAL-BATCH-PRODUCT-ADMIN-UI-20260906
-run_id=34012137325
+source_sha=f6b4ba22bfa022927812db1c7246693da4f27d45
+request_id=TEAM-B-INVENTORY-RECIPE-ADMIN-UI-20260906-R2
+run_id=34012168612
 run_attempt=1
 conclusion=success
