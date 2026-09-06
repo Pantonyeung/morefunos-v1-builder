@@ -1,3 +1,3 @@
 source_sha=493b62424397a59c53105bf0b8d34601a50692d7
-migration_file=0032-printer-device-registry.sql
-request_id=TEAM-B-PROD-MIGRATION-0032-20260906
+migration_file=0033-dine-in-service-session.sql
+request_id=TEAM-B-PROD-MIGRATION-0033-20260906
