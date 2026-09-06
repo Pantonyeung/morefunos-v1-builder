@@ -70,6 +70,20 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - name: Preflight required Firebase pricing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for key in FIREBASE_DATABASE_URL FIREBASE_SERVICE_ACCOUNT_EMAIL FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::MISSING_REQUIRED_BUILDER_SECRET $key"
+              missing=1
+            fi
+          done
+          test "$missing" = 0
+          echo "firebase_pricing_credentials=AVAILABLE"
+
       - name: Diagnose reporting canonical source read-only
         working-directory: source
         shell: bash
