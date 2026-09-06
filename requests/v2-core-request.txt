@@ -1,5 +1,5 @@
-source_sha=f6b4ba22bfa022927812db1c7246693da4f27d45
+source_sha=92e8beeb72a5ddc49931450f32eff19cad5dc560
 base_sha=c87220068859ea9d3857c74995555aac67785b2a
 branch_name=work/TEAM2/inventory-recipe-d1-20260906-01
 verification_phase=CANDIDATE
-request_id=TEAM-B-INVENTORY-RECIPE-CORE-20260906-R2
+request_id=TEAM-B-INVENTORY-RECIPE-CORE-20260906-R3
