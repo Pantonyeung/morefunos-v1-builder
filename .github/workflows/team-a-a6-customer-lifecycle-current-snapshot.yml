@@ -1,0 +1,80 @@
+name: Team A A6 Customer Lifecycle Current Snapshot Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a6-customer-lifecycle-current-snapshot.txt'
+      - '.github/workflows/team-a-a6-customer-lifecycle-current-snapshot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact candidate
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a6-customer-lifecycle-current-snapshot.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: A6 lifecycle regression
+        working-directory: source
+        run: |
+          set -euo pipefail
+          mkdir -p ../evidence
+          node --test --experimental-strip-types packages/order/d1-customer-order-lifecycle-current-snapshot.test.ts 2>&1 | tee ../evidence/lifecycle-test.txt
+
+      - name: Related Customer runtime regression
+        working-directory: source
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types             packages/customer-ui-integration/canonical-runtime-port.test.ts             packages/customer-ui-integration/d1-ordering-source.test.ts 2>&1 | tee ../evidence/customer-runtime-tests.txt
+
+      - name: Root TypeScript gate
+        working-directory: source
+        run: npm run typecheck 2>&1 | tee ../evidence/typecheck.txt
+
+      - name: Guard current-snapshot precedence
+        working-directory: source
+        run: |
+          set -euo pipefail
+          grep -F "s.order_snapshot_json, s.accepted_projection_json" packages/order/d1-customer-order-service.ts
+          grep -F "const source = row.order_snapshot_json ?? row.accepted_projection_json" packages/order/d1-customer-order-service.ts
+          grep -F "projection.lifecycleStatus !== row.lifecycle_status" packages/order/d1-customer-order-service.ts
+          echo "current_snapshot_precedence=PASS" | tee ../evidence/guard.txt
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: team-a-a6-customer-lifecycle-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
