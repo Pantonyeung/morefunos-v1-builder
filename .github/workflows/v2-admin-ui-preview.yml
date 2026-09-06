@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
-          npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias owner-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
+          npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias admin-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
           URL="$(grep -Eo 'https://[a-z0-9-]+-morefun-v2-admin\.[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/upload.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
           test -n "$URL"
           printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
