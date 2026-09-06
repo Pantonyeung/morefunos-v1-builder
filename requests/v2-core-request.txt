@@ -1,5 +1,2 @@
-source_sha=e6c2649d444afe6dcc1f055eb86b31182d95c293
-base_sha=44a272bf04de01401fc56e6317eec52e00c9623c
+source_sha=1de71c79d93fb03f1e8877388a129239ca567b25
 branch_name=work/P0/staff-pin-admin-smt-auth-20260906-01
-verification_phase=CANDIDATE
-request_id=TEAMA-STAFF-POS-CREDENTIAL-20260906-01
