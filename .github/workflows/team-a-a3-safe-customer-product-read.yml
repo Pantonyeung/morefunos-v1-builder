@@ -1,0 +1,58 @@
+name: Team A A3 Safe Customer Product Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-safe-product-read.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+      CUSTOMER_ORIGIN: https://morefun-v2-customer.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read safe candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          curl -fsS "$CUSTOMER_ORIGIN/api/customer/ordering" > /tmp/ordering.json
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT json_extract(j.value,'$.productId') AS product_id,json_extract(j.value,'$.name') AS name,json_type(j.value,'$.variationSet') AS variation_type,json_extract(j.value,'$.optionGroups') AS option_groups FROM mfos_catalog_state c,json_each(c.snapshot_json,'$.products') j WHERE c.store_id=? AND json_extract(j.value,'$.lifecycleStatus')='ACTIVE' ORDER BY name"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL,params:[process.env.STORE_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > /tmp/catalog.json
+          node - <<'NODE' | tee evidence/candidates.txt
+          const o=require('/tmp/ordering.json');
+          const d=require('/tmp/catalog.json');
+          const live=new Map((o.products||[]).map(p=>[p.productId,p]));
+          const rows=(d.result?.[0]?.results||[]).map(r=>{
+            let groups=[];try{groups=JSON.parse(r.option_groups||'[]')}catch{}
+            const required=groups.some(g=>g?.required===true||Number(g?.minSelections||0)>0);
+            const p=live.get(r.product_id);
+            return {productId:r.product_id,name:r.name,available:p?.available===true,priceMinor:p?.priceMinor??null,variation:Boolean(r.variation_type),requiredOptions:required};
+          });
+          const safe=rows.filter(r=>r.available&&!r.variation&&!r.requiredOptions);
+          console.log(JSON.stringify({storeStatus:o.storeStatus,safe,allAvailable:rows.filter(r=>r.available)},null,2));
+          if(o.storeStatus!=='open') process.exit(2);
+          if(safe.length<1) process.exit(3);
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-safe-customer-product-read
+          path: evidence
+          if-no-files-found: error
+          retention-days: 7
