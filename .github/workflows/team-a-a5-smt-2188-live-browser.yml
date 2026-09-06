@@ -1,0 +1,141 @@
+name: Team A A5 SMT 2188 Live Browser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a5-smt-2188-live-browser.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMT_ORIGIN: https://morefun-v2-smt-preview.pantonyeung.workers.dev
+      ORDER_ID: 1959309a-7313-5730-a5d9-2b1fad5e7579
+      ORDER_CODE: "2188"
+      PROVIDER_ORDER_ID: "5143442950172188"
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Resolve admitted source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a5-smt-2188-live-browser.txt | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Browser canonical identity proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          mkdir -p evidence
+          node <<'NODE'
+          const fs=require('fs');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1920,height:1080});
+            const api=[];
+            const responses=[];
+            page.on('request',r=>{
+              const u=new URL(r.url());
+              if(u.pathname.startsWith('/api/'))api.push({origin:u.origin,path:u.pathname,method:r.method()});
+            });
+            page.on('response',async r=>{
+              const u=new URL(r.url());
+              if(u.pathname==='/api/smt/runtime'){
+                let body=null;try{body=await r.json()}catch{}
+                responses.push({path:u.pathname,status:r.status(),body});
+              }
+            });
+            await page.goto(process.env.SMT_ORIGIN+'/#/orders',{waitUntil:'networkidle'});
+            const pair=await page.evaluate(async(secret)=>{
+              const r=await fetch('/api/smt/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:secret}),cache:'no-store'});
+              return {status:r.status,body:await r.json()};
+            },process.env.ADMIN_LOGIN_SECRET);
+            if(pair.status!==200||!pair.body?.sessionToken)throw new Error('SMT_A5_PAIR_FAILED');
+            await page.evaluate(session=>localStorage.setItem('morefunos.smt.device-session.v1',JSON.stringify(session)),pair.body);
+            await page.reload({waitUntil:'networkidle'});
+            await page.getByText('Runtime 已連接',{exact:false}).first().waitFor({state:'visible',timeout:15000});
+
+            const raw=await page.evaluate(async({token,orderId})=>{
+              const invoke=async(operationId,request)=>{
+                const r=await fetch('/api/smt/runtime',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({operationId,request}),cache:'no-store'});
+                return {status:r.status,body:await r.json()};
+              };
+              const detail=await invoke('order.detail.read.v1',{orderId});
+              return detail;
+            },{token:pair.body.sessionToken,orderId:process.env.ORDER_ID});
+            if(raw.status!==200)throw new Error('SMT_A5_DETAIL_HTTP_'+raw.status);
+            const id=raw.body?.canonicalIdentity;
+            const rawChecks={
+              orderId:raw.body?.orderId===process.env.ORDER_ID,
+              sourceType:id?.sourceType==='PLATFORM',
+              sourceProvider:id?.sourceProvider==='KEETA',
+              sourceChannel:id?.sourceChannel==='DELIVERY_PLATFORM',
+              externalOrderId:id?.externalOrderId===process.env.PROVIDER_ORDER_ID,
+              displayOrderCode:id?.displayOrderCode===process.env.ORDER_CODE,
+              sourceOrderKey:id?.sourceOrderKey==='KEETA:'+process.env.PROVIDER_ORDER_ID,
+            };
+            if(Object.values(rawChecks).some(v=>!v))throw new Error('SMT_A5_RAW_CANONICAL_IDENTITY_FAILED:'+JSON.stringify(rawChecks));
+
+            const orderButton=page.locator('.orders-source-pools button',{hasText:process.env.ORDER_CODE}).first();
+            await orderButton.waitFor({state:'visible',timeout:15000});
+            const card=(await orderButton.textContent())||'';
+            if(!card.includes('2188'))throw new Error('SMT_A5_CANONICAL_CODE_NOT_VISIBLE');
+            if(!card.includes('Keeta'))throw new Error('SMT_A5_CANONICAL_SOURCE_NOT_VISIBLE');
+            if(!card.includes('$9'))throw new Error('SMT_A5_TOTAL_NOT_VISIBLE');
+
+            await orderButton.click();
+            const detailText=(await page.locator('.orders-selected-detail').textContent())||'';
+            if(!detailText.includes('2188'))throw new Error('SMT_A5_DETAIL_CODE_NOT_CANONICAL');
+            if(!detailText.includes('Keeta'))throw new Error('SMT_A5_DETAIL_SOURCE_NOT_CANONICAL');
+            if(detailText.includes(process.env.ORDER_ID.slice(-8)))throw new Error('SMT_A5_MACHINE_ID_LEAKED_AS_FRONTLINE_CODE');
+
+            const publicOrigin=new URL(process.env.SMT_ORIGIN).origin;
+            if(api.some(x=>x.origin!==publicOrigin))throw new Error('SMT_A5_CROSS_ORIGIN_API');
+            const result={
+              sourceSha:'${{ steps.req.outputs.source_sha }}',
+              orderId:process.env.ORDER_ID,
+              providerOrderId:process.env.PROVIDER_ORDER_ID,
+              displayOrderCode:process.env.ORDER_CODE,
+              sourceProvider:'KEETA',
+              runtimeConnected:true,
+              rawCanonicalIdentity:raw.body.canonicalIdentity,
+              rawChecks,
+              card,
+              detailText,
+              machineIdSuffixNotUsedAsFrontlineCode:true,
+              viewport:{width:1920,height:1080},
+              browserDirectD1:false,
+              api,
+            };
+            fs.writeFileSync('evidence/a5-smt-2188-live-browser.json',JSON.stringify(result,null,2));
+            console.log('A5_SMT_2188_CANONICAL_UI_PASS '+JSON.stringify(result));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: team-a-a5-smt-2188-live-browser-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
