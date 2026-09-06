@@ -1,0 +1,164 @@
+name: Team A A3 Customer Ingress E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-customer-ingress-e2e.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CUSTOMER_URL: https://morefun-v2-customer.pantonyeung.workers.dev
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      SUBMISSION_ID: teama-a3-customer-ingress-20260906-v1
+      IDEMPOTENCY_KEY: teama-a3-customer-ingress-20260906-v1
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a3-customer-ingress-e2e.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require request source equals current V2 main
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          echo "v2_main_pin=PASS sha=$MAIN_SHA"
+
+      - name: Submit one fresh order through Customer public Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          curl -fsS "$CUSTOMER_URL/api/customer/ordering" -o evidence/ordering.json
+          PRODUCT_ID="$(node -e "const x=require('./evidence/ordering.json');if(x.storeStatus!=='open')process.exit(2);const p=x.products?.find(v=>v.available===true);if(!p?.productId)process.exit(3);process.stdout.write(p.productId)")"
+          GUEST_TOKEN="$(node -e "const {createHash}=require('node:crypto');process.stdout.write(createHash('sha256').update(process.env.SUBMISSION_ID).digest('base64url'))")"
+          test "${#GUEST_TOKEN}" = 43
+          cat > evidence/request.json <<JSON
+          {"submissionId":"$SUBMISSION_ID","idempotencyKey":"$IDEMPOTENCY_KEY","payload":{"lines":[{"productId":"$PRODUCT_ID","quantity":1}]}}
+          JSON
+          HTTP="$(curl -sS -o evidence/submit.json -w '%{http_code}'             -H 'content-type: application/json'             -H "Cookie: mf_customer_guest=$GUEST_TOKEN"             --data-binary @evidence/request.json             "$CUSTOMER_URL/api/customer/orders")"
+          test "$HTTP" = 200
+          ORDER_ID="$(node -e "const x=require('./evidence/submit.json');if(!x.ok||x.status!=='ACCEPTED'||!x.orderId||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1);process.stdout.write(x.orderId)")"
+          LOOKUP_TOKEN="$(node -e "const x=require('./evidence/submit.json');if(typeof x.lookupToken!=='string'||x.lookupToken.length!==43)process.exit(1);process.stdout.write(x.lookupToken)")"
+          test "$LOOKUP_TOKEN" = "$GUEST_TOKEN"
+          printf '%s' "$ORDER_ID" > /tmp/a3-order-id
+          printf '%s' "$GUEST_TOKEN" > /tmp/a3-guest-token
+          printf 'customer_submit_http=%s\nproduct_id=%s\norder_id=%s\n' "$HTTP" "$PRODUCT_ID" "$ORDER_ID" | tee evidence/customer-submit.txt
+
+      - name: Prove Customer lifecycle returns same order
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a3-order-id)"
+          GUEST_TOKEN="$(cat /tmp/a3-guest-token)"
+          HTTP="$(curl -sS -o evidence/customer-status.json -w '%{http_code}'             -H "Cookie: mf_customer_guest=$GUEST_TOKEN"             -H "Authorization: Bearer $GUEST_TOKEN"             "$CUSTOMER_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          test "$HTTP" = 200
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/customer-status.json');if(!x.ok||x.lifecycleStatus!=='ACCEPTED'||x.orderId!==process.env.ORDER_ID||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1)"
+          echo "customer_lifecycle_same_order=PASS order_id=$ORDER_ID" | tee evidence/customer-status.txt
+
+      - name: Prove canonical identity and pickup code in production D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a3-order-id)"
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL="SELECT s.order_id,o.submission_id,json_extract(s.accepted_projection_json,'$.canonicalIdentity.orderId') AS identity_order_id,json_extract(s.accepted_projection_json,'$.canonicalIdentity.storeId') AS identity_store_id,json_extract(s.accepted_projection_json,'$.canonicalIdentity.sourceType') AS source_type,json_extract(s.accepted_projection_json,'$.canonicalIdentity.sourceChannel') AS source_channel,json_extract(s.accepted_projection_json,'$.canonicalIdentity.displayOrderCode') AS projection_display_code,json_extract(s.accepted_projection_json,'$.canonicalIdentity.sourceOrderKey') AS source_order_key,d.display_code,d.business_date FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id JOIN mfos_order_display_code d ON d.order_id=s.order_id WHERE s.order_id='$ORDER_ID' AND o.submission_id='$SUBMISSION_ID' LIMIT 1;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/a3-d1-query.json',JSON.stringify({sql:process.env.SQL,params:[]}))"
+          curl -fsS -X POST "$D1_URL"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'content-type: application/json'             --data-binary @/tmp/a3-d1-query.json > evidence/d1.json
+          ORDER_ID="$ORDER_ID" node - <<'NODE'
+          const x=require('./evidence/d1.json');
+          const r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('A3_D1_ROW_MISSING');
+          if(r.order_id!==process.env.ORDER_ID||r.identity_order_id!==process.env.ORDER_ID) throw new Error('A3_IDENTITY_ORDER_MISMATCH');
+          if(r.submission_id!==process.env.SUBMISSION_ID) throw new Error('A3_SUBMISSION_MISMATCH');
+          if(r.source_type!=='CUSTOMER'||r.source_channel!=='CUSTOMER_WEB') throw new Error('A3_SOURCE_IDENTITY_MISMATCH:'+JSON.stringify(r));
+          if(r.source_order_key!=='CUSTOMER:'+process.env.SUBMISSION_ID) throw new Error('A3_SOURCE_ORDER_KEY_MISMATCH');
+          if(!/^\d{4}$/.test(String(r.display_code||''))) throw new Error('A3_DISPLAY_CODE_INVALID');
+          if(r.projection_display_code!==r.display_code) throw new Error('A3_DISPLAY_CODE_PROJECTION_MISMATCH');
+          console.log('A3_D1_CANONICAL_IDENTITY=PASS');
+          console.log('order_id='+r.order_id);
+          console.log('display_code='+r.display_code);
+          console.log('source_order_key='+r.source_order_key);
+          NODE
+
+      - name: Resolve trusted staff session
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -D /tmp/a3-login.headers -o evidence/admin-login.json -w '%{http_code}'             -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/admin/session")"
+          test "$HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/a3-login.headers | tr -d '\r' | head -n1)"
+          [[ "$COOKIE" == mf_admin_session=* ]]
+          TOKEN="${COOKIE#mf_admin_session=}"
+          test -n "$TOKEN"
+          printf '%s' "$TOKEN" > /tmp/a3-staff-token
+          echo "trusted_staff_session=PASS" | tee evidence/staff-session.txt
+
+      - name: Prove same order visible through SMM canonical detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a3-order-id)"
+          TOKEN="$(cat /tmp/a3-staff-token)"
+          ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a3-smm.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o evidence/smm.json -w '%{http_code}'             -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN"             --data-binary @/tmp/a3-smm.json "$ADMIN_URL/api/smm/runtime")"
+          test "$HTTP" = 200
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/smm.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('A3_SMM_ORDER_ID_MISMATCH')"
+          echo "smm_same_order=PASS order_id=$ORDER_ID" | tee evidence/smm.txt
+
+      - name: Prove same order visible through SMT canonical detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a3-order-id)"
+          TOKEN="$(cat /tmp/a3-staff-token)"
+          ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a3-smt.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o evidence/smt.json -w '%{http_code}'             -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN"             --data-binary @/tmp/a3-smt.json "$ADMIN_URL/api/smt/runtime")"
+          test "$HTTP" = 200
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/smt.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('A3_SMT_ORDER_ID_MISMATCH')"
+          echo "smt_same_order=PASS order_id=$ORDER_ID" | tee evidence/smt.txt
+
+      - name: Summarize A3 proof
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a3-order-id)"
+          printf 'A3_CUSTOMER_INGRESS_FULL_LINKUP=PASS\nsource_sha=%s\norder_id=%s\nsubmission_id=%s\n'             "${{ steps.req.outputs.source_sha }}" "$ORDER_ID" "$SUBMISSION_ID" | tee evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-customer-ingress-e2e-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
