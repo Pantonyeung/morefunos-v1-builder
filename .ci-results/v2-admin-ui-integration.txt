@@ -1,5 +1,5 @@
-source_sha=92e8beeb72a5ddc49931450f32eff19cad5dc560
-request_id=TEAM-B-INVENTORY-RECIPE-ADMIN-UI-20260906-R3
-run_id=34012282082
+source_sha=2a38f1867816fdfb0b55d29e9e9303a83c9ff0ab
+request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-ADMIN-20260906
+run_id=34014992003
 run_attempt=1
-conclusion=success
+conclusion=failure
