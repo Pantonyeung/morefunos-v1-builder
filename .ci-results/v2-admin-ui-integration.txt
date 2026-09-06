@@ -1,5 +1,5 @@
-source_sha=229f89d89fc3fde56e1ff5bf4f167a2b61510375
-request_id=TEAM-B-CAPACITY-HUMANIZED-UI-R2-20260906
-run_id=34021825174
+source_sha=40e93fe969f9fb0f1de0193942ea193cd1af3d39
+request_id=TEAM-B-CAPACITY-DAILY-MATERIALIZATION-R1-20260906
+run_id=34021909920
 run_attempt=1
 conclusion=success
