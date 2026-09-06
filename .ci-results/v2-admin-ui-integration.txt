@@ -1,5 +1,5 @@
-source_sha=59f34ccc6f0ee7d75def91fec8323b16b73365f5
-request_id=TEAM-B-ADMIN-PRICING-POST-ADMISSION-20260906
-run_id=34023698152
+source_sha=24bbab19e71fbfa7f301196885e5bf42d3ba2f78
+request_id=TEAM-B-ADMIN-PLATFORM-MAPPING-HUMANIZED-R1-20260906
+run_id=34023914045
 run_attempt=1
-conclusion=success
+conclusion=failure
