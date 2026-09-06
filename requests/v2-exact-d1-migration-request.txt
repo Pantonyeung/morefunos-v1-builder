@@ -1,3 +1,3 @@
 source_sha=493b62424397a59c53105bf0b8d34601a50692d7
-migration_file=0037-store-configuration.sql
-request_id=TEAM-B-PROD-MIGRATION-0037-20260906
+migration_file=0038-communication-notice.sql
+request_id=TEAM-B-PROD-MIGRATION-0038-20260906
