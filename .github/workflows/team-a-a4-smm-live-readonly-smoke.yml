@@ -1,0 +1,62 @@
+name: Team A A4 SMM Live Readonly Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a4-smm-live-readonly-smoke.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a4-smm-live-readonly-smoke.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+
+      - name: Read live public assets and fail-closed session boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          INDEX_HTTP="$(curl -sS -o /tmp/index.html -w '%{http_code}' "$SMM_ORIGIN/")"
+          ORDERS_HTTP="$(curl -sS -o /tmp/orders.html -w '%{http_code}' "$SMM_ORIGIN/orders")"
+          MANIFEST_HTTP="$(curl -sS -o /tmp/manifest.json -w '%{http_code}' "$SMM_ORIGIN/manifest.webmanifest")"
+          test "$INDEX_HTTP" = 200
+          test "$ORDERS_HTTP" = 200
+          test "$MANIFEST_HTTP" = 200
+
+          SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$SMM_ORIGIN/api/smm/session")"
+          test "$SESSION_HTTP" = 401
+          node -e "const x=require('/tmp/session.json');if(x.code!=='SMM_RUNTIME_SESSION_REQUIRED')process.exit(1)"
+
+          printf '{"loginSecret":"__team_a_a4_invalid__"}' >/tmp/pair.json
+          PAIR_HTTP="$(curl -sS -o /tmp/pair-response.json -w '%{http_code}' -H 'content-type: application/json' --data-binary @/tmp/pair.json "$SMM_ORIGIN/api/smm/session")"
+          test "$PAIR_HTTP" = 401
+          node -e "const x=require('/tmp/pair-response.json');if(x.code!=='SMM_PAIRING_CREDENTIAL_INVALID')process.exit(1)"
+
+          printf 'source_sha=%s\nindex_http=%s\norders_http=%s\nmanifest_http=%s\nanonymous_session_http=%s\nanonymous_code=SMM_RUNTIME_SESSION_REQUIRED\ninvalid_pair_http=%s\ninvalid_pair_code=SMM_PAIRING_CREDENTIAL_INVALID\n'             "${{ steps.req.outputs.source_sha }}" "$INDEX_HTTP" "$ORDERS_HTTP" "$MANIFEST_HTTP" "$SESSION_HTTP" "$PAIR_HTTP" | tee evidence/smoke.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a4-smm-live-readonly-smoke-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
