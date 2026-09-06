@@ -1,3 +1,3 @@
-source_sha=706ca12599c94f4efc7d4d8ebf14df8bb015242e
-branch_name=admit/TEAM2/admin-owner-all-linkup-20260906-01
-request_id=TEAM-B-ADMISSION-AVAILABILITY-R1-20260906
+source_sha=d6ca588d08301efe793c130a027c1be177a35284
+branch_name=work/TEAM2/admin-owner-linkup-fresh-main-20260906-02
+request_id=TEAM-B-FULL-LINKUP-AVAILABILITY-R1-20260906
