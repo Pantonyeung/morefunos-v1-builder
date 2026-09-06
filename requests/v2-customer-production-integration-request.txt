@@ -1,2 +1,2 @@
-source_sha=f849d4173803e0f14ba6b042ed4d7577e8a97280
-attempt=team-b-fresh-main-full-chain-customer-r10-20260906
+source_sha=46d28dc95334fca717947bd757b81b0794689a4f
+attempt=team-b-final-admission-customer-20260906
