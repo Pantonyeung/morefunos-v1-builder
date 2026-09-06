@@ -1,0 +1,35 @@
+name: Cleanup Keeta SIT Case15 Ephemeral Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/keeta-sit-case15-refresh-token-cleanup.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Delete ephemeral Case15 probe by Cloudflare API
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/morefun-keeta-sit-case15-refresh-probe"
+          HTTP="$(curl --silent --show-error -o "$RUNNER_TEMP/delete.json" -w '%{http_code}' -X DELETE "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+          if [ "$HTTP" = "404" ]; then
+            echo "probe_already_absent=true"
+            exit 0
+          fi
+          test "$HTTP" = "200"
+          jq -e '.success==true' "$RUNNER_TEMP/delete.json" >/dev/null
+          echo "probe_deleted=true"
