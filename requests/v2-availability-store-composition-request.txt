@@ -1,3 +1,3 @@
-source_sha=2f2b64bff0d5c5cbce50648f1d403a94209edaa9
+source_sha=4760f6b620e80d85c1894e7d1cc9dbdaf0219361
 branch_name=work/TEAM2/fresh-main-full-chain-reconcile-20260906-02
-request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-AVAILABILITY-R2-20260906
+request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-AVAILABILITY-R3-20260906
