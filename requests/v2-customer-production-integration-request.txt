@@ -1,2 +1,2 @@
-source_sha=ca8c3e179ee32c23660cc16639afb766649fa6b2
-attempt=t1-b2506-post-admission
+source_sha=381df6e20c13612217073d2505fe20ec717b174a
+attempt=team-b-announcement-notification-customer-20260906
