@@ -1,2 +1,3 @@
-source_sha=3192d0a4f6b118628b10be47f3f2ad3b9921b448
-branch_name=work/TEAM-A/smm-performance-orders-nav-capacity-20260906-01
+source_sha=f6ae4bb879c090f82a50393acefc756b1310368b
+branch_name=work/TEAM1/smm-performance-orders-nav-capacity-20260906-01
+verification_phase=CANDIDATE
