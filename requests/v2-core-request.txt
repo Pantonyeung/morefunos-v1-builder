@@ -1,2 +1,4 @@
-source_sha=1cbb2b1acdc5a20d50862c80c3382177316703f2
-branch_name=work/TEAM1/smm-performance-orders-nav-capacity-20260906-02
+source_sha=b60ca97e24e034c002943e683a650c2cdc17b986
+branch_name=main
+verification_phase=CANDIDATE
+request_id=PRICING-LOCAL-FIRST-CORE-VERIFY-20260907-01
