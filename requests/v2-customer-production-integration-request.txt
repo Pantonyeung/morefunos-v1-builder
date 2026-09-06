@@ -1,2 +1,2 @@
-source_sha=5147d1ecab88a48399e7dafa8d0518d96cc3b07e
-attempt=pricing-5147-customer-exact-08
+source_sha=6d77592c1bf9b84e86cedfce753cebd3ca7ed167
+attempt=pricing-6d7759-customer-exact-09
