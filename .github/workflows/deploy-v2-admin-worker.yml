@@ -189,9 +189,12 @@ jobs:
           const url=process.env.PRICING_SOCKET_URL;
           const timer=setTimeout(()=>{console.error('PRICING_REALTIME_WEBSOCKET_TIMEOUT');process.exit(1)},5000);
           const ws=new WebSocket(url);
-          ws.addEventListener('open',()=>{
+          ws.addEventListener('message',(event)=>{
+            let body;
+            try{body=JSON.parse(String(event.data));}catch{body=null}
+            if(body?.type!=='PRICING_REALTIME_READY')return;
             clearTimeout(timer);
-            console.log('pricing_realtime_websocket=PASS');
+            console.log('pricing_realtime_websocket=PASS ready_frame=PASS');
             ws.close(1000,'builder-smoke');
           });
           ws.addEventListener('error',(event)=>{
@@ -199,7 +202,11 @@ jobs:
             console.error('PRICING_REALTIME_WEBSOCKET_FAILED',event?.error?.message||event?.message||event?.type||'unknown');
             process.exit(1);
           });
-          ws.addEventListener('close',()=>process.exit(0));
+          ws.addEventListener('close',(event)=>{
+            if(event.code===1000)process.exit(0);
+            console.error('PRICING_REALTIME_WEBSOCKET_CLOSED_BEFORE_READY',event.code,event.reason);
+            process.exit(1);
+          });
           NODE
           echo "pricing_socket=PASS" >> evidence/runtime.txt
           rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json /tmp/pricing-socket-health.json
