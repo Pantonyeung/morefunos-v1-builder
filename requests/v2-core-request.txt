@@ -1,5 +1,5 @@
-source_sha=92e8beeb72a5ddc49931450f32eff19cad5dc560
-base_sha=c87220068859ea9d3857c74995555aac67785b2a
-branch_name=work/TEAM2/inventory-recipe-d1-20260906-01
-verification_phase=CANDIDATE
-request_id=TEAM-B-INVENTORY-RECIPE-CORE-20260906-R3
+source_sha=f9fbd0edca44876c6ca9c4a71fd3b438d833867a
+base_sha=92e8beeb72a5ddc49931450f32eff19cad5dc560
+branch_name=work/TEAM2/full-chain-reconcile-20260906-01
+verification_phase=FULL_CHAIN_RECONCILE
+request_id=TEAM-B-FULL-CHAIN-CORE-20260906
