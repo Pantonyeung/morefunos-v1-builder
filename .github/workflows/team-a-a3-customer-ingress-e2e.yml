@@ -20,6 +20,7 @@ jobs:
       ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
       CUSTOMER_URL: https://morefun-v2-customer.pantonyeung.workers.dev
       ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      SMM_URL: https://morefun-v2-smm.pantonyeung.workers.dev
       D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
       SUBMISSION_ID: teama-a3-customer-ingress-20260906-v1
       IDEMPOTENCY_KEY: teama-a3-customer-ingress-20260906-v1
@@ -109,40 +110,52 @@ jobs:
           console.log('source_order_key='+r.source_order_key);
           NODE
 
-      - name: Resolve trusted staff session
+      - name: Resolve SMM paired session
         shell: bash
         run: |
           set -euo pipefail
           BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
-          HTTP="$(curl -sS -D /tmp/a3-login.headers -o evidence/admin-login.json -w '%{http_code}'             -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/admin/session")"
+          HTTP="$(curl -sS -o evidence/smm-session.json -w '%{http_code}'             -H 'content-type: application/json' --data "$BODY" "$SMM_URL/api/smm/session")"
           test "$HTTP" = 200
-          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/a3-login.headers | tr -d '\r' | head -n1)"
-          [[ "$COOKIE" == mf_admin_session=* ]]
-          TOKEN="${COOKIE#mf_admin_session=}"
-          test -n "$TOKEN"
-          printf '%s' "$TOKEN" > /tmp/a3-staff-token
-          echo "trusted_staff_session=PASS" | tee evidence/staff-session.txt
+          TOKEN="$(node -e "const x=require('./evidence/smm-session.json');if(!x.authenticated||!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          printf '%s' "$TOKEN" > /tmp/a3-smm-token
+          echo "smm_paired_session=PASS" | tee evidence/smm-session.txt
 
       - name: Prove same order visible through SMM canonical detail
         shell: bash
         run: |
           set -euo pipefail
           ORDER_ID="$(cat /tmp/a3-order-id)"
-          TOKEN="$(cat /tmp/a3-staff-token)"
+          TOKEN="$(cat /tmp/a3-smm-token)"
           ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a3-smm.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
-          HTTP="$(curl -sS -o evidence/smm.json -w '%{http_code}'             -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN"             --data-binary @/tmp/a3-smm.json "$ADMIN_URL/api/smm/runtime")"
+          HTTP="$(curl -sS -o evidence/smm.json -w '%{http_code}'             -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN"             --data-binary @/tmp/a3-smm.json "$SMM_URL/api/smm/runtime")"
+          echo "smm_detail_http=$HTTP" | tee evidence/smm-http.txt
+          cat evidence/smm.json | tee -a evidence/smm-http.txt
           test "$HTTP" = 200
           ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/smm.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('A3_SMM_ORDER_ID_MISMATCH')"
           echo "smm_same_order=PASS order_id=$ORDER_ID" | tee evidence/smm.txt
+
+      - name: Resolve SMT paired session
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -o evidence/smt-session.json -w '%{http_code}'             -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/smt/session")"
+          test "$HTTP" = 200
+          TOKEN="$(node -e "const x=require('./evidence/smt-session.json');if(!x.authenticated||!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          printf '%s' "$TOKEN" > /tmp/a3-smt-token
+          echo "smt_paired_session=PASS" | tee evidence/smt-session.txt
 
       - name: Prove same order visible through SMT canonical detail
         shell: bash
         run: |
           set -euo pipefail
           ORDER_ID="$(cat /tmp/a3-order-id)"
-          TOKEN="$(cat /tmp/a3-staff-token)"
+          TOKEN="$(cat /tmp/a3-smt-token)"
           ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a3-smt.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
           HTTP="$(curl -sS -o evidence/smt.json -w '%{http_code}'             -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN"             --data-binary @/tmp/a3-smt.json "$ADMIN_URL/api/smt/runtime")"
+          echo "smt_detail_http=$HTTP" | tee evidence/smt-http.txt
+          cat evidence/smt.json | tee -a evidence/smt-http.txt
           test "$HTTP" = 200
           ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/smt.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('A3_SMT_ORDER_ID_MISMATCH')"
           echo "smt_same_order=PASS order_id=$ORDER_ID" | tee evidence/smt.txt
