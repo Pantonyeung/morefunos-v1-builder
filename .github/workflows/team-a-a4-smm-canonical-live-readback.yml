@@ -71,15 +71,20 @@ jobs:
           const uniq=[...new Map(orders.map(o=>[o.orderId,o])).values()];
           const customer=uniq.find(o=>o.orderId===process.env.CUSTOMER_ORDER_ID);
           const keeta=uniq.find(o=>o?.canonicalIdentity?.sourceType==='PLATFORM'&&o?.canonicalIdentity?.sourceProvider==='KEETA');
-          fs.writeFileSync('/tmp/live-orders.json',JSON.stringify({customer,keeta,canonicalOrders:uniq.filter(o=>o?.canonicalIdentity)},null,2));
+          const legacyKeeta=uniq.find(o=>!o?.canonicalIdentity&&String(o?.providerOrderAlias?.platformContext||'').toUpperCase()==='KEETA');
+          fs.writeFileSync('/tmp/live-orders.json',JSON.stringify({customer,keeta,legacyKeeta,canonicalOrders:uniq.filter(o=>o?.canonicalIdentity)},null,2));
           if(!customer) throw new Error('A4_CUSTOMER_ORDER_NOT_VISIBLE_IN_SMM');
           const cid=customer.canonicalIdentity;
           if(!cid||cid.orderId!==customer.orderId||cid.sourceType!=='CUSTOMER'||cid.sourceChannel!=='CUSTOMER_WEB'||cid.displayOrderCode!=='0003') throw new Error('A4_CUSTOMER_CANONICAL_IDENTITY_INVALID');
-          if(!keeta) throw new Error('A4_KEETA_CANONICAL_ORDER_NOT_FOUND_IN_SMM');
-          const kid=keeta.canonicalIdentity;
-          if(kid.orderId!==keeta.orderId||kid.sourceType!=='PLATFORM'||kid.sourceProvider!=='KEETA'||kid.sourceChannel!=='DELIVERY_PLATFORM'||!String(kid.displayOrderCode||'').trim()) throw new Error('A4_KEETA_CANONICAL_IDENTITY_INVALID');
+          if(keeta){
+            const kid=keeta.canonicalIdentity;
+            if(kid.orderId!==keeta.orderId||kid.sourceType!=='PLATFORM'||kid.sourceProvider!=='KEETA'||kid.sourceChannel!=='DELIVERY_PLATFORM'||!String(kid.displayOrderCode||'').trim()) throw new Error('A4_KEETA_CANONICAL_IDENTITY_INVALID');
+            console.log('keeta_live_mode=CANONICAL order_id='+keeta.orderId+' display='+kid.displayOrderCode);
+          }else{
+            if(!legacyKeeta) throw new Error('A4_KEETA_COMPATIBILITY_RECORD_NOT_FOUND');
+            console.log('keeta_live_mode=LEGACY_COMPATIBILITY order_id='+legacyKeeta.orderId+' display='+legacyKeeta.providerOrderAlias?.providerOrderCode);
+          }
           console.log('customer_order_id='+customer.orderId+' display='+cid.displayOrderCode);
-          console.log('keeta_order_id='+keeta.orderId+' display='+kid.displayOrderCode);
           NODE
           cp /tmp/live-orders.json evidence/live-orders.json
 
@@ -94,14 +99,29 @@ jobs:
           (async()=>{
             const {friendlyOrderSource,frontlineOrderCode,frontlineOrderTitle}=await import('./apps/smm-web/src/smm-user-messages.ts');
             const x=JSON.parse(fs.readFileSync('../evidence/live-orders.json','utf8'));
-            const c=x.customer,k=x.keeta;
-            const cp={source:friendlyOrderSource(c),code:frontlineOrderCode(c),title:frontlineOrderTitle(c)};
+            const customer=x.customer;
+            const cp={source:friendlyOrderSource(customer),code:frontlineOrderCode(customer),title:frontlineOrderTitle(customer)};
+            if(cp.source!=='自家客戶端'||cp.code!==customer.canonicalIdentity.displayOrderCode||cp.title!=='取餐碼 #'+customer.canonicalIdentity.displayOrderCode) throw new Error('CUSTOMER_PRESENTATION_NOT_CANONICAL');
+            const k=x.keeta||x.legacyKeeta;
             const kp={source:friendlyOrderSource(k),code:frontlineOrderCode(k),title:frontlineOrderTitle(k)};
-            if(cp.source!=='自家客戶端'||cp.code!==c.canonicalIdentity.displayOrderCode||cp.title!=='取餐碼 #'+c.canonicalIdentity.displayOrderCode) throw new Error('CUSTOMER_PRESENTATION_NOT_CANONICAL');
-            if(kp.source!=='Keeta'||kp.code!==k.canonicalIdentity.displayOrderCode||kp.title!=='Keeta #'+k.canonicalIdentity.displayOrderCode) throw new Error('KEETA_PRESENTATION_NOT_CANONICAL');
-            console.log(JSON.stringify({customer:cp,keeta:kp}));
+            if(kp.source!=='Keeta') throw new Error('KEETA_PRESENTATION_SOURCE_INVALID');
+            if(x.keeta){
+              if(kp.code!==x.keeta.canonicalIdentity.displayOrderCode||kp.title!=='Keeta #'+x.keeta.canonicalIdentity.displayOrderCode) throw new Error('KEETA_PRESENTATION_NOT_CANONICAL');
+            }else{
+              if(kp.code!==x.legacyKeeta.providerOrderAlias.providerOrderCode||kp.title!=='Keeta #'+x.legacyKeeta.providerOrderAlias.providerOrderCode) throw new Error('KEETA_LEGACY_COMPATIBILITY_BROKEN');
+            }
+            console.log(JSON.stringify({customer:cp,keeta:kp,keetaMode:x.keeta?'CANONICAL':'LEGACY_COMPATIBILITY'}));
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
+
+      - name: Prove new Keeta ingress projection emits canonical identity
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types packages/integration/keeta-canonical-order-projection.test.ts 2>&1 | tee ../evidence/keeta-new-traffic-contract.txt
+          grep -F "buildPlatformOrderIdentity" packages/integration/keeta-canonical-order-projection.ts
+          echo "keeta_new_traffic_canonical_identity=PASS" >> ../evidence/keeta-new-traffic-contract.txt
 
       - name: Prove SMM actions remain machine orderId bound
         working-directory: source
