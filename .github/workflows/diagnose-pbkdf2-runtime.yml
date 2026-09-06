@@ -1,0 +1,73 @@
+name: Diagnose Cloudflare PBKDF2 Budget
+
+on:
+  push:
+    paths:
+      - 'requests/pbkdf2-runtime-diagnostic-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: morefun-pbkdf2-diag
+    steps:
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Create diagnostic Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pbkdf2-diag
+          cat >/tmp/pbkdf2-diag/worker.mjs <<'EOF'
+          const enc=new TextEncoder();
+          const ab=(u)=>{const b=new ArrayBuffer(u.byteLength);new Uint8Array(b).set(u);return b};
+          export default {
+            async fetch(request){
+              const url=new URL(request.url);
+              const iterations=Number(url.searchParams.get('i')||'0');
+              if(![10000,25000,50000,100000,150000].includes(iterations))return Response.json({ok:false,code:'BAD_ITERATIONS'},{status:400});
+              const pin=ab(enc.encode('2468'));
+              const salt=ab(new Uint8Array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]));
+              try{
+                const key=await crypto.subtle.importKey('raw',pin,'PBKDF2',false,['deriveBits']);
+                const started=Date.now();
+                const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations},key,256);
+                return Response.json({ok:true,iterations,bytes:bits.byteLength,elapsedMs:Date.now()-started});
+              }catch(error){
+                return Response.json({ok:false,iterations,errorName:error?.name??'Unknown',errorMessage:String(error?.message??error)});
+              }
+            }
+          };
+          EOF
+          cat >/tmp/pbkdf2-diag/wrangler.jsonc <<EOF
+          {
+            "name":"${WORKER_NAME}",
+            "main":"worker.mjs",
+            "compatibility_date":"2026-09-06",
+            "workers_dev":true
+          }
+          EOF
+      - name: Deploy diagnostic Worker
+        working-directory: /tmp/pbkdf2-diag
+        run: npx --yes wrangler@4 deploy --config wrangler.jsonc
+      - name: Probe iteration levels
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGIN="https://${WORKER_NAME}.pantonyeung.workers.dev"
+          for i in 10000 25000 50000 100000 150000; do
+            echo "=== $i ==="
+            curl -fsS --max-time 20 "${ORIGIN}/?i=$i" || true
+            echo
+          done
+      - name: Delete diagnostic Worker
+        if: always()
+        working-directory: /tmp/pbkdf2-diag
+        run: npx --yes wrangler@4 delete --name "${WORKER_NAME}" --force || true
