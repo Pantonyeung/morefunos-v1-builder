@@ -1,0 +1,120 @@
+name: Team A A3 Downstream Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-downstream-readback.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CUSTOMER_URL: https://morefun-v2-customer.pantonyeung.workers.dev
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      SMM_URL: https://morefun-v2-smm.pantonyeung.workers.dev
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      ORDER_ID: 58f123c2-6e2d-4664-8059-d405c18c7d66
+      SUBMISSION_ID: teama-a3-customer-ingress-20260906-v1
+
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a3-downstream-readback.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Prove production D1 identity remains exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          SQL="SELECT s.order_id,o.submission_id,json_extract(s.accepted_projection_json,'$.canonicalIdentity.orderId') AS identity_order_id,json_extract(s.accepted_projection_json,'$.canonicalIdentity.displayOrderCode') AS projection_display_code,json_extract(s.accepted_projection_json,'$.canonicalIdentity.sourceOrderKey') AS source_order_key,d.display_code FROM mfos_order_state s JOIN mfos_customer_order_ownership o ON o.order_id=s.order_id JOIN mfos_order_display_code d ON d.order_id=s.order_id WHERE s.order_id='$ORDER_ID' AND o.submission_id='$SUBMISSION_ID' LIMIT 1;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL,params:[]}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/d1.json
+          node - <<'NODE'
+          const x=require('./evidence/d1.json'),r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r) throw new Error('D1_ROW_MISSING');
+          if(r.order_id!==process.env.ORDER_ID||r.identity_order_id!==process.env.ORDER_ID) throw new Error('ORDER_ID_MISMATCH');
+          if(r.submission_id!==process.env.SUBMISSION_ID) throw new Error('SUBMISSION_MISMATCH');
+          if(r.source_order_key!=='CUSTOMER:'+process.env.SUBMISSION_ID) throw new Error('SOURCE_ORDER_KEY_MISMATCH');
+          if(r.display_code!=='0001'||r.projection_display_code!=='0001') throw new Error('DISPLAY_CODE_MISMATCH:'+JSON.stringify(r));
+          console.log('D1_IDENTITY_READBACK=PASS order_id='+r.order_id+' display_code='+r.display_code);
+          NODE
+
+      - name: Prove Customer lifecycle same order
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(node -e "const {createHash}=require('node:crypto');process.stdout.write(createHash('sha256').update(process.env.SUBMISSION_ID).digest('base64url'))")"
+          HTTP="$(curl -sS -o evidence/customer-status.json -w '%{http_code}'             -H "Cookie: mf_customer_guest=$TOKEN" -H "Authorization: Bearer $TOKEN"             "$CUSTOMER_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          echo "customer_status_http=$HTTP" | tee evidence/customer-http.txt
+          cat evidence/customer-status.json | tee -a evidence/customer-http.txt
+          test "$HTTP" = 200
+          node -e "const x=require('./evidence/customer-status.json');if(!x.ok||x.orderId!==process.env.ORDER_ID||x.submissionId!==process.env.SUBMISSION_ID)process.exit(1)"
+          echo "CUSTOMER_LIFECYCLE_READBACK=PASS"
+
+      - name: Pair SMM and read same order
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          PAIR_HTTP="$(curl -sS -o evidence/smm-session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMM_URL/api/smm/session")"
+          echo "smm_pair_http=$PAIR_HTTP" | tee evidence/smm-http.txt
+          cat evidence/smm-session.json | sed -E 's/"sessionToken":"[^"]+"/"sessionToken":"[REDACTED]"/' | tee -a evidence/smm-http.txt
+          test "$PAIR_HTTP" = 200
+          TOKEN="$(node -e "const x=require('./evidence/smm-session.json');if(!x.authenticated||!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          node -e "require('fs').writeFileSync('/tmp/smm.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o evidence/smm.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/smm.json "$SMM_URL/api/smm/runtime")"
+          echo "smm_detail_http=$HTTP" | tee -a evidence/smm-http.txt
+          cat evidence/smm.json | tee -a evidence/smm-http.txt
+          test "$HTTP" = 200
+          node -e "const x=require('./evidence/smm.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('SMM_ORDER_ID_MISMATCH')"
+          echo "SMM_SAME_ORDER=PASS order_id=$ORDER_ID"
+
+      - name: Pair SMT and read same order
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          PAIR_HTTP="$(curl -sS -o evidence/smt-session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/smt/session")"
+          echo "smt_pair_http=$PAIR_HTTP" | tee evidence/smt-http.txt
+          cat evidence/smt-session.json | sed -E 's/"sessionToken":"[^"]+"/"sessionToken":"[REDACTED]"/' | tee -a evidence/smt-http.txt
+          test "$PAIR_HTTP" = 200
+          TOKEN="$(node -e "const x=require('./evidence/smt-session.json');if(!x.authenticated||!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          node -e "require('fs').writeFileSync('/tmp/smt.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          HTTP="$(curl -sS -o evidence/smt.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/smt.json "$ADMIN_URL/api/smt/runtime")"
+          echo "smt_detail_http=$HTTP" | tee -a evidence/smt-http.txt
+          cat evidence/smt.json | tee -a evidence/smt-http.txt
+          test "$HTTP" = 200
+          node -e "const x=require('./evidence/smt.json');if(x.orderId!==process.env.ORDER_ID)throw new Error('SMT_ORDER_ID_MISMATCH')"
+          echo "SMT_SAME_ORDER=PASS order_id=$ORDER_ID"
+
+      - name: Summary
+        if: success()
+        shell: bash
+        run: |
+          printf 'A3_DOWNSTREAM_READBACK=PASS\nsource_sha=%s\norder_id=%s\nsubmission_id=%s\ndisplay_code=0001\n'             "${{ steps.req.outputs.source_sha }}" "$ORDER_ID" "$SUBMISSION_ID" | tee evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-downstream-readback-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
