@@ -1,2 +1,2 @@
-source_sha=8328162aa96cd2d0116fffee9bef470af494a195
+source_sha=aecd45adf5fa7c03cd274be1fa8623f1a50ce20f
 branch_name=work/TEAM1/smt-cash-opening-gate-20260906-02
