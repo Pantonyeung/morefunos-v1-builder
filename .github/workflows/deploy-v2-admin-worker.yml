@@ -153,7 +153,20 @@ jobs:
           else
             echo 'authenticated_session_http=BLOCKED_MISSING_SECRET' >> evidence/runtime.txt
           fi
-          rm -f /tmp/session.json /tmp/auth-session.json
+          PRICING_REVISION_HTTP="$(curl -sS -o /tmp/pricing-revision.json -w '%{http_code}' "$URL/api/pricing/revision")"
+          PRICING_ACTIVE_HTTP="$(curl -sS -o /tmp/pricing-active.json -w '%{http_code}' "$URL/api/pricing/active")"
+          test "$PRICING_REVISION_HTTP" = 200
+          test "$PRICING_ACTIVE_HTTP" = 200
+          node - <<'NODE'
+          const revision=require('/tmp/pricing-revision.json');
+          const active=require('/tmp/pricing-active.json');
+          if(revision?.ok!==true||!Number.isSafeInteger(revision?.value?.revision)||revision.value.revision<1||!String(revision?.value?.revisionToken||'').trim())process.exit(1);
+          if(active?.ok!==true||String(active?.value?.revision)!==String(revision.value.revision)||active?.value?.revisionToken!==revision.value.revisionToken||!active?.value?.products)process.exit(1);
+          console.log('pricing_live_readback=PASS revision='+revision.value.revision);
+          NODE
+          echo "pricing_revision_http=$PRICING_REVISION_HTTP" >> evidence/runtime.txt
+          echo "pricing_active_http=$PRICING_ACTIVE_HTTP" >> evidence/runtime.txt
+          rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
