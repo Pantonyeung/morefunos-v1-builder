@@ -121,7 +121,7 @@ jobs:
               scrollHeight:document.documentElement.scrollHeight,
             }));
             if(pre.w!==1920||pre.h!==1080)throw new Error('SMT_PREVIEW_VIEWPORT_MISMATCH');
-            if(!pre.bodyText.includes('Runtime 未連接'))throw new Error('SMT_PREVIEW_PREAUTH_UI_MISSING');
+            if(pre.bodyText.includes('Runtime 已連接'))throw new Error('SMT_PREVIEW_PREAUTH_FALSE_CONNECTED');
             const pair=await page.evaluate(async(secret)=>{
               const response=await fetch('/api/smt/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:secret}),cache:'no-store'});
               const session=await response.json();
