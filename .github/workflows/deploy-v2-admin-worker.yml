@@ -120,17 +120,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/evidence"
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
           test -s "$CONFIG"
-          for key in FIREBASE_DATABASE_URL FIREBASE_SERVICE_ACCOUNT_EMAIL FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY; do
-            test -n "${!key:-}" || { echo "::error::MISSING_REQUIRED_BUILDER_SECRET $key"; exit 1; }
-          done
-          SECRETS_FILE="$RUNNER_TEMP/admin-deploy-secrets.json"
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const keys=['FIREBASE_DATABASE_URL','FIREBASE_SERVICE_ACCOUNT_EMAIL','FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY'];
-          fs.writeFileSync(process.env.RUNNER_TEMP+'/admin-deploy-secrets.json',JSON.stringify(Object.fromEntries(keys.map(k=>[k,process.env[k]]))));
-          NODE
-          npx --yes wrangler@4 deploy --config "$CONFIG" --secrets-file "$SECRETS_FILE" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
-          rm -f "$SECRETS_FILE"
+          npx --yes wrangler@4 deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
           URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
           test -n "$URL"
           printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
