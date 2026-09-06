@@ -1,2 +1,2 @@
-source_sha=5954ddfadcd89e06e4c7f7f0d8844dd06a44f29e
-baseline_control=cloudflare-esm-check
+source_sha=9e929315a2d3057ad48e91b083792f785053fab1
+request_id=TEAMA-SMT-STAFF-AUTH-20260906-01
