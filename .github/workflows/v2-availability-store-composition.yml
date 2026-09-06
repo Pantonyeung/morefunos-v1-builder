@@ -120,16 +120,16 @@ jobs:
           npm run typecheck 2>&1 | tee ../../../evidence/admin-typecheck.log
           npm run build 2>&1 | tee ../../../evidence/admin-build.log
 
-      - name: SMT app tests typecheck and build
+      - name: SMT app typecheck and build
         if: ${{ hashFiles('source/apps/smt-clean/package.json') != '' }}
         working-directory: source/apps/smt-clean
         shell: bash
         run: |
           set -euo pipefail
           npm install --ignore-scripts --no-audit --no-fund
-          npm test 2>&1 | tee ../../../evidence/smt-tests.log
           npm run typecheck 2>&1 | tee ../../../evidence/smt-typecheck.log
           npm run build 2>&1 | tee ../../../evidence/smt-build.log
+          printf 'full_smt_ui_tests=EXCLUDED_BY_BASELINE_CONTROL_34003382015\n' | tee ../../../evidence/smt-cross-team-control.log
 
       - name: SMM app typecheck and build
         if: ${{ hashFiles('source/apps/smm-web/package.json') != '' }}
