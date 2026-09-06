@@ -1,4 +1,4 @@
-source_sha=255a10d98aece81a331ff991f471bbdf55f191f3
-base_sha=255a10d98aece81a331ff991f471bbdf55f191f3
-branch_name=main
-request_id=TEAMA-SMM-P0-LATEST-MAIN-VERIFY-20260906-01
+source_sha=0f4a365c15e494ab728f5fd59ba0dafec381397b
+base_sha=2fca804dfd5cbe0e8157a929911862f3b540f285
+branch_name=work/TEAM1/smm-uiux-high-contrast-20260906-01
+request_id=TEAMA-SMM-HIGH-CONTRAST-UI-R1-20260906-01
