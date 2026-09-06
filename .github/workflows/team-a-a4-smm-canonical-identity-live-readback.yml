@@ -1,0 +1,97 @@
+name: Team A A4 SMM Canonical Identity Live Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a4-smm-canonical-identity-live-readback.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+      CUSTOMER_ORDER_ID: 58f123c2-6e2d-4664-8059-d405c18c7d66
+      CUSTOMER_SUBMISSION_ID: teama-a3-customer-ingress-20260906-v1
+      KEETA_ORDER_ID: 4ed92686-9bfe-5879-89e8-ba0e7d336f46
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Pair SMM session
+        id: session
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          mkdir -p evidence
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMM_ORIGIN/api/smm/session")"
+          test "$HTTP" = 200
+          TOKEN="$(node -e "const x=require('/tmp/session.json');if(!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          printf '%s' "$TOKEN" >/tmp/token
+          printf 'session_http=%s\n' "$HTTP" > evidence/session.txt
+
+      - name: Read formal Customer canonical identity through live SMM
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/token)"
+          ORDER_ID="$CUSTOMER_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/customer-q.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+          HTTP="$(curl -sS -o /tmp/customer.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/customer-q.json "$SMM_ORIGIN/api/smm/runtime")"
+          test "$HTTP" = 200
+          node - <<'NODE' | tee evidence/customer.txt
+          const x=require('/tmp/customer.json'),id=x.canonicalIdentity;
+          if(x.orderId!==process.env.CUSTOMER_ORDER_ID) throw new Error('CUSTOMER_ORDER_ID_MISMATCH');
+          if(x.storeId!==process.env.STORE_ID) throw new Error('CUSTOMER_STORE_MISMATCH');
+          if(!id) throw new Error('CUSTOMER_CANONICAL_IDENTITY_MISSING');
+          if(id.orderId!==x.orderId||id.storeId!==x.storeId) throw new Error('CUSTOMER_IDENTITY_BINDING_MISMATCH');
+          if(id.sourceType!=='CUSTOMER'||id.sourceProvider!==null||id.sourceChannel!=='CUSTOMER_WEB') throw new Error('CUSTOMER_SOURCE_MISMATCH');
+          if(id.externalOrderId!==process.env.CUSTOMER_SUBMISSION_ID) throw new Error('CUSTOMER_EXTERNAL_ID_MISMATCH');
+          if(id.displayOrderCode!=='0001') throw new Error('CUSTOMER_DISPLAY_CODE_MISMATCH:'+id.displayOrderCode);
+          if(id.sourceOrderKey!=='CUSTOMER:'+process.env.CUSTOMER_SUBMISSION_ID) throw new Error('CUSTOMER_SOURCE_KEY_MISMATCH');
+          console.log(JSON.stringify({orderId:x.orderId,sourceType:id.sourceType,sourceChannel:id.sourceChannel,displayOrderCode:id.displayOrderCode,sourceOrderKey:id.sourceOrderKey}));
+          NODE
+
+      - name: Read Keeta canonical identity through live SMM
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/token)"
+          ORDER_ID="$KEETA_ORDER_ID" node -e "require('fs').writeFileSync('/tmp/keeta-q.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+          HTTP="$(curl -sS -o /tmp/keeta.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/keeta-q.json "$SMM_ORIGIN/api/smm/runtime")"
+          test "$HTTP" = 200
+          node - <<'NODE' | tee evidence/keeta.txt
+          const x=require('/tmp/keeta.json'),id=x.canonicalIdentity;
+          if(x.orderId!==process.env.KEETA_ORDER_ID) throw new Error('KEETA_ORDER_ID_MISMATCH');
+          if(x.storeId!==process.env.STORE_ID) throw new Error('KEETA_STORE_MISMATCH');
+          if(!id) throw new Error('KEETA_CANONICAL_IDENTITY_MISSING');
+          if(id.orderId!==x.orderId||id.storeId!==x.storeId) throw new Error('KEETA_IDENTITY_BINDING_MISMATCH');
+          if(id.sourceType!=='PLATFORM'||id.sourceProvider!=='KEETA'||id.sourceChannel!=='DELIVERY_PLATFORM') throw new Error('KEETA_SOURCE_MISMATCH');
+          if(id.displayOrderCode!=='2965') throw new Error('KEETA_DISPLAY_CODE_MISMATCH:'+id.displayOrderCode);
+          if(!String(id.sourceOrderKey||'').startsWith('KEETA:')) throw new Error('KEETA_SOURCE_KEY_MISMATCH');
+          console.log(JSON.stringify({orderId:x.orderId,sourceType:id.sourceType,sourceProvider:id.sourceProvider,sourceChannel:id.sourceChannel,displayOrderCode:id.displayOrderCode,sourceOrderKey:id.sourceOrderKey}));
+          NODE
+
+      - name: Prove presentation helper maps canonical identity only
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'customer_expected_source=自家客戶端\ncustomer_expected_title=取餐碼 #0001\nkeeta_expected_source=Keeta\nkeeta_expected_title=Keeta #2965\naction_identity=canonical_orderId\n' | tee evidence/presentation.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a4-smm-canonical-identity-live-readback
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
