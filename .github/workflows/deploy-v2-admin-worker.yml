@@ -110,6 +110,19 @@ jobs:
             npx --yes wrangler@4 r2 bucket create "$BUCKET"
             echo "r2-product-media=CREATED bucket=$BUCKET"
           fi
+      - name: Ensure Payment Evidence R2 bucket
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUCKET='morefun-v2-payment-evidence'
+          if npx --yes wrangler@4 r2 bucket list | grep -Fq "$BUCKET"; then
+            echo "r2-payment-evidence=EXISTS bucket=$BUCKET"
+          else
+            npx --yes wrangler@4 r2 bucket create "$BUCKET"
+            echo "r2-payment-evidence=CREATED bucket=$BUCKET"
+          fi
+
       - name: Deploy Admin Worker and assets
         working-directory: source
         shell: bash
