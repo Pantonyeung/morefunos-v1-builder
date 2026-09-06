@@ -1,6 +1,6 @@
-source_sha=c10ca3be11755e35cd68138b211cddf70a9f9245
-branch_name=work/TEAM2/admin-owner-linkup-fresh-main-20260906-02
-request_id=TEAM-B-FRESH-LINKUP-PRINT-R2-20260906
-run_id=34006151326
+source_sha=UNKNOWN
+branch_name=UNKNOWN
+request_id=TEAM-B-FULL-LINKUP-PRINT-R1-20260906
+run_id=34007145141
 run_attempt=1
-conclusion=success
+conclusion=failure
