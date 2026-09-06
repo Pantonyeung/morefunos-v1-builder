@@ -1,0 +1,76 @@
+name: Team A A3 Existing Order SMM SMT Readback
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a3-existing-order-port-readback.txt'
+permissions:
+  contents: read
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      SMM_ORIGIN: https://morefun-v2-smm.pantonyeung.workers.dev
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      STORE_ID: d2d882b4-5c7b-40f9-ad59-91f8faabb8e8
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          O="$(sed -n 's/^order_id=//p' requests/team-a-a3-existing-order-port-readback.txt | tr -d '[:space:]')"
+          S="$(sed -n 's/^submission_id=//p' requests/team-a-a3-existing-order-port-readback.txt | tr -d '[:space:]')"
+          test -n "$O"; test -n "$S"; test -n "$ADMIN_LOGIN_SECRET"
+          echo "order_id=$O" >> "$GITHUB_OUTPUT"
+          echo "submission_id=$S" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+      - name: SMM same canonical orderId
+        shell: bash
+        env:
+          ORDER_ID: ${{ steps.req.outputs.order_id }}
+        run: |
+          node - <<'NODE' | tee evidence/smm.txt
+          (async()=>{
+            const p=await fetch(process.env.SMM_ORIGIN+'/api/smm/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET})});
+            const s=await p.json(); if(p.status!==200||!s.sessionToken) throw new Error('SMM_SESSION_FAILED');
+            const r=await fetch(process.env.SMM_ORIGIN+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+s.sessionToken,'content-type':'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:100}})});
+            const b=await r.json(); if(r.status!==200||!Array.isArray(b.orders)) throw new Error('SMM_OPEN_LIST_FAILED');
+            const m=b.orders.find(x=>x?.orderId===process.env.ORDER_ID); if(!m) throw new Error('SMM_ORDER_NOT_VISIBLE');
+            console.log(JSON.stringify({visible:true,orderId:m.orderId,lifecycleStatus:m.lifecycleStatus}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: SMT same canonical orderId
+        shell: bash
+        env:
+          ORDER_ID: ${{ steps.req.outputs.order_id }}
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          H="$(curl -sS -D /tmp/h -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_ORIGIN/api/admin/session")"
+          test "$H" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/h | tr -d '\r' | head -n1)"
+          TOKEN="${COOKIE#mf_admin_session=}"; test -n "$TOKEN"
+          ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID,storeId:'caller-forged-store'}}))"
+          C="$(curl -sS -o /tmp/out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/q.json "$ADMIN_ORIGIN/api/smt/runtime")"
+          test "$C" = 200
+          node - <<'NODE' | tee evidence/smt.txt
+          const x=require('/tmp/out.json');
+          if(x.orderId!==process.env.ORDER_ID) throw new Error('SMT_ORDER_ID_MISMATCH');
+          if(x.storeId!==process.env.STORE_ID) throw new Error('SMT_STORE_ID_MISMATCH');
+          if(x.submissionId!==process.env.SUBMISSION_ID) throw new Error('SMT_SUBMISSION_ID_MISMATCH');
+          console.log(JSON.stringify({visible:true,orderId:x.orderId,storeId:x.storeId,submissionId:x.submissionId,lifecycleStatus:x.lifecycleStatus}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a3-existing-order-port-readback
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
