@@ -66,6 +66,7 @@ jobs:
       - name: Run local-first tests
         working-directory: source/apps/smt-clean
         run: |
+          set -euo pipefail
           npx vitest run             src/runtime/operational-snapshot-cache.test.ts             src/runtime/local-first-bootstrap.test.ts             src/runtime/network-production-runtime.test.ts             2>&1 | tee ../../../evidence/tests.txt
 
       - name: SMT typecheck and build
