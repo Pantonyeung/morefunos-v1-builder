@@ -1,5 +1,5 @@
-source_sha=33bfe8d04b94b6e32201140df0d195d8be3f9bb5
-request_id=TEAM-B-CAPACITY-LATEST-HEAD-R1-20260906
-run_id=34022191075
+source_sha=278abbc8604bb3502ee549c5bf3e1a59cce9ee9a
+request_id=TEAM-B-CAPACITY-HK-HOLIDAY-R1-20260906
+run_id=34022250928
 run_attempt=1
 conclusion=success
