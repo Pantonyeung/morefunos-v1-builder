@@ -1,2 +1,2 @@
-source_sha=8419dc04c8b46ca679699685fe2b6c13c6e42715
-request_id=PRICING-8419-SMT-WS-EXACT-14
+source_sha=a752991ab8a7eae5b19d62ca03b177b3534c1cca
+request_id=PRICING-A752-SMT-STRICT-02
