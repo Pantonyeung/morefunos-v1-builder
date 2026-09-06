@@ -2,4 +2,4 @@ source_sha=f9fbd0edca44876c6ca9c4a71fd3b438d833867a
 base_sha=92e8beeb72a5ddc49931450f32eff19cad5dc560
 branch_name=work/TEAM2/full-chain-reconcile-20260906-01
 verification_phase=CANDIDATE
-request_id=TEAM-B-FULL-CHAIN-CORE-20260906-R2
+request_id=TEAM-B-FULL-CHAIN-CORE-20260906-R3
