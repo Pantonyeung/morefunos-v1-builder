@@ -1,5 +1,5 @@
-source_sha=439031babee06fe3560404de33b899090564dfb5
-request_id=pricing-439031-customer-exact-05
-run_id=34065256619
+source_sha=15297326b324d425d0d3fea80a307498fd7161c0
+request_id=pricing-152973-customer-exact-06
+run_id=34065503828
 run_attempt=1
 conclusion=success
