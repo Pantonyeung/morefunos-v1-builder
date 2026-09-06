@@ -1,2 +1,2 @@
-source_sha=873c0ce5a3d55de80b90924aa67309a793fa9533
-attempt=team-b-announcement-notification-customer-fix-20260906
+source_sha=f800de3dccc0f694b31954743c078cf703fd3b2a
+attempt=team-b-full-chain-customer-20260906
