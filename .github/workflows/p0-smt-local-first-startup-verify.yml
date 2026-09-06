@@ -57,7 +57,9 @@ jobs:
 
       - name: Root typecheck
         working-directory: source
-        run: npm run typecheck 2>&1 | tee ../evidence/root-typecheck.txt
+        run: |
+          set -euo pipefail
+          npm run typecheck 2>&1 | tee ../evidence/root-typecheck.txt
 
       - name: Install SMT app
         working-directory: source/apps/smt-clean
