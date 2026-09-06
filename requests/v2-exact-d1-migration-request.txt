@@ -1,3 +1,3 @@
 source_sha=493b62424397a59c53105bf0b8d34601a50692d7
-migration_file=0039-inventory-ledger.sql
-request_id=TEAM-B-PROD-MIGRATION-0039-20260906
+migration_file=0040-recipe-bom.sql
+request_id=TEAM-B-PROD-MIGRATION-0040-20260906
