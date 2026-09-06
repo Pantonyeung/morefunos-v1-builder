@@ -1,5 +1,5 @@
-source_sha=b8458833f18d1af0fdfde2ff71e21cd752fec757
-request_id=TEAM-B-ADMIN-UIUX-R2-VERIFY-20260906-2352
-run_id=34043229261
+source_sha=5d28e039cef541cecc6cc070b6c1e3eb6f0aa1e5
+request_id=TEAM-B-ADMIN-UIUX-PAYMENT-COMPAT-VERIFY-20260906-2354
+run_id=34043254684
 run_attempt=1
 conclusion=failure
