@@ -1,0 +1,44 @@
+name: Probe Admin PBKDF2 Runtime
+
+on:
+  push:
+    paths:
+      - 'requests/admin-pbkdf2-runtime-probe-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Login and probe PBKDF2 levels
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'EOF'
+          const origin=process.env.ADMIN_ORIGIN;
+          const secret=process.env.ADMIN_LOGIN_SECRET;
+          const login=await fetch(origin+'/api/admin/session',{
+            method:'POST',
+            headers:{'content-type':'application/json'},
+            body:JSON.stringify({loginSecret:secret})
+          });
+          const cookie=login.headers.get('set-cookie')?.split(';')[0];
+          if(!login.ok||!cookie)throw new Error('LOGIN_FAILED');
+          for(const iterations of [10000,25000,50000,100000,150000]){
+            const res=await fetch(origin+'/api/admin/diagnostics/pbkdf2?iterations='+iterations,{
+              headers:{cookie}
+            });
+            const body=await res.text();
+            console.log('ITERATIONS='+iterations+' STATUS='+res.status+' BODY='+body);
+          }
+          EOF
