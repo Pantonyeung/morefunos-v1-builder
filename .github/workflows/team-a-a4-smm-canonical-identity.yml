@@ -1,0 +1,86 @@
+name: Team A A4 SMM Canonical Identity Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a4-smm-canonical-identity.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact candidate
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a4-smm-canonical-identity.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Prove exact source
+        working-directory: source
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          mkdir -p ../evidence
+          echo "source_sha=$EXPECTED" | tee ../evidence/source.txt
+
+      - name: Run A4 canonical identity tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types             apps/smm-web/src/smm-user-messages.test.ts             2>&1 | tee ../evidence/a4-tests.txt
+
+      - name: Typecheck and build SMM
+        working-directory: source/apps/smm-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck 2>&1 | tee ../../../evidence/smm-typecheck.txt
+          npm run build 2>&1 | tee ../../../evidence/smm-build.txt
+
+      - name: Verify no new-traffic fallback override in presentation
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "validateCanonicalOrderIdentity" apps/smm-web/src/smm-user-messages.ts
+          grep -F "if(identity)return identity.displayOrderCode" apps/smm-web/src/smm-user-messages.ts
+          grep -F "if(identity)return canonicalSource(identity)" apps/smm-web/src/smm-user-messages.ts
+          grep -F "SMM_CANONICAL_ORDER_IDENTITY_INVALID" apps/smm-web/src/smm-user-messages.ts
+          echo "canonical_only_guard=PASS" | tee ../evidence/guard.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-a-a4-smm-canonical-identity-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
