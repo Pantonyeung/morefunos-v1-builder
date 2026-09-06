@@ -6,7 +6,7 @@ on:
       - 'requests/v2-exact-d1-migration-request.txt'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apply:
@@ -58,3 +58,65 @@ jobs:
           node -e "require('fs').writeFileSync('/tmp/verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_refund_state','mfos_payment_refund_audit','mfos_reporting_projection') ORDER BY name\"}))"
           curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/verify.json > /tmp/verify-result.json
           node -e "const x=require('/tmp/verify-result.json');const n=(x.result?.[0]?.results||[]).map(r=>r.name).sort();const e=['mfos_payment_refund_audit','mfos_refund_state','mfos_reporting_projection'];if(JSON.stringify(n)!==JSON.stringify(e)){console.error(n);process.exit(1)};console.log('refund_reporting_schema=PASS '+n.join(','))"
+
+      - name: Verify pricing publication migration
+        if: steps.req.outputs.migration_file == '0046-pricing-publication-revision.sql'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/pricing-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_pricing_publication_state','mfos_pricing_publication_history') ORDER BY name; SELECT store_id,active_revision,revision_token,activated_at,request_id FROM mfos_pricing_publication_state ORDER BY store_id LIMIT 20;\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/pricing-verify.json > /tmp/pricing-verify-result.json
+          node - <<'NODE'
+          const x=require('/tmp/pricing-verify-result.json');
+          if(x.success!==true) throw new Error('D1_QUERY_FAILED');
+          const tables=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=['mfos_pricing_publication_history','mfos_pricing_publication_state'];
+          if(JSON.stringify(tables)!==JSON.stringify(expected)) throw new Error('PRICING_PUBLICATION_TABLES_MISSING:'+JSON.stringify(tables));
+          const rows=x.result?.[1]?.results||[];
+          if(rows.length===0) throw new Error('PRICING_PUBLICATION_BOOTSTRAP_ROW_MISSING');
+          for(const row of rows){
+            const rev=Number(row.active_revision);
+            if(!Number.isSafeInteger(rev)||rev<1||!String(row.revision_token||'').trim()||!String(row.request_id||'').trim()){
+              throw new Error('PRICING_PUBLICATION_BOOTSTRAP_ROW_INVALID:'+JSON.stringify(row));
+            }
+          }
+          console.log('pricing_publication_schema=PASS rows='+rows.length);
+          NODE
+
+      - name: Seal durable migration result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          MIGRATION_FILE: ${{ steps.req.outputs.migration_file }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-exact-d1-migration-request.txt | tr -d '\r\n')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+              echo "migration_file=${MIGRATION_FILE:-UNKNOWN}"
+              echo "request_id=${REQUEST_ID:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "run_attempt=$RUN_ATTEMPT"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-exact-d1-migration.txt
+            git add .ci-results/v2-exact-d1-migration.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): V2 D1 migration ${CONCLUSION} ${MIGRATION_FILE:-UNKNOWN}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          echo "RESULT_SEAL_PUSH_FAILED" >&2
+          exit 1
