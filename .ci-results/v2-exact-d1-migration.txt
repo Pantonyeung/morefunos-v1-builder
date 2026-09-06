@@ -1,0 +1,6 @@
+source_sha=439031babee06fe3560404de33b899090564dfb5
+migration_file=0046-pricing-publication-revision.sql
+request_id=PRICING-0046-PROD-APPLY-SEALED-20260907-02
+run_id=34065360590
+run_attempt=1
+conclusion=success
