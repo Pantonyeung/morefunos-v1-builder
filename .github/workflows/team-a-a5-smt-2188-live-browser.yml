@@ -103,7 +103,10 @@ jobs:
             if(!card.includes('$9'))throw new Error('SMT_A5_TOTAL_NOT_VISIBLE');
 
             await orderButton.click();
-            const detailText=(await page.locator('.orders-selected-detail').textContent())||'';
+            const detailPanel=page.locator('.orders-selected-detail');
+            await detailPanel.getByText('2188',{exact:false}).first().waitFor({state:'visible',timeout:15000});
+            await detailPanel.getByText('Keeta',{exact:false}).first().waitFor({state:'visible',timeout:15000});
+            const detailText=(await detailPanel.textContent())||'';
             if(!detailText.includes('2188'))throw new Error('SMT_A5_DETAIL_CODE_NOT_CANONICAL');
             if(!detailText.includes('Keeta'))throw new Error('SMT_A5_DETAIL_SOURCE_NOT_CANONICAL');
             if(detailText.includes(process.env.ORDER_ID.slice(-8)))throw new Error('SMT_A5_MACHINE_ID_LEAKED_AS_FRONTLINE_CODE');
