@@ -1,5 +1,5 @@
-source_sha=ab20eb0106cadc73e4fb27d6d0e861152d757bea
-request_id=TEAM-B-ADMIN-UIUX-HIDE-INTERNAL-REVISION-VERIFY-20260906-2359
-run_id=34043419164
+source_sha=fa0bbf0060bfafabd2e2c167f937b42277e98ad7
+request_id=PRICING-LOCAL-FIRST-ADMIN-VERIFY-20260906-01
+run_id=34045870772
 run_attempt=1
 conclusion=success
