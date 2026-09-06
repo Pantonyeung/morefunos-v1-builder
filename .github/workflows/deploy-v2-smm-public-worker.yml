@@ -106,7 +106,7 @@ jobs:
           SESSION_HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/smm/session")"
           echo "anonymous_session_http=$SESSION_HTTP body=$(cat /tmp/session.json)"
           test "$SESSION_HTTP" = 401
-          node -e "const x=require('/tmp/session.json');if(x.code!=='SMM_RUNTIME_SESSION_REQUIRED')process.exit(1)"
+          node -e "const x=require('/tmp/session.json');if(x.code!=='SMM_DEVICE_PAIRING_SESSION_REQUIRED')process.exit(1)"
           BAD='__smm_016_intentionally_invalid__'
           BAD="$BAD" node -e "require('fs').writeFileSync('/tmp/pair.json',JSON.stringify({loginSecret:process.env.BAD}))"
           PAIR_HTTP="$(curl -sS -H 'content-type: application/json' --data-binary @/tmp/pair.json -o /tmp/pair-response.json -w '%{http_code}' "$URL/api/smm/session")"
