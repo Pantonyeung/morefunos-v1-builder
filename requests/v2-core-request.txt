@@ -1,4 +1,3 @@
 source_sha=9a72b14bd9eb4c05316a83572014cc4871bfd967
 branch_name=main
 verification_phase=CANDIDATE
-request_id=PRICING-LOCAL-FIRST-CORE-VERIFY-20260907-04
