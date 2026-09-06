@@ -180,6 +180,10 @@ jobs:
           NODE
           echo "pricing_revision_http=$PRICING_REVISION_HTTP" >> evidence/runtime.txt
           echo "pricing_active_http=$PRICING_ACTIVE_HTTP" >> evidence/runtime.txt
+          PRICING_SOCKET_HEALTH_HTTP="$(curl -sS -o /tmp/pricing-socket-health.json -w '%{http_code}' "$URL/api/pricing/socket-health")"
+          test "$PRICING_SOCKET_HEALTH_HTTP" = 200
+          node -e "const x=require('/tmp/pricing-socket-health.json');if(x?.ok!==true)process.exit(1);console.log('pricing_realtime_health=PASS connections='+x.connections)"
+          echo "pricing_socket_health_http=$PRICING_SOCKET_HEALTH_HTTP" >> evidence/runtime.txt
           PRICING_SOCKET_URL="$(printf '%s' "$URL" | sed 's#^https://#wss://#;s#^http://#ws://#')/api/pricing/socket"
           PRICING_SOCKET_URL="$PRICING_SOCKET_URL" node - <<'NODE'
           const url=process.env.PRICING_SOCKET_URL;
@@ -190,15 +194,15 @@ jobs:
             console.log('pricing_realtime_websocket=PASS');
             ws.close(1000,'builder-smoke');
           });
-          ws.addEventListener('error',()=>{
+          ws.addEventListener('error',(event)=>{
             clearTimeout(timer);
-            console.error('PRICING_REALTIME_WEBSOCKET_FAILED');
+            console.error('PRICING_REALTIME_WEBSOCKET_FAILED',event?.error?.message||event?.message||event?.type||'unknown');
             process.exit(1);
           });
           ws.addEventListener('close',()=>process.exit(0));
           NODE
           echo "pricing_socket=PASS" >> evidence/runtime.txt
-          rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json
+          rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json /tmp/pricing-socket-health.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
