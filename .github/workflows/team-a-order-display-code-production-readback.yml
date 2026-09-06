@@ -39,7 +39,6 @@ jobs:
           set -euo pipefail
           URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DATABASE_ID/query"
           SQL="SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('mfos_order_display_code_counter','mfos_order_display_code') ORDER BY name"
-          node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))" SQL="$SQL"
           SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
           curl --fail-with-body --silent --show-error -X POST "$URL"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'content-type: application/json'             --data-binary @/tmp/query.json > /tmp/result.json
           node - <<'NODE'
