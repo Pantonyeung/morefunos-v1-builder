@@ -1,3 +1,3 @@
-source_sha=bc606f64e1e974d95b4089ee8340e3141c71ac33
+source_sha=79310ad034fad4ec6afe130866d753c0673db0a1
 channel=candidate
-request_id=TEAMA-SMT-STAFF-AUTH-FRESH-MAIN-20260906-02
+request_id=TEAMA-SMT-STAFF-AUTH-RERUN-20260906-03
