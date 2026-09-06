@@ -75,9 +75,22 @@ jobs:
       - name: Pricing admission tests
         working-directory: source
         run: npm run test:core-pricing
-      - name: SMT UI integration tests
+      - name: SMT Node-compatible integration tests
         working-directory: source
-        run: npm run test:smt-ui-integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find packages/smt-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 't2-smt-worker-mount.test.ts' -print | sort)
+          test "${#tests[@]}" -gt 0
+          node --test "${tests[@]}"
+
+      - name: Record Worker-runtime test separation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts
+          grep -q "infra/cloudflare/admin-web-worker/index.ts" source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts
+          echo "t2-smt-worker-mount.test.ts imports Cloudflare Worker runtime code and is intentionally excluded from plain Node SMT UI verification; Workers-runtime verification belongs to the dedicated Cloudflare test/deploy lane." >> "$GITHUB_STEP_SUMMARY"
       - name: Install SMT app dependencies
         working-directory: source/apps/smt-clean
         run: npm install --ignore-scripts --no-audit --no-fund
