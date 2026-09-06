@@ -71,6 +71,8 @@ jobs:
           runq sessions "SELECT session_id,staff_id,lifecycle_status,absolute_expires_at,revision,json_extract(payload_json,'$.deviceId') AS device_id,json_extract(payload_json,'$.policyId') AS policy_id,json_extract(payload_json,'$.lastActivityAt') AS last_activity_at FROM mfos_session WHERE session_id LIKE 'smt-device-session:%' ORDER BY rowid DESC LIMIT 8;"
           runq bindings "SELECT runtime_binding_ref,device_id,bound_session_id,lifecycle_status,expires_at,revision,capability_ids_json,created_at,updated_at FROM mfos_smt_runtime_binding ORDER BY created_at DESC LIMIT 8;"
           runq devices "SELECT device_id,revision,json_extract(payload_json,'$.lifecycleStatus') AS lifecycle_status,json_extract(payload_json,'$.trustSourceRef') AS trust_source_ref,json_extract(payload_json,'$.displayName') AS display_name FROM mfos_device_trust WHERE device_id LIKE 'device:smt:%' ORDER BY rowid DESC LIMIT 8;"
+          runq staff_credential "SELECT staff_id,employee_code,status,revision,updated_at FROM mfos_staff_pos_credential WHERE employee_code='12345' LIMIT 2;"
+          runq staff_identity "SELECT staff_id,record_json FROM mfos_rbac_staff WHERE staff_id IN (SELECT staff_id FROM mfos_staff_pos_credential WHERE employee_code='12345');"
           runq catalog_shape "SELECT json_extract(snapshot_json,'$.categories[0].categoryId') AS category_id,json_extract(snapshot_json,'$.categories[0].name') AS category_name,json_extract(snapshot_json,'$.categories[0].lifecycleStatus') AS category_status,json_extract(snapshot_json,'$.categories[0].position') AS category_position,json_extract(snapshot_json,'$.categories[0].revision') AS category_revision,json_extract(snapshot_json,'$.categories[0].createdAt') AS category_created,json_extract(snapshot_json,'$.categories[0].updatedAt') AS category_updated,json_extract(snapshot_json,'$.products[0].productId') AS product_id,json_extract(snapshot_json,'$.products[0].name') AS product_name,json_extract(snapshot_json,'$.products[0].lifecycleStatus') AS product_status,json_extract(snapshot_json,'$.products[0].revision') AS product_revision,json_extract(snapshot_json,'$.products[0].createdAt') AS product_created,json_extract(snapshot_json,'$.products[0].updatedAt') AS product_updated,json_array_length(json_extract(snapshot_json,'$.products[0].categoryMemberships')) AS membership_count,json_extract(snapshot_json,'$.products[0].categoryMemberships[0].categoryId') AS membership_category_id,json_extract(snapshot_json,'$.products[0].categoryMemberships[0].position') AS membership_position,json_array_length(json_extract(snapshot_json,'$.products[0].optionGroups')) AS option_group_count FROM mfos_catalog_state WHERE store_id='$STORE_ID';"
 
           node - <<'NODE' | tee "$GITHUB_WORKSPACE/evidence/summary.txt"
@@ -86,6 +88,8 @@ jobs:
           const sessions=rows('sessions');
           const bindings=rows('bindings');
           const devices=rows('devices');
+          const staffCredential=rows('staff_credential');
+          const staffIdentity=rows('staff_identity');
           const catalogShape=rows('catalog_shape');
           const openDays=days.filter(x=>x.lifecycle_status==='OPEN');
           console.log('source_sha='+process.env.SOURCE_SHA);
@@ -121,6 +125,13 @@ jobs:
           console.log('paired_device_count='+devices.length);
           console.log('latest_device_status='+(devices[0]?.lifecycle_status||'MISSING'));
           console.log('latest_device_id_match='+(devices[0]?.device_id===sessions[0]?.device_id));
+          console.log('staff_12345_credential_count='+staffCredential.length);
+          console.log('staff_12345_credential_status='+(staffCredential[0]?.status||'MISSING'));
+          console.log('staff_12345_credential_revision='+(staffCredential[0]?.revision??'MISSING'));
+          console.log('staff_12345_identity_count='+staffIdentity.length);
+          let staffLifecycle='MISSING';
+          try{staffLifecycle=JSON.parse(staffIdentity[0]?.record_json||'{}').lifecycleStatus||'MISSING'}catch{}
+          console.log('staff_12345_lifecycle='+staffLifecycle);
           const cs=catalogShape[0]||{};
           console.log('catalog_category_id='+(cs.category_id||'MISSING'));
           console.log('catalog_category_name='+(cs.category_name||'MISSING'));
