@@ -1,3 +1,3 @@
-source_sha=55639449dc5004db8d2d64cfc1b86a94b90b8cfa
-branch_name=work/TEAM2/admin-owner-linkup-closure-20260906-01
-request_id=TEAM-B-ADMIN-OWNER-LINKUP-AVAILABILITY-R3-20260906
+source_sha=5954ddfadcd89e06e4c7f7f0d8844dd06a44f29e
+branch_name=main
+request_id=TEAM-B-AVAILABILITY-CROSS-TEAM-CONTROL-20260906
