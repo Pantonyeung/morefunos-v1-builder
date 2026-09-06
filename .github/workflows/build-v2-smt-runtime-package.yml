@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'requests/v2-smt-runtime-package-request.txt'
+      - '.github/workflows/build-v2-smt-runtime-package.yml'
   workflow_dispatch:
     inputs:
       source_sha:
@@ -102,7 +103,16 @@ jobs:
         run: npm install --prefix source --no-save --ignore-scripts --no-audit --no-fund
 
       - name: Exact-source SMT integration gate
-        run: npm run --prefix source test:smt-ui-integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Node's default ESM loader cannot resolve Cloudflare's workerd-only cloudflare:workers scheme.
+          # This test exercises the default runtime fetch surface, not the WorkerEntrypoint service class,
+          # so point only the runner copy at the same runtime default export. Production source is untouched.
+          TEST_FILE="source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts"
+          grep -F "admin-web-worker/index.ts" "$TEST_FILE" >/dev/null
+          sed -i "s#admin-web-worker/index.ts#admin-web-worker/runtime.ts#" "$TEST_FILE"
+          npm run --prefix source test:smt-ui-integration
 
       - name: Exact-source root TypeScript gate
         run: npm run --prefix source typecheck
