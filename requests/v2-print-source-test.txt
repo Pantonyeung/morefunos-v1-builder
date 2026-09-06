@@ -1,3 +1,2 @@
-source_sha=67ff71170543fc083dd9f8da108cd98b08c7cd41
-branch_name=work/COMMANDER/order-auto-print-r9-fresh-main-20260906
-request_id=ORDER-AUTO-PRINT-CONSUMER-COMPOSITION-R10-FRESH-MAIN-20260906
+source_sha=749f3afeeb76a49e0df0df7165c70b2128bdcc37
+request_id=TEAM-B-ALL-LINKUPS-PRINT-R1-20260906
