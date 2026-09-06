@@ -1,3 +1,3 @@
-source_sha=1e6b8ec3d666b7346d04fbf7c4c51c17a5ca04b2
+source_sha=5893b3102a8ba38475996a76e63e7ab674415dc4
 channel=candidate
-request_id=TEAMA-SMT-PRO-LOGIN-VERIFY-20260906-01
+request_id=TEAMA-SMT-BRANDED-WELCOME-20260906-01
