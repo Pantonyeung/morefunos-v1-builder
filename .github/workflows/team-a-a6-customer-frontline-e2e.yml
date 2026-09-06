@@ -1,0 +1,220 @@
+name: Team A A6 Customer Frontline E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a6-customer-frontline-e2e.txt'
+      - '.github/workflows/team-a-a6-customer-frontline-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CUSTOMER_URL: https://morefun-v2-customer.pantonyeung.workers.dev
+      SMM_URL: https://morefun-v2-smm.pantonyeung.workers.dev
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request and require current V2 main
+        id: req
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a6-customer-frontline-e2e.txt | tr -d '[:space:]')"
+          SUBMISSION_ID="$(sed -n 's/^submission_id=//p' requests/team-a-a6-customer-frontline-e2e.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$SUBMISSION_ID"
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "submission_id=$SUBMISSION_ID" >> "$GITHUB_OUTPUT"
+          mkdir -p evidence
+          printf 'source_sha=%s\nsubmission_id=%s\n' "$SOURCE_SHA" "$SUBMISSION_ID" > evidence/request.txt
+
+      - name: Submit one fresh real Customer order through public Worker
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          curl -fsS "$CUSTOMER_URL/api/customer/ordering" -o evidence/ordering.json
+          PRODUCT_ID="$(node -e "const x=require('./evidence/ordering.json');if(x.storeStatus!=='open')throw new Error('STORE_NOT_OPEN');const p=x.products?.find(v=>v.available===true);if(!p?.productId)throw new Error('NO_AVAILABLE_PRODUCT');process.stdout.write(p.productId)")"
+          GUEST_TOKEN="$(node -e "const {createHash}=require('node:crypto');process.stdout.write(createHash('sha256').update(process.env.SUBMISSION_ID).digest('base64url'))")"
+          IDEMPOTENCY_KEY="$SUBMISSION_ID"
+          cat > evidence/customer-submit-request.json <<JSON
+          {"submissionId":"$SUBMISSION_ID","idempotencyKey":"$IDEMPOTENCY_KEY","payload":{"lines":[{"productId":"$PRODUCT_ID","quantity":1}]}}
+          JSON
+          HTTP="$(curl -sS -o evidence/customer-submit.json -w '%{http_code}'             -H 'content-type: application/json'             -H "Cookie: mf_customer_guest=$GUEST_TOKEN"             --data-binary @evidence/customer-submit-request.json             "$CUSTOMER_URL/api/customer/orders")"
+          test "$HTTP" = 200
+          ORDER_ID="$(node -e "const x=require('./evidence/customer-submit.json');if(!x.ok||x.status!=='ACCEPTED'||!x.orderId)throw new Error('CUSTOMER_SUBMIT_INVALID');process.stdout.write(x.orderId)")"
+          LOOKUP_TOKEN="$(node -e "const x=require('./evidence/customer-submit.json');if(!x.lookupToken)throw new Error('LOOKUP_TOKEN_MISSING');process.stdout.write(x.lookupToken)")"
+          printf '%s' "$ORDER_ID" > /tmp/a6-order-id
+          printf '%s' "$LOOKUP_TOKEN" > /tmp/a6-lookup-token
+          printf '%s' "$GUEST_TOKEN" > /tmp/a6-guest-token
+          printf 'customer_submit_http=%s\nproduct_id=%s\norder_id=%s\n' "$HTTP" "$PRODUCT_ID" "$ORDER_ID" | tee evidence/customer-submit.txt
+
+      - name: Prove Customer accepted lifecycle and canonical identity
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a6-order-id)"
+          LOOKUP_TOKEN="$(cat /tmp/a6-lookup-token)"
+          GUEST_TOKEN="$(cat /tmp/a6-guest-token)"
+          HTTP="$(curl -sS -o evidence/customer-accepted.json -w '%{http_code}'             -H "Cookie: mf_customer_guest=$GUEST_TOKEN"             -H "Authorization: Bearer $LOOKUP_TOKEN"             "$CUSTOMER_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          test "$HTTP" = 200
+          ORDER_ID="$ORDER_ID" node -e "const x=require('./evidence/customer-accepted.json');if(!x.ok||x.orderId!==process.env.ORDER_ID||x.lifecycleStatus!=='ACCEPTED')throw new Error('CUSTOMER_ACCEPTED_READBACK_FAILED')"
+
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT order_id,store_id,lifecycle_status,revision,accepted_projection_json FROM mfos_order_state WHERE order_id=? LIMIT 1"
+          SQL="$SQL" ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a6-d1q.json',JSON.stringify({sql:process.env.SQL,params:[process.env.ORDER_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/a6-d1q.json > evidence/d1-accepted.json
+          ORDER_ID="$ORDER_ID" SUBMISSION_ID="$SUBMISSION_ID" node - <<'NODE' | tee evidence/canonical-accepted.txt
+          const x=require('./evidence/d1-accepted.json'),r=x.result?.[0]?.results?.[0];
+          if(!x.success||!r)throw new Error('D1_ACCEPTED_ROW_MISSING');
+          const p=JSON.parse(r.accepted_projection_json||'null'),id=p?.canonicalIdentity;
+          if(r.order_id!==process.env.ORDER_ID||r.lifecycle_status!=='ACCEPTED')throw new Error('D1_ACCEPTED_STATE_INVALID');
+          if(id?.orderId!==process.env.ORDER_ID||id?.sourceType!=='CUSTOMER'||id?.sourceProvider!==null||id?.sourceChannel!=='CUSTOMER_WEB')throw new Error('CUSTOMER_CANONICAL_IDENTITY_INVALID');
+          if(id?.sourceOrderKey!=='CUSTOMER:'+process.env.SUBMISSION_ID||!/^[0-9]{4}$/.test(String(id?.displayOrderCode||'')))throw new Error('CUSTOMER_DISPLAY_IDENTITY_INVALID');
+          console.log(JSON.stringify({orderId:r.order_id,revision:r.revision,canonicalIdentity:id}));
+          require('fs').writeFileSync('/tmp/a6-display-code',String(id.displayOrderCode));
+          NODE
+
+      - name: Pair SMM and SMT trusted sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          SMM_HTTP="$(curl -sS -o evidence/smm-session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMM_URL/api/smm/session")"
+          SMT_HTTP="$(curl -sS -o evidence/smt-session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/smt/session")"
+          test "$SMM_HTTP" = 200
+          test "$SMT_HTTP" = 200
+          SMM_TOKEN="$(node -e "const x=require('./evidence/smm-session.json');if(!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          SMT_TOKEN="$(node -e "const x=require('./evidence/smt-session.json');if(!x.sessionToken)process.exit(1);process.stdout.write(x.sessionToken)")"
+          printf '%s' "$SMM_TOKEN" > /tmp/a6-smm-token
+          printf '%s' "$SMT_TOKEN" > /tmp/a6-smt-token
+          printf 'smm_session_http=%s\nsmt_session_http=%s\n' "$SMM_HTTP" "$SMT_HTTP" | tee evidence/sessions.txt
+
+      - name: Prove same accepted Order and identity in SMM plus SMT
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a6-order-id)"
+          DISPLAY_CODE="$(cat /tmp/a6-display-code)"
+          invoke() {
+            local origin="$1" token="$2" out="$3"
+            ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a6-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+            curl -fsS -H "Authorization: Bearer $token" -H 'content-type: application/json' --data-binary @/tmp/a6-detail.json "$origin/api/$( [ "$origin" = "$SMM_URL" ] && echo smm || echo smt )/runtime" > "$out"
+          }
+          invoke "$SMM_URL" "$(cat /tmp/a6-smm-token)" evidence/smm-before.json
+          invoke "$ADMIN_URL" "$(cat /tmp/a6-smt-token)" evidence/smt-before.json
+          ORDER_ID="$ORDER_ID" DISPLAY_CODE="$DISPLAY_CODE" node - <<'NODE' | tee evidence/frontline-before.txt
+          const smm=require('./evidence/smm-before.json'),smt=require('./evidence/smt-before.json');
+          for(const [name,x] of [['SMM',smm],['SMT',smt]]){
+            if(x.orderId!==process.env.ORDER_ID||x.lifecycleStatus!=='ACCEPTED')throw new Error(name+'_BEFORE_STATE_INVALID');
+            const id=x.canonicalIdentity;
+            if(id?.orderId!==process.env.ORDER_ID||id?.sourceType!=='CUSTOMER'||id?.displayOrderCode!==process.env.DISPLAY_CODE)throw new Error(name+'_BEFORE_IDENTITY_INVALID');
+          }
+          if(Number(smm.revision)!==Number(smt.revision))throw new Error('FRONTLINE_REVISION_DIVERGENCE');
+          console.log(JSON.stringify({orderId:process.env.ORDER_ID,displayOrderCode:process.env.DISPLAY_CODE,revision:smm.revision,smm:'PASS',smt:'PASS'}));
+          require('fs').writeFileSync('/tmp/a6-revision',String(smm.revision));
+          NODE
+
+      - name: Complete through SMM canonical frontline command and prove replay
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a6-order-id)"
+          REVISION="$(cat /tmp/a6-revision)"
+          TOKEN="$(cat /tmp/a6-smm-token)"
+          IDEMPOTENCY_KEY="a6-complete-$SUBMISSION_ID"
+          ORDER_ID="$ORDER_ID" REVISION="$REVISION" IDEMPOTENCY_KEY="$IDEMPOTENCY_KEY" node -e "require('fs').writeFileSync('/tmp/a6-complete.json',JSON.stringify({operationId:'order.complete.v1',request:{orderId:process.env.ORDER_ID,expectedRevision:Number(process.env.REVISION),idempotencyKey:process.env.IDEMPOTENCY_KEY}}))"
+          FIRST_HTTP="$(curl -sS -o evidence/complete-first.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/a6-complete.json "$SMM_URL/api/smm/runtime")"
+          test "$FIRST_HTTP" = 200
+          ORDER_ID="$ORDER_ID" REVISION="$REVISION" node -e "const x=require('./evidence/complete-first.json');if(x.orderId!==process.env.ORDER_ID||x.lifecycleStatus!=='COMPLETED'||Number(x.revision)!==Number(process.env.REVISION)+1)throw new Error('COMPLETE_FIRST_INVALID:'+JSON.stringify(x))"
+          REPLAY_HTTP="$(curl -sS -o evidence/complete-replay.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/a6-complete.json "$SMM_URL/api/smm/runtime")"
+          test "$REPLAY_HTTP" = 200
+          node -e "const a=require('./evidence/complete-first.json'),b=require('./evidence/complete-replay.json');if(a.orderId!==b.orderId||a.revision!==b.revision||b.lifecycleStatus!=='COMPLETED')throw new Error('COMPLETE_REPLAY_DIVERGED')"
+          printf 'complete_http=%s\nreplay_http=%s\norder_id=%s\nfrom_revision=%s\nto_revision=%s\n' "$FIRST_HTTP" "$REPLAY_HTTP" "$ORDER_ID" "$REVISION" "$((REVISION+1))" | tee evidence/complete.txt
+
+      - name: Prove canonical final state in D1 Customer SMM and SMT
+        shell: bash
+        env:
+          SUBMISSION_ID: ${{ steps.req.outputs.submission_id }}
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(cat /tmp/a6-order-id)"
+          LOOKUP_TOKEN="$(cat /tmp/a6-lookup-token)"
+          GUEST_TOKEN="$(cat /tmp/a6-guest-token)"
+          DISPLAY_CODE="$(cat /tmp/a6-display-code)"
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT order_id,lifecycle_status,revision,order_snapshot_json,(SELECT COUNT(*) FROM mfos_order_lifecycle_audit WHERE order_id=? AND command_kind='COMPLETE') AS complete_audit_rows,(SELECT COUNT(*) FROM mfos_outbox WHERE aggregate_id=? AND event_type='OrderCompleted') AS completed_outbox_rows FROM mfos_order_state WHERE order_id=? LIMIT 1"
+          SQL="$SQL" ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a6-finalq.json',JSON.stringify({sql:process.env.SQL,params:[process.env.ORDER_ID,process.env.ORDER_ID,process.env.ORDER_ID]}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/a6-finalq.json > evidence/d1-final.json
+
+          for port in smm smt; do
+            if [ "$port" = smm ]; then ORIGIN="$SMM_URL"; TOKEN="$(cat /tmp/a6-smm-token)"; else ORIGIN="$ADMIN_URL"; TOKEN="$(cat /tmp/a6-smt-token)"; fi
+            ORDER_ID="$ORDER_ID" node -e "require('fs').writeFileSync('/tmp/a6-final-detail.json',JSON.stringify({operationId:'order.detail.read.v1',request:{orderId:process.env.ORDER_ID}}))"
+            curl -fsS -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/a6-final-detail.json "$ORIGIN/api/$port/runtime" > "evidence/$port-final.json"
+          done
+
+          STATUS_HTTP="$(curl -sS -o evidence/customer-final.json -w '%{http_code}'             -H "Cookie: mf_customer_guest=$GUEST_TOKEN"             -H "Authorization: Bearer $LOOKUP_TOKEN"             "$CUSTOMER_URL/api/customer/order-status?submissionId=$SUBMISSION_ID")"
+          test "$STATUS_HTTP" = 200
+
+          ORDER_ID="$ORDER_ID" DISPLAY_CODE="$DISPLAY_CODE" node - <<'NODE' | tee evidence/final-verdict.txt
+          const d=require('./evidence/d1-final.json').result?.[0]?.results?.[0];
+          const customer=require('./evidence/customer-final.json');
+          const smm=require('./evidence/smm-final.json');
+          const smt=require('./evidence/smt-final.json');
+          if(!d||d.order_id!==process.env.ORDER_ID||d.lifecycle_status!=='COMPLETED')throw new Error('D1_FINAL_NOT_COMPLETED');
+          if(Number(d.complete_audit_rows)!==1||Number(d.completed_outbox_rows)!==1)throw new Error('D1_COMPLETION_EVIDENCE_INVALID:'+JSON.stringify(d));
+          for(const [name,x] of [['CUSTOMER',customer],['SMM',smm],['SMT',smt]]){
+            if(x.orderId!==process.env.ORDER_ID||x.lifecycleStatus!=='COMPLETED')throw new Error(name+'_FINAL_STATE_INVALID:'+JSON.stringify(x));
+          }
+          for(const [name,x] of [['SMM',smm],['SMT',smt]]){
+            const id=x.canonicalIdentity;
+            if(id?.orderId!==process.env.ORDER_ID||id?.sourceType!=='CUSTOMER'||id?.displayOrderCode!==process.env.DISPLAY_CODE)throw new Error(name+'_FINAL_IDENTITY_INVALID');
+          }
+          if(Number(smm.revision)!==Number(smt.revision)||Number(smm.revision)!==Number(d.revision))throw new Error('FINAL_REVISION_DIVERGENCE');
+          const verdict={
+            orderId:process.env.ORDER_ID,
+            displayOrderCode:process.env.DISPLAY_CODE,
+            lifecycleStatus:'COMPLETED',
+            revision:Number(d.revision),
+            customer:'PASS',d1:'PASS',smm:'PASS',smt:'PASS',
+            completeAuditRows:Number(d.complete_audit_rows),
+            completedOutboxRows:Number(d.completed_outbox_rows),
+          };
+          console.log('A6_CUSTOMER_FRONTLINE_E2E_PASS '+JSON.stringify(verdict));
+          require('fs').writeFileSync('evidence/summary.json',JSON.stringify(verdict,null,2));
+          NODE
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: team-a-a6-customer-frontline-e2e-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
