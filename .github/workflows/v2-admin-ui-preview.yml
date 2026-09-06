@@ -16,9 +16,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-      FIREBASE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EMAIL }}
-      FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v7
         with: {persist-credentials: false}
@@ -63,17 +60,20 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
-          for key in FIREBASE_DATABASE_URL FIREBASE_SERVICE_ACCOUNT_EMAIL FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY; do
-            test -n "${!key:-}" || { echo "::error::MISSING_REQUIRED_BUILDER_SECRET $key"; exit 1; }
-          done
-          SECRETS_FILE="$RUNNER_TEMP/admin-preview-secrets.json"
+          npx --yes wrangler@4 secret list --config "$CONFIG" --format json > "$RUNNER_TEMP/admin-worker-secrets.json"
           node - <<'NODE'
           const fs=require('node:fs');
-          const keys=['FIREBASE_DATABASE_URL','FIREBASE_SERVICE_ACCOUNT_EMAIL','FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY'];
-          fs.writeFileSync(process.env.RUNNER_TEMP+'/admin-preview-secrets.json',JSON.stringify(Object.fromEntries(keys.map(k=>[k,process.env[k]]))));
+          const rows=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/admin-worker-secrets.json','utf8'));
+          const present=new Set(rows.map(x=>x.name));
+          const required=['FIREBASE_DATABASE_URL','FIREBASE_SERVICE_ACCOUNT_EMAIL','FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY'];
+          const missing=required.filter(x=>!present.has(x));
+          if(missing.length){
+            console.error('MISSING_REQUIRED_CLOUDFLARE_SECRET '+missing.join(','));
+            process.exit(1);
+          }
+          console.log('firebase_pricing_secret_names=PASS');
           NODE
-          npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias admin-ui --secrets-file "$SECRETS_FILE" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
-          rm -f "$SECRETS_FILE"
+          npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias admin-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
           URL="$(grep -Eo 'https://[a-z0-9-]+-morefun-v2-admin\.[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/upload.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
           test -n "$URL"
           printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
