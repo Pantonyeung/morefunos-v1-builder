@@ -1,5 +1,5 @@
-source_sha=9a6879b8b41113672b2beeaffa1889f6cc07087a
-request_id=TEAM-B-ADMIN-R4-COMPARISON-MOBILE-PRODUCT-VERIFY-20260907-0649
-run_id=34065121100
+source_sha=40edf1eca466ecc21b6a300efc1f77920aed3bf2
+request_id=TEAM-B-ADMIN-R4-COMPARISON-MOBILE-PRODUCT-VERIFY2-20260907-0652
+run_id=34065187122
 run_attempt=1
-conclusion=failure
+conclusion=success
