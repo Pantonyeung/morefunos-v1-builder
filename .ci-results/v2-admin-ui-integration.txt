@@ -1,5 +1,5 @@
-source_sha=ea94d5d5244ae1749eca4a5414917a7f9f2fc691
-request_id=PRICING-PINGPONG-ADMIN-EA94-01
-run_id=34068033035
+source_sha=8419dc04c8b46ca679699685fe2b6c13c6e42715
+request_id=PRICING-8419-ADMIN-WS-EXACT-14
+run_id=34068084792
 run_attempt=1
 conclusion=success
