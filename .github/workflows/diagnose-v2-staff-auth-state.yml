@@ -1,0 +1,45 @@
+name: Diagnose V2 Staff Auth State
+
+on:
+  push:
+    paths:
+      - 'requests/v2-staff-auth-diagnostic-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Query staff auth state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          query(){
+            local name="$1"; local sql="$2"
+            SQL="$sql" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -sS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > "/tmp/${name}.json"
+            NAME="$name" node -e "const x=require('/tmp/'+process.env.NAME+'.json');if(!x.success||!x.result?.[0]?.success){console.error(JSON.stringify(x.errors||x.result||x));process.exit(1)};for(const row of x.result[0].results||[])console.log(JSON.stringify(row))" | tee "evidence/${name}.txt"
+          }
+          query schema "SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mfos_rbac_staff') AS staff_table,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mfos_rbac_roles') AS role_table,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mfos_staff_pos_credential') AS credential_table"
+          query counts "SELECT (SELECT COUNT(*) FROM mfos_rbac_staff) AS staff_total,(SELECT COUNT(*) FROM mfos_rbac_roles) AS role_total,(SELECT COUNT(*) FROM mfos_staff_pos_credential) AS credential_total,(SELECT COUNT(*) FROM mfos_staff_pos_credential WHERE status='ACTIVE') AS credential_active"
+          query grants "SELECT COUNT(*) AS staff_manage_grants FROM mfos_rbac_roles,json_each(mfos_rbac_roles.record_json,'$.permissions') AS p WHERE json_extract(p.value,'$.permission')='staff.manage'"
+          query test_login "SELECT (SELECT COUNT(*) FROM mfos_staff_pos_credential WHERE employee_code='12345') AS employee_12345_credential,(SELECT COUNT(*) FROM mfos_rbac_staff s JOIN mfos_staff_pos_credential c ON c.staff_id=s.staff_id WHERE c.employee_code='12345') AS employee_12345_identity"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-staff-auth-state-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
