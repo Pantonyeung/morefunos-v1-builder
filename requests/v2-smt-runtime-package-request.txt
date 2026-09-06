@@ -1,3 +1,3 @@
-source_sha=7404cbeee039ad7c17b027539bb966ddafabdddc
+source_sha=3f507ee8e0c69ca013c8059f32ef6ee86204c62f
 channel=candidate
-request_id=TEAM-A-SMT-OWNER-HOTFIX-POST-ADMISSION-20260906-R6
+request_id=TEAM-A-SMT-P0-PRINTER-CONFIG-RED-20260906-R1
