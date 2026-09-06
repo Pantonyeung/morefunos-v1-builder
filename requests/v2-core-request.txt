@@ -1,5 +1,5 @@
-source_sha=2f2b64bff0d5c5cbce50648f1d403a94209edaa9
+source_sha=4760f6b620e80d85c1894e7d1cc9dbdaf0219361
 base_sha=e035e645e0d919e15e83b39c157957045e639584
 branch_name=work/TEAM2/fresh-main-full-chain-reconcile-20260906-02
 verification_phase=CANDIDATE
-request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-CORE-R2-20260906
+request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-CORE-R3-20260906
