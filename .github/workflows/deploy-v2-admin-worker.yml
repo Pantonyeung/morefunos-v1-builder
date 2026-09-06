@@ -166,7 +166,18 @@ jobs:
           NODE
           echo "pricing_revision_http=$PRICING_REVISION_HTTP" >> evidence/runtime.txt
           echo "pricing_active_http=$PRICING_ACTIVE_HTTP" >> evidence/runtime.txt
-          rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json
+          set +e
+          timeout 3s curl -sS -N -D /tmp/pricing-events.headers -o /tmp/pricing-events.body "$URL/api/pricing/events"
+          SSE_EXIT=$?
+          set -e
+          PRICING_EVENTS_HTTP="$(awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}' /tmp/pricing-events.headers)"
+          PRICING_EVENTS_TYPE="$(awk 'tolower($1)=="content-type:" {print tolower($2)}' /tmp/pricing-events.headers | tr -d '\r' | tail -n1)"
+          test "$PRICING_EVENTS_HTTP" = 200
+          case "$PRICING_EVENTS_TYPE" in text/event-stream*) ;; *) echo "::error::PRICING_EVENTS_NOT_SSE type=$PRICING_EVENTS_TYPE exit=$SSE_EXIT"; exit 1;; esac
+          echo "pricing_events_http=$PRICING_EVENTS_HTTP" >> evidence/runtime.txt
+          echo "pricing_events_type=$PRICING_EVENTS_TYPE" >> evidence/runtime.txt
+          echo "pricing_realtime_sse=PASS"
+          rm -f /tmp/session.json /tmp/auth-session.json /tmp/pricing-revision.json /tmp/pricing-active.json /tmp/pricing-events.headers /tmp/pricing-events.body
       - uses: actions/upload-artifact@v4
         if: always()
         with:
