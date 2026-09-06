@@ -1,3 +1,3 @@
-source_sha=7926dc098fcb0ca0770fa9599de97c54d9ff0e0a
+source_sha=7e2fc5d326aed00fa3748bc968bebacf43c3eeeb
 channel=candidate
-request_id=TEAM-A-SMT-P0-PRINTER-CART-GREEN-20260906-R7
+request_id=TEAM-A-SMT-P0-PRINTER-CART-GREEN-20260906-R8
