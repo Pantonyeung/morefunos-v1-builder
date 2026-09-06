@@ -1,0 +1,5 @@
+source_sha=c685887234a2797af74bb1b29c603247d991737b
+request_id=pricing-c685-customer-sealed-03
+run_id=34064952932
+run_attempt=1
+conclusion=failure
