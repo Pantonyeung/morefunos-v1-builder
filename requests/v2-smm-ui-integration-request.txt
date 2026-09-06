@@ -1,4 +1,4 @@
-source_sha=45f74a1b0921d1aa056cdab5ff8832df038e40f0
-base_sha=b253043c3d26f9c99e534da822c75587d1575237
-branch_name=work/TEAM-A/smm-staff-login-customer-receipt-20260906-01
-request_id=TEAMA-SMM-STAFF-OWNER-LOGIN-20260906-03
+source_sha=b910d36491701d60e0a7de21181d79cc150ce5a8
+base_sha=b910d36491701d60e0a7de21181d79cc150ce5a8
+branch_name=main
+request_id=TEAMA-SMM-STAFF-OWNER-POST-ADMISSION-20260906-01
