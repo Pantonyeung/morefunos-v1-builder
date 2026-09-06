@@ -1,6 +1,6 @@
-source_sha=f800de3dccc0f694b31954743c078cf703fd3b2a
-branch_name=work/TEAM2/general-batch-product-setting-20260906-01
-request_id=TEAM-B-FULL-CHAIN-PRINT-20260906
-run_id=34012253572
+source_sha=2a38f1867816fdfb0b55d29e9e9303a83c9ff0ab
+branch_name=work/TEAM2/fresh-main-full-chain-reconcile-20260906-02
+request_id=TEAM-B-FRESH-MAIN-FULL-CHAIN-PRINT-20260906
+run_id=34015023016
 run_attempt=1
 conclusion=success
