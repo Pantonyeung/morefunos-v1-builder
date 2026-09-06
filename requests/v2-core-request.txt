@@ -1,2 +1,2 @@
-source_sha=3f7d5d0667dbda35ddec142a0b7a9307437af312
-branch_name=work/TEAM1/staff-migration-0043-hotfix-20260906-01
+source_sha=44b3a7f4a9a17918407aa6357f5ee821802571a8
+branch_name=main
