@@ -1,0 +1,142 @@
+name: Keeta SIT Case15 Refresh Token Live Certification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/keeta-sit-case15-refresh-token-live.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      KEETA_D1_DATABASE_ID: "e7e33e6f-9bc5-4f2b-89ce-acb3bb19e492"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read safe encrypted-token metadata before refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT connection_id,expires_at,updated_at,length(ciphertext) AS ciphertext_length,length(iv) AS iv_length FROM keeta_oauth_token WHERE connection_id='default' LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q.json"
+          curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q.json" > "$RUNNER_TEMP/before.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/before.json" >/dev/null
+          jq -c '.result[0].results[0]|{connection_id,expires_at,updated_at,ciphertext_present:(.ciphertext_length>0),iv_present:(.iv_length>0)}' "$RUNNER_TEMP/before.json"
+
+      - name: Deploy protected ephemeral service-binding probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/case15-probe"
+          mkdir -p "$WORK/src"
+          KEY="$(openssl rand -hex 32)"
+          printf '%s' "$KEY" > "$RUNNER_TEMP/probe-key"
+          cat > "$WORK/package.json" <<'EOF'
+          {"private":true,"type":"module","devDependencies":{"wrangler":"4.125.0"}}
+          EOF
+          cat > "$WORK/wrangler.jsonc" <<EOF
+          {
+            "name":"morefun-keeta-sit-case15-refresh-probe",
+            "main":"src/index.ts",
+            "compatibility_date":"2026-09-05",
+            "workers_dev":true,
+            "vars":{"PROBE_KEY":"$KEY"},
+            "services":[{"binding":"KEETA","service":"morefun-v2-keeta-sit","entrypoint":"KeetaMerchantDecisionService"}]
+          }
+          EOF
+          cat > "$WORK/src/index.ts" <<'EOF'
+          interface Env {
+            PROBE_KEY:string;
+            KEETA:{certifyTokenRefreshForSit():Promise<{
+              success:true;
+              tokenType:"bearer";
+              expiresIn:number;
+              issuedAtTime:number;
+              accessTokenChanged:true;
+              refreshTokenChanged:true;
+              persistedReadback:true;
+            }>};
+          }
+          export default {
+            async fetch(request:Request,env:Env):Promise<Response>{
+              if(request.headers.get("x-probe-key")!==env.PROBE_KEY)return new Response("forbidden",{status:403});
+              const url=new URL(request.url);
+              if(request.method==="GET"&&url.pathname==="/ready")return Response.json({ready:true});
+              if(request.method!=="POST"||url.pathname!=="/run")return new Response("not found",{status:404});
+              try{
+                const result=await env.KEETA.certifyTokenRefreshForSit();
+                return Response.json({ok:true,result});
+              }catch(error){
+                return Response.json({ok:false,error:error instanceof Error?error.message:String(error)},{status:500});
+              }
+            }
+          };
+          EOF
+          cd "$WORK"
+          npm install --ignore-scripts --no-audit --no-fund
+          cleanup(){ npx wrangler delete --name morefun-keeta-sit-case15-refresh-probe --force >/dev/null 2>&1 || true; }
+          echo 'cleanup(){ npx wrangler delete --name morefun-keeta-sit-case15-refresh-probe --force >/dev/null 2>&1 || true; }' > "$RUNNER_TEMP/cleanup.sh"
+          DEPLOY="$(npx wrangler deploy)"
+          URL="$(printf '%s\n' "$DEPLOY" | grep -Eo 'https://[^ ]+workers.dev' | tail -1)"
+          test -n "$URL"
+          printf '%s' "$URL" > "$RUNNER_TEMP/probe-url"
+
+      - name: Wait for probe readiness without mutating token
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat "$RUNNER_TEMP/probe-url")"
+          KEY="$(cat "$RUNNER_TEMP/probe-key")"
+          READY=0
+          for attempt in $(seq 1 20); do
+            BODY="$(curl --silent --show-error -H "x-probe-key: $KEY" "$URL/ready" || true)"
+            if printf '%s' "$BODY" | jq -e '.ready==true' >/dev/null 2>&1; then READY=1; break; fi
+            sleep 1
+          done
+          test "$READY" = 1
+          echo "probe_ready=true"
+
+      - name: Execute exactly one live refresh certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat "$RUNNER_TEMP/probe-url")"
+          KEY="$(cat "$RUNNER_TEMP/probe-key")"
+          BODY="$(curl --fail-with-body --silent --show-error -X POST -H "x-probe-key: $KEY" "$URL/run")"
+          printf '%s' "$BODY" > "$RUNNER_TEMP/result.json"
+          jq -e '.ok==true and .result.success==true and .result.tokenType=="bearer" and .result.expiresIn>0 and .result.issuedAtTime>0 and .result.accessTokenChanged==true and .result.refreshTokenChanged==true and .result.persistedReadback==true' "$RUNNER_TEMP/result.json" >/dev/null
+          echo "CASE15_REFRESH_CERTIFICATION=$(jq -c '.result' "$RUNNER_TEMP/result.json")"
+
+      - name: Read safe encrypted-token metadata after refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT connection_id,expires_at,updated_at,length(ciphertext) AS ciphertext_length,length(iv) AS iv_length FROM keeta_oauth_token WHERE connection_id='default' LIMIT 1"
+          jq -n --arg sql "$SQL" '{sql:$sql}' > "$RUNNER_TEMP/q2.json"
+          curl -fsS -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$KEETA_D1_DATABASE_ID/query" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary @"$RUNNER_TEMP/q2.json" > "$RUNNER_TEMP/after.json"
+          jq -e '.success==true and .result[0].success==true and (.result[0].results|length)==1' "$RUNNER_TEMP/after.json" >/dev/null
+          BEFORE_UPDATED="$(jq -r '.result[0].results[0].updated_at' "$RUNNER_TEMP/before.json")"
+          AFTER_UPDATED="$(jq -r '.result[0].results[0].updated_at' "$RUNNER_TEMP/after.json")"
+          test "$AFTER_UPDATED" -gt "$BEFORE_UPDATED"
+          jq -e '.result[0].results[0].ciphertext_length>0 and .result[0].results[0].iv_length>0' "$RUNNER_TEMP/after.json" >/dev/null
+          echo "encrypted_persist_readback=true"
+          jq -c '.result[0].results[0]|{connection_id,expires_at,updated_at,ciphertext_present:(.ciphertext_length>0),iv_present:(.iv_length>0)}' "$RUNNER_TEMP/after.json"
+
+      - name: Cleanup ephemeral probe
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -f "$RUNNER_TEMP/probe-url" ]; then
+            cd "$RUNNER_TEMP/case15-probe"
+            npx wrangler delete --name morefun-keeta-sit-case15-refresh-probe --force >/dev/null 2>&1
+          fi
