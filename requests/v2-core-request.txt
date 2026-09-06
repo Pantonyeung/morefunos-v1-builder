@@ -1,2 +1,2 @@
-source_sha=ce0c38d40a43d3806f8284651b470f03d3f9edb8
-branch_name=work/P0/staff-pos-migration-0043-20260906-01
+source_sha=907d8355c2ed2e17c7c591d0c96be3ab5afb7ea3
+branch_name=work/TEAM1/staff-pin-buffer-source-hotfix-20260906-01
