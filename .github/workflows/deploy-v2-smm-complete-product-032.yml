@@ -177,32 +177,47 @@ jobs:
             await page.goto(process.env.URL+'/',{waitUntil:'networkidle'});
             await page.locator('input[type="password"]').fill(process.env.ADMIN_LOGIN_SECRET);
             const pairResponsePromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/smm/session'&&r.request().method()==='POST',{timeout:15000});
-            await page.getByRole('button',{name:'開始連接',exact:true}).click();
-            const pairResponse=await pairResponsePromise;
-            let pairBody={};
+            const ownerResponsePromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/smm/owner-test-session'&&r.request().method()==='POST',{timeout:15000});
+            await page.getByRole('button',{name:'我係 Owner，直接進入測試模式',exact:true}).click();
+            const [pairResponse,ownerResponse]=await Promise.all([pairResponsePromise,ownerResponsePromise]);
+            let pairBody={};let ownerBody={};
             try{pairBody=await pairResponse.json()}catch{}
+            try{ownerBody=await ownerResponse.json()}catch{}
             const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' mounted='+((pairBody.mountedOperationIds||[]).length)+' staff_uuid='+uuid.test(pairBody.staffId||'')+' operator_same='+(pairBody.operatorId===pairBody.staffId));
+            console.log('SMM_PAIR_HTTP status='+pairResponse.status()+' code='+(pairBody.code||'none')+' device='+pairBody.deviceId);
+            console.log('SMM_OWNER_TEST_HTTP status='+ownerResponse.status()+' code='+(ownerBody.code||'none')+' mounted='+((ownerBody.mountedOperationIds||[]).length)+' staff_uuid='+uuid.test(ownerBody.staffId||'')+' operator_same='+(ownerBody.operatorId===ownerBody.staffId));
             if(pairResponse.status()!==200)throw new Error('SMM_PAIR_HTTP_'+pairResponse.status()+':'+(pairBody.code||'UNKNOWN'));
-            if(!pairBody.sessionToken)throw new Error('SMM_PAIR_TOKEN_MISSING');
-            const diagnostic=await page.evaluate(async(token)=>{
-              const sessionResponse=await fetch('/api/smm/session',{headers:{authorization:'Bearer '+token,accept:'application/json'},cache:'no-store'});
+            if(ownerResponse.status()!==200)throw new Error('SMM_OWNER_TEST_HTTP_'+ownerResponse.status()+':'+(ownerBody.code||'UNKNOWN'));
+            if(!pairBody.sessionToken||!ownerBody.sessionToken)throw new Error('SMM_AUTH_TOKEN_MISSING');
+            const diagnostic=await page.evaluate(async({deviceToken,operatorToken})=>{
+              const deviceRuntime=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+deviceToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:1}}),cache:'no-store'});
+              let deviceRuntimeBody={};try{deviceRuntimeBody=await deviceRuntime.json()}catch{}
+              const sessionResponse=await fetch('/api/smm/owner-test-session',{headers:{authorization:'Bearer '+operatorToken,accept:'application/json'},cache:'no-store'});
               let sessionBody={};try{sessionBody=await sessionResponse.json()}catch{}
-              const orderResponse=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
+              const orderResponse=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+operatorToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
               let orderBody={};try{orderBody=await orderResponse.json()}catch{}
-              return {sessionStatus:sessionResponse.status,sessionCode:sessionBody.code||'none',orderStatus:orderResponse.status,orderCode:orderBody.code||'none',orderCount:Array.isArray(orderBody.orders)?orderBody.orders.length:null};
-            },pairBody.sessionToken);
-            console.log('SMM_PAIR_DIAGNOSTIC '+JSON.stringify(diagnostic));
-            if(![200,503].includes(diagnostic.sessionStatus))throw new Error('SMM_PAIR_DIAG_SESSION_'+diagnostic.sessionStatus+':'+diagnostic.sessionCode);
-            if(![200,503].includes(diagnostic.orderStatus))throw new Error('SMM_PAIR_DIAG_ORDER_'+diagnostic.orderStatus+':'+diagnostic.orderCode);
+              return {
+                deviceRuntimeStatus:deviceRuntime.status,
+                deviceRuntimeCode:deviceRuntimeBody.code||'none',
+                sessionStatus:sessionResponse.status,
+                sessionCode:sessionBody.code||'none',
+                orderStatus:orderResponse.status,
+                orderCode:orderBody.code||'none',
+                orderCount:Array.isArray(orderBody.orders)?orderBody.orders.length:null,
+              };
+            },{deviceToken:pairBody.sessionToken,operatorToken:ownerBody.sessionToken});
+            console.log('SMM_AUTH_DIAGNOSTIC '+JSON.stringify(diagnostic));
+            if(diagnostic.deviceRuntimeStatus!==401||diagnostic.deviceRuntimeCode!=='SMM_STAFF_SESSION_REQUIRED')throw new Error('SMM_DEVICE_TOKEN_NOT_FAIL_CLOSED:'+JSON.stringify(diagnostic));
+            if(diagnostic.sessionStatus!==200)throw new Error('SMM_OWNER_SESSION_DIAG_'+diagnostic.sessionStatus+':'+diagnostic.sessionCode);
+            if(diagnostic.orderStatus!==200)throw new Error('SMM_OWNER_ORDER_DIAG_'+diagnostic.orderStatus+':'+diagnostic.orderCode);
             await page.getByText('已連接',{exact:true}).waitFor({state:'visible',timeout:15000});
             const result=await page.evaluate(async(expected)=>{
-              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              const raw=localStorage.getItem('morefunos.smm.staff-session.v1');
               if(!raw)throw new Error('SMM_SESSION_STORAGE_MISSING');
               const saved=JSON.parse(raw);
               if(!saved.sessionToken)throw new Error('SMM_SESSION_TOKEN_MISSING');
               const headers={authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'};
-              const s=await fetch('/api/smm/session',{headers:{authorization:'Bearer '+saved.sessionToken,accept:'application/json'},cache:'no-store'});
+              const s=await fetch('/api/smm/owner-test-session',{headers:{authorization:'Bearer '+saved.sessionToken,accept:'application/json'},cache:'no-store'});
               const session=await s.json();
               if(s.status!==200)throw new Error('SMM_SESSION_REFRESH_FAILED');
               const ids=new Set(session.mountedOperationIds||[]);
@@ -340,7 +355,7 @@ jobs:
             if(submitBody.disposition!=='ACCEPT'||!submitBody.orderId||!Number.isSafeInteger(submitBody.canonicalRevision))throw new Error('SMM_DIRECT_ORDER_NOT_ACCEPTED:'+JSON.stringify(submitBody));
             const submittedOrderId=submitBody.orderId;
             const submittedReadback=await page.evaluate(async(orderId)=>{
-              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              const raw=localStorage.getItem('morefunos.smm.staff-session.v1');
               if(!raw)throw new Error('SMM_SUBMIT_READBACK_SESSION_MISSING');
               const saved=JSON.parse(raw);
               const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.detail.read.v1',request:{orderId}}),cache:'no-store'});
@@ -353,7 +368,7 @@ jobs:
             if(frontendText.includes(submittedOrderId))throw new Error('SMM_FRONTLINE_UUID_LEAK:'+submittedOrderId);
 
             const cleanup=await page.evaluate(async({orderId,revision})=>{
-              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              const raw=localStorage.getItem('morefunos.smm.staff-session.v1');
               if(!raw)throw new Error('SMM_CLEANUP_SESSION_MISSING');
               const saved=JSON.parse(raw);
               const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.cancel.v1',request:{orderId,expectedRevision:revision,idempotencyKey:'smm-e2e-cleanup:'+orderId+':'+revision,reason:'SMM Preview E2E cleanup'}}),cache:'no-store'});
@@ -363,7 +378,7 @@ jobs:
             if(cleanup.status!==200)throw new Error('SMM_DIRECT_ORDER_CLEANUP_'+cleanup.status+':'+JSON.stringify(cleanup.body));
 
             const postCleanupOpen=await page.evaluate(async(cancelledOrderId)=>{
-              const raw=localStorage.getItem('morefunos.smm.device-session.v1');
+              const raw=localStorage.getItem('morefunos.smm.staff-session.v1');
               if(!raw)throw new Error('SMM_POST_CLEANUP_SESSION_MISSING');
               const saved=JSON.parse(raw);
               const r=await fetch('/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+saved.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}}),cache:'no-store'});
