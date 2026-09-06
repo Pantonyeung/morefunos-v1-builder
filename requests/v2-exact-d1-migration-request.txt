@@ -1,3 +1,3 @@
-source_sha=f030d37ced6206aa06b2511a5ce220b359695cdb
-migration_file=0045-product-combo-authority.sql
-request_id=TEAM-B-PROD-MIGRATION-0045-PRODUCT-COMBO-20260906
+source_sha=439031babee06fe3560404de33b899090564dfb5
+migration_file=0046-pricing-publication-revision.sql
+request_id=PRICING-0046-PROD-APPLY-20260907-01
