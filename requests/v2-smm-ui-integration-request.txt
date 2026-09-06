@@ -1,4 +1,4 @@
-source_sha=b67c6345b63c86b22b1e56c02de84b1e0f0af647
-base_sha=d6d1e27811fd789620df9feb06a1101ce5f8ef69
-branch_name=work/SMM/B0314-keeta-operational-dual-d1-4028-r2
-request_id=SMM-B0314-KEETA-4028-FRESH-UI
+source_sha=318c174e9f8910b274fc3f91859f8c2a9cc1200e
+base_sha=b253043c3d26f9c99e534da822c75587d1575237
+branch_name=work/TEAM-A/smm-staff-login-customer-receipt-20260906-01
+request_id=TEAMA-SMM-STAFF-OWNER-LOGIN-20260906-01
