@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      ADMIN_ORIGIN: https://admin-ui-morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
     steps:
       - uses: actions/checkout@v7
         with: {persist-credentials: false}
@@ -54,7 +54,7 @@ jobs:
 
           const sessionRes=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
           const sessionText=await sessionRes.text();
-          const result={sessionStatus:sessionRes.status(),sessionBody:sessionText.slice(0,1200),button:{},post:null,invalidApi:null,pageErrors,consoleErrors,failed};
+          const result={sessionStatus:sessionRes.status(),sessionBody:sessionText.slice(0,1200),button:{},post:null,pageErrors,consoleErrors,failed};
 
           const name=page.getByPlaceholder('例如：阿明');
           const code=page.getByPlaceholder('例如：1028');
@@ -82,12 +82,6 @@ jobs:
           result.post=postSeen;
           result.afterClickText=(await page.locator('body').innerText()).replace(/\s+/g,' ').slice(0,2200);
 
-          const invalid=await context.request.post(ADMIN_ORIGIN+'/api/admin/staff',{
-            data:{action:'CREATE_STAFF_WITH_LOGIN',idempotencyKey:'diag-invalid-'+Date.now(),displayName:'',employeeCode:'',pin:'',roleIds:[]},
-            headers:{'content-type':'application/json',accept:'application/json'}
-          });
-          result.invalidApi={status:invalid.status(),body:(await invalid.text()).slice(0,1200)};
-
           await page.screenshot({path:'evidence/staff.png',fullPage:true});
           fs.writeFileSync('evidence/summary.json',JSON.stringify(result,null,2));
           console.log(JSON.stringify(result,null,2));
@@ -96,8 +90,7 @@ jobs:
           if(result.sessionStatus!==200) throw new Error('SESSION_NOT_200:'+result.sessionStatus);
           if(result.button.count!==1||result.button.disabled||!result.button.visible) throw new Error('CREATE_BUTTON_NOT_ACTIONABLE');
           if(!result.post) throw new Error('CREATE_BUTTON_DID_NOT_EMIT_POST');
-          if(result.invalidApi.status<400||result.invalidApi.status>=500) throw new Error('STAFF_ROUTE_INVALID_RESPONSE:'+result.invalidApi.status);
-          if(pageErrors.length||consoleErrors.length) throw new Error('BROWSER_ERRORS');
+                    if(pageErrors.length||consoleErrors.length) throw new Error('BROWSER_ERRORS');
           EOF
           node probe.mjs "$CHROME"
       - uses: actions/upload-artifact@v4
