@@ -105,9 +105,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'resolveOwnerProductionRuntime' apps/owner-web/src/main.tsx
+          grep -q 'OwnerProductionRoot' apps/owner-web/src/main.tsx
+          grep -q 'createOwnerNetworkRuntime' apps/owner-web/src/OwnerProductionRoot.tsx
+          grep -q "'/api/owner/runtime'" apps/owner-web/src/owner-network-runtime.ts
+          grep -q "'/api/owner/session'" apps/owner-web/src/owner-session-network.ts
+          grep -q "'/api/owner/bootstrap'" apps/owner-web/src/owner-session-network.ts
           grep -q 'OWNER_REPORTING_BINDING_NOT_FOUND' packages/owner-ui-integration/runtime-provider.ts
-          ! grep -RniE 'fixture|mock|localStorage|/api/owner' apps/owner-web/src packages/owner-ui-integration --exclude='*.test.ts'
+          ! grep -RniE 'fixture|mock|localStorage|/api/v2/owner|HttpOwner' apps/owner-web/src packages/owner-ui-integration --exclude='*.test.ts'
+          ! grep -RniE 'production-persistence/d1|d1-admin-|D1DatabaseLike' apps/owner-web/src --exclude='*.test.ts'
 
       - name: Write evidence
         if: always()
