@@ -1,0 +1,64 @@
+name: Keeta SIT Case15 Refresh Token Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/keeta-sit-case15-refresh-token-verify.txt'
+      - '.github/workflows/keeta-sit-case15-refresh-token-verify.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact V2 source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/keeta-sit-case15-refresh-token-verify.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install exact dependencies
+        working-directory: source
+        run: npm ci --ignore-scripts
+
+      - name: Exact Case15 token tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test packages/integration/keeta-token-refresh-retry.test.ts
+          node --import tsx --test packages/integration/keeta-token-refresh-certification.test.ts
+
+      - name: Keeta Worker dry-run
+        working-directory: source/workers/keeta
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/keeta-case15-dry"
+
+      - name: Root TypeScript guard
+        working-directory: source
+        run: npm run typecheck
