@@ -189,12 +189,13 @@ jobs:
           const url=process.env.PRICING_SOCKET_URL;
           const timer=setTimeout(()=>{console.error('PRICING_REALTIME_WEBSOCKET_TIMEOUT');process.exit(1)},5000);
           const ws=new WebSocket(url);
+          let gotPong=false;
+          ws.addEventListener('open',()=>ws.send('ping'));
           ws.addEventListener('message',(event)=>{
-            let body;
-            try{body=JSON.parse(String(event.data));}catch{body=null}
-            if(body?.type!=='PRICING_REALTIME_READY')return;
+            if(String(event.data)!=='pong')return;
+            gotPong=true;
             clearTimeout(timer);
-            console.log('pricing_realtime_websocket=PASS ready_frame=PASS');
+            console.log('pricing_realtime_websocket=PASS ping_pong=PASS');
             ws.close(1000,'builder-smoke');
           });
           ws.addEventListener('error',(event)=>{
@@ -203,8 +204,8 @@ jobs:
             process.exit(1);
           });
           ws.addEventListener('close',(event)=>{
-            if(event.code===1000)process.exit(0);
-            console.error('PRICING_REALTIME_WEBSOCKET_CLOSED_BEFORE_READY',event.code,event.reason);
+            if(gotPong&&event.code===1000)process.exit(0);
+            console.error('PRICING_REALTIME_WEBSOCKET_CLOSED_BEFORE_PONG',event.code,event.reason);
             process.exit(1);
           });
           NODE
