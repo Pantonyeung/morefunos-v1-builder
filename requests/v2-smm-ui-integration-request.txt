@@ -1,4 +1,4 @@
-source_sha=9359f88cce0b80e312ea27efb44be53752da2998
-base_sha=483768ff0016af29f789f3852f76c6f36467e83e
-branch_name=work/TEAM1/smm-lavender-uiux-speed-20260906-01
-request_id=TEAMA-SMM-LAVENDER-UI-SPEED-R2-20260906
+source_sha=ab20eb0106cadc73e4fb27d6d0e861152d757bea
+base_sha=ab20eb0106cadc73e4fb27d6d0e861152d757bea
+branch_name=main
+request_id=TEAMA-SMM-LAVENDER-POST-ADMISSION-UI-20260906
