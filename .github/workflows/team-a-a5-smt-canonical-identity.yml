@@ -1,0 +1,94 @@
+name: Team A A5 SMT Canonical Identity Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/team-a-a5-smt-canonical-identity.txt'
+      - '.github/workflows/team-a-a5-smt-canonical-identity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact candidate
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/team-a-a5-smt-canonical-identity.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Prove exact source
+        working-directory: source
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          mkdir -p ../evidence
+          echo "source_sha=$EXPECTED" | tee ../evidence/source.txt
+
+      - name: Install workspace dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Root TypeScript gate
+        working-directory: source
+        run: npm run typecheck 2>&1 | tee ../evidence/root-typecheck.txt
+
+      - name: Install SMT app dependencies
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run A5 SMT canonical identity tests
+        working-directory: source/apps/smt-clean
+        run: npx vitest run src/runtime/network-production-runtime.test.ts 2>&1 | tee ../../../evidence/a5-tests.txt
+
+      - name: SMT typecheck and build
+        working-directory: source/apps/smt-clean
+        run: |
+          set -euo pipefail
+          npm run typecheck 2>&1 | tee ../../../evidence/smt-typecheck.txt
+          npm run build 2>&1 | tee ../../../evidence/smt-build.txt
+
+      - name: Verify canonical-only guards
+        working-directory: source
+        run: |
+          set -euo pipefail
+          grep -F "validateCanonicalOrderIdentity" apps/smt-clean/src/runtime/network-production-runtime.ts
+          grep -F "if(identity)return identity.displayOrderCode" apps/smt-clean/src/runtime/network-production-runtime.ts
+          grep -F "if(identity)return canonicalOrderSourceLabel(identity)" apps/smt-clean/src/runtime/network-production-runtime.ts
+          grep -F "SMT_CANONICAL_ORDER_IDENTITY_INVALID" apps/smt-clean/src/runtime/network-production-runtime.ts
+          grep -F "SMT_CANONICAL_ORDER_IDENTITY_ORDER_MISMATCH" apps/smt-clean/src/runtime/network-production-runtime.ts
+          echo "canonical_only_guard=PASS" | tee ../evidence/guard.txt
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: team-a-a5-smt-canonical-identity-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
