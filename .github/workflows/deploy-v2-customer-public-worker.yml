@@ -85,9 +85,20 @@ jobs:
           INDEX_HTTP="$(fetch_status "$URL/" /tmp/index.html)"
           MENU_HTTP="$(fetch_status "$URL/menu" /tmp/menu.html)"
           ORDERING_HTTP="$(fetch_status "$URL/api/customer/ordering" /tmp/ordering.json)"
+          PRICING_REVISION_HTTP="$(fetch_status "$URL/api/pricing/revision" /tmp/customer-pricing-revision.json)"
+          PRICING_ACTIVE_HTTP="$(fetch_status "$URL/api/pricing/active" /tmp/customer-pricing-active.json)"
           test "$INDEX_HTTP" = 200
           test "$MENU_HTTP" = 200
           test "$ORDERING_HTTP" = 200
+          test "$PRICING_REVISION_HTTP" = 200
+          test "$PRICING_ACTIVE_HTTP" = 200
+          node - <<'NODE'
+          const revision=require('/tmp/customer-pricing-revision.json');
+          const active=require('/tmp/customer-pricing-active.json');
+          if(revision?.ok!==true||!Number.isSafeInteger(revision?.value?.revision)||revision.value.revision<1)process.exit(1);
+          if(active?.ok!==true||String(active?.value?.revision)!==String(revision.value.revision)||active?.value?.revisionToken!==revision.value.revisionToken)process.exit(1);
+          console.log('customer_pricing_proxy=PASS revision='+revision.value.revision);
+          NODE
 
           JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' /tmp/index.html | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
           test -n "$JS_PATH"
@@ -105,7 +116,7 @@ jobs:
           done
           test "$FIXTURE_MARKERS" = 0
           node -e "const x=require('/tmp/ordering.json');if(!Number.isSafeInteger(x.publishSequence)||!x.catalogVersion||!Array.isArray(x.products))process.exit(1)"
-          printf 'index_http=%s\nspa_http=%s\nordering_http=%s\nasset_http=%s\nfixture_markers=%s\n' "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$JS_HTTP" "$FIXTURE_MARKERS" > evidence/smoke.txt
+          printf 'index_http=%s\nspa_http=%s\nordering_http=%s\npricing_revision_http=%s\npricing_active_http=%s\nasset_http=%s\nfixture_markers=%s\n' "$INDEX_HTTP" "$MENU_HTTP" "$ORDERING_HTTP" "$PRICING_REVISION_HTTP" "$PRICING_ACTIVE_HTTP" "$JS_HTTP" "$FIXTURE_MARKERS" > evidence/smoke.txt
       - name: Publish Team2 deploy audit
         if: always()
         env:
