@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_SMT_OPERATIONAL_LOCAL_PROJECTIONS_POST_ADMISSION_20260907
+candidate_sha=e83ab93fa59b993475801c586d05a726c14d5003
+base_main_sha=e83ab93fa59b993475801c586d05a726c14d5003
+latest_main_sha=e83ab93fa59b993475801c586d05a726c14d5003
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34121560265
+conclusion=success
