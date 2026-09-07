@@ -1,5 +1,5 @@
-candidate_sha=8f6bb7de4556d13ec999243079268d950fccd998
-base_main_sha=472fe0c227079082db682d8dc9fea5ca601c4c85
-work_id=TEAM_A_SIXTH_SEAM_PAYMENT_REFUND_RUNTIME_CONSOLIDATION
-affected_ports=SMT,SMM,ADMIN
-queue_attempt=3
+candidate_sha=00b595a8b818f088841a46642dd89acea10e0ce3
+base_main_sha=f7b73533562d4e4cef278b762e3e77344bfb6afa
+work_id=MGMT-CONSOLIDATION-BUSINESS-DAY-D1-COMMAND-AUTHORITY-2026-09-07-01
+affected_ports=ADMIN
+queue_attempt=1
