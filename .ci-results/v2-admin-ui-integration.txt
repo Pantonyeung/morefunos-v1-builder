@@ -1,5 +1,5 @@
-source_sha=8f6bb7de4556d13ec999243079268d950fccd998
-request_id=TEAMA-PAYMENT-REFUND-HANDSHAKE-R2-ADMIN-20260907
-run_id=34076777068
+source_sha=98f9f1d27d057ec40db93e91a26789ca4709abfb
+request_id=TEAM-B-B4-BUSINESS-DAY-CANDIDATE-20260907
+run_id=34077037898
 run_attempt=1
-conclusion=success
+conclusion=failure
