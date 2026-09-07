@@ -1,0 +1,13 @@
+work_id=TEAM_A_A7_OFFLINE_OPERATIONAL_CONTEXT
+candidate_sha=a6c4c991951d6f6cef9944341d73aa76c29d41f6
+base_main_sha=5666644804c32292747df70277188dd42af4d4ea
+latest_main_sha=cc43d69c99d880a343ab75547cd2eb2292319c01
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=AVAILABILITY
+force_full_proof=true
+run_id=34087184203
+conclusion=success
