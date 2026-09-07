@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__CUSTOMER_FASTPATH_R1
+candidate_sha=7881b35a893094e6b706d6fc79d0cdc759fc6fb0
+base_main_sha=f91746b7efb599592a8b63bd1a0d4beefb41dcb7
+latest_main_sha=25e870bbfd2a2be7933fe66272ad64041c509d42
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34108321068
+conclusion=success
