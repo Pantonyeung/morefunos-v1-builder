@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-REPORTING-STATE-R8-2026-09-08
+candidate_sha=ba5ae28c5df7f2c6a311e7511c9d068dc30bb039
+base_main_sha=28549d67831290e9963c9ba2fb2de49705fb76db
+latest_main_sha=932e8c38f1130c1275b8cd99947dfba69c38c646
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34167326501
+conclusion=success
