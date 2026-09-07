@@ -1,6 +1,6 @@
-source_sha=ffcbb1860e3094774df0120433627ab819abc9c5
-migration_file=0049-store-order-sync-sequence.sql
-request_id=TEAM-A-ORDER-SYNC-0049-PRODUCTION-20260907
-run_id=34142214480
+source_sha=d7deb86f27cccc06b12e8434930e93ba7f0006e0
+migration_file=0050-presentation-profile.sql
+request_id=TEAM-B-CUSTOMER-PRESENTATION-0050-PRODUCTION-20260908
+run_id=34168660025
 run_attempt=1
 conclusion=success
