@@ -1,0 +1,13 @@
+work_id=POST_ADMISSION_HOTSPOT_RUNTIME_DECOMPOSITION_E404DE57_R3
+candidate_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+base_main_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+latest_main_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION,PAYMENT_ADMISSION,PRINT
+force_full_proof=true
+run_id=34078842948
+conclusion=success
