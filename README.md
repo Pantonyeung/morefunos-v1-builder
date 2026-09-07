@@ -58,3 +58,46 @@ Builder PASS can establish only the evidence rung actually executed for the exac
 ## Native / OTA
 The accepted Android Carrier remains governed by D-090 and is not rebuilt for ordinary UI/Business Runtime changes.
 Approved Runtime `.mfos` verification/release/OTA publication workflows also execute from Builder while Product/Runtime authority remains in V1.
+
+
+## V2 Builder Admission Queue
+
+Workflow:
+`.github/workflows/v2-builder-admission-queue.yml`
+
+Purpose:
+reduce repeated replay/rebase and full reruns when multiple Morefun-v2 teams work in parallel.
+
+The queue does not mutate Morefun-v2.
+It checks out:
+- current Morefun-v2 main;
+- one frozen candidate SHA;
+- the candidate base main SHA.
+
+Then it:
+1. compares candidate delta vs main delta;
+2. classifies collision C0-C4;
+3. classifies verification impact V0-V4;
+4. builds a temporary latest-main integration working tree;
+5. uses exact-file overlay for disjoint candidates;
+6. uses three-way apply only when same files actually overlap;
+7. runs integration checks appropriate to the declared affected ports;
+8. seals durable evidence under `.ci-results/admission-queue/`.
+
+Request file:
+`requests/v2-admission-queue-request.txt`
+
+Fields:
+- `candidate_sha`
+- `base_main_sha`
+- `work_id`
+- `affected_ports`
+
+The candidate SHA is immutable after CANDIDATE_READY.
+
+Important:
+- Candidate Proof still belongs to the existing dedicated Builder workflows.
+- Admission Queue Proof answers a different question: whether the frozen candidate still integrates with current main.
+- A moving main alone must not force the author to replay a candidate.
+- C0/V1 disjoint work should integrate without author rebase.
+- Morefun-v2 native Actions/CI/Workflow remain forbidden.
