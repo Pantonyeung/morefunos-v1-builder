@@ -1,0 +1,7 @@
+candidate_sha=2fd97624956d8e97f1962c480f101bb28163baea
+base_main_sha=f25d8e9fe782fcac65ab1d5bae8cfbbd3d4de393
+work_id=TEAM-B-ADMIN-RESPONSIVE-MANAGEMENT-UI-CLOSURE-20260907
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
