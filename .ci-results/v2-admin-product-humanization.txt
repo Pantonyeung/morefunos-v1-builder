@@ -1,5 +1,5 @@
-source_sha=12961d86c9d9d7ce9dfbc557a157fa5a6d00d791
-request_id=TEAM-B-ADMIN-PRODUCT-BULK-PRICE-R8-20260908
-run_id=34155445572
+source_sha=43ebabe894adc0a2c6dbf4bf8d6567e4449e5f11
+request_id=TEAM-B-ADMIN-PRODUCT-BULK-PRICE-R8-EXACT-MAIN-20260908
+run_id=34155684764
 run_attempt=1
 conclusion=success
