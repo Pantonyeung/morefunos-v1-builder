@@ -1,0 +1,7 @@
+candidate_sha=501e70b8d8b76a743a2e33b0c26d07cf131ae56a
+base_main_sha=bde9b9a90ec8a21d5d0889eaf399bc5c6aac9355
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__FRONTLINE_ORDER_PEER_REALTIME_R4
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
