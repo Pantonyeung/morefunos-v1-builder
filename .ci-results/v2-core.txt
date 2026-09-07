@@ -1,5 +1,5 @@
-source_sha=03def162190428360a9e0201edb1fa276fd694e5
-request_id=TEAMA-A6-PRICEBOOK-CORE-R1-20260907
-run_id=34084140415
+source_sha=UNKNOWN
+request_id=TEAMA-A6-BASELINE-CORE-DIAGNOSTIC-470D2B64
+run_id=34084399311
 run_attempt=1
 conclusion=failure
