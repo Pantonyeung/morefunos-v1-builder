@@ -1,4 +1,5 @@
 source_sha=ec8c300f27268b846fd6af79603e8348af942642
+base_sha=e885928df3e111a934c781af2df2d349be606ab5
 branch_name=main
-verification_phase=POST_ADMISSION
-request_id=POST-ADMISSION-TEAMA-A7-C0C-CORE-20260907
+verification_phase=FINAL_MERGE_REQUEST
+request_id=POST-ADMISSION-TEAMA-A7-C0C-CORE-R2-20260907
