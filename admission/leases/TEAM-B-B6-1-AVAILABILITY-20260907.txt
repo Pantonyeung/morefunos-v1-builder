@@ -1,0 +1,14 @@
+lease_id=TEAM-B-B6-1-AVAILABILITY-20260907
+work_id=MGMT-B6-1-AVAILABILITY-SOLD-OUT-QUICK-CONTROL-2026-09-07-01
+team=TEAM_B
+acceptance_object=OWNER_AVAILABILITY_QUICK_CONTROL_REUSES_ADMIN_CANONICAL_AUTHORITY
+base_main_sha=c64b146c6a8133ad2ba5f9ea93378d66744b10b8
+file_globs=packages/management-ui-integration/availability-quick-control.ts,packages/owner-ui-integration/*availability*,apps/owner-web/src/*availability*,apps/owner-web/src/OwnerRuntimeRoot.tsx,apps/owner-web/src/OwnerApp.tsx,infra/cloudflare/owner-web-worker/index.ts
+canonical_authorities=CORE_AVAILABILITY_CANONICAL_D1
+operation_ids=admin.availability.page.read.v1,admin.availability.page.product.set.v1,availability.set.v2
+affected_ports=OWNER,ADMIN
+handshake=OWNER_QUICK_CONTROL_TO_EXISTING_ADMIN_AVAILABILITY_ENDPOINT_TO_CANONICAL_D1_READBACK
+duration=NORMAL
+status=ACTIVE_PREAUTHORIZED
+permission=availability.update
+constraints=NO_ADMIN_WORKER_HOTFILE_TOUCH,NO_SECOND_AVAILABILITY_STORE,NO_INVENTORY_EQUALS_SOLD_OUT,NO_DAILY_QUOTA_AS_SELLABILITY_TRUTH,NO_OWNER_PERSISTENCE,NO_V2_NATIVE_CI
