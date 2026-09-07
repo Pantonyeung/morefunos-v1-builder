@@ -1,7 +1,7 @@
-source_sha=243270d49af26f60a40f0d15828ce65bc0cd45e6
-request_id=TEAM-B-B7-1-CATALOG-VARIATION-OWNER-PRODUCTION-243270D4
-run_id=34090061568
+source_sha=4d7e238a2012f21754e94a3ef1771ee65b21cc29
+request_id=TEAM-B-B7-2-CHANNEL-PROJECTION-OWNER-PRODUCTION-4D7E238A
+run_id=34091928283
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-owner.pantonyeung.workers.dev
-worker_version=c61b32f4-c72a-4ec9-a34a-90af70cb2d08
+worker_version=4f44d7d6-9841-44e5-b2b3-257dbbd8c217
