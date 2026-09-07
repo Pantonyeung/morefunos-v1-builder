@@ -1,5 +1,5 @@
-source_sha=b27fa2395e629e68c6eb44ed140dadbf12eea8c9
-request_id=TEAMA-A4-CANONICAL-ORDER-READ-R4-SMM-20260907
-run_id=34080193747
+source_sha=a5aa79594dcfc5e585eb153a6459ed33c9360ade
+request_id=POST-ADMISSION-TEAMA-A4-CANONICAL-ORDER-READ-SMM-20260907
+run_id=34080402495
 run_attempt=1
 conclusion=success
