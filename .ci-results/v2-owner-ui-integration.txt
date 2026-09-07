@@ -1,5 +1,5 @@
-source_sha=e646d7d0518060b590cef4bb510a19303cbed807
-request_id=TEAM-B-B5-OWNER-POST-ADMISSION-E646D7D0
-run_id=34080620455
+source_sha=0b4550943e44d17f6da9837b36991d2bfa6339eb
+request_id=TEAM-B-B6-1-AVAILABILITY-OWNER-CANDIDATE-20260907
+run_id=34082066488
 run_attempt=1
-conclusion=success
+conclusion=failure
