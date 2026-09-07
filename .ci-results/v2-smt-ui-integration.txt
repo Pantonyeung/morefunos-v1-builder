@@ -1,5 +1,5 @@
-source_sha=857212cf7934fe22543a34f8385d9196618c4877
-request_id=TEAMA-PORT-CONSOLIDATION-PRICING-RT-POSTMAIN-SMT-20260907
-run_id=34072617244
+source_sha=4b08fa93e62a0edca20cb09ea86faa77bd508efe
+request_id=TEAMA-PORT-CONSOLIDATION-PRICING-RT-FINAL-SMT-20260907
+run_id=34072709931
 run_attempt=1
-conclusion=failure
+conclusion=success
