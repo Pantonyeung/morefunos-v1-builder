@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__PRICING_WS_FIRST_R3
+candidate_sha=2e9842fac3634874ab7f62dfd7c3d1aee6b9471f
+base_main_sha=b6ed006fcd071fbfcd885231953b82dadc5aa5ae
+latest_main_sha=e5bdb4a9962db768dd953584c5d6a4551f2bd70e
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34111349272
+conclusion=success
