@@ -30,8 +30,8 @@ jobs:
 
       - name: Require exact main
         env:
-          SOURCE_SHA: \${{ steps.req.outputs.source_sha }}
-          TOKEN: \${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -44,7 +44,7 @@ jobs:
 
       - name: Probe Owner production canonical reads
         env:
-          ADMIN_LOGIN_SECRET: \${{ secrets.ADMIN_LOGIN_SECRET }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: v2-owner-production-runtime-diagnostic-\${{ steps.req.outputs.source_sha }}
+          name: v2-owner-production-runtime-diagnostic-${{ steps.req.outputs.source_sha }}
           path: evidence
           if-no-files-found: error
           retention-days: 7
