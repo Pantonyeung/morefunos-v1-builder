@@ -1,0 +1,7 @@
+candidate_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+base_main_sha=9d5dbc5d86946cc033c1164078fe3ab531914b67
+work_id=TEAM_A_FRONTLINE_CLOUD_AUTHORITATIVE_CONVERGENCE_POST_ADMISSION
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
