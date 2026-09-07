@@ -1,5 +1,5 @@
-source_sha=df230947a232b4b5748cb027d8f7b423e86666c3
-request_id=TEAM-B-B9-REMAINING-STALE-LOCKS-RED-20260907
-run_id=34099051416
+source_sha=1b6651cd4fccf4fd5eae8183fd2a9906c3fd5e47
+request_id=TEAM-B-B9-REMAINING-STALE-LOCKS-OWNER-R1-20260907
+run_id=34099379103
 run_attempt=1
-conclusion=failure
+conclusion=success
