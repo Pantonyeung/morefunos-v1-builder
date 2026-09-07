@@ -1,7 +1,7 @@
-source_sha=38bfbb856cc57555bfcb507d56f00e1d2ae77578
-request_id=TEAM-B-ADMIN-STALE-FEATURE-GATE-R9-DEPLOY-20260908
-run_id=34167821949
+source_sha=d7deb86f27cccc06b12e8434930e93ba7f0006e0
+request_id=TEAM-B-CUSTOMER-PRESENTATION-R10-ADMIN-DEPLOY-20260908
+run_id=34168699082
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=169e4f3f-2cdd-4581-9e65-7328678df550
+worker_version=69f0f2b6-fc83-4e40-ac61-1cdb13be12d4
