@@ -1,0 +1,13 @@
+work_id=TEAM-B-CUSTOMER-PRESENTATION-R10-2026-09-08
+candidate_sha=441f85e06c8a089e3a3d2cf626b0897a055b5b0f
+base_main_sha=898385fb9ec2b05c3de49a14dd5b8e402f26d1c2
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=sys-constitution-15
+required_core_tests=
+force_full_proof=false
+run_id=34168449107
+conclusion=failure
