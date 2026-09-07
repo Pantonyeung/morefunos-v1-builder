@@ -104,6 +104,7 @@ jobs:
           echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
           echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
+          echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         env:
