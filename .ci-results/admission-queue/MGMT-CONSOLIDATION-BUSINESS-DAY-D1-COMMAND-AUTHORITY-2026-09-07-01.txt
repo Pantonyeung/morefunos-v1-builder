@@ -1,0 +1,10 @@
+work_id=MGMT-CONSOLIDATION-BUSINESS-DAY-D1-COMMAND-AUTHORITY-2026-09-07-01
+candidate_sha=00b595a8b818f088841a46642dd89acea10e0ce3
+base_main_sha=f7b73533562d4e4cef278b762e3e77344bfb6afa
+latest_main_sha=059acf5732556f9110450d99233f9768c3c7dac8
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+run_id=34077301292
+conclusion=success
