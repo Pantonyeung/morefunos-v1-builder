@@ -1,5 +1,5 @@
-source_sha=5b7546414f37cc20e6443733716730a021e96169
-request_id=TEAM-B-B9-FAILURE-SEMANTICS-GREEN-R2-20260907
-run_id=34096213900
+source_sha=588dd9daeba55aefbd1c5d85794065b75e4ac4d3
+request_id=TEAM-B-B9-SHELL-FAILURE-SEMANTICS-RED-20260907
+run_id=34096400501
 run_attempt=1
-conclusion=success
+conclusion=failure
