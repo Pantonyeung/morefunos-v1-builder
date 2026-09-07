@@ -1,7 +1,7 @@
-source_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
-request_id=TEAM-A-KEETA-CANONICAL-NONBLOCKING-P0-20260907
-run_id=34135993628
+source_sha=2b89f11d2ea0786f1ea05994474d7fc2f56bd0bc
+request_id=TEAM-B-ADMIN-PRODUCT-HUMANIZATION-PRODUCTION-20260907
+run_id=34138752922
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=054760dd-6947-4a10-b150-41f9c148ab61
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
