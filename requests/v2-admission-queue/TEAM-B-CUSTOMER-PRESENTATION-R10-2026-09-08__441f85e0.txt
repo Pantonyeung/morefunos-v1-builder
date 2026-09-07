@@ -1,0 +1,7 @@
+candidate_sha=441f85e06c8a089e3a3d2cf626b0897a055b5b0f
+base_main_sha=898385fb9ec2b05c3de49a14dd5b8e402f26d1c2
+work_id=TEAM-B-CUSTOMER-PRESENTATION-R10-2026-09-08
+affected_ports=ADMIN,CUSTOMER
+depends_on_specs=SYS-CONSTITUTION-15
+required_core_tests=
+force_full_proof=false
