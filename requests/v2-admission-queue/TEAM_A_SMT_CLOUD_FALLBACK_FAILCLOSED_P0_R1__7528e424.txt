@@ -1,0 +1,7 @@
+candidate_sha=7528e424a3fe59799d8aceb80c34563ebc67c476
+base_main_sha=3989b8a16daf9758229b9c0e1008245616d360bf
+work_id=TEAM_A_SMT_CLOUD_FALLBACK_FAILCLOSED_P0_R1
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
