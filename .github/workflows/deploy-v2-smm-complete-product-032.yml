@@ -278,7 +278,7 @@ jobs:
             await page.getByText('列印管理',{exact:true}).waitFor({state:'visible',timeout:5000});
             await page.getByText('營業日',{exact:true}).waitFor({state:'visible',timeout:5000});
             await page.getByText('營運報表',{exact:true}).waitFor({state:'visible',timeout:5000});
-            await page.getByText('產能倒數',{exact:true}).waitFor({state:'visible',timeout:5000});
+            await page.getByText('今日產能倒數',{exact:true}).waitFor({state:'visible',timeout:5000});
 
             const assertDialogInViewport=async(name)=>{
               const dialog=page.getByRole('dialog',{name,exact:true});
