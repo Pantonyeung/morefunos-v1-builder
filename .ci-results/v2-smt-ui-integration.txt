@@ -1,5 +1,5 @@
-source_sha=58676b17ba79d836b475a3f5b946bea9411dcd66
-request_id=TEAMA-SMT-GOLDEN-ORDERING-INLINE-20260907-04
-run_id=34118554526
+source_sha=03d815ef3b35e477e5d1b88edea5d3fee7275ec1
+request_id=POST-ADMISSION-TEAMA-SMT-GOLDEN-ORDERING-R4-20260907-01
+run_id=34118948705
 run_attempt=1
 conclusion=success
