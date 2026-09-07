@@ -1,0 +1,13 @@
+work_id=MGMT-CONSOLIDATION-STAFF-RBAC-SHARED-CONTRACT-2026-09-07-01
+candidate_sha=c72d4888d6db433a71e2609211d6cc03153abc17
+base_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+latest_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34080335799
+conclusion=success
