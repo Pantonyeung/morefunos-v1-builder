@@ -128,6 +128,23 @@ jobs:
               return {status:response.status,session};
             },process.env.ADMIN_LOGIN_SECRET);
             if(pair.status!==200||!pair.session?.sessionToken||!Array.isArray(pair.session?.mountedOperationIds))throw new Error('SMT_PREVIEW_PAIR_FAILED');
+            const pricing=await page.evaluate(async()=>{
+              const read=async path=>{
+                const response=await fetch(path,{method:'GET',headers:{accept:'application/json'},cache:'no-store'});
+                let body=null;try{body=await response.json()}catch{}
+                return {path,status:response.status,body};
+              };
+              return {
+                revision:await read('/api/pricing/revision'),
+                active:await read('/api/pricing/active'),
+              };
+            });
+            if(pricing.revision.status!==200||pricing.revision.body?.ok!==true)throw new Error('SMT_PREVIEW_PRICING_REVISION_UNAVAILABLE');
+            if(pricing.active.status!==200||pricing.active.body?.ok!==true)throw new Error('SMT_PREVIEW_ACTIVE_PRICEBOOK_UNAVAILABLE');
+            const activePricebook=pricing.active.body?.value;
+            const revisionValue=pricing.revision.body?.value;
+            if(!activePricebook?.storeId||!activePricebook?.products||Object.keys(activePricebook.products).length<1)throw new Error('SMT_PREVIEW_ACTIVE_PRICEBOOK_EMPTY');
+            if(revisionValue?.storeId!==activePricebook.storeId)throw new Error('SMT_PREVIEW_PRICING_STORE_MISMATCH');
             const requiredOperations=['catalog.menu.active.read.v1','order.open-list.read.v1','order.direct.staff.submit.v1'];
             const missingOperations=requiredOperations.filter(operationId=>!pair.session.mountedOperationIds.includes(operationId));
             if(missingOperations.length)throw new Error('SMT_PREVIEW_REQUIRED_OPS_MISSING:'+missingOperations.join(','));
@@ -153,6 +170,9 @@ jobs:
               runtimeConnected:false,
               runtimeAcceptance:'BLOCKED_BY_REQUIRED_STAFF_AUTH',
               mountedOperations:pair.session.mountedOperationIds.length,
+              pricingRevision:revisionValue?.revision??null,
+              pricingStoreId:activePricebook?.storeId??null,
+              pricingProductCount:Object.keys(activePricebook?.products??{}).length,
               productCount:null,
               openOrderCount:null,
               nativeOnlyNotice:false,
