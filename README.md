@@ -84,8 +84,11 @@ Then it:
 7. runs integration checks appropriate to the declared affected ports;
 8. seals durable evidence under `.ci-results/admission-queue/`.
 
-Request file:
-`requests/v2-admission-queue-request.txt`
+Request submission:
+- canonical: one immutable file per candidate under `requests/v2-admission-queue/<work-id>__<candidate-prefix>.txt`;
+- legacy shared file `requests/v2-admission-queue-request.txt` is compatibility-only and must not be used for concurrent work.
+
+Each push should add exactly one immutable request file. This prevents Team A / Team B from overwriting each other's queue manifest.
 
 Fields:
 - `candidate_sha`
@@ -101,3 +104,24 @@ Important:
 - A moving main alone must not force the author to replay a candidate.
 - C0/V1 disjoint work should integrate without author rebase.
 - Morefun-v2 native Actions/CI/Workflow remain forbidden.
+
+
+### Concurrent request proof — 2026-09-07
+
+The queue was hardened from one shared request file to one immutable file per candidate.
+
+Proof:
+- Team A real candidate run 34077480242: SUCCESS.
+  - candidate 8f6bb7de4556d13ec999243079268d950fccd998
+  - base 472fe0c227079082db682d8dc9fea5ca601c4c85
+  - latest main bd394af0cc2359e7001ba17083f4d90ac1986e00
+  - collision C0
+  - impact V1
+  - apply DISJOINT_OVERLAY
+  - SMT/SMM/Admin integration proof passed.
+- Independent no-op request run 34077482839: SUCCESS after being queued behind the first run.
+  - collision C0
+  - impact V0
+  - no product rerun.
+
+This proves concurrent submissions are preserved instead of overwriting one shared request file.
