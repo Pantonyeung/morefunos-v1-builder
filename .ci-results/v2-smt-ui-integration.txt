@@ -1,5 +1,5 @@
-source_sha=1f05c6181262f6f0898d7f6cefb98cfe9d7f3299
-request_id=POST-ADMISSION-TEAMA-A8-SMT-1F05C618
-run_id=34092664984
+source_sha=352005c086766b30a29bfa32b2442373cdf62871
+request_id=TEAMA-A9-SMT-OFFLINE-CASHSHIFT-RESUME-20260907-01
+run_id=34100934702
 run_attempt=1
-conclusion=success
+conclusion=failure
