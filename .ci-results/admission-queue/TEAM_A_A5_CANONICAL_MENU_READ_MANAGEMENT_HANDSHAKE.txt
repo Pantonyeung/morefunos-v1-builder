@@ -1,0 +1,13 @@
+work_id=TEAM_A_A5_CANONICAL_MENU_READ_MANAGEMENT_HANDSHAKE
+candidate_sha=37cad41ec5f5057f1dad63fd3ee8b1d0cf0be884
+base_main_sha=c64b146c6a8133ad2ba5f9ea93378d66744b10b8
+latest_main_sha=ef8b7c97b445cb05efa85bff24d6859eb726f8eb
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=CATALOG
+force_full_proof=false
+run_id=34082244257
+conclusion=success
