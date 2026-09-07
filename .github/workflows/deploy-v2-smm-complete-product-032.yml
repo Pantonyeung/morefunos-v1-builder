@@ -421,10 +421,13 @@ jobs:
             const approvedRealtimeHttpsOrigin='https://morefun-v2-admin.pantonyeung.workers.dev';
             const approvedRealtimeWss='wss://morefun-v2-admin.pantonyeung.workers.dev/api/pricing/socket';
             const crossOriginApi=apiNetwork.filter(x=>x.origin!==publicOrigin);
-            const forbiddenCrossOriginApi=crossOriginApi.filter(x=>!(
-              x.path==='/api/pricing/socket'
-              &&(x.origin===approvedRealtimeHttpsOrigin||x.origin==='wss://morefun-v2-admin.pantonyeung.workers.dev')
-            ));
+            const forbiddenCrossOriginApi=crossOriginApi.filter(x=>{
+              const approvedOrigin=x.origin===approvedRealtimeHttpsOrigin||x.origin==='wss://morefun-v2-admin.pantonyeung.workers.dev';
+              if(!approvedOrigin)return true;
+              if(x.path==='/api/pricing/socket')return x.method!=='GET';
+              if(x.path==='/api/pricing/revision'||x.path==='/api/pricing/active')return x.method!=='GET';
+              return true;
+            });
             if(forbiddenCrossOriginApi.length)throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN:'+JSON.stringify(forbiddenCrossOriginApi));
             const forbiddenSockets=webSockets.filter(url=>url!==approvedRealtimeWss);
             if(forbiddenSockets.length)throw new Error('SMM_BROWSER_WEBSOCKET_FORBIDDEN:'+JSON.stringify(forbiddenSockets));
