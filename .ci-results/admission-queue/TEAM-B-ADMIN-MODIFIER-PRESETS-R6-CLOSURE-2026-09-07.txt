@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-MODIFIER-PRESETS-R6-CLOSURE-2026-09-07
+candidate_sha=d1010956be66ca0879fa16b1a9e5d2b97d4e9f7c
+base_main_sha=44893fc7ee18e1390facab1c3aaedf174a0f7f3c
+latest_main_sha=44893fc7ee18e1390facab1c3aaedf174a0f7f3c
+collision=C0
+impact=V0
+reason=CANDIDATE_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34141310811
+conclusion=success
