@@ -1,5 +1,5 @@
-candidate_sha=00b595a8b818f088841a46642dd89acea10e0ce3
-base_main_sha=f7b73533562d4e4cef278b762e3e77344bfb6afa
-work_id=MGMT-CONSOLIDATION-BUSINESS-DAY-D1-COMMAND-AUTHORITY-2026-09-07-01
-affected_ports=ADMIN
-queue_attempt=5
+candidate_sha=77f83f5b3da09d0f67bd6be5e2681cb0061a461e
+base_main_sha=7ef0f91f7452107f58d047cfb26a5852f255e56a
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__FRONTLINE_SMT_UIUX_R1
+affected_ports=SMT
+queue_attempt=1
