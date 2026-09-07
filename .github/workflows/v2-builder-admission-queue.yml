@@ -430,7 +430,18 @@ jobs:
           set -euo pipefail
           auths="$(cat ../evidence/candidate-authorities.txt ../evidence/main-authorities.txt | sort -u)"
           tests="$REQUIRED_CORE_TESTS"
-          if grep -qx ORDER <<<"$auths" || [[ ",$tests," == *,ORDER,* ]]; then npm run test:core-order; fi
+          if [[ ",$tests," == *,ORDER_ADMISSION,* ]]; then
+            node --test --test-concurrency=1 \
+              packages/order/canonical-order-identity.test.ts \
+              packages/order/d1-order-display-code.test.ts \
+              packages/order/d1-store-order-acceptance.test.ts \
+              packages/order/direct-order-variation.test.ts \
+              packages/order/order-acceptance-idempotency.test.ts \
+              packages/order/order-port-contract.test.ts \
+              packages/order/staff-direct-order-identity-parity.test.ts
+          elif grep -qx ORDER <<<"$auths" || [[ ",$tests," == *,ORDER,* ]]; then
+            npm run test:core-order
+          fi
           if grep -qx PRICING <<<"$auths" || [[ ",$tests," == *,PRICING,* ]]; then npm run test:core-pricing; fi
           if grep -qx AVAILABILITY <<<"$auths" || [[ ",$tests," == *,AVAILABILITY,* ]]; then npm run test:core-availability; fi
           if grep -qx BUSINESS_DAY <<<"$auths" || [[ ",$tests," == *,BUSINESS_DAY,* ]]; then npm run test:core-business-day-cash; fi
