@@ -1,5 +1,5 @@
-source_sha=82858b3102e85bd0597a548db6ab0fd699a7b0c7
-request_id=TEAM-B-B6-2-PRICING-WORKER-GREEN-20260907
-run_id=34083923126
+source_sha=014cada66fd9d0ca25419d32d494684edaf784db
+request_id=TEAM-B-B6-2-PRICING-UI-RED-20260907
+run_id=34083941031
 run_attempt=1
-conclusion=success
+conclusion=failure
