@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 env:
   EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
@@ -244,3 +245,27 @@ jobs:
             RUNTIME_SHA256SUMS
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish package success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-smt-runtime-package' \
+            -f description='SMT signed runtime package ready' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Publish package failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-smt-runtime-package' \
+            -f description='SMT signed runtime package failed' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
