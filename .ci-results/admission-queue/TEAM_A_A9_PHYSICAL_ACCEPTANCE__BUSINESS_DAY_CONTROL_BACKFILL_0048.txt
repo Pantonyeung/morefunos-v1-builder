@@ -1,0 +1,13 @@
+work_id=TEAM_A_A9_PHYSICAL_ACCEPTANCE__BUSINESS_DAY_CONTROL_BACKFILL_0048
+candidate_sha=c5e4ab878a8982eb042f837601fe80ff61e5b1a1
+base_main_sha=b49913ca6835cdfc02aa80a56d53aa41262b7ef8
+latest_main_sha=b49913ca6835cdfc02aa80a56d53aa41262b7ef8
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34098483064
+conclusion=success
