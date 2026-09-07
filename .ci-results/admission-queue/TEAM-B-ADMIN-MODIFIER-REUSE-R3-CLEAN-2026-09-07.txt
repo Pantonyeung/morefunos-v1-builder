@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-MODIFIER-REUSE-R3-CLEAN-2026-09-07
+candidate_sha=011c45844be706ff66957bdd66dccbb56b9bc35e
+base_main_sha=9d5dbc5d86946cc033c1164078fe3ab531914b67
+latest_main_sha=d4c251e2e27c7a7898cdf5d0ee9e53293229eaa1
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34140149346
+conclusion=success
