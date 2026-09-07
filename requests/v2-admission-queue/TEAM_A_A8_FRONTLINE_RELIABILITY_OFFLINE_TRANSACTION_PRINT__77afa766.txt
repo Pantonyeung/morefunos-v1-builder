@@ -1,0 +1,7 @@
+candidate_sha=77afa766325a3593bcded4cf9ed223570fdb3c74
+base_main_sha=afc8e09a232873bff333ddfc83bf3622df66940a
+work_id=TEAM_A_A8_FRONTLINE_RELIABILITY_OFFLINE_TRANSACTION_PRINT
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
