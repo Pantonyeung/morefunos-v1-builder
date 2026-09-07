@@ -1,5 +1,5 @@
-source_sha=ca5a0e26926d2570c79e902110ab954099d3d51a
-request_id=TEAMA-SMT-GOLDEN-RECONSTRUCTION-LATEST-MAIN-R1-20260907-01
-run_id=34128489420
+source_sha=8fd4f1f3f256ead0a1f32d974e785f8e83ee676f
+request_id=POST-ADMISSION-TEAM-A-SMT-PREVIEW-RUNTIME-PROXY-20260907-01
+run_id=34130656601
 run_attempt=1
-conclusion=success
+conclusion=failure
