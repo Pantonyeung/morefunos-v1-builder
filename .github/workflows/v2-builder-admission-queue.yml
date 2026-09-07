@@ -34,6 +34,11 @@ on:
         required: false
         default: ''
         type: string
+      force_full_proof:
+        description: Force affected-port integration proof even when candidate is already admitted (post-admission exact-main verification only)
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -67,6 +72,7 @@ jobs:
           INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
           INPUT_DEPENDS_ON_SPECS: ${{ inputs.depends_on_specs }}
           INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
+          INPUT_FORCE_FULL_PROOF: ${{ inputs.force_full_proof }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
@@ -83,6 +89,7 @@ jobs:
             AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(printf '%s' "$INPUT_DEPENDS_ON_SPECS" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(printf '%s' "$INPUT_REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            FORCE_FULL_PROOF="$(printf '%s' "$INPUT_FORCE_FULL_PROOF" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUEST_FILE=WORKFLOW_DISPATCH
           else
             mapfile -t REQUEST_FILES < <(
@@ -111,9 +118,12 @@ jobs:
             AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(read_request depends_on_specs "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            FORCE_FULL_PROOF="$(read_request force_full_proof "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           fi
           DEPENDS_ON_SPECS="${DEPENDS_ON_SPECS:-}"
           REQUIRED_CORE_TESTS="${REQUIRED_CORE_TESTS:-}"
+          FORCE_FULL_PROOF="${FORCE_FULL_PROOF:-false}"
+          [[ "$FORCE_FULL_PROOF" == "true" || "$FORCE_FULL_PROOF" == "false" ]]
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           test -n "$WORK_ID"
@@ -124,6 +134,7 @@ jobs:
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
           echo "depends_on_specs=$DEPENDS_ON_SPECS" >> "$GITHUB_OUTPUT"
           echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
+          echo "force_full_proof=$FORCE_FULL_PROOF" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
@@ -425,6 +436,7 @@ jobs:
         working-directory: integration
         env:
           REQUIRED_CORE_TESTS: ${{ steps.request.outputs.required_core_tests }}
+          FORCE_FULL_PROOF: ${{ steps.request.outputs.force_full_proof }}
         shell: bash
         run: |
           set -euo pipefail
@@ -464,22 +476,22 @@ jobs:
           if grep -qx CATALOG <<<"$auths" || [[ ",$tests," == *,CATALOG,* ]]; then npm run test:core-catalog; fi
 
       - name: SMT integration proof
-        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'SMT')
+        if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'SMT')
         working-directory: integration/apps/smt-clean
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
 
       - name: SMM integration proof
-        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'SMM')
+        if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'SMM')
         working-directory: integration/apps/smm-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
 
       - name: Admin integration proof
-        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'ADMIN')
+        if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'ADMIN')
         working-directory: integration/apps/admin-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
 
       - name: Owner integration proof
-        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'OWNER')
+        if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'OWNER')
         working-directory: integration/apps/owner-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
 
@@ -542,6 +554,7 @@ jobs:
               echo "apply_status=${APPLY_STATUS:-UNKNOWN}"
               echo "depends_on_specs=$DEPENDS_ON_SPECS"
               echo "required_core_tests=$REQUIRED_CORE_TESTS"
+              echo "force_full_proof=$FORCE_FULL_PROOF"
               echo "run_id=$RUN_ID"
               echo "conclusion=$CONCLUSION"
             } > ".ci-results/admission-queue/${safe_work_id}.txt"
