@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__SMM_CACHED_FIRST_R1
+candidate_sha=31438d848a1cbcd61c1c0cebb89214809e580e0e
+base_main_sha=0d09016b09becab44cda86ca917143910517211b
+latest_main_sha=0d09016b09becab44cda86ca917143910517211b
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34110430061
+conclusion=success
