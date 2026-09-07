@@ -1,4 +1,4 @@
-source_sha=c1d95762a9ae48a8f33b1e113134a26ff2808d0c
-branch_name=work/TEAM-A/a8-offline-transaction-print-20260907
+source_sha=65c9fab7f95ee3c7ccec700cb4df06dd223862a0
+branch_name=work/TEAM-A/a8-supersede-integration-20260907
 verification_phase=CANDIDATE
-request_id=TEAMA-A8-SUPERSEDE-CORE-R2-20260907
+request_id=TEAMA-A8-SUPERSEDE-INTEGRATION-CORE-R1-20260907
