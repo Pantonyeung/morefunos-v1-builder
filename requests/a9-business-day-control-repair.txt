@@ -1,0 +1,4 @@
+source_sha=f1da65ddc8ce27d2c75748c859d4403c7c072165
+reason=restore_missing_business_day_control_via_canonical_admin_command
+safety=intake_paused
+request_id=TEAMA-A9-BUSINESS-DAY-CONTROL-REPAIR-20260907-01
