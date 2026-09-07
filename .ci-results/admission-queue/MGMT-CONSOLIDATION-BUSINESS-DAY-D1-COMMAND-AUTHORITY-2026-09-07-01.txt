@@ -1,10 +1,10 @@
 work_id=MGMT-CONSOLIDATION-BUSINESS-DAY-D1-COMMAND-AUTHORITY-2026-09-07-01
 candidate_sha=00b595a8b818f088841a46642dd89acea10e0ce3
 base_main_sha=f7b73533562d4e4cef278b762e3e77344bfb6afa
-latest_main_sha=059acf5732556f9110450d99233f9768c3c7dac8
+latest_main_sha=600538a74f05f69e8b42ae3b5b20645086d97c17
 collision=C0
-impact=V1
-reason=MAIN_MOVED_DOCS_ONLY
-apply_status=DISJOINT_OVERLAY
-run_id=34077319225
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+run_id=34077572809
 conclusion=success
