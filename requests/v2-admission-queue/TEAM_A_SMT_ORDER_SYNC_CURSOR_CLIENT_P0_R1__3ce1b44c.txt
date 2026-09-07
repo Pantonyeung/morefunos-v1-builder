@@ -1,0 +1,7 @@
+candidate_sha=3ce1b44cc46ef090e9e54526316161845b96de00
+base_main_sha=ffcbb1860e3094774df0120433627ab819abc9c5
+work_id=TEAM_A_SMT_ORDER_SYNC_CURSOR_CLIENT_P0_R1
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
