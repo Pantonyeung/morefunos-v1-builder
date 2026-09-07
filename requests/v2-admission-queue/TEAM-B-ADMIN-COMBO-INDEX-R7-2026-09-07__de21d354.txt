@@ -1,0 +1,7 @@
+candidate_sha=de21d354e0961fddcbf4b3973b021a73b844c8dc
+base_main_sha=3b8626cd93d11edb4059f788758c9fb5ae733f59
+work_id=TEAM-B-ADMIN-COMBO-INDEX-R7-2026-09-07
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
