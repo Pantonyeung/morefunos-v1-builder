@@ -1,5 +1,5 @@
-source_sha=1162920ffcd9de2eed0df60675758e536910f9f2
-request_id=TEAMA-SMT-APPLE-LOCAL-FIRST-UIUX-20260907-02
-run_id=34107882464
+source_sha=5c60f65651d05bb5266f7ed16eda33e939d7a4bd
+request_id=TEAMA-SMT-APPLE-LOCAL-FIRST-UIUX-20260907-03
+run_id=34108095642
 run_attempt=1
-conclusion=failure
+conclusion=success
