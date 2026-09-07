@@ -1,6 +1,6 @@
-source_sha=439031babee06fe3560404de33b899090564dfb5
-migration_file=0046-pricing-publication-revision.sql
-request_id=PRICING-0046-PROD-APPLY-SEALED-20260907-02
-run_id=34065360590
+source_sha=77dddf7b17c56b18b9704bf14b4e5f41a19915a8
+migration_file=0047-admin-web-credential.sql
+request_id=TEAM-B-MULTI-ADMIN-0047-PROD-20260907-01
+run_id=34072972699
 run_attempt=1
 conclusion=success
