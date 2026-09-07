@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-MODIFIER-PRESETS-R6-2026-09-07
+candidate_sha=bf1c89192a5908f66d462c29bd9eda9c8e1f7e2b
+base_main_sha=068c345eaa82a91710a9f613f122eab075d14a3e
+latest_main_sha=068c345eaa82a91710a9f613f122eab075d14a3e
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34140769713
+conclusion=success
