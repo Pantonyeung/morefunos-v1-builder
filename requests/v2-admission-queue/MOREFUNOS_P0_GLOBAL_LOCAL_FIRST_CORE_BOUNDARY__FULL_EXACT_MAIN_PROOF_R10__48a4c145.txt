@@ -1,0 +1,7 @@
+candidate_sha=48a4c145dbea6d68140c1cab542621991169357d
+base_main_sha=48a4c145dbea6d68140c1cab542621991169357d
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__FULL_EXACT_MAIN_PROOF_R10
+affected_ports=ADMIN,OWNER,CUSTOMER,SMM,SMT
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
