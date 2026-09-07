@@ -1,0 +1,7 @@
+candidate_sha=5e43522fb576629f09ecda3d4a5bca29fefe6de3
+base_main_sha=ca47edf38f2c922a260a15343f617b97b5d94f17
+work_id=MGMT-B6-3-STORE-OPERATION-BUSINESS-DAY-QUICK-CONTROL-2026-09-07-01
+affected_ports=OWNER,ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
