@@ -1,0 +1,13 @@
+work_id=TEAM-A-SMT-PRICING-HYDRATION-LOGOUT-R5-2026-09-07
+candidate_sha=45e50cc478d42a3eac13acd8babe381eb9527ecb
+base_main_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
+latest_main_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34136055358
+conclusion=success
