@@ -1,0 +1,13 @@
+work_id=TEAM_A_KEETA_CANONICAL_DISPLAY_CODE_NONBLOCKING_POST_ADMISSION
+candidate_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
+base_main_sha=41f2dab813c2bf32cd6bb17f56c71b2df02dc844
+latest_main_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34135798568
+conclusion=success
