@@ -1,0 +1,8 @@
+candidate_sha=4da6f77ab30366fec910c0eee5fb6cbc1b27e105
+base_main_sha=b3b267af30164b76b03c0a8cb5040d46bada1c17
+work_id=TEAM_A_A5_CANONICAL_MENU_READ_MANAGEMENT_HANDSHAKE
+affected_ports=SMT,SMM,ADMIN
+depends_on_specs=
+required_core_tests=CATALOG
+force_full_proof=true
+supersedes_candidate_sha=37cad41ec5f5057f1dad63fd3ee8b1d0cf0be884
