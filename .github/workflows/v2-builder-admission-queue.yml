@@ -3,6 +3,7 @@ name: V2 Builder Admission Queue
 on:
   push:
     paths:
+      - 'requests/v2-admission-queue/*.txt'
       - 'requests/v2-admission-queue-request.txt'
   workflow_dispatch:
     inputs:
@@ -48,27 +49,52 @@ jobs:
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
           INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           INPUT_BASE_MAIN_SHA: ${{ inputs.base_main_sha }}
           INPUT_WORK_ID: ${{ inputs.work_id }}
           INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
         run: |
           set -euo pipefail
+          REQUEST_FILE=""
           read_request() {
             local key="$1"
-            sed -n "s/^${key}=//p" requests/v2-admission-queue-request.txt | tail -n1 | tr -d '\r\n'
+            local file="$2"
+            sed -n "s/^${key}=//p" "$file" | tail -n1 | tr -d '\r\n'
           }
+
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             CANDIDATE_SHA="$(printf '%s' "$INPUT_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BASE_MAIN_SHA="$(printf '%s' "$INPUT_BASE_MAIN_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
             AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            REQUEST_FILE=WORKFLOW_DISPATCH
           else
-            test -f requests/v2-admission-queue-request.txt
-            CANDIDATE_SHA="$(read_request candidate_sha | tr '[:upper:]' '[:lower:]')"
-            BASE_MAIN_SHA="$(read_request base_main_sha | tr '[:upper:]' '[:lower:]')"
-            WORK_ID="$(read_request work_id)"
-            AFFECTED_PORTS="$(read_request affected_ports | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            mapfile -t REQUEST_FILES < <(
+              git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- 'requests/v2-admission-queue/*.txt' |
+              sort -u
+            )
+
+            if [[ "${#REQUEST_FILES[@]}" -eq 0 ]]; then
+              # Legacy compatibility only. New submissions must use unique files.
+              if git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- 'requests/v2-admission-queue-request.txt' | grep -q .; then
+                REQUEST_FILES=('requests/v2-admission-queue-request.txt')
+              fi
+            fi
+
+            if [[ "${#REQUEST_FILES[@]}" -ne 1 ]]; then
+              echo "QUEUE_REQUEST_COUNT_INVALID:${#REQUEST_FILES[@]}" >&2
+              printf '%s\n' "${REQUEST_FILES[@]}" >&2
+              exit 24
+            fi
+
+            REQUEST_FILE="${REQUEST_FILES[0]}"
+            test -f "$REQUEST_FILE"
+            CANDIDATE_SHA="$(read_request candidate_sha "$REQUEST_FILE" | tr '[:upper:]' '[:lower:]')"
+            BASE_MAIN_SHA="$(read_request base_main_sha "$REQUEST_FILE" | tr '[:upper:]' '[:lower:]')"
+            WORK_ID="$(read_request work_id "$REQUEST_FILE")"
+            AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
           fi
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -77,6 +103,7 @@ jobs:
           echo "base_main_sha=$BASE_MAIN_SHA" >> "$GITHUB_OUTPUT"
           echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
           echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
+          echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         env:
