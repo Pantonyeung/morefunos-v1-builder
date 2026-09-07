@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-PRODUCT-HUMANIZATION-R6-2026-09-07
+candidate_sha=e9aeebd01750f4cbe6506fc2413d48d6fbfa15bf
+base_main_sha=30a8d9816d42ca9f862b0568b007794eb51bd97e
+latest_main_sha=30a8d9816d42ca9f862b0568b007794eb51bd97e
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34138320143
+conclusion=success
