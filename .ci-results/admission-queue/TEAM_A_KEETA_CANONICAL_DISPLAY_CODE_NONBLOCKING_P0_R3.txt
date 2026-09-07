@@ -1,0 +1,13 @@
+work_id=TEAM_A_KEETA_CANONICAL_DISPLAY_CODE_NONBLOCKING_P0_R3
+candidate_sha=ba217136511606e545aec24c79ff4ed166c9a152
+base_main_sha=187ed92540b2f7f03dce4802c405e4a2ed2aa89d
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=docs/recovery/commander/commander-fresh-keeta-missing-smt-smm-regression-2026-09-07-night.md
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34135322740
+conclusion=failure
