@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__MGMT_REALTIME_R2
+candidate_sha=18ad5f506d982e9474b5f9b2a40d4f3fd25f169d
+base_main_sha=0985731703533c6b8e225079547bcbb0009c156a
+latest_main_sha=58ee035a3e0129a6d30be11f7d407a33bd220f48
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34111010312
+conclusion=success
