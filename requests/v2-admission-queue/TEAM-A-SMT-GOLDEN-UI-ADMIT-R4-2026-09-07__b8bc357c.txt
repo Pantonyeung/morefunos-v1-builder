@@ -1,0 +1,8 @@
+candidate_sha=b8bc357c712f3da610b5f983df735706336b76a5
+base_main_sha=187ed92540b2f7f03dce4802c405e4a2ed2aa89d
+work_id=TEAM-A-SMT-GOLDEN-UI-ADMIT-R4-2026-09-07
+affected_ports=SMT
+depends_on_specs=
+supersedes_candidate_sha=f011daf53620ab23ef914248319ac5a043ecf40e
+required_core_tests=
+force_full_proof=false
