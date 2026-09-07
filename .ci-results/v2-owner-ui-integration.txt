@@ -1,5 +1,5 @@
-source_sha=014cada66fd9d0ca25419d32d494684edaf784db
-request_id=TEAM-B-B6-2-PRICING-UI-RED-20260907
-run_id=34083941031
+source_sha=a75664363966e69ec8ccc95541855920c2373029
+request_id=TEAM-B-B6-2-PRICING-CANDIDATE-R1-20260907
+run_id=34084048115
 run_attempt=1
-conclusion=failure
+conclusion=success
