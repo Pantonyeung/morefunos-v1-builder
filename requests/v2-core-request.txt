@@ -1,5 +1,4 @@
-source_sha=86918b5f84d698579e1a86044fc4adef606356a4
-base_sha=db78e55e88d7a5fa488ddaa618c1ac05aface8c3
-branch_name=work/TEAM-A/a8-admission-integration-20260907
-verification_phase=FINAL_MERGE_REQUEST
-request_id=TEAMA-A8-ADMISSION-INTEGRATION-CORE-R3-20260907
+source_sha=c1d95762a9ae48a8f33b1e113134a26ff2808d0c
+branch_name=work/TEAM-A/a8-offline-transaction-print-20260907
+verification_phase=CANDIDATE
+request_id=TEAMA-A8-SUPERSEDE-CORE-R2-20260907
