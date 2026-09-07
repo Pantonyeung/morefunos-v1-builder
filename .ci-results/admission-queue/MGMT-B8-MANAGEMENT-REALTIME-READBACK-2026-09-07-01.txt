@@ -1,0 +1,13 @@
+work_id=MGMT-B8-MANAGEMENT-REALTIME-READBACK-2026-09-07-01
+candidate_sha=98232b04611585ed467266e2b6fab6c41016ce15
+base_main_sha=c0c37803e9fe99d934cbdd0f3e74dd7ac4d0c958
+latest_main_sha=c0c37803e9fe99d934cbdd0f3e74dd7ac4d0c958
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34095417546
+conclusion=success
