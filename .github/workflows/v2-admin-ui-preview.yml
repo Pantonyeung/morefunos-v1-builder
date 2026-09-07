@@ -75,9 +75,18 @@ jobs:
         run: |
           set -euo pipefail
           URL="$(cat evidence/url.txt)"
-          test "$(curl -sS -o /tmp/index.html -w '%{http_code}' "$URL/admin/overview")" = 200
-          test "$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/admin/session")" = 401
-          printf 'overview=200\nanonymous_session=401\n' > evidence/runtime.txt
+          OVERVIEW_CODE=000
+          SESSION_CODE=000
+          for attempt in $(seq 1 12); do
+            OVERVIEW_CODE="$(curl -sS -o /tmp/index.html -w '%{http_code}' "$URL/admin/overview" || true)"
+            SESSION_CODE="$(curl -sS -o /tmp/session.json -w '%{http_code}' "$URL/api/admin/session" || true)"
+            echo "preview_smoke_attempt=$attempt overview=$OVERVIEW_CODE session=$SESSION_CODE"
+            if [ "$OVERVIEW_CODE" = 200 ] && [ "$SESSION_CODE" = 401 ]; then break; fi
+            sleep 5
+          done
+          printf 'overview=%s\nanonymous_session=%s\n' "$OVERVIEW_CODE" "$SESSION_CODE" > evidence/runtime.txt
+          test "$OVERVIEW_CODE" = 200
+          test "$SESSION_CODE" = 401
 
       - uses: actions/upload-artifact@v4
         if: always()
