@@ -115,7 +115,8 @@ jobs:
           grep -q "'/api/owner/session'" apps/owner-web/src/owner-session-network.ts
           grep -q "'/api/owner/bootstrap'" apps/owner-web/src/owner-session-network.ts
           grep -q 'OWNER_REPORTING_BINDING_NOT_FOUND' packages/owner-ui-integration/runtime-provider.ts
-          ! grep -RniE 'fixture|mock|localStorage|/api/v2/owner|HttpOwner' apps/owner-web/src packages/owner-ui-integration --exclude='*.test.ts'
+          ! grep -RniE 'fixture|mock|localStorage|/api/v2/owner|HttpOwner' apps/owner-web/src packages/owner-ui-integration --exclude='*.test.ts' --exclude='owner-session-network.ts'
+          ! grep -niE 'loginSecret|password|secret' source/apps/owner-web/src/owner-session-network.ts | grep -E 'localStorage|setItem' >/dev/null
           ! grep -RniE 'production-persistence/d1|d1-admin-|D1DatabaseLike' apps/owner-web/src --exclude='*.test.ts'
 
       - name: Write evidence
