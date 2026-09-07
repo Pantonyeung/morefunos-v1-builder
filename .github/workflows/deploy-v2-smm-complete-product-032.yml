@@ -178,9 +178,11 @@ jobs:
             const pageErrors=[];
             const requestFailures=[];
             const apiNetwork=[];
+            const webSockets=[];
             page.on('pageerror',e=>pageErrors.push(String(e)));
             page.on('requestfailed',r=>requestFailures.push({url:r.url(),failure:r.failure()?.errorText||''}));
             page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))apiNetwork.push({origin:u.origin,path:u.pathname,method:r.method()})});
+            page.on('websocket',ws=>webSockets.push(ws.url()));
             page.on('response',async r=>{
               const u=new URL(r.url());
               if(!u.pathname.startsWith('/api/smm/'))return;
@@ -416,13 +418,23 @@ jobs:
             if(postCleanupOpen.status!==200)throw new Error('SMM_POST_CLEANUP_OPEN_LIST_'+postCleanupOpen.status+':'+JSON.stringify(postCleanupOpen.body));
             if(postCleanupOpen.cancelledStillOpen)throw new Error('SMM_CANCELLED_ORDER_STILL_IN_OPEN_LIST:'+submittedOrderId);
             const publicOrigin=new URL(process.env.URL).origin;
-            if(apiNetwork.some(x=>x.origin!==publicOrigin))throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN');
+            const approvedRealtimeHttpsOrigin='https://morefun-v2-admin.pantonyeung.workers.dev';
+            const approvedRealtimeWss='wss://morefun-v2-admin.pantonyeung.workers.dev/api/pricing/socket';
+            const crossOriginApi=apiNetwork.filter(x=>x.origin!==publicOrigin);
+            const forbiddenCrossOriginApi=crossOriginApi.filter(x=>!(
+              x.path==='/api/pricing/socket'
+              &&(x.origin===approvedRealtimeHttpsOrigin||x.origin==='wss://morefun-v2-admin.pantonyeung.workers.dev')
+            ));
+            if(forbiddenCrossOriginApi.length)throw new Error('SMM_BROWSER_CROSS_ORIGIN_API_FORBIDDEN:'+JSON.stringify(forbiddenCrossOriginApi));
+            const forbiddenSockets=webSockets.filter(url=>url!==approvedRealtimeWss);
+            if(forbiddenSockets.length)throw new Error('SMM_BROWSER_WEBSOCKET_FORBIDDEN:'+JSON.stringify(forbiddenSockets));
             if(pageErrors.length)throw new Error('SMM_PAGE_ERRORS:'+pageErrors.join('|'));
             if(requestFailures.length)throw new Error('SMM_REQUEST_FAILURES:'+JSON.stringify(requestFailures));
             fs.writeFileSync('evidence/browser-e2e.json',JSON.stringify({
               publicOrigin,
               runtimeReady:true,
               apiNetwork,
+              webSockets,
               pageErrors,
               requestFailures,
               directBrowserD1:false,
