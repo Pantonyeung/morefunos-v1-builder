@@ -1,5 +1,5 @@
-source_sha=2fe0b35141605a9f02811a62e9e836bb6329d2a3
-request_id=TEAM-B-B7-2-CHANNEL-PROJECTION-READ-RED-20260907
-run_id=34090224170
+source_sha=2674387a7f63da4402e2d7824bd72b4704e30793
+request_id=TEAM-B-B7-2-CHANNEL-PROJECTION-READ-WORKER-GREEN-20260907
+run_id=34090281319
 run_attempt=1
-conclusion=failure
+conclusion=success
