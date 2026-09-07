@@ -1,7 +1,7 @@
 work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__FRONTLINE_ORDER_PEER_REALTIME_R4
-candidate_sha=ea0e5e5e5971a2009bd7a001b841391390875e2d
+candidate_sha=f90e98a6d839a850fb6e4c8cf39043c661f8bff8
 base_main_sha=bde9b9a90ec8a21d5d0889eaf399bc5c6aac9355
-latest_main_sha=79be82e9e1865df7dde0ae0d88c3cadf052a0d88
+latest_main_sha=3dbb1f3c30355f444b1e476a8ae8453057be1c9b
 collision=C1
 impact=V2
 reason=DEPENDENCY_OR_PACKAGE_TOUCH
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=
 force_full_proof=false
-run_id=34114585487
+run_id=34115184678
 conclusion=success
