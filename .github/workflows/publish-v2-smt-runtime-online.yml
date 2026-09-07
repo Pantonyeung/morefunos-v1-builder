@@ -18,6 +18,7 @@ on:
 permissions:
   contents: read
   actions: read
+  statuses: write
 
 concurrency:
   group: v2-smt-ota-cloudflare-production
@@ -236,3 +237,27 @@ jobs:
           path: evidence
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish OTA success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-smt-runtime-online-publish' \
+            -f description='SMT runtime published online' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Publish OTA failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-smt-runtime-online-publish' \
+            -f description='SMT runtime online publication failed' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
