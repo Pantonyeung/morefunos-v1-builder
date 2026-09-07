@@ -1,0 +1,10 @@
+work_id=ADMISSION-QUEUE-NOOP-SMOKE-20260907
+candidate_sha=5c2a7a66e71bd2ee0ec171f8bb0eced1b2d116ba
+base_main_sha=5c2a7a66e71bd2ee0ec171f8bb0eced1b2d116ba
+latest_main_sha=a10d54fd950eb2f8c49e558d6dfd8ecc6a2cd28b
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+run_id=34076914254
+conclusion=success
