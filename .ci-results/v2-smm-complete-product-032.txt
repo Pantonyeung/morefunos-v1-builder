@@ -1,5 +1,5 @@
-source_sha=40787df75b87342f01ff6509989edb570d172cbf
-request_id=TEAMA-PRICING-QUOTE-WIRING-SMM-40787DF7-20260907
-run_id=34075196228
+source_sha=cfb3313fd2b3ef12afb0db000364599bf51f1649
+request_id=TEAMA-ORDER-MUTATION-HANDSHAKE-SMM-20260907
+run_id=34075484609
 run_attempt=1
-conclusion=success
+conclusion=failure
