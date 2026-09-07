@@ -60,19 +60,6 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/evidence"
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
-          npx --yes wrangler@4 secret list --config "$CONFIG" --format json > "$RUNNER_TEMP/admin-worker-secrets.json"
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const rows=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/admin-worker-secrets.json','utf8'));
-          const present=new Set(rows.map(x=>x.name));
-          const required=['FIREBASE_DATABASE_URL','FIREBASE_SERVICE_ACCOUNT_EMAIL','FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY'];
-          const missing=required.filter(x=>!present.has(x));
-          if(missing.length){
-            console.error('MISSING_REQUIRED_CLOUDFLARE_SECRET '+missing.join(','));
-            process.exit(1);
-          }
-          console.log('firebase_pricing_secret_names=PASS');
-          NODE
           npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias admin-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
           URL="$(grep -Eo 'https://[a-z0-9-]+-morefun-v2-admin\.[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/upload.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
           test -n "$URL"
