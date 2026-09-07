@@ -1,0 +1,7 @@
+candidate_sha=ba217136511606e545aec24c79ff4ed166c9a152
+base_main_sha=187ed92540b2f7f03dce4802c405e4a2ed2aa89d
+work_id=TEAM_A_KEETA_CANONICAL_DISPLAY_CODE_NONBLOCKING_P0_R4
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
