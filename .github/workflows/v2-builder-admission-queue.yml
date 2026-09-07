@@ -1,0 +1,337 @@
+name: V2 Builder Admission Queue
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admission-queue-request.txt'
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Frozen Morefun-v2 candidate SHA
+        required: true
+        type: string
+      base_main_sha:
+        description: Main SHA the candidate was based on
+        required: true
+        type: string
+      work_id:
+        description: Acceptance/work object ID
+        required: true
+        type: string
+      affected_ports:
+        description: Comma-separated SMT,SMM,ADMIN,OWNER,CUSTOMER,CORE
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morefun-v2-builder-admission-queue
+  queue: max
+
+jobs:
+  integrate:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve queue manifest
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          INPUT_BASE_MAIN_SHA: ${{ inputs.base_main_sha }}
+          INPUT_WORK_ID: ${{ inputs.work_id }}
+          INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
+        run: |
+          set -euo pipefail
+          read_request() {
+            local key="$1"
+            sed -n "s/^${key}=//p" requests/v2-admission-queue-request.txt | tail -n1 | tr -d '\r\n'
+          }
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            CANDIDATE_SHA="$(printf '%s' "$INPUT_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            BASE_MAIN_SHA="$(printf '%s' "$INPUT_BASE_MAIN_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
+            AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          else
+            test -f requests/v2-admission-queue-request.txt
+            CANDIDATE_SHA="$(read_request candidate_sha | tr '[:upper:]' '[:lower:]')"
+            BASE_MAIN_SHA="$(read_request base_main_sha | tr '[:upper:]' '[:lower:]')"
+            WORK_ID="$(read_request work_id)"
+            AFFECTED_PORTS="$(read_request affected_ports | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          fi
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$WORK_ID"
+          echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_main_sha=$BASE_MAIN_SHA" >> "$GITHUB_OUTPUT"
+          echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
+          echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout current Morefun-v2 main
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: main
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: latest
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout frozen candidate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.candidate_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Analyze impact and build integration working tree
+        id: impact
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git -C latest rev-parse HEAD)"
+          ACTUAL_CANDIDATE="$(git -C candidate rev-parse HEAD)"
+          test "$ACTUAL_CANDIDATE" = "$CANDIDATE_SHA"
+          git -C latest cat-file -e "${BASE_SHA}^{commit}"
+          git -C candidate cat-file -e "${BASE_SHA}^{commit}"
+          if ! git -C latest merge-base --is-ancestor "$BASE_SHA" "$LATEST_SHA"; then
+            echo "BASE_NOT_ANCESTOR_OF_LATEST" >&2
+            exit 21
+          fi
+
+          mkdir -p evidence
+          git -C candidate diff --name-only "$BASE_SHA" "$CANDIDATE_SHA" | sort -u > evidence/candidate-files.txt
+          git -C latest diff --name-only "$BASE_SHA" "$LATEST_SHA" | sort -u > evidence/main-delta-files.txt
+
+          if git -C latest merge-base --is-ancestor "$CANDIDATE_SHA" "$LATEST_SHA" 2>/dev/null; then
+            ALREADY_ADMITTED=true
+          else
+            ALREADY_ADMITTED=false
+          fi
+
+          docs_only() {
+            local file="$1"
+            [[ ! -s "$file" ]] && return 0
+            while IFS= read -r p; do
+              case "$p" in docs/*|README.md|*.md) ;; *) return 1 ;; esac
+            done < "$file"
+            return 0
+          }
+
+          authority_of() {
+            local p="$1"
+            case "$p" in
+              packages/order/*) echo ORDER ;;
+              packages/pricing/*) echo PRICING ;;
+              packages/availability/*) echo AVAILABILITY ;;
+              packages/business-day-cash/*) echo BUSINESS_DAY ;;
+              packages/payment/*) echo PAYMENT ;;
+              packages/print/*) echo PRINT ;;
+              packages/catalog/*) echo CATALOG ;;
+              packages/*auth*/*|packages/management-ui-integration/*|packages/admin-ui-integration/*) echo MANAGEMENT_AUTH_OR_UI ;;
+              infra/cloudflare/d1/migrations/*) echo D1_SCHEMA ;;
+              infra/cloudflare/*) echo CLOUDFLARE_RUNTIME ;;
+              package.json|tsconfig.json) echo GLOBAL_BUILD ;;
+              *) ;;
+            esac
+          }
+
+          while IFS= read -r p; do authority_of "$p"; done < evidence/candidate-files.txt | sort -u > evidence/candidate-authorities.txt
+          while IFS= read -r p; do authority_of "$p"; done < evidence/main-delta-files.txt | sort -u > evidence/main-authorities.txt
+          comm -12 evidence/candidate-files.txt evidence/main-delta-files.txt > evidence/exact-file-overlap.txt
+          comm -12 evidence/candidate-authorities.txt evidence/main-authorities.txt > evidence/authority-overlap.txt
+          awk -F/ 'NF>=2 {print $1"/"$2} NF==1 {print $1}' evidence/candidate-files.txt | sort -u > evidence/candidate-roots.txt
+          awk -F/ 'NF>=2 {print $1"/"$2} NF==1 {print $1}' evidence/main-delta-files.txt | sort -u > evidence/main-roots.txt
+          comm -12 evidence/candidate-roots.txt evidence/main-roots.txt > evidence/root-overlap.txt
+
+          COLLISION=C0
+          IMPACT=V1
+          REASON=DISJOINT
+          if [[ "$ALREADY_ADMITTED" == true ]]; then
+            COLLISION=C0; IMPACT=V0; REASON=ALREADY_ADMITTED_OR_NOOP
+          elif docs_only evidence/candidate-files.txt; then
+            COLLISION=C0; IMPACT=V0; REASON=CANDIDATE_DOCS_ONLY
+          elif grep -qE '(^|/)migrations/|(^|/)(package|tsconfig)' evidence/exact-file-overlap.txt 2>/dev/null; then
+            COLLISION=C4; IMPACT=V4; REASON=DESTRUCTIVE_OR_GLOBAL_FILE_COLLISION
+          elif [[ -s evidence/authority-overlap.txt ]]; then
+            COLLISION=C3; IMPACT=V3; REASON=SAME_CANONICAL_AUTHORITY
+          elif [[ -s evidence/root-overlap.txt ]]; then
+            COLLISION=C1; IMPACT=V2; REASON=DEPENDENCY_OR_PACKAGE_TOUCH
+          elif docs_only evidence/main-delta-files.txt; then
+            COLLISION=C0; IMPACT=V1; REASON=MAIN_MOVED_DOCS_ONLY
+          fi
+
+          rm -rf integration
+          cp -a latest integration
+          APPLY_STATUS=SKIPPED
+          if [[ "$ALREADY_ADMITTED" != true && -s evidence/candidate-files.txt ]]; then
+            git -C candidate diff --binary "$BASE_SHA" "$CANDIDATE_SHA" > "$GITHUB_WORKSPACE/evidence/candidate.patch"
+            if git -C integration apply --3way "$GITHUB_WORKSPACE/evidence/candidate.patch"; then
+              APPLY_STATUS=CLEAN
+            else
+              APPLY_STATUS=CONFLICT
+              COLLISION=C4
+              IMPACT=V4
+              REASON=PATCH_APPLY_CONFLICT
+            fi
+          fi
+
+          {
+            echo "work_id=${{ steps.request.outputs.work_id }}"
+            echo "base_main_sha=$BASE_SHA"
+            echo "candidate_sha=$CANDIDATE_SHA"
+            echo "latest_main_sha=$LATEST_SHA"
+            echo "already_admitted=$ALREADY_ADMITTED"
+            echo "collision=$COLLISION"
+            echo "impact=$IMPACT"
+            echo "reason=$REASON"
+            echo "apply_status=$APPLY_STATUS"
+          } | tee evidence/impact-summary.txt
+
+          echo "latest_sha=$LATEST_SHA" >> "$GITHUB_OUTPUT"
+          echo "collision=$COLLISION" >> "$GITHUB_OUTPUT"
+          echo "impact=$IMPACT" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+          echo "apply_status=$APPLY_STATUS" >> "$GITHUB_OUTPUT"
+          echo "already_admitted=$ALREADY_ADMITTED" >> "$GITHUB_OUTPUT"
+          if [[ "$APPLY_STATUS" == CONFLICT ]]; then exit 22; fi
+
+      - name: Setup Node 24
+        if: steps.impact.outputs.impact != 'V0'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install root dependencies
+        if: steps.impact.outputs.impact != 'V0'
+        working-directory: integration
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Root integration typecheck
+        if: steps.impact.outputs.impact != 'V0'
+        working-directory: integration
+        run: npm run typecheck
+
+      - name: Core domain proof for V3/V4
+        if: steps.impact.outputs.impact == 'V3' || steps.impact.outputs.impact == 'V4'
+        working-directory: integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          auths="$(cat ../evidence/candidate-authorities.txt ../evidence/main-authorities.txt | sort -u)"
+          if grep -qx ORDER <<<"$auths"; then npm run test:core-order; fi
+          if grep -qx PRICING <<<"$auths"; then npm run test:core-pricing; fi
+          if grep -qx AVAILABILITY <<<"$auths"; then npm run test:core-availability; fi
+          if grep -qx BUSINESS_DAY <<<"$auths"; then npm run test:core-business-day-cash; fi
+          if grep -qx PAYMENT <<<"$auths"; then npm run test:core-payment; fi
+          if grep -qx PRINT <<<"$auths"; then npm run test:print; fi
+          if grep -qx CATALOG <<<"$auths"; then npm run test:core-catalog; fi
+
+      - name: SMT integration proof
+        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'SMT')
+        working-directory: integration/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: SMM integration proof
+        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'SMM')
+        working-directory: integration/apps/smm-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: Admin integration proof
+        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'ADMIN')
+        working-directory: integration/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: Owner integration proof
+        if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'OWNER')
+        working-directory: integration/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: Queue summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## MoreFunOS Admission Queue"
+            echo
+            test -f evidence/impact-summary.txt && cat evidence/impact-summary.txt || true
+            echo
+            echo "Temporary integration working tree only; Morefun-v2 is never mutated by this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload queue evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-admission-queue-${{ steps.request.outputs.work_id }}-${{ steps.request.outputs.candidate_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Seal durable queue result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORK_ID: ${{ steps.request.outputs.work_id }}
+          CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
+          LATEST_SHA: ${{ steps.impact.outputs.latest_sha }}
+          COLLISION: ${{ steps.impact.outputs.collision }}
+          IMPACT: ${{ steps.impact.outputs.impact }}
+          REASON: ${{ steps.impact.outputs.reason }}
+          APPLY_STATUS: ${{ steps.impact.outputs.apply_status }}
+          CONCLUSION: ${{ job.status }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          safe_work_id="$(printf '%s' "$WORK_ID" | tr -c 'A-Za-z0-9._-' '_')"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results/admission-queue
+            {
+              echo "work_id=$WORK_ID"
+              echo "candidate_sha=$CANDIDATE_SHA"
+              echo "base_main_sha=$BASE_SHA"
+              echo "latest_main_sha=${LATEST_SHA:-UNKNOWN}"
+              echo "collision=${COLLISION:-UNKNOWN}"
+              echo "impact=${IMPACT:-UNKNOWN}"
+              echo "reason=${REASON:-UNKNOWN}"
+              echo "apply_status=${APPLY_STATUS:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "conclusion=$CONCLUSION"
+            } > ".ci-results/admission-queue/${safe_work_id}.txt"
+            git add ".ci-results/admission-queue/${safe_work_id}.txt"
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(queue): ${WORK_ID} ${CONCLUSION} ${CANDIDATE_SHA}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          echo "QUEUE_RESULT_SEAL_PUSH_FAILED" >&2
+          exit 1
