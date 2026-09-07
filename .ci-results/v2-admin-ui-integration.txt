@@ -1,5 +1,5 @@
-source_sha=f692ee1923e0642ed6eb9f1e1afc52f6dbb95877
-request_id=TEAM-B-B3-ORDER-IDENTITY-ADMIN-CANDIDATE-20260907-01
-run_id=34076119140
+source_sha=c7af766879a8d33f6c97d104eb6ae91b64ffe94a
+request_id=TEAM-B-B3-ORDER-IDENTITY-ADMIN-CANDIDATE-R2-20260907
+run_id=34076195150
 run_attempt=1
 conclusion=success
