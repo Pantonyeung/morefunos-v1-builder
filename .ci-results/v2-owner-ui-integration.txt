@@ -1,5 +1,5 @@
-source_sha=d7f3ef1baac25a8293f84953ddc95eb034961bbd
-request_id=TEAM-B-B6-4-RUNTIME-STATUS-CLASSIFIER-GREEN-20260907
-run_id=34088183728
+source_sha=722ce83bc0470c8afd16ae843a205dad4077b8e7
+request_id=TEAM-B-B6-4-RUNTIME-STATUS-CANDIDATE-R1-20260907
+run_id=34088345648
 run_attempt=1
 conclusion=success
