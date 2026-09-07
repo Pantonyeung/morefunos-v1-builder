@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-RESPONSIVE-MANAGEMENT-UI-20260907
+candidate_sha=973617e54bf6176b620313f51a27146b994c0520
+base_main_sha=192ada0bb94c8a98eb13e8b9b92445da35f480b5
+latest_main_sha=192ada0bb94c8a98eb13e8b9b92445da35f480b5
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34125729011
+conclusion=success
