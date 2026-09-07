@@ -1,0 +1,136 @@
+name: V2 Admin Responsive Production Browser
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-responsive-production-browser-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-responsive-production-browser-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          DEPLOYED_SHA="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]')"
+          DEPLOY_CONCLUSION="$(sed -n 's/^conclusion=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]')"
+          test "$SOURCE_SHA" = "$DEPLOYED_SHA"
+          test "$DEPLOY_CONCLUSION" = success
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install browser harness
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.55.0
+
+      - name: Verify production responsive UI
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          mkdir -p evidence
+          cat > browser.mjs <<'EOF'
+          import {chromium} from 'playwright-core';
+          import fs from 'node:fs';
+          const {ADMIN_ORIGIN,ADMIN_LOGIN_SECRET,SOURCE_SHA}=process.env;
+          const chrome=process.argv[2];
+          const browser=await chromium.launch({headless:true,executablePath:chrome});
+
+          const auth=await browser.newContext({viewport:{width:1440,height:1000}});
+          const p=await auth.newPage();
+          await p.goto(ADMIN_ORIGIN+'/admin/overview',{waitUntil:'networkidle'});
+          const gate=p.getByLabel('管理員密碼');
+          if(await gate.count()){
+            await gate.fill(ADMIN_LOGIN_SECRET);
+            await p.getByRole('button',{name:'登入 Admin',exact:true}).click();
+          }
+          await p.getByRole('heading',{name:'營運總覽',exact:true}).waitFor({timeout:15000});
+          const storage=await auth.storageState();
+          await auth.close();
+
+          const summary={sourceSha:SOURCE_SHA,origin:ADMIN_ORIGIN,views:{}};
+          const display=(page,selector)=>page.locator(selector).evaluate(el=>getComputedStyle(el).display);
+          const overflow=page=>page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,bodyScrollWidth:document.body.scrollWidth,innerWidth:innerWidth}));
+
+          for(const spec of [
+            {name:'desktop',width:1440,height:1000},
+            {name:'tablet',width:1024,height:900},
+            {name:'mobile',width:390,height:844},
+          ]){
+            const context=await browser.newContext({viewport:{width:spec.width,height:spec.height},storageState:storage});
+            const page=await context.newPage();
+            await page.goto(ADMIN_ORIGIN+'/admin/overview',{waitUntil:'networkidle'});
+            await page.getByRole('heading',{name:'營運總覽',exact:true}).waitFor({timeout:15000});
+            const railDisplay=await display(page,'.admin-pos-rail');
+            const sectionDisplay=await display(page,'.admin-pos-section-nav');
+            const mobileNavDisplay=await display(page,'.admin-mobile-nav');
+            const ov=await overflow(page);
+            if(ov.scrollWidth>ov.innerWidth+2||ov.bodyScrollWidth>ov.innerWidth+2) throw new Error(spec.name+'_HORIZONTAL_OVERFLOW:'+JSON.stringify(ov));
+
+            if(spec.name==='desktop'){
+              const rail=await page.locator('.admin-pos-rail').boundingBox();
+              const section=await page.locator('.admin-pos-section-nav').boundingBox();
+              if(!rail||Math.abs(rail.width-72)>3) throw new Error('DESKTOP_RAIL_WIDTH:'+JSON.stringify(rail));
+              if(!section||Math.abs(section.width-228)>4) throw new Error('DESKTOP_SECTION_WIDTH:'+JSON.stringify(section));
+              if(mobileNavDisplay!=='none') throw new Error('DESKTOP_MOBILE_NAV_VISIBLE');
+            }else if(spec.name==='tablet'){
+              const rail=await page.locator('.admin-pos-rail').boundingBox();
+              if(!rail||Math.abs(rail.width-64)>4) throw new Error('TABLET_RAIL_WIDTH:'+JSON.stringify(rail));
+              if(mobileNavDisplay!=='none') throw new Error('TABLET_MOBILE_NAV_VISIBLE');
+              const trigger=page.locator('.admin-pos-section-trigger');
+              if(!(await trigger.isVisible())) throw new Error('TABLET_SECTION_TRIGGER_HIDDEN');
+              await trigger.click();
+              await page.locator('.admin-pos-section-nav.is-open').waitFor({state:'visible'});
+            }else{
+              if(railDisplay!=='none') throw new Error('MOBILE_RAIL_VISIBLE');
+              if(mobileNavDisplay==='none') throw new Error('MOBILE_NAV_HIDDEN');
+              const items=page.locator('.admin-mobile-nav > a, .admin-mobile-nav > button');
+              if(await items.count()!==5) throw new Error('MOBILE_NAV_COUNT:'+(await items.count()));
+              for(let i=0;i<5;i++){const b=await items.nth(i).boundingBox();if(!b||b.height<44)throw new Error('MOBILE_TOUCH_'+i);}
+              await page.getByRole('button',{name:'更多',exact:true}).click();
+              await page.locator('.admin-mobile-more-sheet').waitFor({state:'visible'});
+              await page.goto(ADMIN_ORIGIN+'/admin/availability',{waitUntil:'networkidle'});
+              await page.locator('.availability-mobile-summary').waitFor({state:'visible'});
+              await page.goto(ADMIN_ORIGIN+'/admin/orders/open',{waitUntil:'networkidle'});
+              await page.locator('.order-mobile-switcher').waitFor({state:'visible'});
+              await page.goto(ADMIN_ORIGIN+'/admin/business-day',{waitUntil:'networkidle'});
+              await page.locator('.business-day-mobile-summary').waitFor({state:'visible'});
+            }
+            await page.screenshot({path:'evidence/'+spec.name+'.png',fullPage:true});
+            summary.views[spec.name]={viewport:[spec.width,spec.height],railDisplay,sectionDisplay,mobileNavDisplay,overflow:ov,status:'PASS'};
+            await context.close();
+          }
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2));
+          await browser.close();
+          EOF
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          node browser.mjs "$CHROME"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-responsive-production-browser-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
