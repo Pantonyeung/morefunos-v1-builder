@@ -1,0 +1,13 @@
+work_id=TEAM_A_ORDER_STORE_SYNC_SEQUENCE_POST_ADMISSION
+candidate_sha=ffcbb1860e3094774df0120433627ab819abc9c5
+base_main_sha=3b8626cd93d11edb4059f788758c9fb5ae733f59
+latest_main_sha=ffcbb1860e3094774df0120433627ab819abc9c5
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34142091976
+conclusion=success
