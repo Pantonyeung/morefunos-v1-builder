@@ -306,8 +306,10 @@ jobs:
             await operationsDialog.getByRole('button',{name:'收起',exact:true}).click();
 
             await mainNav.getByRole('button',{name:/待處理/}).click();
-            await page.getByText('即時工作佇列',{exact:true}).waitFor({state:'visible',timeout:5000});
-            await page.getByText('等你處理',{exact:true}).waitFor({state:'visible',timeout:5000});
+            const pendingStage=page.locator('.smm-main-stage[aria-label="待處理"]');
+            await pendingStage.waitFor({state:'visible',timeout:5000});
+            await pendingStage.getByText('即時工作佇列',{exact:true}).waitFor({state:'visible',timeout:5000});
+            await pendingStage.getByText('等你處理',{exact:true}).waitFor({state:'visible',timeout:5000});
             await mainNav.getByRole('button',{name:'堂食',exact:true}).waitFor({state:'visible',timeout:5000});
 
             const orderingMenuResponsePromise=page.waitForResponse(r=>{
