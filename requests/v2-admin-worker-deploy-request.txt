@@ -1,2 +1,2 @@
-source_sha=ea94d5d5244ae1749eca4a5414917a7f9f2fc691
-request_id=PRICING-PINGPONG-DEPLOY-EA94-01
+source_sha=842c350c10de9e9c9ab6dc75c5b166bbdaee7512
+request_id=PRICING-842C-ADMIN-DO-LIVE-01
