@@ -1,5 +1,5 @@
-source_sha=43846c49c4156e914109bddc19f1f0722acb68c8
-request_id=TEAMA-A5-R2-OFFLINE-MENU-SMT-R4-20260907
-run_id=34082790403
+source_sha=608da7d45dc7d108172841c41d1fdafdee7b28a4
+request_id=TEAMA-A5-R2-PUBLISH-DRIVEN-SMT-R5-20260907
+run_id=34083414793
 run_attempt=1
 conclusion=success
