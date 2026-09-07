@@ -1,0 +1,7 @@
+candidate_sha=e646d7d0518060b590cef4bb510a19303cbed807
+base_main_sha=e646d7d0518060b590cef4bb510a19303cbed807
+work_id=POST-ADMISSION-TEAM-B-B5-STAFF-RBAC
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
