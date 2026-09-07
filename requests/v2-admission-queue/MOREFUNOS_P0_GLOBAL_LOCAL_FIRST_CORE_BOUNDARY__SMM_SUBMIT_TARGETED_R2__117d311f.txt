@@ -1,0 +1,7 @@
+candidate_sha=117d311f9ba8bbde8939609ae3904275f90bf735
+base_main_sha=0985731703533c6b8e225079547bcbb0009c156a
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__SMM_SUBMIT_TARGETED_R2
+affected_ports=SMM
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
