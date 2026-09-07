@@ -1,0 +1,12 @@
+work_id=COMMANDER_HOTSPOT_RUNTIME_DECOMPOSITION_R2
+candidate_sha=89776353116460f1b7fc550e61a641e142c0efb3
+base_main_sha=10ef1493756f2c87d63233d75ea14d55fb855197
+latest_main_sha=10ef1493756f2c87d63233d75ea14d55fb855197
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION,PAYMENT_ADMISSION,PRINT
+run_id=34078476806
+conclusion=success
