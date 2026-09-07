@@ -1,0 +1,7 @@
+candidate_sha=7e3b7ba07593a3b53c9889468bf894a6ebdca545
+base_main_sha=f91746b7efb599592a8b63bd1a0d4beefb41dcb7
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__MGMT_FASTPATH_R1
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
