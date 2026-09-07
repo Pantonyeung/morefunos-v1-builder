@@ -1,0 +1,7 @@
+candidate_sha=c5e4ab878a8982eb042f837601fe80ff61e5b1a1
+base_main_sha=b49913ca6835cdfc02aa80a56d53aa41262b7ef8
+work_id=TEAM_A_A9_PHYSICAL_ACCEPTANCE__BUSINESS_DAY_CONTROL_BACKFILL_0048
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
