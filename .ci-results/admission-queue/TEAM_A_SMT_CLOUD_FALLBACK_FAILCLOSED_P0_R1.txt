@@ -1,0 +1,13 @@
+work_id=TEAM_A_SMT_CLOUD_FALLBACK_FAILCLOSED_P0_R1
+candidate_sha=7528e424a3fe59799d8aceb80c34563ebc67c476
+base_main_sha=3989b8a16daf9758229b9c0e1008245616d360bf
+latest_main_sha=3989b8a16daf9758229b9c0e1008245616d360bf
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34155197272
+conclusion=success
