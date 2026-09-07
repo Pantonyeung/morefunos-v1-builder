@@ -1,5 +1,5 @@
-source_sha=bd36e1c5cc8e6b40341d9957e364fcfe865d075e
-request_id=POST-ADMISSION-TEAM-B-B7-3-PRODUCT-MEDIA-OWNER-BD36E1C5
-run_id=34094002275
+source_sha=ff3505378e30c99354f3448d3ffc91de44e7d6ed
+request_id=TEAM-B-B8-MANAGEMENT-REALTIME-READBACK-RED-20260907
+run_id=34094583395
 run_attempt=1
-conclusion=success
+conclusion=failure
