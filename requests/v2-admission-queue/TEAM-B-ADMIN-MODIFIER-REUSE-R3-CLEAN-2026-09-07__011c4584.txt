@@ -1,0 +1,7 @@
+candidate_sha=011c45844be706ff66957bdd66dccbb56b9bc35e
+base_main_sha=9d5dbc5d86946cc033c1164078fe3ab531914b67
+work_id=TEAM-B-ADMIN-MODIFIER-REUSE-R3-CLEAN-2026-09-07
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
