@@ -1,0 +1,8 @@
+candidate_sha=426dc6b26abeb74fc36efd47708b77c7f16ef07e
+base_main_sha=e4b0c709abe5eea4b7ba72e8b25c15e66d0285bf
+work_id=MGMT-B7-2-CHANNEL-PROJECTION-READ-PARITY-2026-09-07-01
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=CATALOG
+force_full_proof=false
+supersedes_candidate_sha=251e8fd454a7a28759f75867f6b390ca1920be8b
