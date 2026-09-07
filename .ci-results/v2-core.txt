@@ -1,5 +1,5 @@
-source_sha=c1d95762a9ae48a8f33b1e113134a26ff2808d0c
-request_id=TEAMA-A8-SUPERSEDE-CORE-R1-20260907
-run_id=34091888744
+source_sha=86918b5f84d698579e1a86044fc4adef606356a4
+request_id=TEAMA-A8-ADMISSION-INTEGRATION-CORE-R3-20260907
+run_id=34091897303
 run_attempt=1
 conclusion=failure
