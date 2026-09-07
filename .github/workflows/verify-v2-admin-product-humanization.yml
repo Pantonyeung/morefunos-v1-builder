@@ -76,7 +76,8 @@ jobs:
           test -f apps/admin-web/src/ProductBulkSelector.tsx
           grep -q '全部分類' apps/admin-web/src/ProductBulkSelector.tsx
           grep -q '批量固定變體' apps/admin-web/src/ProductEditorPage.tsx
-          grep -q '分類／多選批量加入' apps/admin-web/src/ComboBuilderPage.tsx
+          grep -q 'ProductBulkSelector' apps/admin-web/src/ComboBuilderPage.tsx
+          grep -q 'bulkProductIds' apps/admin-web/src/ComboBuilderPage.tsx
           grep -q 'consumptionProductIds' apps/admin-web/src/OperationalCapacityPage.tsx
           grep -q '新增分類' apps/admin-web/src/CategoryPage.tsx
           grep -q 'archiveCategory' apps/admin-web/src/admin-category-network-port.ts
