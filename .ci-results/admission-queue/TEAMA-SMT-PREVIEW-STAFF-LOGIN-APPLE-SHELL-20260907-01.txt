@@ -1,0 +1,13 @@
+work_id=TEAMA-SMT-PREVIEW-STAFF-LOGIN-APPLE-SHELL-20260907-01
+candidate_sha=167b79e41d007edb5469d40d16f613d52ce18fde
+base_main_sha=4635bd8f37b8c8e607026b08c4a57f22b5ad18a0
+latest_main_sha=4635bd8f37b8c8e607026b08c4a57f22b5ad18a0
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34109895537
+conclusion=success
