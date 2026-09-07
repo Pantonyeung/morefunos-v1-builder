@@ -1,0 +1,8 @@
+candidate_sha=ecc8a9afb98fc82ccee7a3077fa8ae54fd465821
+base_main_sha=f1da65ddc8ce27d2c75748c859d4403c7c072165
+work_id=MGMT-B7-3-PRODUCT-MEDIA-MOBILE-PARITY-2026-09-07-01
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=CATALOG
+force_full_proof=false
+supersedes_candidate_sha=28455d5486779c24860c217694661d2feaa1466e
