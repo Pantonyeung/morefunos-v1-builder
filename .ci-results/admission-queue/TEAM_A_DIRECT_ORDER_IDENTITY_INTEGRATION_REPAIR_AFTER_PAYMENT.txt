@@ -1,0 +1,12 @@
+work_id=TEAM_A_DIRECT_ORDER_IDENTITY_INTEGRATION_REPAIR_AFTER_PAYMENT
+candidate_sha=3939c75fd9b93c01b8dc6e5c2c4ec3672cc7ba93
+base_main_sha=10ef1493756f2c87d63233d75ea14d55fb855197
+latest_main_sha=10ef1493756f2c87d63233d75ea14d55fb855197
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER,PAYMENT
+run_id=34078168883
+conclusion=failure
