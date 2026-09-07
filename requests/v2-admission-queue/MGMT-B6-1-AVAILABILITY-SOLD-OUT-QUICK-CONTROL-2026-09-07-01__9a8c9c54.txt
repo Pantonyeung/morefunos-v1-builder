@@ -1,0 +1,8 @@
+candidate_sha=9a8c9c54a7979d2f624730928e75814ac205dc8b
+base_main_sha=3756d7e76e979a8c2a2f0cfd4920a410b4c97e3d
+work_id=MGMT-B6-1-AVAILABILITY-SOLD-OUT-QUICK-CONTROL-2026-09-07-01
+affected_ports=OWNER,ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+supersedes_candidate_sha=478a94f78cb8556cd5dd328b8f3db8022ea1fd1a
