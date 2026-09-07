@@ -81,6 +81,21 @@ jobs:
           test -s apps/smm-web/dist/manifest.webmanifest
           ! grep -R -E 'mfos_order_state|D1Database|\.prepare\(' apps/smm-web/src infra/cloudflare/smm-web-worker
 
+      - name: Diagnose A9 operational context authority read-only
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          echo '=== A9_OPEN_BUSINESS_DAY ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT business_day_id,store_id,business_date,lifecycle_status,revision,opened_at FROM mfos_business_day WHERE lifecycle_status='OPEN' ORDER BY store_id,opened_at DESC;"
+          echo '=== A9_BUSINESS_DAY_CONTROL ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT store_id,business_day_id,intake_status,eta_minutes,early_close_at,revision,updated_at FROM mfos_business_day_control ORDER BY store_id;"
+          echo '=== A9_PRODUCT_AVAILABILITY_COUNTS ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT store_id,COUNT(*) AS product_rows,COUNT(DISTINCT target_id) AS distinct_products FROM mfos_availability_state WHERE target_type='PRODUCT' GROUP BY store_id ORDER BY store_id;"
+          echo '=== A9_PRODUCT_AVAILABILITY_DUPLICATES ==='
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --config "$CONFIG" --command "SELECT store_id,target_id,COUNT(*) AS n FROM mfos_availability_state WHERE target_type='PRODUCT' GROUP BY store_id,target_id HAVING COUNT(*)>1 ORDER BY store_id,target_id;"
+
       - name: Deploy exact SMM public Worker
         working-directory: source
         shell: bash
