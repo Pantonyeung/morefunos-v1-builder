@@ -1,0 +1,10 @@
+work_id=TEAM_A_SIXTH_SEAM_PAYMENT_REFUND_RUNTIME_CONSOLIDATION
+candidate_sha=8f6bb7de4556d13ec999243079268d950fccd998
+base_main_sha=472fe0c227079082db682d8dc9fea5ca601c4c85
+latest_main_sha=71b140d4e2b90f056eb1e75a46261ad1e8e424a7
+collision=C4
+impact=V4
+reason=PATCH_APPLY_CONFLICT
+apply_status=CONFLICT
+run_id=34076950465
+conclusion=failure
