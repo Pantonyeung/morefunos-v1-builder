@@ -1,0 +1,6 @@
+candidate_sha=ecb2ba62c3792ad26eca72c532973b8f79c64a06
+base_main_sha=03d815ef3b35e477e5d1b88edea5d3fee7275ec1
+work_id=MOREFUNOS_P0_SMT_HOTPATH_LOCAL_FIRST_REPAIR_20260907
+affected_ports=SMT
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
