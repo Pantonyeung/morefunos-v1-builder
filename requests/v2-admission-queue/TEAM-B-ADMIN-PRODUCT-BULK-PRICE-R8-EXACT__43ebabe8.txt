@@ -1,0 +1,7 @@
+candidate_sha=43ebabe894adc0a2c6dbf4bf8d6567e4449e5f11
+base_main_sha=bf5e36e088acf82f3cd54912380217a41649fa15
+work_id=TEAM-B-ADMIN-PRODUCT-BULK-PRICE-R8-EXACT
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
