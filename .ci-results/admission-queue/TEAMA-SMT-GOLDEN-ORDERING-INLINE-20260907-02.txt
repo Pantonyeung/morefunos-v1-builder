@@ -1,0 +1,13 @@
+work_id=TEAMA-SMT-GOLDEN-ORDERING-INLINE-20260907-02
+candidate_sha=58676b17ba79d836b475a3f5b946bea9411dcd66
+base_main_sha=678f5c613aaff5db9f6fe22f29a30a1d4715a1e1
+latest_main_sha=678f5c613aaff5db9f6fe22f29a30a1d4715a1e1
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34118661335
+conclusion=success
