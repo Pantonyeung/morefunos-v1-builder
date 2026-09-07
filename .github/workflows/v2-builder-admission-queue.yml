@@ -347,6 +347,12 @@ jobs:
               [[ "$dep_base" =~ ^[0-9a-f]{40}$ ]]
               ensure_ref "$dep_sha"
               ensure_ref "$dep_base"
+
+              if git -C latest merge-base --is-ancestor "$dep_sha" "$LATEST_SHA" 2>/dev/null; then
+                echo "$dep_sha@$dep_base" >> evidence/train-dependency-already-admitted.txt
+                continue
+              fi
+
               TRAIN_COUNT=$((TRAIN_COUNT+1))
               if ! apply_delta "$dep_base" "$dep_sha" "train-${TRAIN_COUNT}"; then
                 APPLY_STATUS=CONFLICT
