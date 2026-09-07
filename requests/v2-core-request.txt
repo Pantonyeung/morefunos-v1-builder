@@ -1,4 +1,4 @@
 source_sha=a60ec1128e5a7fe009da51c7501c7b7dda9f42b2
 branch_name=main
-verification_phase=POST_ADMISSION
-request_id=POST-ADMISSION-TEAM-B-B6-2-PRICING-CORE-A60EC112
+verification_phase=FINAL_MERGE_REQUEST
+request_id=FINAL-MERGE-TEAM-B-B6-2-PRICING-CORE-A60EC112
