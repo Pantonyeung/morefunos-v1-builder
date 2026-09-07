@@ -1,5 +1,5 @@
-source_sha=77afa766325a3593bcded4cf9ed223570fdb3c74
-request_id=TEAMA-A8-OFFLINE-TRANSACTION-PRINT-CORE-R3-20260907
-run_id=34089428176
+source_sha=dd99b2ecdf3b0bd5742b5e24181079f11e52ca3e
+request_id=TEAMA-A8-OFFLINE-TRANSACTION-PRINT-CORE-R4-20260907
+run_id=34089615386
 run_attempt=1
 conclusion=failure
