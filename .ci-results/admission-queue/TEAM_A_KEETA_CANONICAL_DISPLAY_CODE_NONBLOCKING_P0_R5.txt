@@ -1,0 +1,13 @@
+work_id=TEAM_A_KEETA_CANONICAL_DISPLAY_CODE_NONBLOCKING_P0_R5
+candidate_sha=1d3ed1eacc2a36954d432c67e4a94e31407a9e04
+base_main_sha=187ed92540b2f7f03dce4802c405e4a2ed2aa89d
+latest_main_sha=41f2dab813c2bf32cd6bb17f56c71b2df02dc844
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34135576335
+conclusion=success
