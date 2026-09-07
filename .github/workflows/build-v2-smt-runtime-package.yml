@@ -114,18 +114,13 @@ jobs:
           from pathlib import Path
           path = Path('source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts')
           text = path.read_text()
-          names = [
-              'T2-MICRO-003 mounts only open-order list with server-owned store scope',
-              'T2-MICRO-004 mounts only order history list with server-owned store scope',
-              'T2-MICRO-005 mounts only current availability read with server-owned store scope',
-              'T2-HISTORICAL-LINKUP-BUNDLE-001 mounts reusable Availability set without trusting caller store scope',
-          ]
-          for name in names:
-              old = "test('" + name + "', async () => {"
-              new = "test.skip('" + name + "', async () => {"
-              if text.count(old) != 1:
-                  raise SystemExit('STALE_TEST_SIGNATURE_MISMATCH:' + name)
-              text = text.replace(old, new, 1)
+          old_import = "import { SMT_AVAILABILITY_READ_OPERATION, SMT_AVAILABILITY_SET_OPERATION } from '../availability/availability-port-contract.ts';"
+          new_import = "import { AVAILABILITY_INTERNAL_READ_OPERATION_V2, AVAILABILITY_SET_OPERATION_V2 } from '../availability/availability-port-contract.ts';"
+          if text.count(old_import) != 1:
+              raise SystemExit('AVAILABILITY_LEGACY_IMPORT_SIGNATURE_MISMATCH')
+          text = text.replace(old_import, new_import, 1)
+          text = text.replace('SMT_AVAILABILITY_READ_OPERATION.operationId', 'AVAILABILITY_INTERNAL_READ_OPERATION_V2.operationId')
+          text = text.replace('SMT_AVAILABILITY_SET_OPERATION.operationId', 'AVAILABILITY_SET_OPERATION_V2.operationId')
           path.write_text(text)
           PY
           npm run --prefix source test:smt-ui-integration
