@@ -1,5 +1,5 @@
-source_sha=67f0c4ad2c326277d8807c16458661fe042c2348
-request_id=TEAMA-AVAILABILITY-V2-CONSOLIDATION-SMM-R2-20260907
-run_id=34073454952
+source_sha=3ca3d3b157150eb7be457a7c14f78cdd639193b6
+request_id=TEAMA-AVAILABILITY-V2-CONSOLIDATION-SMM-R3-20260907
+run_id=34074325272
 run_attempt=1
-conclusion=failure
+conclusion=success
