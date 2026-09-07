@@ -1,0 +1,13 @@
+work_id=TEAM_A_FRONTLINE_CLOUD_AUTHORITATIVE_CONVERGENCE_POST_ADMISSION
+candidate_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+base_main_sha=9d5dbc5d86946cc033c1164078fe3ab531914b67
+latest_main_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34139665734
+conclusion=success
