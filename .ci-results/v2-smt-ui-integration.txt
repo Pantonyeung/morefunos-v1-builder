@@ -1,5 +1,5 @@
-source_sha=e5284238d7ab8360e06118c3df6d26de4f08da7b
-request_id=TEAMA-DIRECT-ORDER-IDENTITY-PARITY-SMT-20260907
-run_id=34077168048
+source_sha=d9574bab28af1a74226f4b52ecca923b47f0c4ab
+request_id=TEAMA-DIRECT-ORDER-IDENTITY-PARITY-R2-SMT-20260907
+run_id=34077243523
 run_attempt=1
 conclusion=success
