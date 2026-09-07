@@ -24,6 +24,16 @@ on:
         required: false
         default: ''
         type: string
+      depends_on_specs:
+        description: Comma-separated candidateSha@baseSha train dependencies
+        required: false
+        default: ''
+        type: string
+      required_core_tests:
+        description: Comma-separated ORDER,PAYMENT,PRINT,PRICING,AVAILABILITY,BUSINESS_DAY,CATALOG
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -55,6 +65,8 @@ jobs:
           INPUT_BASE_MAIN_SHA: ${{ inputs.base_main_sha }}
           INPUT_WORK_ID: ${{ inputs.work_id }}
           INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
+          INPUT_DEPENDS_ON_SPECS: ${{ inputs.depends_on_specs }}
+          INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
@@ -69,6 +81,8 @@ jobs:
             BASE_MAIN_SHA="$(printf '%s' "$INPUT_BASE_MAIN_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
             AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            DEPENDS_ON_SPECS="$(printf '%s' "$INPUT_DEPENDS_ON_SPECS" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUIRED_CORE_TESTS="$(printf '%s' "$INPUT_REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             REQUEST_FILE=WORKFLOW_DISPATCH
           else
             mapfile -t REQUEST_FILES < <(
@@ -95,7 +109,11 @@ jobs:
             BASE_MAIN_SHA="$(read_request base_main_sha "$REQUEST_FILE" | tr '[:upper:]' '[:lower:]')"
             WORK_ID="$(read_request work_id "$REQUEST_FILE")"
             AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            DEPENDS_ON_SPECS="$(read_request depends_on_specs "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
           fi
+          DEPENDS_ON_SPECS="${DEPENDS_ON_SPECS:-}"
+          REQUIRED_CORE_TESTS="${REQUIRED_CORE_TESTS:-}"
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           test -n "$WORK_ID"
@@ -104,6 +122,8 @@ jobs:
           echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
           echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
+          echo "depends_on_specs=$DEPENDS_ON_SPECS" >> "$GITHUB_OUTPUT"
+          echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
@@ -137,6 +157,8 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
           BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
+          DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         run: |
           set -euo pipefail
           LATEST_SHA="$(git -C latest rev-parse HEAD)"
@@ -214,30 +236,145 @@ jobs:
           rm -rf integration
           cp -a latest integration
           APPLY_STATUS=SKIPPED
-          if [[ "$ALREADY_ADMITTED" != true && -s evidence/candidate-files.txt ]]; then
-            if [[ ! -s evidence/exact-file-overlap.txt ]]; then
-              # C0/V1 fast path: latest main did not touch any candidate file.
-              while IFS= read -r path; do
-                [[ -z "$path" ]] && continue
-                if [[ -e "candidate/$path" ]]; then
+          TRAIN_COUNT=0
+
+          ensure_ref() {
+            local sha="$1"
+            if git -C latest cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              return 0
+            fi
+            local auth
+            auth="$(printf 'x-access-token:%s' "$SOURCE_TOKEN" | base64 -w0)"
+            git -C latest -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" fetch --no-tags origin "$sha"
+            git -C latest cat-file -e "${sha}^{commit}"
+          }
+
+          apply_delta() {
+            local base="$1"
+            local cand="$2"
+            local label="$3"
+            local list="evidence/${label}-files.txt"
+            git -C latest diff --name-only "$base" "$cand" | sort -u > "$list"
+
+            while IFS= read -r path; do
+              [[ -z "$path" ]] && continue
+              local base_exists=false
+              local cand_exists=false
+              local ours_exists=false
+              git -C latest cat-file -e "$base:$path" 2>/dev/null && base_exists=true
+              git -C latest cat-file -e "$cand:$path" 2>/dev/null && cand_exists=true
+              [[ -e "integration/$path" ]] && ours_exists=true
+
+              if [[ "$base_exists" == false && "$cand_exists" == true ]]; then
+                local cand_blob
+                cand_blob="$(git -C latest rev-parse "$cand:$path")"
+                if [[ "$ours_exists" == false ]]; then
                   mkdir -p "integration/$(dirname "$path")"
-                  cp -a "candidate/$path" "integration/$path"
+                  git -C latest show "$cand:$path" > "integration/$path"
                 else
-                  rm -f "integration/$path"
+                  local ours_blob
+                  ours_blob="$(git hash-object "integration/$path")"
+                  if [[ "$ours_blob" != "$cand_blob" ]]; then
+                    echo "TRAIN_ADD_COLLISION:$label:$path" >&2
+                    return 31
+                  fi
                 fi
-              done < evidence/candidate-files.txt
-              APPLY_STATUS=DISJOINT_OVERLAY
-            else
-              # Only real same-file overlap enters 3-way application.
-              git -C candidate diff --binary "$BASE_SHA" "$CANDIDATE_SHA" > "$GITHUB_WORKSPACE/evidence/candidate.patch"
-              if git -C integration apply --3way "$GITHUB_WORKSPACE/evidence/candidate.patch"; then
-                APPLY_STATUS=THREE_WAY_CLEAN
-              else
+                continue
+              fi
+
+              if [[ "$base_exists" == true && "$cand_exists" == false ]]; then
+                if [[ "$ours_exists" == false ]]; then
+                  continue
+                fi
+                local base_blob ours_blob
+                base_blob="$(git -C latest rev-parse "$base:$path")"
+                ours_blob="$(git hash-object "integration/$path")"
+                if [[ "$ours_blob" == "$base_blob" ]]; then
+                  rm -f "integration/$path"
+                else
+                  echo "TRAIN_DELETE_COLLISION:$label:$path" >&2
+                  return 32
+                fi
+                continue
+              fi
+
+              if [[ "$base_exists" == true && "$cand_exists" == true ]]; then
+                if [[ "$ours_exists" == false ]]; then
+                  echo "TRAIN_MISSING_OURS:$label:$path" >&2
+                  return 33
+                fi
+                local base_blob cand_blob ours_blob
+                base_blob="$(git -C latest rev-parse "$base:$path")"
+                cand_blob="$(git -C latest rev-parse "$cand:$path")"
+                ours_blob="$(git hash-object "integration/$path")"
+
+                if [[ "$ours_blob" == "$cand_blob" || "$cand_blob" == "$base_blob" ]]; then
+                  continue
+                fi
+                if [[ "$ours_blob" == "$base_blob" ]]; then
+                  git -C latest show "$cand:$path" > "integration/$path"
+                  continue
+                fi
+
+                mkdir -p evidence/merge-work
+                local safe
+                safe="$(printf '%s' "$label-$path" | tr '/ ' '__')"
+                cp "integration/$path" "evidence/merge-work/${safe}.ours"
+                git -C latest show "$base:$path" > "evidence/merge-work/${safe}.base"
+                git -C latest show "$cand:$path" > "evidence/merge-work/${safe}.theirs"
+                if git merge-file -p                   "evidence/merge-work/${safe}.ours"                   "evidence/merge-work/${safe}.base"                   "evidence/merge-work/${safe}.theirs"                   > "evidence/merge-work/${safe}.merged"; then
+                  cp "evidence/merge-work/${safe}.merged" "integration/$path"
+                  echo "$label:$path" >> evidence/train-three-way-clean.txt
+                else
+                  echo "TRAIN_CONTENT_CONFLICT:$label:$path" >&2
+                  return 34
+                fi
+              fi
+            done < "$list"
+          }
+
+          if [[ -n "$DEPENDS_ON_SPECS" ]]; then
+            IFS=',' read -r -a TRAIN_SPECS <<< "$DEPENDS_ON_SPECS"
+            if [[ "${#TRAIN_SPECS[@]}" -gt 8 ]]; then
+              echo "TRAIN_DEPENDENCY_LIMIT_EXCEEDED" >&2
+              exit 35
+            fi
+            for spec in "${TRAIN_SPECS[@]}"; do
+              [[ -z "$spec" ]] && continue
+              dep_sha="${spec%@*}"
+              dep_base="${spec#*@}"
+              [[ "$dep_sha" =~ ^[0-9a-f]{40}$ ]]
+              [[ "$dep_base" =~ ^[0-9a-f]{40}$ ]]
+              ensure_ref "$dep_sha"
+              ensure_ref "$dep_base"
+              TRAIN_COUNT=$((TRAIN_COUNT+1))
+              if ! apply_delta "$dep_base" "$dep_sha" "train-${TRAIN_COUNT}"; then
                 APPLY_STATUS=CONFLICT
                 COLLISION=C4
                 IMPACT=V4
-                REASON=PATCH_APPLY_CONFLICT
+                REASON=TRAIN_DEPENDENCY_CONTENT_CONFLICT
+                break
               fi
+            done
+          fi
+
+          if [[ "$APPLY_STATUS" != CONFLICT && "$ALREADY_ADMITTED" != true && -s evidence/candidate-files.txt ]]; then
+            ensure_ref "$BASE_SHA"
+            ensure_ref "$CANDIDATE_SHA"
+            if apply_delta "$BASE_SHA" "$CANDIDATE_SHA" "candidate"; then
+              if [[ "$TRAIN_COUNT" -gt 0 ]]; then
+                APPLY_STATUS=TRAIN_THREE_WAY_OR_OVERLAY
+                COLLISION=C1
+                if [[ "$IMPACT" == V0 || "$IMPACT" == V1 ]]; then IMPACT=V2; fi
+                REASON=C1_ADMISSION_TRAIN_COMPOSED
+              else
+                APPLY_STATUS=DISJOINT_OVERLAY
+              fi
+            else
+              APPLY_STATUS=CONFLICT
+              COLLISION=C4
+              IMPACT=V4
+              REASON=CANDIDATE_CONTENT_CONFLICT
             fi
           fi
           {
@@ -250,6 +387,7 @@ jobs:
             echo "impact=$IMPACT"
             echo "reason=$REASON"
             echo "apply_status=$APPLY_STATUS"
+            echo "train_count=$TRAIN_COUNT"
           } | tee evidence/impact-summary.txt
 
           echo "latest_sha=$LATEST_SHA" >> "$GITHUB_OUTPUT"
@@ -276,20 +414,23 @@ jobs:
         working-directory: integration
         run: npm run typecheck
 
-      - name: Core domain proof for V3/V4
-        if: steps.impact.outputs.impact == 'V3' || steps.impact.outputs.impact == 'V4'
+      - name: Required core/train proof
+        if: steps.impact.outputs.impact == 'V3' || steps.impact.outputs.impact == 'V4' || steps.request.outputs.required_core_tests != ''
         working-directory: integration
+        env:
+          REQUIRED_CORE_TESTS: ${{ steps.request.outputs.required_core_tests }}
         shell: bash
         run: |
           set -euo pipefail
           auths="$(cat ../evidence/candidate-authorities.txt ../evidence/main-authorities.txt | sort -u)"
-          if grep -qx ORDER <<<"$auths"; then npm run test:core-order; fi
-          if grep -qx PRICING <<<"$auths"; then npm run test:core-pricing; fi
-          if grep -qx AVAILABILITY <<<"$auths"; then npm run test:core-availability; fi
-          if grep -qx BUSINESS_DAY <<<"$auths"; then npm run test:core-business-day-cash; fi
-          if grep -qx PAYMENT <<<"$auths"; then npm run test:core-payment; fi
-          if grep -qx PRINT <<<"$auths"; then npm run test:print; fi
-          if grep -qx CATALOG <<<"$auths"; then npm run test:core-catalog; fi
+          tests="$REQUIRED_CORE_TESTS"
+          if grep -qx ORDER <<<"$auths" || [[ ",$tests," == *,ORDER,* ]]; then npm run test:core-order; fi
+          if grep -qx PRICING <<<"$auths" || [[ ",$tests," == *,PRICING,* ]]; then npm run test:core-pricing; fi
+          if grep -qx AVAILABILITY <<<"$auths" || [[ ",$tests," == *,AVAILABILITY,* ]]; then npm run test:core-availability; fi
+          if grep -qx BUSINESS_DAY <<<"$auths" || [[ ",$tests," == *,BUSINESS_DAY,* ]]; then npm run test:core-business-day-cash; fi
+          if grep -qx PAYMENT <<<"$auths" || [[ ",$tests," == *,PAYMENT,* ]]; then npm run test:core-payment; fi
+          if grep -qx PRINT <<<"$auths" || [[ ",$tests," == *,PRINT,* ]]; then npm run test:print; fi
+          if grep -qx CATALOG <<<"$auths" || [[ ",$tests," == *,CATALOG,* ]]; then npm run test:core-catalog; fi
 
       - name: SMT integration proof
         if: steps.impact.outputs.impact != 'V0' && contains(steps.request.outputs.affected_ports, 'SMT')
@@ -346,6 +487,8 @@ jobs:
           APPLY_STATUS: ${{ steps.impact.outputs.apply_status }}
           CONCLUSION: ${{ job.status }}
           RUN_ID: ${{ github.run_id }}
+          DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
+          REQUIRED_CORE_TESTS: ${{ steps.request.outputs.required_core_tests }}
         shell: bash
         run: |
           set -euo pipefail
@@ -366,6 +509,8 @@ jobs:
               echo "impact=${IMPACT:-UNKNOWN}"
               echo "reason=${REASON:-UNKNOWN}"
               echo "apply_status=${APPLY_STATUS:-UNKNOWN}"
+              echo "depends_on_specs=$DEPENDS_ON_SPECS"
+              echo "required_core_tests=$REQUIRED_CORE_TESTS"
               echo "run_id=$RUN_ID"
               echo "conclusion=$CONCLUSION"
             } > ".ci-results/admission-queue/${safe_work_id}.txt"
