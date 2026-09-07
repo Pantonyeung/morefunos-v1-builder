@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-MODIFIER-REUSE-R2-2026-09-07
+candidate_sha=e16e67cae98e0627576e267d43c3b2640d8caac7
+base_main_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+latest_main_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34139899424
+conclusion=success
