@@ -1,0 +1,7 @@
+candidate_sha=502c991f998a3426eb33090e582fe682cfc00467
+base_main_sha=068c345eaa82a91710a9f613f122eab075d14a3e
+work_id=TEAM_A_ORDER_STORE_SYNC_SEQUENCE_P0_R2
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
