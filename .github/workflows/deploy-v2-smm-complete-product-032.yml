@@ -154,6 +154,7 @@ jobs:
             'print.job.request.v1',
             'print.job.observe.v1',
             'business-day.read.current.v1',
+            'frontline.operational-context.read.v1',
             'reporting.snapshot.read.v1',
           ];
           (async()=>{
@@ -315,9 +316,14 @@ jobs:
               if(new URL(r.url()).pathname!=='/api/smm/runtime'||r.request().method()!=='POST')return false;
               try{return r.request().postDataJSON()?.operationId==='catalog.menu.active.read.v1'}catch{return false}
             },{timeout:15000});
+            const operationalContextResponsePromise=page.waitForResponse(r=>{
+              if(new URL(r.url()).pathname!=='/api/smm/runtime'||r.request().method()!=='POST')return false;
+              try{return r.request().postDataJSON()?.operationId==='frontline.operational-context.read.v1'}catch{return false}
+            },{timeout:15000});
             await mainNav.getByRole('button',{name:'點單',exact:true}).click();
-            const orderingMenuResponse=await orderingMenuResponsePromise;
+            const [orderingMenuResponse,operationalContextResponse]=await Promise.all([orderingMenuResponsePromise,operationalContextResponsePromise]);
             if(orderingMenuResponse.status()!==200)throw new Error('SMM_ORDERING_MENU_HTTP_'+orderingMenuResponse.status());
+            if(operationalContextResponse.status()!==200)throw new Error('SMM_OPERATIONAL_CONTEXT_HTTP_'+operationalContextResponse.status());
             const orderingStage=page.locator('.smm-main-stage[aria-label="點單"]');
             await orderingStage.waitFor({state:'visible',timeout:5000});
             await orderingStage.locator('.smm-product-card__primary').filter({visible:true}).first().waitFor({state:'visible',timeout:15000});
