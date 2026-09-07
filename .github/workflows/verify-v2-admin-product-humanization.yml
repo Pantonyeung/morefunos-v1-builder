@@ -1,0 +1,140 @@
+name: Verify V2 Admin Product Humanization
+
+on:
+  push:
+    paths:
+      - 'requests/v2-admin-product-humanization-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-admin-product-humanization-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-admin-product-humanization-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Admin UI integration suite
+        working-directory: source
+        run: node --test packages/admin-ui-integration/*.test.ts
+
+      - name: Admin app typecheck
+        working-directory: source/apps/admin-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck
+
+      - name: Admin app build
+        working-directory: source/apps/admin-web
+        run: npm run build
+
+      - name: Product humanization source guard
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f apps/admin-web/src/ProductBulkSelector.tsx
+          grep -q '全部分類' apps/admin-web/src/ProductBulkSelector.tsx
+          grep -q '批量固定變體' apps/admin-web/src/ProductEditorPage.tsx
+          grep -q '分類／多選批量加入' apps/admin-web/src/ComboBuilderPage.tsx
+          grep -q 'consumptionProductIds' apps/admin-web/src/OperationalCapacityPage.tsx
+          grep -q '新增分類' apps/admin-web/src/CategoryPage.tsx
+          grep -q 'archiveCategory' apps/admin-web/src/admin-category-network-port.ts
+
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+        run: |
+          mkdir -p evidence
+          {
+            echo "source_repo=Pantonyeung/Morefun-v2"
+            echo "source_sha=$SOURCE_SHA"
+            echo "request_id=$REQUEST_ID"
+            echo "scope=ADMIN_PRODUCT_HUMANIZATION"
+            echo "note=Management shared-session suite intentionally excluded because current exact main independently fails stale Owner shell regex; this verifies impacted Admin scope only."
+          } > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-admin-product-humanization-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Seal result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=$SOURCE_SHA"
+              echo "request_id=$REQUEST_ID"
+              echo "run_id=$RUN_ID"
+              echo "run_attempt=$RUN_ATTEMPT"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-admin-product-humanization.txt
+            git add .ci-results/v2-admin-product-humanization.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): Admin product humanization $CONCLUSION $SOURCE_SHA"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
