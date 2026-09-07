@@ -1,0 +1,7 @@
+candidate_sha=192e65b3d86c2f01bf72f58cc940f800a0c73236
+base_main_sha=db1e4da89a0581b5193cb9108f6a5692f1ea0058
+work_id=TEAM-B-ADMIN-STALE-FEATURE-GATE-R9-2026-09-08
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
