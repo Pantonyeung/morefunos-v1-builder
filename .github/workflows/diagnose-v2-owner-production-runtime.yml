@@ -1,0 +1,118 @@
+name: Diagnose V2 Owner Production Runtime
+
+on:
+  push:
+    paths:
+      - 'requests/v2-owner-production-runtime-diagnostic-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      OWNER_ORIGIN: https://morefun-v2-owner.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-production-runtime-diagnostic-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require exact main
+        env:
+          SOURCE_SHA: \${{ steps.req.outputs.source_sha }}
+          TOKEN: \${{ secrets.V2_SOURCE_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(curl -fsSL -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
+          test "$MAIN_SHA" = "$SOURCE_SHA"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Probe Owner production canonical reads
+        env:
+          ADMIN_LOGIN_SECRET: \${{ secrets.ADMIN_LOGIN_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          mkdir -p evidence
+          cat > /tmp/owner-runtime-diagnostic.mjs <<'EOF'
+          import fs from 'node:fs';
+          const origin=process.env.OWNER_ORIGIN;
+          const secret=process.env.ADMIN_LOGIN_SECRET;
+          if(!secret)throw new Error('ADMIN_LOGIN_SECRET_MISSING');
+
+          const login=await fetch(origin+'/api/owner/session',{
+            method:'POST',
+            headers:{'content-type':'application/json'},
+            body:JSON.stringify({loginSecret:secret,loginId:'owner'}),
+          });
+          const loginBody=await login.json();
+          console.log('owner_login_http='+login.status);
+          console.log('owner_login_authenticated='+String(loginBody?.authenticated===true));
+          if(login.status!==200||loginBody?.authenticated!==true)throw new Error('OWNER_LOGIN_FAILED');
+          const setCookie=login.headers.get('set-cookie')||'';
+          const cookie=setCookie.split(';',1)[0];
+          if(!cookie)throw new Error('OWNER_SESSION_COOKIE_MISSING');
+
+          const getJson=async(path,init={})=>{
+            const response=await fetch(origin+path,{...init,headers:{...(init.headers||{}),cookie,accept:'application/json'}});
+            let body=null;try{body=await response.json();}catch{}
+            return {response,body};
+          };
+
+          const bootstrap=await getJson('/api/owner/bootstrap');
+          console.log('owner_bootstrap_http='+bootstrap.response.status);
+          if(bootstrap.response.status!==200||bootstrap.body?.ok!==true)throw new Error('OWNER_BOOTSTRAP_FAILED');
+          const b=bootstrap.body;
+          const common={storeId:b.storeId,currency:b.currency};
+          const ops=[
+            ['reporting','reporting.snapshot.read.v1',common],
+            ['operational_health','operational-health.read.v1',{storeId:b.storeId}],
+            ['product_performance','reporting.product-performance.read.v1',{...common,currentPeriod:b.periods.currentPeriod,previousPeriod:b.periods.previousPeriod}],
+            ['member_activity','reporting.member-purchasing-activity.read.v1',{...common,currentPeriod:b.periods.currentPeriod,activityPeriod:b.periods.activityPeriod}],
+            ['channel_performance','reporting.channel-performance.read.v1',{...common,period:b.periods.currentPeriod}],
+            ['dine_in','reporting.dine-in.daily.read.v1',{...common,period:b.periods.currentPeriod}],
+          ];
+          const summary={businessDate:b.businessDate,ops:{},runtimeStatus:null};
+          for(const [label,operationId,request] of ops){
+            const x=await getJson('/api/owner/runtime',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operationId,request})});
+            const row={http:x.response.status,ok:x.body?.ok===true,code:x.body?.code||null};
+            summary.ops[label]=row;
+            console.log(label+'_http='+row.http);
+            console.log(label+'_ok='+row.ok);
+            console.log(label+'_code='+(row.code||''));
+          }
+          const rs=await getJson('/api/owner/runtime-status');
+          summary.runtimeStatus={http:rs.response.status,ok:rs.body?.ok===true,code:rs.body?.code||null,value:rs.body?.value??null};
+          console.log('runtime_status_http='+rs.response.status);
+          console.log('runtime_status_ok='+String(rs.body?.ok===true));
+          console.log('runtime_status_code='+(rs.body?.code||''));
+          if(rs.body?.value){
+            console.log('runtime_status_value='+JSON.stringify(rs.body.value));
+          }
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2));
+          EOF
+          node /tmp/owner-runtime-diagnostic.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-owner-production-runtime-diagnostic-\${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 7
