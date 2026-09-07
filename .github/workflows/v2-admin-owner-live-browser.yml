@@ -117,7 +117,7 @@ jobs:
           await admin.getByLabel('管理員密碼').fill(ADMIN_LOGIN_SECRET);
           await admin.getByRole('button',{name:'登入 Admin',exact:true}).click();
           try {
-            await admin.getByText('磨飯系統',{exact:true}).waitFor({timeout:15000});
+            await admin.getByRole('heading',{name:'營業日／交更',exact:true}).waitFor({timeout:15000});
           } catch (error) {
             const diagnosticSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
             const diagnosticBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ').slice(0,1600);
@@ -130,8 +130,17 @@ jobs:
           const adminSession=await context.request.get(ADMIN_ORIGIN+'/api/admin/session');
           if(adminSession.status()!==200) throw new Error('ADMIN_AUTH_SESSION:'+adminSession.status());
           const adminBody=(await admin.locator('body').innerText()).replace(/\s+/g,' ');
-          if(!adminBody.includes('磨飯系統')) throw new Error('ADMIN_SHELL_MISSING');
+          if(!adminBody.includes('磨飯管理')) throw new Error('ADMIN_SHELL_MISSING');
           if(adminBody.includes('需要正式 Admin session')) throw new Error('ADMIN_STILL_LOGIN_GATE');
+
+          const readinessApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/business-day/close');
+          const readinessText=await readinessApi.text();
+          if(readinessApi.status()!==200) throw new Error('ADMIN_CLOSE_READINESS_API:'+readinessApi.status()+':'+readinessText);
+          const readinessJson=JSON.parse(readinessText);
+          if(!readinessJson?.ok||typeof readinessJson?.value?.canClose!=='boolean'||!Array.isArray(readinessJson?.value?.hardBlockers)||!Array.isArray(readinessJson?.value?.warnings)){
+            throw new Error('ADMIN_CLOSE_READINESS_RESPONSE_INVALID');
+          }
+          await admin.getByText('日結準備',{exact:true}).waitFor({timeout:15000});
 
           const productApi=await context.request.get(ADMIN_ORIGIN+'/api/admin/catalog/products');
           if(productApi.status()!==200) throw new Error('ADMIN_PRODUCT_API:'+productApi.status());
@@ -168,7 +177,6 @@ jobs:
             await admin.getByRole('heading',{name:'商品管理',exact:true}).waitFor({timeout:15000});
             const save=admin.getByRole('button',{name:'保存 Catalog 商品資料',exact:true});
             await save.waitFor({timeout:15000});
-            if(!(await save.isDisabled())) throw new Error('ADMIN_PRODUCT_MANAGE_UNEXPECTEDLY_ENABLED');
           }
 
           await admin.goto(ADMIN_ORIGIN+'/admin/orders/history',{waitUntil:'networkidle'});
@@ -185,7 +193,7 @@ jobs:
           if(adminSession2.status()!==200) throw new Error('ADMIN_REFRESH_SESSION_LOST');
           if(adminErrors.length||adminFailures.length) throw new Error('ADMIN_BROWSER_ERROR:'+adminErrors.join('|')+';'+adminFailures.join('|'));
           await admin.screenshot({path:'evidence/admin.png',fullPage:true});
-          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,productApi:200,overviewApi:200,ordersHistoryApi:200,overviewUi:'PASS',productReadOnlyUi:'PASS',ordersHistoryUi:'PASS',ordersHistoryCount:historyJson.value.length,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.admin={...result.admin,uiLogin:'PASS',authenticatedSession:200,productApi:200,overviewApi:200,ordersHistoryApi:200,closeReadinessApi:200,overviewUi:'PASS',productUi:'PASS',ordersHistoryUi:'PASS',ordersHistoryCount:historyJson.value.length,refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           const owner=await context.newPage();
           const ownerErrors=[]; const ownerFailures=[];
@@ -199,6 +207,12 @@ jobs:
           if(ownerSession.status()!==200) throw new Error('OWNER_AUTH_SESSION:'+ownerSession.status());
           const ownerBootstrap=await context.request.get(OWNER_ORIGIN+'/api/owner/bootstrap');
           if(ownerBootstrap.status()!==200) throw new Error('OWNER_BOOTSTRAP:'+ownerBootstrap.status());
+
+          const ownerReadiness=await context.request.get(OWNER_ORIGIN+'/api/owner/business-day/close-readiness');
+          const ownerReadinessText=await ownerReadiness.text();
+          if(ownerReadiness.status()!==200) throw new Error('OWNER_CLOSE_READINESS_API:'+ownerReadiness.status()+':'+ownerReadinessText);
+          const ownerReadinessJson=JSON.parse(ownerReadinessText);
+          if(!ownerReadinessJson?.ok||typeof ownerReadinessJson?.value?.canClose!=='boolean') throw new Error('OWNER_CLOSE_READINESS_RESPONSE_INVALID');
           const ownerBody=(await owner.locator('body').innerText()).replace(/\s+/g,' ');
           if(ownerBody.includes('需要正式 Admin session')||ownerBody.includes('Protected Preview')) throw new Error('OWNER_STILL_LOGIN_GATE');
           const ownerManifest=await context.request.get(OWNER_ORIGIN+'/manifest.webmanifest');
@@ -210,7 +224,7 @@ jobs:
           if(ownerSession2.status()!==200) throw new Error('OWNER_REFRESH_SESSION_LOST');
           if(ownerErrors.length||ownerFailures.length) throw new Error('OWNER_BROWSER_ERROR:'+ownerErrors.join('|')+';'+ownerFailures.join('|'));
           await owner.screenshot({path:'evidence/owner.png',fullPage:true});
-          result.owner={...result.owner,uiLogin:'PASS',authenticatedSession:200,bootstrap:200,reportingUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
+          result.owner={...result.owner,uiLogin:'PASS',authenticatedSession:200,bootstrap:200,closeReadinessApi:200,reportingUi:'PASS',refreshSession:200,manifest:200,serviceWorker:200,pageErrors:[],requestFailures:[]};
 
           await browser.close();
           fs.writeFileSync('evidence/summary.json',JSON.stringify(result,null,2));
