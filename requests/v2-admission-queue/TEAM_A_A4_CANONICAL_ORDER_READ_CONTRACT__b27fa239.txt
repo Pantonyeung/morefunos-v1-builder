@@ -1,0 +1,5 @@
+candidate_sha=b27fa2395e629e68c6eb44ed140dadbf12eea8c9
+base_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+work_id=TEAM_A_A4_CANONICAL_ORDER_READ_CONTRACT
+affected_ports=SMT,SMM,ADMIN,OWNER
+required_core_tests=ORDER_ADMISSION
