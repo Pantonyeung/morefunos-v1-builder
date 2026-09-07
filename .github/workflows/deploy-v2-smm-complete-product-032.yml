@@ -305,7 +305,7 @@ jobs:
             await operationsDialog.getByPlaceholder('輸入商品名稱').waitFor({state:'visible',timeout:5000});
             await operationsDialog.getByRole('button',{name:'收起',exact:true}).click();
 
-            await mainNav.getByRole('button',{name:'待處理',exact:true}).click();
+            await mainNav.getByRole('button',{name:/待處理/}).click();
             await page.getByText('即時工作佇列',{exact:true}).waitFor({state:'visible',timeout:5000});
             await page.getByText('等你處理',{exact:true}).waitFor({state:'visible',timeout:5000});
             await mainNav.getByRole('button',{name:'堂食',exact:true}).waitFor({state:'visible',timeout:5000});
