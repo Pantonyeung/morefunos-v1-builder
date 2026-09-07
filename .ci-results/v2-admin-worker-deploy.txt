@@ -1,7 +1,7 @@
 source_sha=7f2c9c061070e678542b579a95cd7b695d926514
-request_id=TEAMA-A9-BACKEND-DEPENDENCY-ADMIN-DEPLOY-7F2C9C06
-run_id=34095567859
+request_id=TEAM-B-B8-REALTIME-ADMIN-PRODUCTION-7F2C9C06
+run_id=34095595713
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=6c31c490-2d30-471e-ae27-95a40b2c1845
+worker_version=c37e357d-9380-4ec6-a61a-c2fffbda1a96
