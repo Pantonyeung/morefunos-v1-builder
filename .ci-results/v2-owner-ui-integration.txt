@@ -1,5 +1,5 @@
-source_sha=65c1c4ccc8130acb412b6796227b5f6a6a0fe38e
-request_id=TEAM-B-B6-3-BUSINESS-DAY-UI-RED-20260907
-run_id=34085567617
+source_sha=5e43522fb576629f09ecda3d4a5bca29fefe6de3
+request_id=TEAM-B-B6-3-BUSINESS-DAY-CANDIDATE-R1-20260907
+run_id=34085679494
 run_attempt=1
-conclusion=failure
+conclusion=success
