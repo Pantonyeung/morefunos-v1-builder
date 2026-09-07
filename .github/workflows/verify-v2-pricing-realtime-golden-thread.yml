@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
       ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
     steps:
       - uses: actions/checkout@v7
@@ -45,19 +45,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" || { echo "::error::PRICING_GOLDEN_THREAD_ADMIN_SESSION_SECRET_REQUIRED"; exit 1; }
+          test -n "${ADMIN_LOGIN_SECRET:-}" || { echo "::error::PRICING_GOLDEN_THREAD_ADMIN_LOGIN_SECRET_REQUIRED"; exit 1; }
           node - <<'NODE'
           const base=process.env.ADMIN_URL.replace(/\/$/,'');
-          const sessions=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);
-          const token=Array.isArray(sessions)&&sessions[0]?.sessionToken;
-          if(!token)throw new Error('PRICING_GOLDEN_THREAD_SESSION_INVALID');
-          const cookie='mf_admin_session='+token;
           const json=async(url,init={})=>{
             const r=await fetch(url,{...init,headers:{accept:'application/json',...(init.headers||{})}});
             let body=null;try{body=await r.json()}catch{}
             if(!r.ok)throw new Error('HTTP_'+r.status+':'+url+':'+JSON.stringify(body));
             return body;
           };
+
+          const loginResponse=await fetch(base+'/api/admin/session',{
+            method:'POST',
+            headers:{'content-type':'application/json',accept:'application/json'},
+            body:JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}),
+          });
+          let loginBody=null;try{loginBody=await loginResponse.json()}catch{}
+          if(!loginResponse.ok||loginBody?.authenticated!==true||loginBody?.bootstrapAuthorized!==true){
+            throw new Error('PRICING_GOLDEN_THREAD_LOGIN_FAILED:'+loginResponse.status);
+          }
+          const setCookie=loginResponse.headers.get('set-cookie')||'';
+          const cookie=setCookie.split(';')[0];
+          if(!cookie.startsWith('mf_admin_session='))throw new Error('PRICING_GOLDEN_THREAD_SESSION_COOKIE_REQUIRED');
 
           const session=await json(base+'/api/admin/session',{headers:{cookie}});
           if(session?.authenticated!==true||session?.bootstrapAuthorized!==true)throw new Error('PRICING_GOLDEN_THREAD_SESSION_NOT_AUTHORIZED');
