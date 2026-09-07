@@ -1,0 +1,7 @@
+candidate_sha=2e9842fac3634874ab7f62dfd7c3d1aee6b9471f
+base_main_sha=b6ed006fcd071fbfcd885231953b82dadc5aa5ae
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__PRICING_WS_FIRST_R3
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
