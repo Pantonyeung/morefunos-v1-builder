@@ -1,0 +1,10 @@
+work_id=QUEUE-CONCURRENCY-NOOP-bd394af0
+candidate_sha=bd394af0cc2359e7001ba17083f4d90ac1986e00
+base_main_sha=bd394af0cc2359e7001ba17083f4d90ac1986e00
+latest_main_sha=600538a74f05f69e8b42ae3b5b20645086d97c17
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+run_id=34077482839
+conclusion=success
