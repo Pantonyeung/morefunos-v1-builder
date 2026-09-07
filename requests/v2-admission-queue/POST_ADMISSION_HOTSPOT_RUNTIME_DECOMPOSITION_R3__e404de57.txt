@@ -1,0 +1,6 @@
+candidate_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+base_main_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+work_id=POST_ADMISSION_HOTSPOT_RUNTIME_DECOMPOSITION_E404DE57_R3
+affected_ports=SMT,SMM,ADMIN,OWNER
+required_core_tests=ORDER_ADMISSION,PAYMENT_ADMISSION,PRINT
+force_full_proof=true
