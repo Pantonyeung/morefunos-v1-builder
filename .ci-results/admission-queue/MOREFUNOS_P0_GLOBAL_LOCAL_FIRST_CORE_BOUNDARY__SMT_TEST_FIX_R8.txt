@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__SMT_TEST_FIX_R8
+candidate_sha=27456e22c218a1e938739ee25e33b8a076da65b7
+base_main_sha=020adfae45ed3e264f6c537f6efaeb5b473489b5
+latest_main_sha=020adfae45ed3e264f6c537f6efaeb5b473489b5
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34116673061
+conclusion=success
