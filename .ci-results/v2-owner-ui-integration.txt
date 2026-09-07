@@ -1,5 +1,5 @@
-source_sha=7f2c9c061070e678542b579a95cd7b695d926514
-request_id=POST-ADMISSION-TEAM-B-B8-REALTIME-OWNER-7F2C9C06
-run_id=34095585119
+source_sha=e8d20f7bcc48809556cbf390a40a981764bbb17f
+request_id=TEAM-B-B9-FAILURE-SEMANTICS-RED-20260907
+run_id=34095991963
 run_attempt=1
-conclusion=success
+conclusion=failure
