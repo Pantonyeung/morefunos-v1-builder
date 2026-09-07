@@ -1,0 +1,7 @@
+candidate_sha=1b055a4e0919b861c11d3f8a56c4f510de04077c
+base_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+work_id=MGMT-CONSOLIDATION-STAFF-RBAC-SHARED-CONTRACT-2026-09-07-01
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
