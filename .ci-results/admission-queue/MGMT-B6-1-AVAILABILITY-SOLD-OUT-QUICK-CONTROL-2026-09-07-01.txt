@@ -1,0 +1,13 @@
+work_id=MGMT-B6-1-AVAILABILITY-SOLD-OUT-QUICK-CONTROL-2026-09-07-01
+candidate_sha=9a8c9c54a7979d2f624730928e75814ac205dc8b
+base_main_sha=3756d7e76e979a8c2a2f0cfd4920a410b4c97e3d
+latest_main_sha=ef8b7c97b445cb05efa85bff24d6859eb726f8eb
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34082376271
+conclusion=success
