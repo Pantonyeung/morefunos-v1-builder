@@ -1,0 +1,7 @@
+candidate_sha=973617e54bf6176b620313f51a27146b994c0520
+base_main_sha=192ada0bb94c8a98eb13e8b9b92445da35f480b5
+work_id=TEAM-B-ADMIN-RESPONSIVE-MANAGEMENT-UI-20260907
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
