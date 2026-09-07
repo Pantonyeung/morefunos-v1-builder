@@ -175,7 +175,7 @@ jobs:
           await admin.getByRole('heading',{name:'歷史訂單',exact:true}).waitFor({timeout:15000});
           await admin.getByLabel('營業日期').fill(overviewValue.businessDate);
           await admin.getByRole('button',{name:'查詢歷史訂單',exact:true}).click();
-          await admin.getByText(/已讀取 \d+ 張 canonical 歷史訂單/).waitFor({timeout:15000});
+          await admin.getByText(/已讀取 \d+ 張歷史訂單/).waitFor({timeout:15000});
 
           const manifest=await context.request.get(ADMIN_ORIGIN+'/manifest.webmanifest');
           const sw=await context.request.get(ADMIN_ORIGIN+'/sw.js');
