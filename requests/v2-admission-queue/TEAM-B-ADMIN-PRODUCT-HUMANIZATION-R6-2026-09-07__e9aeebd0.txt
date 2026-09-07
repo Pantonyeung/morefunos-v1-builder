@@ -1,0 +1,7 @@
+candidate_sha=e9aeebd01750f4cbe6506fc2413d48d6fbfa15bf
+base_main_sha=30a8d9816d42ca9f862b0568b007794eb51bd97e
+work_id=TEAM-B-ADMIN-PRODUCT-HUMANIZATION-R6-2026-09-07
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
