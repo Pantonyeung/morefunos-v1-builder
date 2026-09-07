@@ -1,0 +1,108 @@
+name: Verify A9 Business Day Control Backfill
+
+on:
+  push:
+    paths:
+      - 'requests/a9-business-day-control-backfill-verify.txt'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/a9-business-day-control-backfill-verify.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Run source guard test
+        working-directory: source
+        run: node --test packages/business-day-cash/a9-business-day-control-backfill.test.ts
+
+      - name: Execute migration against local SQLite fixtures
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const {DatabaseSync}=require('node:sqlite');
+          const db=new DatabaseSync(':memory:');
+          db.exec(`
+            CREATE TABLE mfos_business_day(
+              business_day_id TEXT PRIMARY KEY,
+              store_id TEXT NOT NULL,
+              business_date TEXT NOT NULL,
+              lifecycle_status TEXT NOT NULL
+            );
+            CREATE TABLE mfos_business_day_control(
+              store_id TEXT PRIMARY KEY,
+              business_day_id TEXT,
+              intake_status TEXT NOT NULL,
+              eta_minutes INTEGER,
+              early_close_at TEXT,
+              revision INTEGER NOT NULL,
+              updated_at TEXT NOT NULL,
+              updated_by_actor_id TEXT NOT NULL
+            );
+            INSERT INTO mfos_business_day VALUES
+              ('day-1','store-1','2026-09-03','OPEN'),
+              ('day-2a','store-2','2026-09-03','OPEN'),
+              ('day-2b','store-2','2026-09-04','OPEN'),
+              ('day-3','store-3','2026-09-03','OPEN'),
+              ('day-4','store-4','2026-09-03','CLOSED');
+            INSERT INTO mfos_business_day_control VALUES
+              ('store-3','day-3','ACCEPTING',10,NULL,7,'2026-09-03T00:00:00.000Z','existing');
+          `);
+          const sql=fs.readFileSync('infra/cloudflare/d1/migrations/0048-business-day-control-backfill.sql','utf8');
+          db.exec(sql);
+          const rows=db.prepare('SELECT store_id,business_day_id,intake_status,revision,updated_by_actor_id FROM mfos_business_day_control ORDER BY store_id').all();
+          if(rows.length!==2)throw new Error('A9_BACKFILL_ROW_COUNT_MISMATCH:'+JSON.stringify(rows));
+          const one=rows.find(r=>r.store_id==='store-1');
+          const three=rows.find(r=>r.store_id==='store-3');
+          if(!one||one.business_day_id!=='day-1'||one.intake_status!=='PAUSED'||one.revision!==1||one.updated_by_actor_id!=='system:migration:0048')throw new Error('A9_BACKFILL_SAFE_ROW_INVALID:'+JSON.stringify(one));
+          if(!three||three.intake_status!=='ACCEPTING'||three.revision!==7||three.updated_by_actor_id!=='existing')throw new Error('A9_BACKFILL_EXISTING_CONTROL_MUTATED:'+JSON.stringify(three));
+          if(rows.some(r=>r.store_id==='store-2'||r.store_id==='store-4'))throw new Error('A9_BACKFILL_AMBIGUOUS_OR_CLOSED_STORE_MUTATED:'+JSON.stringify(rows));
+          console.log('A9_BUSINESS_DAY_CONTROL_BACKFILL_LOCAL=PASS');
+          NODE
+
+      - name: Publish success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA"             -f state=success             -f context='builder/a9-business-day-control-backfill-verify'             -f description='A9 Business Day control backfill verified'             -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Publish failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA"             -f state=failure             -f context='builder/a9-business-day-control-backfill-verify'             -f description='A9 Business Day control backfill verification failed'             -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
