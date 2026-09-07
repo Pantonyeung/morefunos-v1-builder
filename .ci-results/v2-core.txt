@@ -1,5 +1,5 @@
-source_sha=UNKNOWN
-request_id=TEAMA-A6-BASELINE-CORE-DIAGNOSTIC-470D2B64
-run_id=34084399311
+source_sha=470d2b6475dbef27248a4654d7a8b311c99665eb
+request_id=TEAMA-A6-BASELINE-CORE-CANDIDATE-470D2B64
+run_id=34084485730
 run_attempt=1
 conclusion=failure
