@@ -1,5 +1,5 @@
-source_sha=192e65b3d86c2f01bf72f58cc940f800a0c73236
-request_id=TEAM-B-ADMIN-STALE-FEATURE-GATE-R9-R2-20260908
-run_id=34167593502
+source_sha=27bd9b6b9081ead7e3894f6c3cbe7d3fd96cebc0
+request_id=POST-ADMISSION-TEAM-B-ADMIN-STALE-FEATURE-GATE-R9-20260908
+run_id=34167769488
 run_attempt=1
 conclusion=success
