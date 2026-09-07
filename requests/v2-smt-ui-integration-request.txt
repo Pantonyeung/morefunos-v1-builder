@@ -1,2 +1,2 @@
-source_sha=842c350c10de9e9c9ab6dc75c5b166bbdaee7512
-request_id=PRICING-842C-SMT-EXACT-15
+source_sha=d93ed6fecbe4121ff14cef79b3db3a7858d295ff
+request_id=TEAMA-SMT-SMM-SHARED-PARITY-SMT-VERIFY-20260907
