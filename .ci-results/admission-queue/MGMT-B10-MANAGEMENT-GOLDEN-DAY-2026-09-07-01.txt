@@ -1,0 +1,13 @@
+work_id=MGMT-B10-MANAGEMENT-GOLDEN-DAY-2026-09-07-01
+candidate_sha=d4e798369c7b81f0c970c5050ccd59ee458c2741
+base_main_sha=19675818084f12847daa04b656c00ab33a785e15
+latest_main_sha=19675818084f12847daa04b656c00ab33a785e15
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34101625068
+conclusion=success
