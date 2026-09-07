@@ -1,5 +1,5 @@
-source_sha=f479e8d128cfe0a6fa0f6bac517eacf7c8102ea8
-request_id=TEAMA-A7-OPERATIONAL-CONTEXT-CORE-R1-20260907
-run_id=34086651973
+source_sha=UNKNOWN
+request_id=POST-ADMISSION-TEAMA-A7-OPERATIONAL-CONTEXT-CORE-20260907
+run_id=34087410986
 run_attempt=1
 conclusion=failure
