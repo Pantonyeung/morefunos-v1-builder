@@ -1,5 +1,5 @@
-source_sha=cc43d69c99d880a343ab75547cd2eb2292319c01
-request_id=POST-ADMISSION-TEAM-B-B6-3-BUSINESS-DAY-OWNER-CC43D69C-R2
-run_id=34087130475
+source_sha=f85c9ba2e51b9448d47abbf32b563891b44c8610
+request_id=TEAM-B-B6-4-RUNTIME-STATUS-RED-20260907
+run_id=34088129700
 run_attempt=1
-conclusion=success
+conclusion=failure
