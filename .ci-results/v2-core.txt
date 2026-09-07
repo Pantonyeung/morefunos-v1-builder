@@ -1,5 +1,5 @@
-source_sha=UNKNOWN
-request_id=QUEUE-HOTSPOT-POST-ADMISSION-CORE-20260907
-run_id=34078678634
+source_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
+request_id=QUEUE-HOTSPOT-POST-ADMISSION-CORE-20260907-R2
+run_id=34079051451
 run_attempt=1
 conclusion=failure
