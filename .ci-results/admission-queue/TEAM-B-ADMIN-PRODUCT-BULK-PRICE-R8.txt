@@ -1,0 +1,13 @@
+work_id=TEAM-B-ADMIN-PRODUCT-BULK-PRICE-R8
+candidate_sha=12961d86c9d9d7ce9dfbc557a157fa5a6d00d791
+base_main_sha=01cdc5a40a351780b704a70dd5532094c4a3d790
+latest_main_sha=01cdc5a40a351780b704a70dd5532094c4a3d790
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34155532602
+conclusion=success
