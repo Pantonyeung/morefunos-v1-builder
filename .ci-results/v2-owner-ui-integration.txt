@@ -1,5 +1,5 @@
-source_sha=a60ec1128e5a7fe009da51c7501c7b7dda9f42b2
-request_id=TEAMA-A6-PAIRED-B6-2-OWNER-VERIFY-A60EC112
-run_id=34085122501
+source_sha=588b6e9f72eaa662f2c174dcb4ba17d7f8a2716e
+request_id=TEAM-B-B6-3-BUSINESS-DAY-WORKER-RED-20260907
+run_id=34085431401
 run_attempt=1
-conclusion=success
+conclusion=failure
