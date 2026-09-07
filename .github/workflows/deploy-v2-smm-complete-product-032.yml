@@ -290,8 +290,8 @@ jobs:
             };
 
             await page.getByRole('button',{name:'營業日：查看目前營業日期',exact:true}).click();
-            const businessDialog=await assertDialogInViewport('營業日');
-            await businessDialog.getByRole('heading',{name:'目前營業狀態',exact:true}).waitFor({state:'visible',timeout:5000});
+            const businessDialog=await assertDialogInViewport('網上下單');
+            await businessDialog.getByRole('heading',{name:'接單狀態／取餐時間',exact:true}).waitFor({state:'visible',timeout:5000});
             await businessDialog.getByRole('button',{name:'收起',exact:true}).click();
 
             await page.getByRole('button',{name:'營運報表：今日營業額／訂單／退款',exact:true}).click();
@@ -300,8 +300,8 @@ jobs:
             await reportingDialog.getByRole('button',{name:'收起',exact:true}).click();
 
             await page.getByRole('button',{name:'營運控制：售罄／暫停／恢復供應',exact:true}).click();
-            const operationsDialog=await assertDialogInViewport('營運控制');
-            await operationsDialog.getByRole('heading',{name:'售罄／暫停／恢復',exact:true}).waitFor({state:'visible',timeout:5000});
+            const operationsDialog=await assertDialogInViewport('商品供應');
+            await operationsDialog.getByRole('heading',{name:'售罄商品',exact:true}).waitFor({state:'visible',timeout:5000});
             await operationsDialog.getByPlaceholder('輸入商品名稱').waitFor({state:'visible',timeout:5000});
             await operationsDialog.getByRole('button',{name:'收起',exact:true}).click();
 
