@@ -1,0 +1,13 @@
+work_id=
+candidate_sha=
+base_main_sha=
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=
+run_id=34126732516
+conclusion=failure
