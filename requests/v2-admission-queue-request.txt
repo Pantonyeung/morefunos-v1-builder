@@ -1,0 +1,4 @@
+candidate_sha=5c2a7a66e71bd2ee0ec171f8bb0eced1b2d116ba
+base_main_sha=5c2a7a66e71bd2ee0ec171f8bb0eced1b2d116ba
+work_id=ADMISSION-QUEUE-NOOP-SMOKE-20260907
+affected_ports=
