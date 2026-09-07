@@ -1,5 +1,5 @@
-source_sha=f89c1924d92a391e8b2a3364821ab8322b6359d3
+source_sha=66109c0f595669b3ee45e2d9167ff26af56dae1b
 base_sha=afc8e09a232873bff333ddfc83bf3622df66940a
 branch_name=work/TEAM-A/a8-offline-transaction-print-20260907
 verification_phase=CANDIDATE
-request_id=TEAMA-A8-OFFLINE-TRANSACTION-PRINT-CORE-R5-20260907
+request_id=TEAMA-A8-OFFLINE-TRANSACTION-PRINT-CORE-R6-20260907
