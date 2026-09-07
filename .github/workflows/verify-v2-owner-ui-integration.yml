@@ -80,6 +80,10 @@ jobs:
         working-directory: source
         run: node --experimental-strip-types --test apps/owner-web/src/model.test.ts
 
+      - name: Management shared session tests
+        working-directory: source
+        run: node --test packages/management-ui-integration/*.test.ts
+
       - name: Owner runtime integration tests
         working-directory: source
         run: node --experimental-strip-types --test packages/owner-ui-integration/runtime-provider.test.ts
