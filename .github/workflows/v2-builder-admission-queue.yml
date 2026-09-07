@@ -532,6 +532,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
           REQUIRED_CORE_TESTS: ${{ steps.request.outputs.required_core_tests }}
+          FORCE_FULL_PROOF: ${{ steps.request.outputs.force_full_proof }}
         shell: bash
         run: |
           set -euo pipefail
