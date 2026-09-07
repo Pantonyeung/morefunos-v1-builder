@@ -1,2 +1,2 @@
-source_sha=3df4f6b5d08cc40a65e7062d6c68d0225705c7bb
-request_id=PRICING-DO-CUSTOMER-DEPLOY-3DF4-01
+source_sha=842c350c10de9e9c9ab6dc75c5b166bbdaee7512
+request_id=PRICING-842C-CUSTOMER-LIVE-01
