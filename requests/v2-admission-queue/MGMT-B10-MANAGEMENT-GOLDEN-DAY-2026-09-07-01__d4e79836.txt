@@ -1,0 +1,7 @@
+candidate_sha=d4e798369c7b81f0c970c5050ccd59ee458c2741
+base_main_sha=19675818084f12847daa04b656c00ab33a785e15
+work_id=MGMT-B10-MANAGEMENT-GOLDEN-DAY-2026-09-07-01
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
