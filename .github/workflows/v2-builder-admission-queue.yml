@@ -188,14 +188,31 @@ jobs:
           APPLY_STATUS=SKIPPED
 
           if [[ "$ALREADY_ADMITTED" != true && -s evidence/candidate-files.txt ]]; then
-            git -C candidate diff --name-status "$BASE_SHA" "$CANDIDATE_SHA" > evidence/candidate-name-status.txt
-
             if [[ ! -s evidence/exact-file-overlap.txt ]]; then
-              # C0/V1 fast path: main has not touched any candidate file.
-              # Overlay the frozen candidate's exact file versions onto latest main.
-              # This avoids unnecessary rebase/3-way patch failures for unrelated main movement.
-              while IFS=
-
+              # C0/V1 fast path: latest main did not touch any candidate file.
+              while IFS= read -r path; do
+                [[ -z "$path" ]] && continue
+                if [[ -e "candidate/$path" ]]; then
+                  mkdir -p "integration/$(dirname "$path")"
+                  cp -a "candidate/$path" "integration/$path"
+                else
+                  rm -f "integration/$path"
+                fi
+              done < evidence/candidate-files.txt
+              APPLY_STATUS=DISJOINT_OVERLAY
+            else
+              # Only real same-file overlap enters 3-way application.
+              git -C candidate diff --binary "$BASE_SHA" "$CANDIDATE_SHA" > "$GITHUB_WORKSPACE/evidence/candidate.patch"
+              if git -C integration apply --3way "$GITHUB_WORKSPACE/evidence/candidate.patch"; then
+                APPLY_STATUS=THREE_WAY_CLEAN
+              else
+                APPLY_STATUS=CONFLICT
+                COLLISION=C4
+                IMPACT=V4
+                REASON=PATCH_APPLY_CONFLICT
+              fi
+            fi
+          fi
           {
             echo "work_id=${{ steps.request.outputs.work_id }}"
             echo "base_main_sha=$BASE_SHA"
