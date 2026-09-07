@@ -1,0 +1,7 @@
+candidate_sha=e16e67cae98e0627576e267d43c3b2640d8caac7
+base_main_sha=ed513c838ce3bcda964340d7f45fdc90b96cb77c
+work_id=TEAM-B-ADMIN-MODIFIER-REUSE-R2-2026-09-07
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
