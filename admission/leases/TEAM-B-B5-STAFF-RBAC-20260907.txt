@@ -1,0 +1,12 @@
+lease_id=TEAM-B-B5-STAFF-RBAC-20260907
+work_id=MGMT-CONSOLIDATION-STAFF-RBAC-SHARED-CONTRACT-2026-09-07-01
+team=TEAM_B
+acceptance_object=ADMIN_OWNER_SHARED_CANONICAL_STAFF_RBAC_READ_CONTRACT
+base_main_sha=e9ec929e95d45208ba3318fad2eaf9fedd08b1e3
+file_globs=packages/management-ui-integration/staff-rbac.ts,packages/management-ui-integration/staff-rbac.test.ts,packages/admin-ui-integration/d1-admin-catalog-pricing-staff-runtime.ts,packages/owner-ui-integration/runtime-provider.ts,packages/owner-ui-integration/runtime-provider.test.ts,apps/owner-web/src/owner-network-runtime.ts,apps/owner-web/src/OwnerRuntimeRoot.tsx,apps/owner-web/src/OwnerApp.tsx,infra/cloudflare/admin-web-worker/runtime.ts
+canonical_authorities=IDENTITY_RBAC_CANONICAL_D1
+operation_ids=management.staff-rbac.read.v1
+affected_ports=ADMIN,OWNER
+handshake=ADMIN_STAFF_RBAC_MUTATION_TO_OWNER_CANONICAL_READBACK
+duration=NORMAL
+status=LEASE_ACTIVE
