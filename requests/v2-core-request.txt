@@ -1,4 +1,4 @@
-source_sha=e404de573db694a7800dc6af3ff84ef1a0ce2e3d
-branch_name=main
-verification_phase=FINAL_MERGE_REQUEST
-request_id=QUEUE-HOTSPOT-POST-ADMISSION-CORE-20260907-R2
+source_sha=03def162190428360a9e0201edb1fa276fd694e5
+branch_name=work/TEAM-A/a6-offline-pricebook-parity-20260907
+verification_phase=CANDIDATE
+request_id=TEAMA-A6-PRICEBOOK-CORE-R1-20260907
