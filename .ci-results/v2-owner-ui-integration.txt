@@ -1,5 +1,5 @@
-source_sha=ff3505378e30c99354f3448d3ffc91de44e7d6ed
-request_id=TEAM-B-B8-MANAGEMENT-REALTIME-READBACK-RED-20260907
-run_id=34094583395
+source_sha=619f51237aa2b8e0966496801cf1eb8889ed94b2
+request_id=TEAM-B-B8-MANAGEMENT-REALTIME-CONTROLLER-GREEN-20260907
+run_id=34094698959
 run_attempt=1
-conclusion=failure
+conclusion=success
