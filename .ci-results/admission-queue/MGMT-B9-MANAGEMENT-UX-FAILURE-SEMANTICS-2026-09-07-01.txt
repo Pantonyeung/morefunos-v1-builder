@@ -1,0 +1,13 @@
+work_id=MGMT-B9-MANAGEMENT-UX-FAILURE-SEMANTICS-2026-09-07-01
+candidate_sha=1b6651cd4fccf4fd5eae8183fd2a9906c3fd5e47
+base_main_sha=b49913ca6835cdfc02aa80a56d53aa41262b7ef8
+latest_main_sha=c4ed75174b2e25fdec8d63674dd0a829bc383991
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34099597223
+conclusion=success
