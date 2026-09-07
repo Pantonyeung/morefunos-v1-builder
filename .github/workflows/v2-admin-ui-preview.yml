@@ -62,7 +62,12 @@ jobs:
           CONFIG='infra/cloudflare/admin-web-worker/wrangler.jsonc'
           npx --yes wrangler@4 versions upload --config "$CONFIG" --preview-alias admin-ui 2>&1 | tee "$GITHUB_WORKSPACE/evidence/upload.log"
           URL="$(grep -Eo 'https://[a-z0-9-]+-morefun-v2-admin\.[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/upload.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
-          test -n "$URL"
+          if [ -z "$URL" ]; then
+            URL='https://admin-ui-morefun-v2-admin.pantonyeung.workers.dev'
+            echo "preview_url_source=stable_alias_fallback"
+          else
+            echo "preview_url_source=wrangler_output"
+          fi
           printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
 
       - name: Smoke preview shell
