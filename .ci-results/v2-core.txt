@@ -1,5 +1,5 @@
-source_sha=a60ec1128e5a7fe009da51c7501c7b7dda9f42b2
-request_id=FINAL-MERGE-TEAM-B-B6-2-PRICING-CORE-A60EC112
-run_id=34085121540
+source_sha=f479e8d128cfe0a6fa0f6bac517eacf7c8102ea8
+request_id=TEAMA-A7-OPERATIONAL-CONTEXT-CORE-R1-20260907
+run_id=34086651973
 run_attempt=1
 conclusion=failure
