@@ -1,5 +1,5 @@
-source_sha=28455d5486779c24860c217694661d2feaa1466e
-request_id=TEAM-B-B7-3-PRODUCT-MEDIA-CANDIDATE-R2-20260907
-run_id=34092882545
+source_sha=ecc8a9afb98fc82ccee7a3077fa8ae54fd465821
+request_id=TEAM-B-B7-3-PRODUCT-MEDIA-INTEGRATION-R3-20260907
+run_id=34093643557
 run_attempt=1
 conclusion=success
