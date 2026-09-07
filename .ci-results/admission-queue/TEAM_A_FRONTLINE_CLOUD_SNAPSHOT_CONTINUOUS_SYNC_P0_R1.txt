@@ -1,0 +1,13 @@
+work_id=TEAM_A_FRONTLINE_CLOUD_SNAPSHOT_CONTINUOUS_SYNC_P0_R1
+candidate_sha=1e97a4f29faf305a88f72d566f46024c45755e82
+base_main_sha=18ed1d49351c85fb2f17bb608a5f051c46d4ce04
+latest_main_sha=30a8d9816d42ca9f862b0568b007794eb51bd97e
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34137672958
+conclusion=success
