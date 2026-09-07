@@ -1,5 +1,5 @@
-source_sha=251e8fd454a7a28759f75867f6b390ca1920be8b
-request_id=TEAM-B-B7-2-CHANNEL-PROJECTION-CANDIDATE-R2-20260907
-run_id=34091166591
+source_sha=426dc6b26abeb74fc36efd47708b77c7f16ef07e
+request_id=TEAM-B-B7-2-CHANNEL-PROJECTION-CANDIDATE-R3-20260907
+run_id=34091589610
 run_attempt=1
-conclusion=failure
+conclusion=success
