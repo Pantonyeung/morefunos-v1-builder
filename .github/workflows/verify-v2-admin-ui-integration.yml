@@ -80,6 +80,10 @@ jobs:
         working-directory: source
         run: node --test packages/admin-ui-integration/*.test.ts
 
+      - name: Management shared session tests
+        working-directory: source
+        run: node --test packages/management-ui-integration/*.test.ts
+
       - name: Admin integration TypeScript
         working-directory: source
         shell: bash
