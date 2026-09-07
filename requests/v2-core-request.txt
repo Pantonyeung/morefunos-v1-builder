@@ -1,4 +1,4 @@
 source_sha=470d2b6475dbef27248a4654d7a8b311c99665eb
 branch_name=main
-verification_phase=BASELINE_DIAGNOSTIC
-request_id=TEAMA-A6-BASELINE-CORE-DIAGNOSTIC-470D2B64
+verification_phase=CANDIDATE
+request_id=TEAMA-A6-BASELINE-CORE-CANDIDATE-470D2B64
