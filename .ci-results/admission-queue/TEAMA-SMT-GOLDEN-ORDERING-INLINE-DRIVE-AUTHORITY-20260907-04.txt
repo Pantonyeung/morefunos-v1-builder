@@ -1,0 +1,13 @@
+work_id=TEAMA-SMT-GOLDEN-ORDERING-INLINE-DRIVE-AUTHORITY-20260907-04
+candidate_sha=58676b17ba79d836b475a3f5b946bea9411dcd66
+base_main_sha=678f5c613aaff5db9f6fe22f29a30a1d4715a1e1
+latest_main_sha=03d815ef3b35e477e5d1b88edea5d3fee7275ec1
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34118957141
+conclusion=success
