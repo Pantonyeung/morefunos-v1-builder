@@ -1,0 +1,13 @@
+work_id=MGMT-B6-3-STORE-OPERATION-BUSINESS-DAY-QUICK-CONTROL-2026-09-07-01
+candidate_sha=5e43522fb576629f09ecda3d4a5bca29fefe6de3
+base_main_sha=ca47edf38f2c922a260a15343f617b97b5d94f17
+latest_main_sha=5666644804c32292747df70277188dd42af4d4ea
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34085813486
+conclusion=success
