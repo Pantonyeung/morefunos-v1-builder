@@ -1,0 +1,13 @@
+work_id=TEAM_A_A4_CANONICAL_ORDER_READ_CONTRACT
+candidate_sha=b27fa2395e629e68c6eb44ed140dadbf12eea8c9
+base_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+latest_main_sha=25fadb6bdff58afd4d136809c7fb7d7212277b26
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=false
+run_id=34080269651
+conclusion=success
