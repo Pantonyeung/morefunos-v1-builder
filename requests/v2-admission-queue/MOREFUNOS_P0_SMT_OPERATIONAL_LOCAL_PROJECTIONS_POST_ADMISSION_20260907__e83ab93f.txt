@@ -1,0 +1,7 @@
+candidate_sha=e83ab93fa59b993475801c586d05a726c14d5003
+base_main_sha=e83ab93fa59b993475801c586d05a726c14d5003
+work_id=MOREFUNOS_P0_SMT_OPERATIONAL_LOCAL_PROJECTIONS_POST_ADMISSION_20260907
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
