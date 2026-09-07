@@ -171,14 +171,6 @@ jobs:
           await admin.goto(ADMIN_ORIGIN+'/admin/catalog/products',{waitUntil:'networkidle'});
           await admin.getByRole('heading',{name:'商品管理',exact:true}).waitFor({timeout:15000});
           await admin.getByRole('heading',{name:'商品列表',exact:true}).waitFor({timeout:15000});
-          if(productJson.value.products.length){
-            const firstProductId=productJson.value.products[0].productId;
-            await admin.goto(ADMIN_ORIGIN+'/admin/catalog/products/'+encodeURIComponent(firstProductId),{waitUntil:'networkidle'});
-            await admin.getByRole('heading',{name:'商品管理',exact:true}).waitFor({timeout:15000});
-            const save=admin.getByRole('button',{name:'保存 Catalog 商品資料',exact:true});
-            await save.waitFor({timeout:15000});
-          }
-
           await admin.goto(ADMIN_ORIGIN+'/admin/orders/history',{waitUntil:'networkidle'});
           await admin.getByRole('heading',{name:'歷史訂單',exact:true}).waitFor({timeout:15000});
           await admin.getByLabel('營業日期').fill(overviewValue.businessDate);
