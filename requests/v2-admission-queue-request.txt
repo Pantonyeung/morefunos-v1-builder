@@ -1,5 +1,5 @@
-candidate_sha=167b79e41d007edb5469d40d16f613d52ce18fde
-base_main_sha=4635bd8f37b8c8e607026b08c4a57f22b5ad18a0
-work_id=TEAMA-SMT-PREVIEW-STAFF-LOGIN-APPLE-SHELL-20260907-01
+candidate_sha=e8f591e5bd2c7949834c4c8d0fe96fdd1f7d7729
+base_main_sha=bde9b9a90ec8a21d5d0889eaf399bc5c6aac9355
+work_id=TEAMA-SMT-AUTH-RECOVERY-TRUE-1920-OTA-20260907-01
 affected_ports=SMT
 queue_attempt=1
