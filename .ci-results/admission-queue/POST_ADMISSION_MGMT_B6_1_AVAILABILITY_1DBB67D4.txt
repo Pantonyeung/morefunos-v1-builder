@@ -1,0 +1,13 @@
+work_id=POST_ADMISSION_MGMT_B6_1_AVAILABILITY_1DBB67D4
+candidate_sha=1dbb67d4938725992574fea01bb6ac21bbd3dd2a
+base_main_sha=1dbb67d4938725992574fea01bb6ac21bbd3dd2a
+latest_main_sha=1dbb67d4938725992574fea01bb6ac21bbd3dd2a
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=AVAILABILITY
+force_full_proof=true
+run_id=34082566147
+conclusion=success
