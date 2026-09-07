@@ -1,2 +1,2 @@
-source_sha=842c350c10de9e9c9ab6dc75c5b166bbdaee7512
-attempt=pricing-842c-customer-exact-15
+source_sha=0dab0f72a5da83f337c2035c67d9da2b7990e417
+request_id=TEAM-B-CUSTOMER-PRESENTATION-R10-CUSTOMER-VERIFY-20260908
