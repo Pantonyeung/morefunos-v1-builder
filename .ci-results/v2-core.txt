@@ -1,5 +1,5 @@
-source_sha=UNKNOWN
-request_id=POST-ADMISSION-TEAM-B-B6-2-PRICING-CORE-A60EC112
-run_id=34085060266
+source_sha=a60ec1128e5a7fe009da51c7501c7b7dda9f42b2
+request_id=FINAL-MERGE-TEAM-B-B6-2-PRICING-CORE-A60EC112
+run_id=34085121540
 run_attempt=1
 conclusion=failure
