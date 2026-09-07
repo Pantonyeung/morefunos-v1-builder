@@ -1,7 +1,7 @@
 source_sha=44893fc7ee18e1390facab1c3aaedf174a0f7f3c
-request_id=TEAM-B-ADMIN-MODIFIER-PRESETS-PRODUCTION-R6-20260907
-run_id=34141034862
+request_id=TEAM-B-ADMIN-MODIFIER-PRESETS-R6-PRODUCTION-20260907
+run_id=34141058690
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=5411d825-28f1-4d7e-9692-c52df2630973
+worker_version=f1a958a6-c698-4234-9df2-e39cc6bb7e7d
