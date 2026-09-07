@@ -1,0 +1,13 @@
+work_id=TEAM_A_SMT_ORDER_SYNC_CURSOR_CLIENT_P0_R1
+candidate_sha=3ce1b44cc46ef090e9e54526316161845b96de00
+base_main_sha=ffcbb1860e3094774df0120433627ab819abc9c5
+latest_main_sha=aff3460ca60c788a28623f88bd3fbe3f7978767a
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34154782419
+conclusion=success
