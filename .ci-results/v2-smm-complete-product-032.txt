@@ -1,5 +1,5 @@
-source_sha=00c35701388246a6c363d2ffa93f71e0a5ea7a5b
-request_id=TEAMA-A5-CANONICAL-MENU-HANDSHAKE-SMM-R3-20260907
-run_id=34081830613
+source_sha=37cad41ec5f5057f1dad63fd3ee8b1d0cf0be884
+request_id=TEAMA-A5-OFFLINE-LKG-SMM-R5-20260907
+run_id=34082148970
 run_attempt=1
 conclusion=success
