@@ -1,5 +1,5 @@
-source_sha=85243f8bbc844527b84b108c3e67759333d44b86
-request_id=TEAMA-PAYMENT-REFUND-CONSOLIDATION-SMT-20260907
-run_id=34076632371
+source_sha=8f6bb7de4556d13ec999243079268d950fccd998
+request_id=TEAMA-PAYMENT-REFUND-CONSOLIDATION-R2-SMT-20260907
+run_id=34076774437
 run_attempt=1
-conclusion=failure
+conclusion=success
