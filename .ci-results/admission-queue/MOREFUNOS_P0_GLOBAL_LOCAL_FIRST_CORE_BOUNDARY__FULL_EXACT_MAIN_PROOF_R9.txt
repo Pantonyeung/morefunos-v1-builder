@@ -1,0 +1,13 @@
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__FULL_EXACT_MAIN_PROOF_R9
+candidate_sha=83106249468024728e110adebb13a7b9838b890a
+base_main_sha=83106249468024728e110adebb13a7b9838b890a
+latest_main_sha=83106249468024728e110adebb13a7b9838b890a
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34116786593
+conclusion=success
