@@ -1,0 +1,6 @@
+candidate_sha=d8c28f369c7ac44b98e17bee6808260841629924
+base_main_sha=d8c28f369c7ac44b98e17bee6808260841629924
+work_id=MOREFUNOS_P0_SMT_HOTPATH_POST_ADMISSION_EXACT_MAIN_20260907
+affected_ports=SMT
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
