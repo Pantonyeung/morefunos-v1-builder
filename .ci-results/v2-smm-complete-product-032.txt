@@ -1,5 +1,5 @@
-source_sha=48fa56c81a443b14b7657845f0784f2386f48af7
-request_id=TEAMA-A6-PRICEBOOK-SMM-R2-20260907
-run_id=34084457724
+source_sha=db8ec1518659ce520431e2b052c261c82badd6e1
+request_id=POST-ADMISSION-TEAMA-A6-R1-SMM-DB8EC151
+run_id=34084760032
 run_attempt=1
 conclusion=success
