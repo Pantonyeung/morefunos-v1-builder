@@ -445,7 +445,21 @@ jobs:
           if grep -qx PRICING <<<"$auths" || [[ ",$tests," == *,PRICING,* ]]; then npm run test:core-pricing; fi
           if grep -qx AVAILABILITY <<<"$auths" || [[ ",$tests," == *,AVAILABILITY,* ]]; then npm run test:core-availability; fi
           if grep -qx BUSINESS_DAY <<<"$auths" || [[ ",$tests," == *,BUSINESS_DAY,* ]]; then npm run test:core-business-day-cash; fi
-          if grep -qx PAYMENT <<<"$auths" || [[ ",$tests," == *,PAYMENT,* ]]; then npm run test:core-payment; fi
+          if [[ ",$tests," == *,PAYMENT_ADMISSION,* ]]; then
+            node --test \
+              packages/payment/b0267-payment-refund-consumer-port.test.ts \
+              packages/payment/durable-acceptance.test.ts \
+              packages/payment/frontline-payment-refund-management-handshake.test.ts \
+              packages/payment/payment-proof-http.test.ts \
+              packages/payment/payment-proof-runtime.test.ts \
+              packages/payment/payment-proof.test.ts \
+              packages/payment/payment.test.ts \
+              packages/payment/refund-lifecycle.test.ts \
+              packages/payment/refund-postgres-transition.test.ts \
+              packages/payment/t2-d1-payment-refund-authority.test.ts
+          elif grep -qx PAYMENT <<<"$auths" || [[ ",$tests," == *,PAYMENT,* ]]; then
+            npm run test:core-payment
+          fi
           if grep -qx PRINT <<<"$auths" || [[ ",$tests," == *,PRINT,* ]]; then npm run test:print; fi
           if grep -qx CATALOG <<<"$auths" || [[ ",$tests," == *,CATALOG,* ]]; then npm run test:core-catalog; fi
 
