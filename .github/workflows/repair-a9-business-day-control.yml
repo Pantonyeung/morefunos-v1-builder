@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   repair:
@@ -91,3 +92,27 @@ jobs:
           if(!Number.isSafeInteger(control.revision)||control.revision<1)throw new Error('A9_CONTROL_REVISION_INVALID');
           console.log('A9_BUSINESS_DAY_CONTROL_REPAIR=PASS businessDate='+day.businessDate+' revision='+control.revision+' intake='+control.intakeStatus);
           NODE
+
+      - name: Publish repair success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/a9-business-day-control-repair' \
+            -f description='A9 Business Day control canonical repair passed' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Publish repair failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/Pantonyeung/morefunos-v1-builder/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/a9-business-day-control-repair' \
+            -f description='A9 Business Day control canonical repair failed' \
+            -f target_url="https://github.com/Pantonyeung/morefunos-v1-builder/actions/runs/$GITHUB_RUN_ID"
