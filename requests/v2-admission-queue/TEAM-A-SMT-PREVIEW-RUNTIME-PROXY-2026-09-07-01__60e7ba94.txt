@@ -1,0 +1,8 @@
+candidate_sha=60e7ba942d962f15984659d9fe0ae751263af237
+base_main_sha=849694e6454ed1474bbc19d9180bb260df060eaf
+work_id=TEAM-A-SMT-PREVIEW-RUNTIME-PROXY-2026-09-07-01
+affected_ports=SMT
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
