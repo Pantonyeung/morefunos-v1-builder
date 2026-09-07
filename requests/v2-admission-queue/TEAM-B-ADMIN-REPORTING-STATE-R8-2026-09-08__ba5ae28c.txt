@@ -1,0 +1,7 @@
+candidate_sha=ba5ae28c5df7f2c6a311e7511c9d068dc30bb039
+base_main_sha=28549d67831290e9963c9ba2fb2de49705fb76db
+work_id=TEAM-B-ADMIN-REPORTING-STATE-R8-2026-09-08
+affected_ports=ADMIN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
