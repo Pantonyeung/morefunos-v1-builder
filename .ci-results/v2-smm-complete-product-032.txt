@@ -1,5 +1,5 @@
-source_sha=b60e593c9d5a5dfe908068143414630e1e21b2f9
-request_id=TEAMA-SMT-SMM-SHARED-PARITY-MIDCHECK-20260907
-run_id=34069674167
+source_sha=d93ed6fecbe4121ff14cef79b3db3a7858d295ff
+request_id=TEAMA-SMT-SMM-SHARED-PARITY-MIDCHECK-R2-20260907
+run_id=34069728265
 run_attempt=1
-conclusion=failure
+conclusion=success
