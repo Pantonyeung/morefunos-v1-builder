@@ -1,0 +1,13 @@
+work_id=MGMT-B6-2-PRICING-QUICK-CONTROL-2026-09-07-01
+candidate_sha=a75664363966e69ec8ccc95541855920c2373029
+base_main_sha=e5ab7c58047471f6a3306f7c0675253fd53bb71c
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=team_a_a6_canonical_pricing_quote_parity
+required_core_tests=PRICING
+force_full_proof=false
+run_id=34084116460
+conclusion=failure
