@@ -1,7 +1,7 @@
-source_sha=4d649e5517e828b8969bebb54d7781761699ba48
-request_id=TEAM-B-B10-ADMIN-PRODUCTION-4D649E55
-run_id=34102952519
+source_sha=020adfae45ed3e264f6c537f6efaeb5b473489b5
+request_id=P0-LATENCY-ADMIN-020ADFAE
+run_id=34116411000
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=4c4563bf-c4d1-49be-b491-a1296b5d7231
+worker_version=8da01764-0ed0-41f2-931f-f548ef07a412
