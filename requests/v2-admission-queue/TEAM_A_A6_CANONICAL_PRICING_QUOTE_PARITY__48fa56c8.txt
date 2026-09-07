@@ -1,0 +1,7 @@
+candidate_sha=48fa56c81a443b14b7657845f0784f2386f48af7
+base_main_sha=470d2b6475dbef27248a4654d7a8b311c99665eb
+work_id=TEAM_A_A6_CANONICAL_PRICING_QUOTE_PARITY
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=PRICING
+force_full_proof=true
