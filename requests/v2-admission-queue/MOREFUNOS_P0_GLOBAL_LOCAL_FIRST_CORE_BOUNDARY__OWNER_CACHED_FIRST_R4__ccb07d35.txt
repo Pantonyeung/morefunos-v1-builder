@@ -1,0 +1,7 @@
+candidate_sha=ccb07d35cbae8d2a5394297fa880fe9f8c19b6ea
+base_main_sha=e598f88a6182104df3a9a3dda1a9780e95bb9dc6
+work_id=MOREFUNOS_P0_GLOBAL_LOCAL_FIRST_CORE_BOUNDARY__OWNER_CACHED_FIRST_R4
+affected_ports=OWNER
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
