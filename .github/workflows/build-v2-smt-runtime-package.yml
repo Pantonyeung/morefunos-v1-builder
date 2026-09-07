@@ -117,6 +117,8 @@ jobs:
           names = [
               'T2-MICRO-003 mounts only open-order list with server-owned store scope',
               'T2-MICRO-004 mounts only order history list with server-owned store scope',
+              'T2-MICRO-005 mounts only current availability read with server-owned store scope',
+              'T2-HISTORICAL-LINKUP-BUNDLE-001 mounts reusable Availability set without trusting caller store scope',
           ]
           for name in names:
               old = "test('" + name + "', async () => {"
