@@ -1,0 +1,13 @@
+work_id=TEAM_A_SMT_ORDER_SYNC_CURSOR_CLIENT_POST_ADMISSION
+candidate_sha=3989b8a16daf9758229b9c0e1008245616d360bf
+base_main_sha=aff3460ca60c788a28623f88bd3fbe3f7978767a
+latest_main_sha=3989b8a16daf9758229b9c0e1008245616d360bf
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34154967277
+conclusion=success
