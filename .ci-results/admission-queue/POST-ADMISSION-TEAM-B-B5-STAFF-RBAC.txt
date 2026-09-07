@@ -1,0 +1,13 @@
+work_id=POST-ADMISSION-TEAM-B-B5-STAFF-RBAC
+candidate_sha=e646d7d0518060b590cef4bb510a19303cbed807
+base_main_sha=e646d7d0518060b590cef4bb510a19303cbed807
+latest_main_sha=35fe7c4706c8df1f4ffb931cc608318fa801aa50
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34080612360
+conclusion=success
