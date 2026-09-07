@@ -1,4 +1,5 @@
-source_sha=1f05c6181262f6f0898d7f6cefb98cfe9d7f3299
-branch_name=work/TEAM-A/a8-supersede-integration-20260907
+source_sha=92df3a464b5d372d62225883ee272e5864077534
+base_sha=5ab48f66ce2f3669c94f7513e39d976913b4a484
+branch_name=work/TEAM-B/presentation-owner-frontline-r11-20260908-01
 verification_phase=CANDIDATE
-request_id=POST-ADMISSION-TEAMA-A8-CORE-R2-1F05C618
+request_id=TEAM-B-PRESENTATION-R11-CORE-VERIFY-20260908
