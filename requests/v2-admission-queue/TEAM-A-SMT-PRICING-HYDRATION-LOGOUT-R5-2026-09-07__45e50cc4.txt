@@ -1,0 +1,8 @@
+candidate_sha=45e50cc478d42a3eac13acd8babe381eb9527ecb
+base_main_sha=644377c7b2c40bc97ecd7dcfdb5dc8de31f609b7
+work_id=TEAM-A-SMT-PRICING-HYDRATION-LOGOUT-R5-2026-09-07
+affected_ports=SMT
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
