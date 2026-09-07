@@ -1,5 +1,5 @@
-source_sha=476748a93f7ce08f40eb766c61d8c98c167e96fb
-request_id=TEAM-B-B7-1-CATALOG-VARIATION-WORKER-GREEN-20260907
-run_id=34089187581
+source_sha=76cb96f98c4af4959e680311163c13507f158675
+request_id=TEAM-B-B7-1-CATALOG-VARIATION-UI-RED-20260907
+run_id=34089255580
 run_attempt=1
-conclusion=success
+conclusion=failure
