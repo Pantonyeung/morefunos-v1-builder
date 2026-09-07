@@ -1,0 +1,13 @@
+work_id=TEAM_A_ORDER_STORE_SYNC_SEQUENCE_P0_R3
+candidate_sha=b9817e1979418502c7d480658fb32fdb153379b6
+base_main_sha=068c345eaa82a91710a9f613f122eab075d14a3e
+latest_main_sha=3b8626cd93d11edb4059f788758c9fb5ae733f59
+collision=C0
+impact=V1
+reason=DISJOINT
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34141953141
+conclusion=success
