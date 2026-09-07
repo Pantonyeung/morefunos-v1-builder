@@ -1,0 +1,7 @@
+candidate_sha=1dbb67d4938725992574fea01bb6ac21bbd3dd2a
+base_main_sha=1dbb67d4938725992574fea01bb6ac21bbd3dd2a
+work_id=POST_ADMISSION_MGMT_B6_1_AVAILABILITY_1DBB67D4
+affected_ports=OWNER,ADMIN
+depends_on_specs=
+required_core_tests=AVAILABILITY
+force_full_proof=true
