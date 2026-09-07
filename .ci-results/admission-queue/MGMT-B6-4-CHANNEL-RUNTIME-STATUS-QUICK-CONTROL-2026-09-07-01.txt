@@ -1,0 +1,13 @@
+work_id=MGMT-B6-4-CHANNEL-RUNTIME-STATUS-QUICK-CONTROL-2026-09-07-01
+candidate_sha=722ce83bc0470c8afd16ae843a205dad4077b8e7
+base_main_sha=afc8e09a232873bff333ddfc83bf3622df66940a
+latest_main_sha=afc8e09a232873bff333ddfc83bf3622df66940a
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34088460467
+conclusion=success
