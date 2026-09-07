@@ -1,5 +1,5 @@
-source_sha=cfb3313fd2b3ef12afb0db000364599bf51f1649
-request_id=TEAMA-ORDER-MUTATION-HANDSHAKE-SMT-20260907
-run_id=34075488834
+source_sha=9002988f056cc79c3ab0d3be3a2ccc7ba47096bf
+request_id=TEAMA-ORDER-MUTATION-HANDSHAKE-SMT-R2-20260907
+run_id=34075556222
 run_attempt=1
 conclusion=success
