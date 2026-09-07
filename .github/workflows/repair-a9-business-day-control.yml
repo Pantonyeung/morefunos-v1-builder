@@ -1,0 +1,93 @@
+name: A9 Repair Business Day Control
+
+on:
+  push:
+    paths:
+      - 'requests/a9-business-day-control-repair.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require canonical Admin session
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ADMIN_SESSION_BOOTSTRAP_JSON:-}"
+          TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
+          echo "::add-mask::$TOKEN"
+          echo "ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Read current Business Day and control
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP="$(curl -sS -o /tmp/day.json -w '%{http_code}' -H "Cookie: mf_admin_session=$ADMIN_TOKEN" "$ADMIN_ORIGIN/api/admin/business-day")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/day.json','utf8'));
+          if(x?.ok!==true||!x.value?.businessDay?.businessDayId)throw new Error('A9_OPEN_BUSINESS_DAY_REQUIRED');
+          const day=x.value.businessDay;
+          const control=x.value.control??null;
+          if(day.lifecycleStatus!=='OPEN')throw new Error('A9_BUSINESS_DAY_NOT_OPEN');
+          if(control&&control.businessDayId!==day.businessDayId)throw new Error('A9_CONTROL_DAY_MISMATCH');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'business_day_id='+day.businessDayId+'\n');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'control_exists='+(control?'true':'false')+'\n');
+          console.log('a9-business-day='+day.businessDate+' id='+day.businessDayId+' control='+(control?'EXISTS':'MISSING'));
+          NODE
+
+      - name: Create missing control through canonical Admin command
+        if: steps.current.outputs.control_exists == 'false'
+        shell: bash
+        env:
+          BUSINESS_DAY_ID: ${{ steps.current.outputs.business_day_id }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const id=process.env.BUSINESS_DAY_ID;
+          fs.writeFileSync('/tmp/repair.json',JSON.stringify({
+            businessDayId:id,
+            expectedRevision:0,
+            intakeStatus:'PAUSED',
+            etaMinutes:null,
+            earlyCloseAt:null,
+            idempotencyKey:'a9-repair-business-day-control:'+id
+          }));
+          NODE
+          HTTP="$(curl -sS -X PATCH -o /tmp/repair-response.json -w '%{http_code}'             -H "Cookie: mf_admin_session=$ADMIN_TOKEN"             -H 'content-type: application/json'             --data-binary @/tmp/repair.json             "$ADMIN_ORIGIN/api/admin/business-day")"
+          cat /tmp/repair-response.json
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/repair-response.json');if(x?.ok!==true||x.value?.businessDayId!==process.env.BUSINESS_DAY_ID||x.value?.intakeStatus!=='PAUSED'||x.value?.revision!==1)process.exit(1)"
+
+      - name: Verify canonical readback
+        shell: bash
+        env:
+          BUSINESS_DAY_ID: ${{ steps.current.outputs.business_day_id }}
+        run: |
+          set -euo pipefail
+          HTTP="$(curl -sS -o /tmp/readback.json -w '%{http_code}' -H "Cookie: mf_admin_session=$ADMIN_TOKEN" "$ADMIN_ORIGIN/api/admin/business-day")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const x=require('/tmp/readback.json');
+          const day=x?.value?.businessDay,control=x?.value?.control;
+          if(x?.ok!==true||!day||day.businessDayId!==process.env.BUSINESS_DAY_ID)throw new Error('A9_DAY_READBACK_MISMATCH');
+          if(!control||control.businessDayId!==day.businessDayId)throw new Error('A9_CONTROL_READBACK_MISSING');
+          if(control.intakeStatus!=='PAUSED')throw new Error('A9_CONTROL_MUST_REMAIN_PAUSED');
+          if(!Number.isSafeInteger(control.revision)||control.revision<1)throw new Error('A9_CONTROL_REVISION_INVALID');
+          console.log('A9_BUSINESS_DAY_CONTROL_REPAIR=PASS businessDate='+day.businessDate+' revision='+control.revision+' intake='+control.intakeStatus);
+          NODE
