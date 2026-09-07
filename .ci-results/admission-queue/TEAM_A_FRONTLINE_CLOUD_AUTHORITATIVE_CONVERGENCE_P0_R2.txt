@@ -1,0 +1,13 @@
+work_id=TEAM_A_FRONTLINE_CLOUD_AUTHORITATIVE_CONVERGENCE_P0_R2
+candidate_sha=7a8ff030a6736d63c05aeaf9ebb502d118131074
+base_main_sha=18ed1d49351c85fb2f17bb608a5f051c46d4ce04
+latest_main_sha=33f34c27be6487170b999ca903bbecdd7b1d5dbf
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34139492830
+conclusion=success
