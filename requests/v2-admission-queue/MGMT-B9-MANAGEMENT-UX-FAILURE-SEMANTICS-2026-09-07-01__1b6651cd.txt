@@ -1,0 +1,7 @@
+candidate_sha=1b6651cd4fccf4fd5eae8183fd2a9906c3fd5e47
+base_main_sha=b49913ca6835cdfc02aa80a56d53aa41262b7ef8
+work_id=MGMT-B9-MANAGEMENT-UX-FAILURE-SEMANTICS-2026-09-07-01
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
