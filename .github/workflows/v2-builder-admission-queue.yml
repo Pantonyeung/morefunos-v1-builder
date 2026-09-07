@@ -29,6 +29,11 @@ on:
         required: false
         default: ''
         type: string
+      supersedes_candidate_sha:
+        description: Exact prior candidate SHA for the same work_id when submitting a repaired revision
+        required: false
+        default: ''
+        type: string
       required_core_tests:
         description: Comma-separated ORDER,PAYMENT,PRINT,PRICING,AVAILABILITY,BUSINESS_DAY,CATALOG
         required: false
@@ -71,6 +76,7 @@ jobs:
           INPUT_WORK_ID: ${{ inputs.work_id }}
           INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
           INPUT_DEPENDS_ON_SPECS: ${{ inputs.depends_on_specs }}
+          INPUT_SUPERSEDES_CANDIDATE_SHA: ${{ inputs.supersedes_candidate_sha }}
           INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
           INPUT_FORCE_FULL_PROOF: ${{ inputs.force_full_proof }}
         run: |
@@ -88,6 +94,7 @@ jobs:
             WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
             AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(printf '%s' "$INPUT_DEPENDS_ON_SPECS" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            SUPERSEDES_CANDIDATE_SHA="$(printf '%s' "$INPUT_SUPERSEDES_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(printf '%s' "$INPUT_REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(printf '%s' "$INPUT_FORCE_FULL_PROOF" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUEST_FILE=WORKFLOW_DISPATCH
@@ -117,22 +124,57 @@ jobs:
             WORK_ID="$(read_request work_id "$REQUEST_FILE")"
             AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(read_request depends_on_specs "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            SUPERSEDES_CANDIDATE_SHA="$(read_request supersedes_candidate_sha "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(read_request force_full_proof "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           fi
           DEPENDS_ON_SPECS="${DEPENDS_ON_SPECS:-}"
+          SUPERSEDES_CANDIDATE_SHA="${SUPERSEDES_CANDIDATE_SHA:-}"
           REQUIRED_CORE_TESTS="${REQUIRED_CORE_TESTS:-}"
           FORCE_FULL_PROOF="${FORCE_FULL_PROOF:-false}"
           [[ "$FORCE_FULL_PROOF" == "true" || "$FORCE_FULL_PROOF" == "false" ]]
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           test -n "$WORK_ID"
+
+          if [[ "$REQUEST_FILE" != "WORKFLOW_DISPATCH" ]]; then
+            mapfile -t SAME_WORK_FILES < <(
+              grep -l -F "work_id=$WORK_ID" requests/v2-admission-queue/*.txt 2>/dev/null | sort -u || true
+            )
+            PRIOR_FILES=()
+            for prior in "${SAME_WORK_FILES[@]}"; do
+              [[ "$prior" == "$REQUEST_FILE" ]] && continue
+              PRIOR_FILES+=("$prior")
+            done
+            if [[ "${#PRIOR_FILES[@]}" -gt 0 ]]; then
+              if [[ -z "$SUPERSEDES_CANDIDATE_SHA" ]]; then
+                echo "DUPLICATE_WORK_ID_REQUIRES_EXPLICIT_SUPERSEDE:$WORK_ID" >&2
+                printf '%s\n' "${PRIOR_FILES[@]}" >&2
+                exit 25
+              fi
+              [[ "$SUPERSEDES_CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+              MATCHED_SUPERSEDE=false
+              for prior in "${PRIOR_FILES[@]}"; do
+                prior_sha="$(read_request candidate_sha "$prior" | tr '[:upper:]' '[:lower:]')"
+                if [[ "$prior_sha" == "$SUPERSEDES_CANDIDATE_SHA" ]]; then
+                  MATCHED_SUPERSEDE=true
+                  break
+                fi
+              done
+              if [[ "$MATCHED_SUPERSEDE" != true ]]; then
+                echo "SUPERSEDES_CANDIDATE_SHA_NOT_FOUND_FOR_WORK_ID:$WORK_ID:$SUPERSEDES_CANDIDATE_SHA" >&2
+                exit 26
+              fi
+            fi
+          fi
+
           echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "base_main_sha=$BASE_MAIN_SHA" >> "$GITHUB_OUTPUT"
           echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
           echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
           echo "depends_on_specs=$DEPENDS_ON_SPECS" >> "$GITHUB_OUTPUT"
+          echo "supersedes_candidate_sha=$SUPERSEDES_CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
           echo "force_full_proof=$FORCE_FULL_PROOF" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
