@@ -1,0 +1,13 @@
+work_id=TEAM-A-SMT-GOLDEN-UI-ADMIT-R3-2026-09-07
+candidate_sha=f011daf53620ab23ef914248319ac5a043ecf40e
+base_main_sha=b30ce2b3fab752e7535812fcd4158c3a0d3460ed
+latest_main_sha=08375012d17249e24dd217a85b7b97ad406cb095
+collision=C1
+impact=V2
+reason=DEPENDENCY_OR_PACKAGE_TOUCH
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34132638071
+conclusion=success
