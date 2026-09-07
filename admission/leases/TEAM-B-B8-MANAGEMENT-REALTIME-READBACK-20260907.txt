@@ -16,3 +16,7 @@ candidate_sha=98232b04611585ed467266e2b6fab6c41016ce15
 owner_candidate_run=34095228343
 admin_candidate_run=34095235555
 candidate_frozen=true
+candidate_sha=98232b04611585ed467266e2b6fab6c41016ce15
+owner_candidate_builder_run=34095228343
+admin_candidate_builder_run=34095235555
+candidate_frozen=true
