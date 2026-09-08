@@ -54,6 +54,77 @@ const requireText = (text, needle, code) => {
   if (!text.includes(needle)) throw new Error(`${code}:${needle}`);
 };
 
+const capabilityIds = new Set();
+const capabilityPaths = [];
+let currentCapabilityId = null;
+let inCanonicalPaths = false;
+for (const raw of catalog.split(/\r?\n/)) {
+  const idMatch = raw.match(/^  - capability_id:\s*(CAP-[A-Z0-9-]+)\s*$/);
+  if (idMatch) {
+    const id = idMatch[1];
+    if (capabilityIds.has(id)) throw new Error('MEMORY_GUARD_DUPLICATE_CAPABILITY_ID:' + id);
+    capabilityIds.add(id);
+    currentCapabilityId = id;
+    inCanonicalPaths = false;
+    continue;
+  }
+  if (/^    canonical_paths:\s*$/.test(raw)) {
+    inCanonicalPaths = true;
+    continue;
+  }
+  if (/^    [a-zA-Z0-9_]+:/.test(raw)) {
+    inCanonicalPaths = false;
+  }
+  if (inCanonicalPaths) {
+    const pathMatch = raw.match(/^      -\s+(.+?)\s*$/);
+    if (pathMatch && currentCapabilityId) {
+      const p = pathMatch[1].replace(/^[\"']|[\"']$/g, '');
+      if (p) capabilityPaths.push({ capabilityId: currentCapabilityId, path: p });
+    }
+  }
+}
+
+for (const requiredCapability of [
+  'CAP-ORDER-IDENTITY-001',
+  'CAP-CUSTOMER-ORDER-001',
+  'CAP-PAYMENT-REFUND-001',
+  'CAP-PRINT-CORE-001',
+  'CAP-FULFILLMENT-001',
+  'CAP-KEETA-INGRESS-001',
+  'CAP-STAFF-RBAC-001',
+  'CAP-STORE-CONFIG-001',
+]) {
+  if (!capabilityIds.has(requiredCapability)) {
+    throw new Error('MEMORY_GUARD_REQUIRED_CAPABILITY_MISSING:' + requiredCapability);
+  }
+}
+
+const integrationCapabilityRefs = new Set();
+for (const raw of integrationRegistry.split(/\r?\n/)) {
+  const direct = raw.match(/^\s+capability_id:\s*(CAP-[A-Z0-9-]+)\s*$/);
+  if (direct) integrationCapabilityRefs.add(direct[1]);
+  const listRef = raw.match(/^\s+-\s+(CAP-[A-Z0-9-]+)\s*$/);
+  if (listRef) integrationCapabilityRefs.add(listRef[1]);
+}
+for (const id of integrationCapabilityRefs) {
+  if (!capabilityIds.has(id)) throw new Error('MEMORY_GUARD_DANGLING_INTEGRATION_CAPABILITY_REF:' + id);
+}
+
+const catalogCapabilityRefs = new Set();
+for (const raw of catalog.split(/\r?\n/)) {
+  const ref = raw.match(/^\s{6}-\s+(CAP-[A-Z0-9-]+)\s*$/);
+  if (ref) catalogCapabilityRefs.add(ref[1]);
+}
+for (const id of catalogCapabilityRefs) {
+  if (!capabilityIds.has(id)) throw new Error('MEMORY_GUARD_DANGLING_CATALOG_CAPABILITY_REF:' + id);
+}
+
+for (const entry of capabilityPaths) {
+  if (!fs.existsSync(path.join(root, entry.path))) {
+    throw new Error('MEMORY_GUARD_CANONICAL_PATH_MISSING:' + entry.capabilityId + ':' + entry.path);
+  }
+}
+
 requireText(authority, 'Read Firewall', 'MEMORY_GUARD_AUTHORITY_FIREWALL_MISSING');
 requireText(authority, 'Capability-first hard rule', 'MEMORY_GUARD_CAPABILITY_FIRST_MISSING');
 
