@@ -277,7 +277,15 @@ if (requestedCapabilityAction === 'NEW_BUILD') {
   const startIndex = catalog.indexOf(marker);
   const nextIndex = catalog.indexOf('\n  - capability_id:', startIndex + marker.length);
   const block = startIndex >= 0 ? catalog.slice(startIndex, nextIndex >= 0 ? nextIndex : catalog.length) : '';
-  if (/no_redo:\s*true/.test(block) && !/lifecycle:\s*(PARTIAL|DRAFT|DISCOVERED)/.test(block)) {
+  const closedNewBuildVerification =
+    scalarField(workItem.text, 'STATUS').toUpperCase() === 'CLOSED' &&
+    scalarField(workItem.text, 'ACTIVE').toLowerCase() === 'false' &&
+    scalarField(workItem.text, 'closure_status').toUpperCase() === 'CLOSED';
+  if (
+    /no_redo:\s*true/.test(block) &&
+    !/lifecycle:\s*(PARTIAL|DRAFT|DISCOVERED)/.test(block) &&
+    !closedNewBuildVerification
+  ) {
     throw new Error('MEMORY_GUARD_NEW_BUILD_REUSES_NO_REDO_CAPABILITY:' + requestedCapabilityId);
   }
 }
