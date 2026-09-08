@@ -1,5 +1,5 @@
-source_sha=36dece13e1da2e6a5d7ea8e6f613a56a09e3c445
-request_id=TEAM-C-B0127-EVENT-DURABILITY-TERMINAL-CORE-20260908-01
-run_id=34218180918
+source_sha=284fe61438d5598dbec72e90a8608b24cc8babf5
+request_id=TEAM-C-B0127-EVENT-DURABILITY-TERMINAL-20260908-01
+run_id=34218326887
 run_attempt=1
 conclusion=success
