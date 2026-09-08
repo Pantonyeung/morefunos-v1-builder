@@ -1,0 +1,13 @@
+work_id=TEAM-C-WI-B0119-admin-owner-rfm-consumption
+candidate_sha=c3805dc512d69b010e7da0a7b7d99d5cd143d50e
+base_main_sha=682e700e8f74a60f390ed734423793b37cd1914c
+latest_main_sha=682e700e8f74a60f390ed734423793b37cd1914c
+collision=C0
+impact=V0
+reason=CANDIDATE_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34204234357
+conclusion=success
