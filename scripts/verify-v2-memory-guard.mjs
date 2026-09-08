@@ -153,6 +153,17 @@ const walkFiles = (dir) => {
   return out;
 };
 
+const walkAllFiles = (dir) => {
+  const out = [];
+  if (!fs.existsSync(dir)) return out;
+  for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walkAllFiles(full));
+    else if (entry.isFile()) out.push(full);
+  }
+  return out;
+};
+
 const scalarField = (text, key) => {
   const lines = text.split(/\r?\n/);
   const prefix = key + ':';
@@ -865,7 +876,7 @@ for (const capRef of new Set([...auxiliaryAssetRegistry.matchAll(/CAP-[A-Z0-9-]+
 const auxiliarySurfaceRoots = ['data','scripts','workers'];
 for (const surface of auxiliarySurfaceRoots) {
   const surfaceRoot = path.join(root, surface);
-  for (const file of walkFiles(surfaceRoot)) {
+  for (const file of walkAllFiles(surfaceRoot)) {
     const relative = path.relative(root, file).split(path.sep).join('/');
     if (!auxiliaryAssetRegistry.includes(relative)) {
       throw new Error('MEMORY_GUARD_AUXILIARY_FILE_UNCLASSIFIED:' + relative);
