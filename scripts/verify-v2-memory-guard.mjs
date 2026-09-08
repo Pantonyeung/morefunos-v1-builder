@@ -462,7 +462,9 @@ requireText(firewall, 'filename_pattern_match_does_not_assign_work: true', 'MEMO
 requireText(quarantineRegistry, 'phase_5_commander_snapshots:', 'MEMORY_GUARD_PHASE5_COMMANDER_SNAPSHOT_MISSING');
 const phase5Start = quarantineRegistry.indexOf('phase_5_commander_snapshots:');
 const phase5Block = quarantineRegistry.slice(phase5Start);
-requireText(phase5Block, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE5_COMMANDER_NOT_READY');
+requireText(phase5Block, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE5_COMMANDER_NOT_GREEN');
+requireText(phase5Block, 'builder_run: 34180381453', 'MEMORY_GUARD_PHASE5_RUN_MISSING');
+requireText(phase5Block, 'exact_candidate_sha: 660165d0c25e91b2bad6a8dbdc39d3db1d579f7d', 'MEMORY_GUARD_PHASE5_SHA_MISSING');
 requireText(phase5Block, 'quarantined_count: 16', 'MEMORY_GUARD_PHASE5_COMMANDER_COUNT_DECLARATION_MISSING');
 const phase5Pointers = [...phase5Block.matchAll(/^    - path:\s*(docs\/recovery\/commander\/.+?)\s*$/gm)].map(m => m[1].trim());
 const phase5Bodies = [...phase5Block.matchAll(/^      historical_body:\s*(docs\/recovery\/history\/commander\/snapshots\/.+?)\s*$/gm)].map(m => m[1].trim());
