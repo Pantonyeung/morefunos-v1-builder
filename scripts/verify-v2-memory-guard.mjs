@@ -532,4 +532,53 @@ for (const filePath of currentCommanderRefs) {
   }
 }
 
+
+requireText(firewall, 'decision_namespace_policy:', 'MEMORY_GUARD_DECISION_NAMESPACE_POLICY_MISSING');
+requireText(firewall, 'decision_namespace_policy:\n  default_class: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_DECISION_NAMESPACE_DEFAULT_CLASS_MISSING');
+requireText(firewall, 'default_current_mode_read: FORBIDDEN', 'MEMORY_GUARD_DECISION_NAMESPACE_DEFAULT_READ_NOT_FORBIDDEN');
+requireText(docRegistry, 'docs/recovery/decisions/**: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_DECISION_DOCREG_DEFAULT_MISSING');
+
+const decisionAllowlist = [
+  'docs/recovery/decisions/PRODUCT-FAMILY-AND-OWNED-CHANNEL-REDEFINITION-2026-09-07.md',
+  'docs/recovery/decisions/CORE-FIRST-THEN-IMMEDIATE-A11-B11-THEN-INCREMENTAL-DOMAINS-2026-09-08.md',
+  'docs/recovery/decisions/TEAM-C-FEATURE-EXPANSION-CHARTER-2026-09-08.md',
+  'docs/recovery/decisions/INVENTORY-STATISTICAL-ONLY-NONBLOCKING-AUTHORITY-2026-09-08.md',
+  'docs/recovery/decisions/DOMAIN-SPECIFIC-CONSISTENCY-AND-FAST-PATH-CONSTITUTION-2026-09-08.md',
+  'docs/recovery/decisions/CANONICAL-ORDER-IDENTITY-CONTRACT-2026-09-05.md',
+  'docs/recovery/decisions/FRONTLINE-OFFLINE-OPERATIONAL-BUNDLE-2026-09-07.md',
+];
+
+for (const filePath of decisionAllowlist) {
+  if (!fs.existsSync(path.join(root, filePath))) {
+    throw new Error('MEMORY_GUARD_DECISION_ALLOWLIST_FILE_MISSING:' + filePath);
+  }
+  requireText(firewall, '    - ' + filePath, 'MEMORY_GUARD_DECISION_ALLOWLIST_FIREWALL_ENTRY_MISSING');
+  const marker = '  - path: ' + filePath;
+  const start = docRegistry.indexOf(marker);
+  if (start < 0) throw new Error('MEMORY_GUARD_DECISION_DOCREG_ENTRY_MISSING:' + filePath);
+  const next = docRegistry.indexOf('\n  - path:', start + marker.length);
+  const defaults = docRegistry.indexOf('\ndefaults:', start + marker.length);
+  const candidates = [next, defaults].filter(x => x >= 0);
+  const end = candidates.length ? Math.min(...candidates) : docRegistry.length;
+  const entry = docRegistry.slice(start, end);
+  requireText(entry, 'authority: CURRENT_REFERENCE', 'MEMORY_GUARD_DECISION_DOCREG_NOT_CURRENT_REFERENCE');
+}
+
+const currentDecisionRefSources = [
+  cycle,
+  catalog,
+  read('docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md'),
+];
+const currentDecisionRefs = new Set();
+for (const source of currentDecisionRefSources) {
+  for (const match of source.match(/docs\/recovery\/decisions\/[A-Za-z0-9._-]+\.md/g) || []) {
+    currentDecisionRefs.add(match);
+  }
+}
+for (const filePath of currentDecisionRefs) {
+  if (!decisionAllowlist.includes(filePath)) {
+    throw new Error('MEMORY_GUARD_CURRENT_DECISION_REF_NOT_ALLOWLISTED:' + filePath);
+  }
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
