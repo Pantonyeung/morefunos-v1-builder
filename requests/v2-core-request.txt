@@ -1,5 +1,5 @@
-source_sha=da030bfd7485797fa73c2735065f380954d715bb
-base_sha=57addd4c5e9dbcfe87548b3882b8c5b7ed900ef1
+source_sha=fad2c7b9aa5de48742998626a8b3f87e0cd495ba
+base_sha=da030bfd7485797fa73c2735065f380954d715bb
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-B0147-CUSTOMER360-CRM-WRITE-CORE-20260909
+request_id=TEAM-C-B0147-CUSTOMER360-CRM-WRITE-CORE-R2-20260909
