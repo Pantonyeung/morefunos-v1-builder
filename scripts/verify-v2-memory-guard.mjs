@@ -400,7 +400,17 @@ for (const entry of fs.readdirSync(recoveryRoot, {withFileTypes:true})) {
 
 requireText(quarantineRegistry, 'phase_4_commander_high_risk:', 'MEMORY_GUARD_PHASE4_COMMANDER_QUARANTINE_MISSING');
 requireText(quarantineRegistry, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE4_COMMANDER_NOT_GREEN');
-requireText(quarantineRegistry, 'builder_run: 34179637223', 'MEMORY_GUARD_PHASE4_COMMANDER_RUN_MISSING');
+{
+  const p4Start = quarantineRegistry.indexOf('phase_4_commander_high_risk:');
+  const p5Start = quarantineRegistry.indexOf('phase_5', p4Start + 1);
+  const p4Block = quarantineRegistry.slice(p4Start, p5Start > p4Start ? p5Start : quarantineRegistry.length);
+  if (!/builder_run:\s*\d+/.test(p4Block)) {
+    throw new Error('MEMORY_GUARD_PHASE4_COMMANDER_RUN_MISSING');
+  }
+  if (!/exact_candidate_sha:\s*[0-9a-f]{40}/.test(p4Block)) {
+    throw new Error('MEMORY_GUARD_PHASE4_COMMANDER_SHA_MISSING');
+  }
+}
 const commanderPhase4 = [
   ['docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md','docs/recovery/history/commander/WORK-ACCEPTANCE-JOURNAL-PRE-QUARANTINE-2026-09-08.md'],
   ['docs/recovery/commander/ACTIVE-CHANGE-LEASES.yaml','docs/recovery/history/commander/ACTIVE-CHANGE-LEASES-PRE-QUARANTINE-2026-09-08.yaml'],
