@@ -1,4 +1,4 @@
-source_sha=3d10de7a4a19aeab30d1b0e42900c0a5f1351fd5
-base_sha=430b7848b88e447137546a52b11fbb2c711fa19f
-branch_name=work/CORE/B0125-loyalty-customer-self-service-linkup
-request_id=TEAM-C-B0125-LOYALTY-TERMINAL-20260908-01
+source_sha=f6aee0a96d586ef1afba060aeb98b6816dfee97d
+base_sha=3defcb74d529c03fe1e60048fae1a76eb190744a
+branch_name=main
+request_id=TEAM-C-B0125-LOYALTY-POST-ADMISSION-20260908-01
