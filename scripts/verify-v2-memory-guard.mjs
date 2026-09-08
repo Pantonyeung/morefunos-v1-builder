@@ -730,7 +730,7 @@ for (const filePath of currentWorkItemRefs) {
   if (!fs.existsSync(path.join(root, planRef))) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_NOT_FOUND:' + filePath + ':' + planRef);
 }
 const requiredCurrentWorkItemRefs = [
-  'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
+  'docs/workflows/work-items/TEAM-A-WI-A9B-PRINT-SETUP-TRANSPORT-UX-20260908.yaml',
 ];
 for (const filePath of requiredCurrentWorkItemRefs) {
   if (!currentWorkItemRefs.includes(filePath)) {
