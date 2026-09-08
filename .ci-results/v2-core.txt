@@ -1,5 +1,5 @@
-source_sha=751c6f59ecdd7a66469bf0bbd507a1f253aeabe1
-request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-CORE-R10-20260908
-run_id=34182581030
+source_sha=5cf802a2ba5df557cf92be4577197efc166261a7
+request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-CORE-R12-20260908
+run_id=34183030662
 run_attempt=1
 conclusion=failure
