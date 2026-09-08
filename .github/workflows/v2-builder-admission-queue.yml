@@ -227,7 +227,7 @@ jobs:
 
       - name: Run V2 Memory Guard
         shell: bash
-        run: node scripts/verify-v2-memory-guard.mjs candidate "${{ steps.request.outputs.capability_id }}" "${{ steps.request.outputs.capability_action }}"
+        run: node scripts/verify-v2-memory-guard.mjs candidate "${{ steps.request.outputs.capability_id }}" "${{ steps.request.outputs.capability_action }}" "${{ steps.request.outputs.work_id }}"
 
       - name: Analyze impact and build integration working tree
         id: impact
