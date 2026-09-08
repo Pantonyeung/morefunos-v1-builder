@@ -229,15 +229,20 @@ const scalarField = (text, key) => {
 if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(requestedCapabilityId)) {
   throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ID_INVALID:' + requestedCapabilityId);
 }
-const capabilityActionBlock = workItemContract.match(
-  /allowed_capability_actions:\s*\n((?:\s+-\s+[A-Z0-9_]+\s*\n?)+)/,
+const workItemContractLines = workItemContract.split(/\r?\n/);
+const capabilityActionHeaderIndex = workItemContractLines.findIndex(
+  line => line.trim() === 'allowed_capability_actions:',
 );
-if (!capabilityActionBlock) {
+if (capabilityActionHeaderIndex < 0) {
   throw new Error('MEMORY_GUARD_WORK_ITEM_CONTRACT_CAPABILITY_ACTIONS_MISSING');
 }
-const allowedCapabilityActions = new Set(
-  [...capabilityActionBlock[1].matchAll(/^\s+-\s+([A-Z0-9_]+)\s*$/gm)].map(m => m[1]),
-);
+const allowedCapabilityActions = new Set();
+for (let index = capabilityActionHeaderIndex + 1; index < workItemContractLines.length; index += 1) {
+  const line = workItemContractLines[index];
+  const match = /^\s+-\s+([A-Z0-9_]+)\s*$/.exec(line);
+  if (!match) break;
+  allowedCapabilityActions.add(match[1]);
+}
 if (allowedCapabilityActions.size === 0) {
   throw new Error('MEMORY_GUARD_WORK_ITEM_CONTRACT_CAPABILITY_ACTIONS_EMPTY');
 }
