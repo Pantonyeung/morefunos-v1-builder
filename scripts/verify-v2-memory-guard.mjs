@@ -84,10 +84,18 @@ if (requestedCapabilityAction === 'NEW_BUILD' && requestedWorkId && requestedCap
   const manifestAbs = path.join(root, requestedCompletionManifestPath);
   if (fs.existsSync(manifestAbs)) {
     requestedCompletionManifest = fs.readFileSync(manifestAbs, 'utf8');
-    requireText(requestedCompletionManifest, `work_id: ${requestedWorkId}`, 'MEMORY_GUARD_NEW_BUILD_MANIFEST_WORK_ID_MISMATCH');
-    requireText(requestedCompletionManifest, `capability_id: ${requestedCapabilityId}`, 'MEMORY_GUARD_NEW_BUILD_MANIFEST_CAPABILITY_ID_MISMATCH');
-    requireText(requestedCompletionManifest, 'capability_action: NEW_BUILD', 'MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
-    requireText(requestedCompletionManifest, 'scope_status: IMPLEMENTED_CANDIDATE', 'MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
+    if (!requestedCompletionManifest.includes(`work_id: ${requestedWorkId}`)) {
+      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_WORK_ID_MISMATCH');
+    }
+    if (!requestedCompletionManifest.includes(`capability_id: ${requestedCapabilityId}`)) {
+      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_CAPABILITY_ID_MISMATCH');
+    }
+    if (!requestedCompletionManifest.includes('capability_action: NEW_BUILD')) {
+      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
+    }
+    if (!requestedCompletionManifest.includes('scope_status: IMPLEMENTED_CANDIDATE')) {
+      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
+    }
     provisionalNewBuildPaths = new Set(
       [...requestedCompletionManifest.matchAll(/^  -\s+([^\s]+)\s*$/gm)].map(m => m[1].trim())
     );
