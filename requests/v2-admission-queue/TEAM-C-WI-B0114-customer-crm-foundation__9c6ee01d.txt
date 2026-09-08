@@ -1,0 +1,10 @@
+candidate_sha=9c6ee01d2161beb07b9cff65f6ed7be8fc5eb72e
+base_main_sha=881bc9a554afa3b3352a63ead039f79db2a88321
+work_id=TEAM-C-WI-B0114-customer-crm-foundation
+capability_id=CAP-CUSTOMER-CRM-001
+capability_action=NEW_BUILD
+affected_ports=CORE,CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=3937c238ea52b1da8336ef19d17301b1145c674f
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
