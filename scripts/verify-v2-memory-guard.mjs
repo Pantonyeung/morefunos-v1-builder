@@ -229,7 +229,7 @@ const scalarField = (text, key) => {
 if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(requestedCapabilityId)) {
   throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ID_INVALID:' + requestedCapabilityId);
 }
-const allowedCapabilityActions = new Set(['REUSE','LINKUP','EXTEND','REGRESSION_REPAIR','PHYSICAL_ACCEPTANCE','NEW_BUILD','SUPERSEDE']);
+const allowedCapabilityActions = new Set(['REUSE','LINKUP','EXTEND','REGRESSION_REPAIR','PHYSICAL_ACCEPTANCE','RUNTIME_PROOF','NEW_BUILD','SUPERSEDE']);
 if (!allowedCapabilityActions.has(requestedCapabilityAction)) {
   throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ACTION_INVALID:' + requestedCapabilityAction);
 }
