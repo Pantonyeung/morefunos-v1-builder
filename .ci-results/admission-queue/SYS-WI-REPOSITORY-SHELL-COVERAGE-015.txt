@@ -1,0 +1,13 @@
+work_id=SYS-WI-REPOSITORY-SHELL-COVERAGE-015
+candidate_sha=0bc551f67029ef8e149c80044fe16f6677771b5a
+base_main_sha=0bc551f67029ef8e149c80044fe16f6677771b5a
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34188735100
+conclusion=failure
