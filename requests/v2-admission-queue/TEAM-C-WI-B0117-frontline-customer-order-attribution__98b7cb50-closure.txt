@@ -1,0 +1,10 @@
+candidate_sha=98b7cb5058adddd8395d10e583e0d20f74d21903
+base_main_sha=41d53a1fe3ed7af74faa03dddf04365028191a5d
+work_id=TEAM-C-WI-B0117-frontline-customer-order-attribution
+capability_id=CAP-CUSTOMER-ORDER-001
+capability_action=EXTEND
+affected_ports=CORE;SMT;SMM
+depends_on_specs=
+supersedes_candidate_sha=41d53a1fe3ed7af74faa03dddf04365028191a5d
+required_core_tests=B0117_ATTRIBUTION
+force_full_proof=false
