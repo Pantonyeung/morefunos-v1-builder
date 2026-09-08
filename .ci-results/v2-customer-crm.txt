@@ -1,6 +1,6 @@
-source_sha=26826bd0a7b2cf60f66592ea62eb24847ff2f6da
-work_id=TEAM-C-WI-B0134-customer-crm-terminal-closure
-capability_id=CAP-CUSTOMER-CRM-001
-capability_action=RUNTIME_PROOF
-run_id=34228304315
-conclusion=success
+source_sha=
+work_id=
+capability_id=
+capability_action=
+run_id=34241379261
+conclusion=failure
