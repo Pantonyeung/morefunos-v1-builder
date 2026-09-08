@@ -14,6 +14,7 @@ const required = [
   'docs/recovery/CURRENT-CYCLE.yaml',
   'docs/recovery/commander/CAPABILITY-CATALOG.yaml',
   'docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml',
+  'docs/recovery/commander/AUXILIARY-ASSET-REGISTRY.yaml',
   'docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md',
   'docs/recovery/commander/CAPABILITY-IDENTITY-RECONCILIATION-2026-09-08.yaml',
   'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
@@ -52,6 +53,7 @@ const firewall = read('docs/recovery/READ-FIREWALL.yaml');
 const cycle = read('docs/recovery/CURRENT-CYCLE.yaml');
 const catalog = read('docs/recovery/commander/CAPABILITY-CATALOG.yaml');
 const sourceCoverageAudit = read('docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml');
+const auxiliaryAssetRegistry = read('docs/recovery/commander/AUXILIARY-ASSET-REGISTRY.yaml');
 const masterRegistry = read('docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md');
 const docRegistry = read('docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml');
 const quarantineRegistry = read('docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml');
@@ -821,7 +823,8 @@ requireText(sourceCoverageAudit, 'rule: EVERY_APP_AND_CLOUDFLARE_RUNTIME_SURFACE
 
 
 requireText(sourceCoverageAudit, 'd1_schema_authority_coverage:', 'MEMORY_GUARD_PHASE13_D1_COVERAGE_MISSING');
-requireText(sourceCoverageAudit, 'status: PHASE_13_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE13_D1_NOT_READY');
+requireText(sourceCoverageAudit, 'status: PHASE_13_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE13_D1_NOT_GREEN');
+requireText(sourceCoverageAudit, 'builder_run: 34186509319', 'MEMORY_GUARD_PHASE13_D1_RUN_MISSING');
 requireText(sourceCoverageAudit, 'migration_count: 52', 'MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISMATCH');
 requireText(sourceCoverageAudit, 'unclassified_migrations: []', 'MEMORY_GUARD_PHASE13_UNCLASSIFIED_MIGRATIONS');
 requireText(sourceCoverageAudit, 'CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_ID_MISSING');
@@ -841,4 +844,32 @@ for (const migration of currentMigrations) {
   }
 }
 
+
+requireText(sourceCoverageAudit, 'auxiliary_asset_surface_coverage:', 'MEMORY_GUARD_PHASE14_AUXILIARY_COVERAGE_MISSING');
+requireText(sourceCoverageAudit, 'status: PHASE_14_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE14_AUXILIARY_NOT_READY');
+requireText(sourceCoverageAudit, 'ASSET-MF01-MENU-IMPORT-20260905', 'MEMORY_GUARD_PHASE14_MENU_ASSET_MISSING');
+requireText(sourceCoverageAudit, 'ASSET-KEETA-WORKER-RUNTIME-001', 'MEMORY_GUARD_PHASE14_KEETA_WORKER_ASSET_MISSING');
+requireText(auxiliaryAssetRegistry, 'registry_id: MOREFUNOS-AUXILIARY-ASSET-REGISTRY', 'MEMORY_GUARD_AUXILIARY_REGISTRY_ID_MISSING');
+requireText(auxiliaryAssetRegistry, 'important_unclassified_asset_is_governance_failure: true', 'MEMORY_GUARD_AUXILIARY_NO_DRIFT_RULE_MISSING');
+requireText(authority, 'AUXILIARY-ASSET-REGISTRY.yaml', 'MEMORY_GUARD_AUTHORITY_ASSET_LOOKUP_MISSING');
+requireText(index, 'AUXILIARY-ASSET-REGISTRY.yaml', 'MEMORY_GUARD_AI_INDEX_ASSET_LOOKUP_MISSING');
+requireText(start, 'AUXILIARY-ASSET-REGISTRY.yaml', 'MEMORY_GUARD_START_HERE_ASSET_LOOKUP_MISSING');
+requireText(catalog, 'workers/keeta/src/index.ts', 'MEMORY_GUARD_KEETA_WORKER_CANONICAL_PATH_MISSING');
+
+const auxiliaryAssetIds = [...auxiliaryAssetRegistry.matchAll(/^  - asset_id:\s*(ASSET-[A-Z0-9-]+)\s*$/gm)].map(m => m[1]);
+if (auxiliaryAssetIds.length !== new Set(auxiliaryAssetIds).size) throw new Error('MEMORY_GUARD_DUPLICATE_AUXILIARY_ASSET_ID');
+for (const capRef of new Set([...auxiliaryAssetRegistry.matchAll(/CAP-[A-Z0-9-]+/g)].map(m => m[0]))) {
+  if (!capabilityIds.has(capRef)) throw new Error('MEMORY_GUARD_AUXILIARY_PARENT_CAPABILITY_MISSING:' + capRef);
+}
+
+const auxiliarySurfaceRoots = ['data','scripts','workers'];
+for (const surface of auxiliarySurfaceRoots) {
+  const surfaceRoot = path.join(root, surface);
+  for (const file of walkFiles(surfaceRoot)) {
+    const relative = path.relative(root, file).split(path.sep).join('/');
+    if (!auxiliaryAssetRegistry.includes(relative)) {
+      throw new Error('MEMORY_GUARD_AUXILIARY_FILE_UNCLASSIFIED:' + relative);
+    }
+  }
+}
 console.log('MoreFunOS V2 Memory Guard: PASS');
