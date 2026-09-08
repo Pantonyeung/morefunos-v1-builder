@@ -1,5 +1,5 @@
-source_sha=1d2ff959c7323b8db1a4c211ad19f6138a412ec1
-request_id=TEAM-B-ADMIN-PRINT-CENTER-CORE-R4-20260908
-run_id=34180758613
+source_sha=d64576ce41c511d3038be297e1bbf6d7af9201d9
+request_id=TEAM-B-ADMIN-PRINT-CENTER-CORE-R5-20260908
+run_id=34180965000
 run_attempt=1
-conclusion=failure
+conclusion=cancelled
