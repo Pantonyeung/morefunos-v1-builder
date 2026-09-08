@@ -1,0 +1,8 @@
+candidate_sha=500077bcd15b6db13ebb95c50e18c6f9143d9d3b
+base_main_sha=500077bcd15b6db13ebb95c50e18c6f9143d9d3b
+work_id=MEMORY_FIREWALL_GOVERNANCE_PROOF_R3
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
