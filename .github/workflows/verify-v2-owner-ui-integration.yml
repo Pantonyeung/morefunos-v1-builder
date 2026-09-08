@@ -86,7 +86,7 @@ jobs:
 
       - name: Owner runtime integration tests
         working-directory: source
-        run: node --experimental-strip-types --test packages/owner-ui-integration/runtime-provider.test.ts
+        run: node --experimental-strip-types --test packages/owner-ui-integration/*.test.ts
 
       - name: Owner runtime TypeScript
         working-directory: source
@@ -96,9 +96,13 @@ jobs:
           set -o pipefail
           tsc --ignoreConfig --noEmit --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --types node packages/owner-ui-integration/runtime-provider.ts packages/owner-ui-integration/runtime-provider.test.ts 2>&1 | tee ../evidence/owner-runtime-typecheck.txt
 
+      - name: Owner app tests
+        working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm test
+
       - name: Owner app typecheck
         working-directory: source/apps/owner-web
-        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck
+        run: npm run typecheck
 
       - name: Owner app build
         working-directory: source/apps/owner-web
