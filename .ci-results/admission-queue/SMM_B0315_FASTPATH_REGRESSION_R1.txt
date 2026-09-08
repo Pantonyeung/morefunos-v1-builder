@@ -1,0 +1,13 @@
+work_id=SMM_B0315_FASTPATH_REGRESSION_R1
+candidate_sha=9b8012daf96a88c4f2986fc33c1c2e54e9075e52
+base_main_sha=93408d95e1722b9abcfa26e7dafaf661e040b8da
+latest_main_sha=93408d95e1722b9abcfa26e7dafaf661e040b8da
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34175914573
+conclusion=success
