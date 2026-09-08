@@ -1,6 +1,6 @@
-source_sha=aae5f6e619045e76dfe5eb0730b6e3116f8e3989
-work_id=TEAM-C-WI-B0132-customer-crm-runtime-linkup
-capability_id=CAP-CUSTOMER-CRM-001
-capability_action=LINKUP
-run_id=34221501448
-conclusion=success
+source_sha=
+work_id=
+capability_id=
+capability_action=
+run_id=34224905116
+conclusion=failure
