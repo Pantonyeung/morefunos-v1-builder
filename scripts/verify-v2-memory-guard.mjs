@@ -758,8 +758,27 @@ if (sysStatus === 'MAINTENANCE_GUARD') {
   if (sysNextGate !== 'FRESH_CURRENT_ROUTING_BYPASS_REQUIRED_FOR_NEW_WORK') {
     throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_NEXT_GATE_INVALID:' + sysNextGate);
   }
-  if (!/last_closed_work_id:\s*SYS-WI-MEMORY-ROUTING-SINGLETON-017/.test(sysBlock)) {
+  const sysLastClosedWorkId = (sysBlock.match(/last_closed_work_id:\s*([^\n]+)/)?.[1] || '').trim();
+  if (!sysLastClosedWorkId) {
     throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_MISSING');
+  }
+  const lastClosedMatches = [];
+  for (const file of walkFiles(workItemRoot)) {
+    const text = fs.readFileSync(file, 'utf8');
+    if (scalarField(text, 'work_id') === sysLastClosedWorkId) lastClosedMatches.push({file, text});
+  }
+  if (lastClosedMatches.length !== 1) {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_NOT_UNIQUE:' + sysLastClosedWorkId + ':' + lastClosedMatches.length);
+  }
+  const lastClosed = lastClosedMatches[0].text;
+  if (scalarField(lastClosed, 'STATUS').toUpperCase() !== 'CLOSED') {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_NOT_CLOSED:' + sysLastClosedWorkId);
+  }
+  if (scalarField(lastClosed, 'ACTIVE').toLowerCase() !== 'false') {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_STILL_ACTIVE:' + sysLastClosedWorkId);
+  }
+  if (scalarField(lastClosed, 'capability_id').toUpperCase() !== 'CAP-GOV-MEMORY-001') {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_CAPABILITY_INVALID:' + sysLastClosedWorkId);
   }
 } else if (!currentWorkItemRefs.includes(sysWorkItemRef)) {
   throw new Error('MEMORY_GUARD_SYS_CURRENT_WORK_ITEM_NOT_DISCOVERED:' + sysWorkItemRef);
