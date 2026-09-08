@@ -1,6 +1,6 @@
 work_id=TEAM_A_A9_PRINTER_DEVICE_NATIVE_CLOSURE_20260908
-candidate_sha=f59a6dd285293e5db4c7cbdae060ed61480996dc
-base_main_sha=eda670bd5fdb318a78c94899b4080b668110de93
+candidate_sha=2d3739a98bbc60cf9fed720a299d24a93a0b4f04
+base_main_sha=660165d0c25e91b2bad6a8dbdc39d3db1d579f7d
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34179580627
+run_id=34180447724
 conclusion=failure
