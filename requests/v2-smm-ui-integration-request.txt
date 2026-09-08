@@ -1,4 +1,4 @@
-source_sha=62e0410df9f2c41edc61220b9f085b7df34f312b
-base_sha=89667551b4199065f695d63f2a6d1c096e64c21f
-branch_name=main
-request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-SMM-POST-ADMISSION-20260908-01
+source_sha=9d5427deeadf85cc25165ce9739a6d9b87341833
+base_sha=80b15567a8a2c1687f30bdb988afb5aee25eb4c6
+branch_name=work/CORE/B0133-dine-in-runtime-proof
+request_id=TEAM-C-B0133-DINE-IN-SMM-VERIFY-20260908-01
