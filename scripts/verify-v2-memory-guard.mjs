@@ -60,6 +60,8 @@ requireText(authority, 'Capability-first hard rule', 'MEMORY_GUARD_CAPABILITY_FI
 requireText(index, 'docs/recovery/READ-FIREWALL.yaml', 'MEMORY_GUARD_AI_INDEX_FIREWALL_MISSING');
 requireText(index, 'historical_reports_cross_read_for_current_truth: FORBIDDEN', 'MEMORY_GUARD_CROSS_REPORT_DENY_MISSING');
 requireText(index, 'evidence_mode_requires_capability_id: true', 'MEMORY_GUARD_EVIDENCE_MODE_ID_MISSING');
+requireText(index, 'room_records_are_workflow_local_not_repository_current_truth: true', 'MEMORY_GUARD_ROOM_TRUTH_BYPASS');
+requireText(index, 'empty_registry_means_no_accepted_v2_cross_room_product_flow: false', 'MEMORY_GUARD_INTEGRATION_STATE_STALE');
 
 requireText(start, 'CURRENT_MODE', 'MEMORY_GUARD_CURRENT_MODE_MISSING');
 requireText(start, 'EVIDENCE_MODE', 'MEMORY_GUARD_EVIDENCE_MODE_MISSING');
@@ -83,8 +85,10 @@ requireText(catalog, 'new_build_requires_catalog_absence_proof: true', 'MEMORY_G
 requireText(docRegistry, 'SEARCH_RESULT_DOES_NOT_EQUAL_AUTHORITY', 'MEMORY_GUARD_DOC_AUTHORITY_RULE_MISSING');
 requireText(docRegistry, 'CROSS_REPORT_CURRENT_TRUTH_INFERENCE_FORBIDDEN', 'MEMORY_GUARD_DOC_CROSS_REPORT_RULE_MISSING');
 requireText(governance, 'first: MEMORY_GATEWAY', 'MEMORY_GUARD_GOV_ROUTING_MISSING');
+requireText(governance, 'only_valid_method: CURRENT_CYCLE_PLUS_CAPABILITY_CATALOG_PLUS_EXACT_LATEST_ADMITTED_SOURCE', 'MEMORY_GUARD_LATEST_TRUTH_RULE_STALE');
+requireText(governance, 'before_any_repo_search: false', 'MEMORY_GUARD_ROOM_ENTRY_STILL_PRESEARCH');
 requireText(governance, 'room_current_handoff_as_default_current_truth: FORBIDDEN', 'MEMORY_GUARD_ROOM_BYPASS_PRESENT');
-requireText(workPolicy, 'resolve_capability_id_in_catalog', 'MEMORY_GUARD_WORK_CAPABILITY_RESOLUTION_MISSING');
+requireText(workPolicy, 'resolve_capability_id_and_action', 'MEMORY_GUARD_WORK_CAPABILITY_RESOLUTION_MISSING');
 requireText(portRegistry, 'implementation_locator_is_not_capability_status: true', 'MEMORY_GUARD_PORT_REGISTRY_STATE_DRIFT');
 requireText(portRegistry, 'no_remaining_or_completion_percentage_fields: true', 'MEMORY_GUARD_PORT_REGISTRY_REMAINING_DRIFT');
 requireText(integrationRegistry, 'flow_id: INTG-KEETA-HK-001', 'MEMORY_GUARD_KEETA_FLOW_MISSING');
@@ -96,5 +100,8 @@ requireText(planTemplate, 'capability_action: null', 'MEMORY_GUARD_PLAN_CAPABILI
 requireText(gateRegistry, 'G01A_CAPABILITY_MEMORY:', 'MEMORY_GUARD_CAPABILITY_GATE_MISSING');
 requireText(workflowRegistry, 'G01A_CAPABILITY_MEMORY', 'MEMORY_GUARD_WORKFLOW_CAPABILITY_GATE_MISSING');
 requireText(workStateMachine, 'classification_requires_capability_resolution: true', 'MEMORY_GUARD_STATE_CAPABILITY_RESOLUTION_MISSING');
+requireText(cycle, 'CONSTITUTION_GATE: PASS_ACCEPTED_B0015', 'MEMORY_GUARD_CONSTITUTION_GATE_NOT_CURRENT');
+requireText(cycle, 'cross_port_gap_register_read_mode: EVIDENCE_MODE_ONLY_FOR_EXPLICIT_GAP_OR_REGRESSION_INVESTIGATION', 'MEMORY_GUARD_STALE_GAP_MANDATORY_READ');
+requireText(cycle, 'LATEST_MAIN_SHA_AT_COMMANDER_REFRESH: DYNAMIC_RESOLVE_REQUIRED_DO_NOT_TRUST_CACHED_SHA', 'MEMORY_GUARD_CACHED_MAIN_SHA_PRESENT');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
