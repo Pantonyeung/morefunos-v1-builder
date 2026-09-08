@@ -1,5 +1,5 @@
-source_sha=4c1ad20dea1f6bdb7302df158e7a068587a56fd0
-request_id=TEAM-A-PROVIDER-LOCAL-DISPLAY-CODE-CONTRACT-SMM-20260908
-run_id=34247226506
+source_sha=4371ec88bc6aa01d5c3d718b0389ee61f2542f7c
+request_id=TEAM-A-PROVIDER-LOCAL-DISPLAY-CODE-CONTRACT-SMM-R2-20260908
+run_id=34247460804
 run_attempt=1
-conclusion=success
+conclusion=failure
