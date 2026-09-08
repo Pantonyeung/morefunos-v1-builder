@@ -2,4 +2,4 @@ source_sha=22c412d038dfe18ead06ad455eb615ffd742910d
 work_id=TEAM-C-WI-B0146-customer360-admin-consumer-linkup
 capability_id=CAP-CUSTOMER-CRM-001
 capability_action=LINKUP
-request_id=TEAM-C-B0146-CUSTOMER360-CRM-AFTER-TEAM-B-GUARD-FIX-20260909
+request_id=TEAM-C-B0146-CUSTOMER360-CRM-AFTER-GUARD-SYNTAX-FIX-20260909
