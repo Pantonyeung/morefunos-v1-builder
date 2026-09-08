@@ -110,6 +110,31 @@ jobs:
           console.log('customer_crm_schema=PASS '+tables.join(','));
           NODE
 
+      - name: Verify Membership Level migration
+        if: steps.req.outputs.migration_file == '0052-membership-level.sql'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/membership-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_membership_program_version','mfos_membership_level_definition','mfos_membership_program_active','mfos_membership_idempotency','mfos_membership_audit') ORDER BY name\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/membership-verify.json > /tmp/membership-verify-result.json
+          node - <<'NODE'
+          const x=require('/tmp/membership-verify-result.json');
+          if(x.success!==true) throw new Error('D1_QUERY_FAILED');
+          const tables=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=[
+            'mfos_membership_audit',
+            'mfos_membership_idempotency',
+            'mfos_membership_level_definition',
+            'mfos_membership_program_active',
+            'mfos_membership_program_version',
+          ].sort();
+          if(JSON.stringify(tables)!==JSON.stringify(expected)){
+            throw new Error('MEMBERSHIP_TABLES_MISSING:'+JSON.stringify(tables));
+          }
+          console.log('membership_schema=PASS '+tables.join(','));
+          NODE
+
       - name: Seal durable migration result
         if: always()
         env:
