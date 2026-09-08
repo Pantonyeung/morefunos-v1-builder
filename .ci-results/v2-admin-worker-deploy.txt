@@ -1,7 +1,7 @@
-source_sha=21572d5bdd118bd5d239767d37ffa5987473a9a9
-request_id=TEAMA-A9-PRINT-ROUTING-ADMIN-DEPLOY-20260908-01
-run_id=34177767514
+source_sha=679863c40543f0236e9f56255e8b38fb0b513a55
+request_id=TEAMA-A9-PRINT-ROUTING-ADMIN-DEPLOY-20260908-02
+run_id=34177814294
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=e1b7436a-b9d1-415c-a471-4a9502354fea
