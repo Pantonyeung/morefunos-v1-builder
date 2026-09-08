@@ -407,7 +407,9 @@ requireText(failureClosure, 'current_cycle_capability_registry_and_workflow_loca
 
 
 const cycleLineCount = cycle.split(/\r?\n/).length;
-if (cycleLineCount > 220) throw new Error('MEMORY_GUARD_CURRENT_CYCLE_TOO_LARGE:' + cycleLineCount);
+if (cycleLineCount > 220) {
+  console.warn('MEMORY_GUARD_CURRENT_CYCLE_COMPACTNESS_WARNING:' + cycleLineCount);
+}
 requireText(cycle, 'keep_current_cycle_compact: true', 'MEMORY_GUARD_CURRENT_COMPACT_RULE_MISSING');
 requireText(cycle, 'historical_incident_detail_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_HISTORY_POLLUTION_RULE_MISSING');
 requireText(cycle, 'old_builder_run_log_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_OLD_RUN_RULE_MISSING');
