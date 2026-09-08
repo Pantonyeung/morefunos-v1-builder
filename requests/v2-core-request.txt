@@ -1,5 +1,5 @@
-source_sha=ef720c50e77afbe8874d530529603a935059f744
-base_sha=ef720c50e77afbe8874d530529603a935059f744
-branch_name=main
-verification_phase=FINAL_MERGE_REQUEST
-request_id=TEAM-B-PRINT-DESIGN-CENTER-CORE-POST-ADMISSION-20260908
+source_sha=7805b5d512a247aeeca200de4842d7a553910c19
+base_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
+branch_name=work/TEAM-B/admin-print-center-product-routing-20260908
+verification_phase=CANDIDATE
+request_id=TEAM-B-PRINT-CENTER-TEMPLATE-DYNAMIC-R5-CORE-20260908
