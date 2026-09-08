@@ -1,0 +1,10 @@
+candidate_sha=029b7054ee34ed93f806b5a4f3aea357aca29c32
+base_main_sha=71e8d287049b2d92e71a82e0801d9e5fb18720b2
+work_id=SYS-WI-MEMORY-ROUTING-SINGLETON-017
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=25d82e31b01b31f3af1389a3bf81311135e79c65
+required_core_tests=
+force_full_proof=false
