@@ -1,0 +1,7 @@
+candidate_sha=8c65555e945f9cf6c7ae7557f2f0ee09fa9c3744
+base_main_sha=f4c6554688db9101360138bec279d73f153ad2d0
+work_id=SMM_FASTPATH_STALE_ASSERTIONS_R3
+affected_ports=SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
