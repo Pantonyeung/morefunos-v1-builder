@@ -1,0 +1,13 @@
+work_id=SYS-WI-TEAM-ROUTING-OWNERSHIP-20260908
+candidate_sha=29ec254c0a0e92368f697b47e5fd9eb4afbd1a1a
+base_main_sha=cc47c7934cbf0c058480091daf1adc8f4970b5ee
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34215729596
+conclusion=failure
