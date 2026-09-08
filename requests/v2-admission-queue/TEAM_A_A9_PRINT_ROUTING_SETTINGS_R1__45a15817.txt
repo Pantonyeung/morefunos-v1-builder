@@ -1,0 +1,7 @@
+candidate_sha=45a15817b5552604158005487054734be779f87d
+base_main_sha=3e29c433f0376237293491f566e4aaeb5f50a2f2
+work_id=TEAM_A_A9_PRINT_ROUTING_SETTINGS_R1
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
