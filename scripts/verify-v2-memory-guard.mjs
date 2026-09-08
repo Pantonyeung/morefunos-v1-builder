@@ -322,7 +322,10 @@ for (let i = 0; i < quarantineOriginals.length; i += 1) {
 
 
 requireText(quarantineRegistry, 'phase_2_root_governance:', 'MEMORY_GUARD_QUARANTINE_PHASE2_MISSING');
-requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_QUARANTINE_PHASE2_NOT_READY');
+const phase2Start = quarantineRegistry.indexOf('phase_2_root_governance:');
+const phase3Start = quarantineRegistry.indexOf('phase_3_root_final:');
+const phase2Block = quarantineRegistry.slice(phase2Start, phase3Start > phase2Start ? phase3Start : quarantineRegistry.length);
+requireText(phase2Block, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_QUARANTINE_PHASE2_NOT_GREEN');
 const phase2Quarantined = [
   'docs/recovery/COMMAND-CENTER.md',
   'docs/recovery/COMMANDER-BOOTSTRAP.md',
@@ -414,14 +417,13 @@ for (const [pointerPath, historyPath] of commanderPhase4) {
   }
 }
 const journalPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md'), 'utf8');
-if (journalPointer.includes('STATUS: ACTIVE_APPEND_ONLY_AUTHORITY')) {
-  throw new Error('MEMORY_GUARD_PHASE4_JOURNAL_STALE_AUTHORITY_PRESENT');
-}
 requireText(journalPointer, 'DOCUMENT_CLASS: HISTORICAL_COMPATIBILITY_POINTER', 'MEMORY_GUARD_PHASE4_JOURNAL_POINTER_CLASS_MISSING');
+requireText(journalPointer, 'AI_READ_POLICY: EVIDENCE_MODE_ONLY', 'MEMORY_GUARD_PHASE4_JOURNAL_READ_POLICY_MISSING');
+requireText(journalPointer, 'CURRENT_WORK_AUTHORITY: false', 'MEMORY_GUARD_PHASE4_JOURNAL_AUTHORITY_BOUNDARY_MISSING');
 const commanderLedgerPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/COMMANDER-MASTER-LEDGER.md'), 'utf8');
-if (commanderLedgerPointer.includes('ACTIVE_MANDATORY_READ') || commanderLedgerPointer.includes('4/20 SMT server operations')) {
-  throw new Error('MEMORY_GUARD_PHASE4_MASTER_LEDGER_STALE_AUTHORITY_PRESENT');
-}
+requireText(commanderLedgerPointer, 'DOCUMENT_CLASS: HISTORICAL_COMPATIBILITY_POINTER', 'MEMORY_GUARD_PHASE4_MASTER_LEDGER_POINTER_CLASS_MISSING');
+requireText(commanderLedgerPointer, 'AI_READ_POLICY: EVIDENCE_MODE_ONLY', 'MEMORY_GUARD_PHASE4_MASTER_LEDGER_READ_POLICY_MISSING');
+requireText(commanderLedgerPointer, 'CURRENT_WORK_AUTHORITY: false', 'MEMORY_GUARD_PHASE4_MASTER_LEDGER_AUTHORITY_BOUNDARY_MISSING');
 requireText(firewall, 'docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md', 'MEMORY_GUARD_PHASE4_JOURNAL_NOT_BLOCKED');
 requireText(firewall, 'docs/recovery/commander/COMMANDER-MASTER-LEDGER.md', 'MEMORY_GUARD_PHASE4_LEDGER_NOT_BLOCKED');
 
