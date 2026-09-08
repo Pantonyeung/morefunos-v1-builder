@@ -1,5 +1,5 @@
 work_id=TEAM-C-WI-B0118-rfm-projection
-candidate_sha=ff8255478e43a5543194cf810233aa02f8af2358
+candidate_sha=6c1830944d3162cf07ba2ef851220ad9f218c9ff
 base_main_sha=515347b75b81f260014dfd861e80512e2177bc20
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=RFM_PROJECTION
 force_full_proof=true
-run_id=34200693800
+run_id=34200826808
 conclusion=failure
