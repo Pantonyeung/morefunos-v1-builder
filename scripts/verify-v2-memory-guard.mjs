@@ -678,7 +678,8 @@ requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY
 requireText(cycle, 'active_mutation_work_item: TEAM-C-WI-B0115-membership-level', 'MEMORY_GUARD_TEAM_C_ACTIVE_WORK_ITEM_MISSING');
 
 
-requireText(sourceCoverageAudit, 'status: PHASE_10_REGISTERED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE10_SOURCE_COVERAGE_MISSING');
+requireText(sourceCoverageAudit, 'status: PHASE_10_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE10_SOURCE_COVERAGE_NOT_GREEN');
+requireText(sourceCoverageAudit, 'builder_run: 34184854945', 'MEMORY_GUARD_PHASE10_BUILDER_PROOF_MISSING');
 for (const id of [
   'CAP-EVENT-DURABILITY-001',
   'CAP-MERCHANT-STORE-001',
@@ -707,5 +708,44 @@ requireText(catalog, 'packages/reporting-projection/d1-reporting-snapshot.ts', '
 requireText(catalog, 'packages/dine-in-service/dine-in-service.ts', 'MEMORY_GUARD_PHASE10_DINEIN_PATH_UNREGISTERED');
 requireText(sourceCoverageAudit, 'packages/production-persistence/postgres.ts', 'MEMORY_GUARD_PHASE10_POSTGRES_CLASSIFICATION_MISSING');
 requireText(sourceCoverageAudit, 'POSTGRES_PRODUCTION_AUTHORITY_FORMALLY_EXCLUDED', 'MEMORY_GUARD_PHASE10_POSTGRES_EXCLUSION_MISSING');
+
+
+const packagesRoot = path.join(root, 'packages');
+const currentPackageDirs = fs.readdirSync(packagesRoot, {withFileTypes:true})
+  .filter(entry => entry.isDirectory())
+  .map(entry => entry.name)
+  .sort();
+
+const catalogMappedPackages = new Set();
+for (const match of catalog.matchAll(/packages\/([^/\s]+)\//g)) {
+  catalogMappedPackages.add(match[1]);
+}
+
+const explicitMarker = '  explicit_noncapability_packages:';
+const explicitStart = sourceCoverageAudit.indexOf(explicitMarker);
+if (explicitStart < 0) throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_EXPLICIT_CLASSIFICATION_MISSING');
+const explicitTail = sourceCoverageAudit.slice(explicitStart + explicitMarker.length);
+const explicitEndMatch = explicitTail.match(/^\s{2}[a-zA-Z0-9_]+:/m);
+const explicitBlock = explicitEndMatch ? explicitTail.slice(0, explicitEndMatch.index) : explicitTail;
+const explicitNonCapabilityPackages = new Set(
+  [...explicitBlock.matchAll(/^\s{4}-\s+([^\s]+)\s*$/gm)].map(m => m[1].trim())
+);
+
+const unclassifiedPackages = currentPackageDirs.filter(
+  name => !catalogMappedPackages.has(name) && !explicitNonCapabilityPackages.has(name)
+);
+if (unclassifiedPackages.length > 0) {
+  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_UNCLASSIFIED:' + unclassifiedPackages.join(','));
+}
+
+const staleExplicitPackages = [...explicitNonCapabilityPackages].filter(
+  name => !currentPackageDirs.includes(name)
+);
+if (staleExplicitPackages.length > 0) {
+  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_STALE_EXPLICIT_CLASSIFICATION:' + staleExplicitPackages.join(','));
+}
+
+requireText(sourceCoverageAudit, 'unclassified_packages: 0', 'MEMORY_GUARD_PACKAGE_TOPOLOGY_BASELINE_NOT_ZERO');
+requireText(sourceCoverageAudit, 'rule: EVERY_PACKAGE_DIRECTORY_MUST_BE_CATALOG_MAPPED_OR_EXPLICITLY_CLASSIFIED_NONCAPABILITY', 'MEMORY_GUARD_PACKAGE_TOPOLOGY_RULE_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
