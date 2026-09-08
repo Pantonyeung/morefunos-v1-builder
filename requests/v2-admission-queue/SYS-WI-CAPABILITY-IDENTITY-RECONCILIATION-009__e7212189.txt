@@ -1,0 +1,10 @@
+candidate_sha=e72121894ebc9f82226aeb29ca2f68c727a6a5ab
+base_main_sha=e72121894ebc9f82226aeb29ca2f68c727a6a5ab
+work_id=SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
