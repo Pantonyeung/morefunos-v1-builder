@@ -843,7 +843,12 @@ if (sysStatus === 'MAINTENANCE_GUARD') {
 const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml'), 'utf8');
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
-requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
+const teamBBlock = cycle.match(/^  team_b:\n([\s\S]*?)(?=^  [a-z_]+:|\Z)/m)?.[0] || '';
+const teamBPaused = teamBBlock.includes('status: PAUSED_OWNER_DIRECTIVE') && teamBBlock.includes('active_mutation_work_item: NONE');
+const teamBHandshakeOnly = teamBBlock.includes('active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY');
+if (!teamBPaused && !teamBHandshakeOnly) {
+  throw new Error('MEMORY_GUARD_TEAM_B_STATE_INVALID');
+}
 requireText(
   teamCBlock,
   'authority: docs/recovery/decisions/TEAM-C-FEATURE-EXPANSION-CHARTER-2026-09-08.md',
