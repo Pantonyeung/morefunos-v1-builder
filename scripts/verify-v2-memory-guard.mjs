@@ -458,4 +458,31 @@ for (const pattern of [
 }
 requireText(firewall, 'filename_pattern_match_does_not_assign_work: true', 'MEMORY_GUARD_COMMANDER_PATTERN_ASSIGNMENT_RULE_MISSING');
 
+
+requireText(quarantineRegistry, 'phase_5_commander_snapshots:', 'MEMORY_GUARD_PHASE5_COMMANDER_SNAPSHOT_MISSING');
+const phase5Start = quarantineRegistry.indexOf('phase_5_commander_snapshots:');
+const phase5Block = quarantineRegistry.slice(phase5Start);
+requireText(phase5Block, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE5_COMMANDER_NOT_READY');
+requireText(phase5Block, 'quarantined_count: 16', 'MEMORY_GUARD_PHASE5_COMMANDER_COUNT_DECLARATION_MISSING');
+const phase5Pointers = [...phase5Block.matchAll(/^    - path:\s*(docs\/recovery\/commander\/.+?)\s*$/gm)].map(m => m[1].trim());
+const phase5Bodies = [...phase5Block.matchAll(/^      historical_body:\s*(docs\/recovery\/history\/commander\/snapshots\/.+?)\s*$/gm)].map(m => m[1].trim());
+if (phase5Pointers.length !== 16 || phase5Bodies.length !== 16) {
+  throw new Error('MEMORY_GUARD_PHASE5_COMMANDER_COUNT_MISMATCH:' + phase5Pointers.length + ':' + phase5Bodies.length);
+}
+for (let i = 0; i < phase5Pointers.length; i += 1) {
+  const pointerPath = phase5Pointers[i];
+  const bodyPath = phase5Bodies[i];
+  const pointer = path.join(root, pointerPath);
+  const body = path.join(root, bodyPath);
+  if (!fs.existsSync(pointer)) throw new Error('MEMORY_GUARD_PHASE5_POINTER_MISSING:' + pointerPath);
+  if (!fs.existsSync(body)) throw new Error('MEMORY_GUARD_PHASE5_BODY_MISSING:' + bodyPath);
+  const pointerText = fs.readFileSync(pointer, 'utf8');
+  const bodyText = fs.readFileSync(body, 'utf8');
+  requireText(pointerText, 'DOCUMENT_CLASS: HISTORICAL_COMPATIBILITY_POINTER', 'MEMORY_GUARD_PHASE5_POINTER_CLASS_MISSING');
+  requireText(pointerText, 'AI_READ_POLICY: EVIDENCE_MODE_ONLY', 'MEMORY_GUARD_PHASE5_POINTER_READ_POLICY_MISSING');
+  requireText(pointerText, 'CURRENT_WORK_AUTHORITY: false', 'MEMORY_GUARD_PHASE5_POINTER_AUTHORITY_BOUNDARY_MISSING');
+  requireText(bodyText, 'DOCUMENT_CLASS: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_PHASE5_BODY_CLASS_MISSING');
+  requireText(firewall, pointerPath, 'MEMORY_GUARD_PHASE5_POINTER_NOT_BLOCKED');
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
