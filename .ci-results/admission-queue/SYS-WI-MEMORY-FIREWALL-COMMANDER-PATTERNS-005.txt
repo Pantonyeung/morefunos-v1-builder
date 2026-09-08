@@ -1,0 +1,13 @@
+work_id=SYS-WI-MEMORY-FIREWALL-COMMANDER-PATTERNS-005
+candidate_sha=93cfb5dd0cccabaded8d84b57e83b56dc1fb35c0
+base_main_sha=93cfb5dd0cccabaded8d84b57e83b56dc1fb35c0
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34179971421
+conclusion=failure
