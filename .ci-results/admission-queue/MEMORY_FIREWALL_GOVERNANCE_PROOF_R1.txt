@@ -1,0 +1,13 @@
+work_id=MEMORY_FIREWALL_GOVERNANCE_PROOF_R1
+candidate_sha=9183926d27a50bb6dfa50d8d30283b73aa8af293
+base_main_sha=9183926d27a50bb6dfa50d8d30283b73aa8af293
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34175592156
+conclusion=failure
