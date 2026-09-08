@@ -790,23 +790,26 @@ const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
-if (
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0115-membership-level') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0115_CLOSED_AWAITING_FRESH_B0116_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_ONLY_NO_PRODUCT_MUTATION') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_CLOSED_AWAITING_FRESH_B0117_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0117-frontline-customer-order-attribution') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0117_CLOSED_AWAITING_FRESH_RFM_IMPLEMENTATION_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0118-rfm-projection') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0118_CLOSED_AWAITING_FRESH_ADMIN_OWNER_RFM_CONSUMPTION_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0119-admin-owner-rfm-consumption') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0119_CLOSED_AWAITING_FRESH_B0120_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0120-customer-auth-d1-linkup') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0120_CLOSED_AWAITING_FRESH_B0121_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0121-customer-auth-runtime-proof') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0121_CLOSED_SELECTING_NEXT_MATURITY')
-) {
-  throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID');
+const teamCStart = cycle.indexOf('\n  team_c:\n');
+const teamCEnd = cycle.indexOf('\n  sys_governance:\n', teamCStart);
+if (teamCStart < 0 || teamCEnd < 0) {
+  throw new Error('MEMORY_GUARD_TEAM_C_BLOCK_MISSING');
+}
+const teamCBlock = cycle.slice(teamCStart, teamCEnd);
+requireText(
+  teamCBlock,
+  'authority: docs/recovery/decisions/TEAM-C-FEATURE-EXPANSION-CHARTER-2026-09-08.md',
+  'MEMORY_GUARD_TEAM_C_AUTHORITY_MISSING',
+);
+const teamCMutationMatch = teamCBlock.match(/^\s{4}active_mutation_work_item:\s*(\S+)\s*$/m);
+if (!teamCMutationMatch) {
+  throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_MISSING');
+}
+const teamCMutation = teamCMutationMatch[1];
+const teamCActiveWorkItem = /^TEAM-C-WI-B\d{4}-[a-z0-9-]+$/.test(teamCMutation);
+const teamCNoMutationState = /^NONE_B\d{4}_[A-Z0-9_]+$/.test(teamCMutation);
+if (!teamCActiveWorkItem && !teamCNoMutationState) {
+  throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID:' + teamCMutation);
 }
 
 
