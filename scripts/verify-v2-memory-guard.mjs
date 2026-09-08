@@ -531,6 +531,7 @@ requireText(docRegistry, 'docs/recovery/commander/**: HISTORICAL_EVIDENCE', 'MEM
 const commanderAllowlist = [
   'docs/recovery/commander/CAPABILITY-CATALOG.yaml',
   'docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md',
+  'docs/recovery/commander/CAPABILITY-IDENTITY-RECONCILIATION-2026-09-08.yaml',
   'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
   'docs/recovery/commander/CAPABILITY-DEEP-AUDIT-2026-09-08.md',
   'docs/recovery/commander/HISTORICAL-CAPABILITY-LINEAGE-2026-09-08.md',
