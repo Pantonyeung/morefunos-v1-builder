@@ -1,0 +1,10 @@
+candidate_sha=ec55cb2f62269e2b737e39a8a42baac5c8d03217
+base_main_sha=f9adbc2a1d34119d4a5875f52404971d31b1222d
+work_id=TEAM-C-WI-B0116-rfm-source-resolution
+capability_id=CAP-REPORTING-001
+capability_action=EXTEND
+affected_ports=CORE
+depends_on_specs=
+supersedes_candidate_sha=5142fdded0f286c8ad0387293b622b2e722da89d
+required_core_tests=
+force_full_proof=false
