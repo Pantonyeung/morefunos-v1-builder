@@ -733,8 +733,8 @@ const teamABlockStart = cycle.indexOf('  team_a:');
 if (teamABlockStart < 0) throw new Error('MEMORY_GUARD_TEAM_A_BLOCK_MISSING');
 const teamABlockEnd = cycle.indexOf('\n  team_b:', teamABlockStart);
 const teamABlock = cycle.slice(teamABlockStart, teamABlockEnd >= 0 ? teamABlockEnd : cycle.length);
-const teamAStatus = (teamABlock.match(/status:\\s*([^\\n]+)/)?.[1] || '').trim();
-const teamAActiveMatch = teamABlock.match(/active_work_item_path:\\s*([^\\n]+)/);
+const teamAStatus = (teamABlock.match(/status:\s*([^\n]+)/)?.[1] || '').trim();
+const teamAActiveMatch = teamABlock.match(/active_work_item_path:\s*([^\n]+)/);
 if (!teamAActiveMatch) throw new Error('MEMORY_GUARD_TEAM_A_ACTIVE_WORK_ITEM_POINTER_MISSING');
 const teamAActiveRef = teamAActiveMatch[1].trim();
 if (teamAStatus === 'ACTIVE' && teamAActiveRef !== 'null' && !currentWorkItemRefs.includes(teamAActiveRef)) {
