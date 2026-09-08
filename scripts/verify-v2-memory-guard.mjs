@@ -592,7 +592,6 @@ requireText(docRegistry, 'docs/plans/**: WORKFLOW_LOCAL', 'MEMORY_GUARD_PLAN_DOC
 const currentWorkItemRefs = [...new Set(cycle.match(/docs\/workflows\/work-items\/[A-Za-z0-9._-]+\.ya?ml/g) || [])];
 const expectedCurrentWorkItems = new Set([
   'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
-  'docs/workflows/work-items/TEAM-C-WI-B0114-customer-crm-foundation.yaml',
   'docs/workflows/work-items/SYS-WI-WORKFLOW-NAMESPACE-ALLOWLIST-008.yaml',
 ]);
 
@@ -620,7 +619,11 @@ for (const filePath of expectedCurrentWorkItems) {
   if (!planRef) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_MISSING:' + filePath);
   if (!fs.existsSync(path.join(root, planRef))) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_NOT_FOUND:' + filePath + ':' + planRef);
 }
+const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml'), 'utf8');
+requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
+requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_work_item_path: null', 'MEMORY_GUARD_TEAM_B_NULL_ACTIVE_WORK_ITEM_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
+requireText(cycle, 'active_mutation_work_item: NONE_B0114_CLOSED_AWAIT_NEXT_WORK_ITEM', 'MEMORY_GUARD_TEAM_C_NULL_ACTIVE_WORK_ITEM_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
