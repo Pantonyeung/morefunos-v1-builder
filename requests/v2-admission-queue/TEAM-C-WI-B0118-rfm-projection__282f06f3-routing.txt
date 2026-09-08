@@ -1,0 +1,10 @@
+candidate_sha=282f06f3b08efa608d807c5d024a1ef0a98e1cdb
+base_main_sha=98b7cb5058adddd8395d10e583e0d20f74d21903
+work_id=TEAM-C-WI-B0118-rfm-projection
+capability_id=CAP-REPORTING-001
+capability_action=EXTEND
+affected_ports=CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
