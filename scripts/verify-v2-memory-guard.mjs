@@ -962,7 +962,19 @@ requireText(sourceCoverageAudit, 'CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_
 requireText(sourceCoverageAudit, 'CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_ID_MISSING');
 requireText(catalog, 'capability_id: CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_CATALOG_MISSING');
 requireText(catalog, 'capability_id: CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_CATALOG_MISSING');
-requireText(catalog, 'engineering_maturity: CANONICAL_CONTRACT_ADMITTED_CURRENT_D1_ADAPTER_GAP', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_MATURITY_MISCLASSIFIED');
+const customerAuthCatalogStart = catalog.indexOf('capability_id: CAP-CUSTOMER-AUTH-001');
+const customerAuthCatalogTail = customerAuthCatalogStart >= 0 ? catalog.slice(customerAuthCatalogStart) : '';
+const nextCustomerAuthCapability = customerAuthCatalogTail.slice('capability_id: CAP-CUSTOMER-AUTH-001'.length).indexOf('\n  - capability_id:');
+const customerAuthCatalogBlock = nextCustomerAuthCapability >= 0
+  ? customerAuthCatalogTail.slice(0, 'capability_id: CAP-CUSTOMER-AUTH-001'.length + nextCustomerAuthCapability)
+  : customerAuthCatalogTail;
+const customerAuthLegacyGap = customerAuthCatalogBlock.includes('engineering_maturity: CANONICAL_CONTRACT_ADMITTED_CURRENT_D1_ADAPTER_GAP');
+const customerAuthD1Admitted =
+  customerAuthCatalogBlock.includes('engineering_maturity: ADMITTED') &&
+  customerAuthCatalogBlock.includes('runtime_certification: D1_PERSISTENCE_PROVEN');
+if (!customerAuthLegacyGap && !customerAuthD1Admitted) {
+  throw new Error('MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_MATURITY_MISCLASSIFIED');
+}
 
 const migrationDir = path.join(root, 'infra/cloudflare/d1/migrations');
 const currentMigrations = fs.readdirSync(migrationDir).filter(name => name.endsWith('.sql')).sort();
