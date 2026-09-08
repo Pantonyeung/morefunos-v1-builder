@@ -1,0 +1,13 @@
+work_id=SYS-WI-DOCS-NAMESPACE-AUTHORITY-016
+candidate_sha=d4f49f29351adcfed71602d0938a59fcdcf6446a
+base_main_sha=d4f49f29351adcfed71602d0938a59fcdcf6446a
+latest_main_sha=d4f49f29351adcfed71602d0938a59fcdcf6446a
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34189420480
+conclusion=success
