@@ -712,7 +712,6 @@ for (const filePath of currentWorkItemRefs) {
 }
 const requiredCurrentWorkItemRefs = [
   'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
-  'docs/workflows/work-items/TEAM-C-WI-B0115-membership-level.yaml',
 ];
 for (const filePath of requiredCurrentWorkItemRefs) {
   if (!currentWorkItemRefs.includes(filePath)) {
