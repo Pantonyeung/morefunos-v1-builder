@@ -1,5 +1,5 @@
-source_sha=9d5427deeadf85cc25165ce9739a6d9b87341833
+source_sha=58857c86d9272b431f8fbd7d5c0ed526b53974d2
 base_sha=80b15567a8a2c1687f30bdb988afb5aee25eb4c6
 branch_name=work/CORE/B0133-dine-in-runtime-proof
-verification_phase=CANDIDATE
-request_id=TEAM-C-B0133-DINE-IN-CORE-VERIFY-20260908-01
+verification_phase=FINAL_MERGE_REQUEST
+request_id=TEAM-C-B0133-DINE-IN-CORE-TERMINAL-20260908-01
