@@ -1,0 +1,167 @@
+name: V2 Customer CRM Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-customer-crm-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+      work_id:
+        description: Exact Morefun-v2 work item ID
+        required: true
+        type: string
+      capability_id:
+        description: Exact capability ID
+        required: true
+        type: string
+      capability_action:
+        description: Exact capability action
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_WORK_ID: ${{ inputs.work_id }}
+          INPUT_CAPABILITY_ID: ${{ inputs.capability_id }}
+          INPUT_CAPABILITY_ACTION: ${{ inputs.capability_action }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
+            CAPABILITY_ID="$(printf '%s' "$INPUT_CAPABILITY_ID" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            CAPABILITY_ACTION="$(printf '%s' "$INPUT_CAPABILITY_ACTION" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          else
+            test -f requests/v2-customer-crm-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-crm-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            WORK_ID="$(sed -n 's/^work_id=//p' requests/v2-customer-crm-request.txt | tr -d '\r\n')"
+            CAPABILITY_ID="$(sed -n 's/^capability_id=//p' requests/v2-customer-crm-request.txt | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            CAPABILITY_ACTION="$(sed -n 's/^capability_action=//p' requests/v2-customer-crm-request.txt | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$WORK_ID"
+          [[ "$CAPABILITY_ID" =~ ^CAP-[A-Z0-9][A-Z0-9-]*$ ]]
+          case "$CAPABILITY_ACTION" in
+            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|NEW_BUILD|SUPERSEDE) ;;
+            *) exit 27 ;;
+          esac
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "work_id=$WORK_ID"
+            echo "capability_id=$CAPABILITY_ID"
+            echo "capability_action=$CAPABILITY_ACTION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Memory Guard
+        run: node scripts/verify-v2-memory-guard.mjs source "${{ steps.request.outputs.capability_id }}" "${{ steps.request.outputs.capability_action }}" "${{ steps.request.outputs.work_id }}"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Customer CRM focused tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          compgen -G 'packages/customer-crm/*.test.ts' > /dev/null
+          node --test packages/customer-crm/*.test.ts | tee "$RUNNER_TEMP/v2-customer-crm-tests.log"
+
+      - name: Root TypeScript static check
+        working-directory: source
+        run: npm run typecheck | tee "$RUNNER_TEMP/v2-customer-crm-typecheck.log"
+
+      - name: Upload CRM evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-customer-crm-${{ steps.request.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/v2-customer-crm-tests.log
+            ${{ runner.temp }}/v2-customer-crm-typecheck.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Seal durable CRM result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          WORK_ID: ${{ steps.request.outputs.work_id }}
+          CAPABILITY_ID: ${{ steps.request.outputs.capability_id }}
+          CAPABILITY_ACTION: ${{ steps.request.outputs.capability_action }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=$SOURCE_SHA"
+              echo "work_id=$WORK_ID"
+              echo "capability_id=$CAPABILITY_ID"
+              echo "capability_action=$CAPABILITY_ACTION"
+              echo "run_id=$RUN_ID"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-customer-crm.txt
+            git add .ci-results/v2-customer-crm.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): V2 Customer CRM $CONCLUSION $SOURCE_SHA"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
