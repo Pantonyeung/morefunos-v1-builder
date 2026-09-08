@@ -972,7 +972,10 @@ const customerAuthLegacyGap = customerAuthCatalogBlock.includes('engineering_mat
 const customerAuthD1Admitted =
   customerAuthCatalogBlock.includes('engineering_maturity: ADMITTED') &&
   customerAuthCatalogBlock.includes('runtime_certification: D1_PERSISTENCE_PROVEN');
-if (!customerAuthLegacyGap && !customerAuthD1Admitted) {
+const customerAuthRuntimeProven =
+  customerAuthCatalogBlock.includes('engineering_maturity: RUNTIME_PROVEN') &&
+  customerAuthCatalogBlock.includes('runtime_certification: CUSTOMER_WORKER_D1_AUTH_RUNTIME_PROVEN');
+if (!customerAuthLegacyGap && !customerAuthD1Admitted && !customerAuthRuntimeProven) {
   throw new Error('MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_MATURITY_MISCLASSIFIED');
 }
 
