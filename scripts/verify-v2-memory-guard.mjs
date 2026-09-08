@@ -544,6 +544,7 @@ requireText(firewall, 'default_current_mode_read: FORBIDDEN', 'MEMORY_GUARD_COMM
 requireText(docRegistry, 'docs/recovery/commander/**: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_COMMANDER_DOCREG_DEFAULT_MISSING');
 
 const commanderAllowlist = [
+  'docs/recovery/commander/AUXILIARY-ASSET-REGISTRY.yaml',
   'docs/recovery/commander/CAPABILITY-CATALOG.yaml',
   'docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md',
   'docs/recovery/commander/CAPABILITY-IDENTITY-RECONCILIATION-2026-09-08.yaml',
