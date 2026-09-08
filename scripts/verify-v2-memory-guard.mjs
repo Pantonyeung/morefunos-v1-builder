@@ -14,6 +14,11 @@ const required = [
   'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
   'docs/recovery/commander/CAPABILITY-DEEP-AUDIT-2026-09-08.md',
   'docs/recovery/commander/HISTORICAL-CAPABILITY-LINEAGE-2026-09-08.md',
+  'GOVERNANCE-RULES.yaml',
+  'WORK-POLICY.yaml',
+  'PORT-IMPLEMENTATION-REGISTRY.yaml',
+  'INTEGRATION-REGISTRY.yaml',
+  'docs/workflows/WORK-ITEM-CONTRACT.yaml',
 ];
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -31,6 +36,11 @@ const firewall = read('docs/recovery/READ-FIREWALL.yaml');
 const cycle = read('docs/recovery/CURRENT-CYCLE.yaml');
 const catalog = read('docs/recovery/commander/CAPABILITY-CATALOG.yaml');
 const docRegistry = read('docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml');
+const governance = read('GOVERNANCE-RULES.yaml');
+const workPolicy = read('WORK-POLICY.yaml');
+const portRegistry = read('PORT-IMPLEMENTATION-REGISTRY.yaml');
+const integrationRegistry = read('INTEGRATION-REGISTRY.yaml');
+const workItemContract = read('docs/workflows/WORK-ITEM-CONTRACT.yaml');
 
 const requireText = (text, needle, code) => {
   if (!text.includes(needle)) throw new Error(`${code}:${needle}`);
@@ -64,5 +74,14 @@ requireText(catalog, 'catalog_id: MOREFUNOS-CAPABILITY-CATALOG', 'MEMORY_GUARD_C
 requireText(catalog, 'new_build_requires_catalog_absence_proof: true', 'MEMORY_GUARD_CATALOG_NO_REDO_RULE_MISSING');
 requireText(docRegistry, 'SEARCH_RESULT_DOES_NOT_EQUAL_AUTHORITY', 'MEMORY_GUARD_DOC_AUTHORITY_RULE_MISSING');
 requireText(docRegistry, 'CROSS_REPORT_CURRENT_TRUTH_INFERENCE_FORBIDDEN', 'MEMORY_GUARD_DOC_CROSS_REPORT_RULE_MISSING');
+requireText(governance, 'first: MEMORY_GATEWAY', 'MEMORY_GUARD_GOV_ROUTING_MISSING');
+requireText(governance, 'room_current_handoff_as_default_current_truth: FORBIDDEN', 'MEMORY_GUARD_ROOM_BYPASS_PRESENT');
+requireText(workPolicy, 'resolve_capability_id_in_catalog', 'MEMORY_GUARD_WORK_CAPABILITY_RESOLUTION_MISSING');
+requireText(portRegistry, 'implementation_locator_is_not_capability_status: true', 'MEMORY_GUARD_PORT_REGISTRY_STATE_DRIFT');
+requireText(portRegistry, 'no_remaining_or_completion_percentage_fields: true', 'MEMORY_GUARD_PORT_REGISTRY_REMAINING_DRIFT');
+requireText(integrationRegistry, 'flow_id: INTG-KEETA-HK-001', 'MEMORY_GUARD_KEETA_FLOW_MISSING');
+requireText(integrationRegistry, 'status: ACTIVE', 'MEMORY_GUARD_NO_ACTIVE_INTEGRATION_FLOW');
+requireText(workItemContract, '- capability_id', 'MEMORY_GUARD_WORK_ITEM_CAPABILITY_ID_MISSING');
+requireText(workItemContract, '- capability_action', 'MEMORY_GUARD_WORK_ITEM_CAPABILITY_ACTION_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
