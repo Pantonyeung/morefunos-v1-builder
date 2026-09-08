@@ -1,0 +1,13 @@
+work_id=SYS-WI-COMMANDER-NAMESPACE-ALLOWLIST-006
+candidate_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
+base_main_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34180679793
+conclusion=failure
