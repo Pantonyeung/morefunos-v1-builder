@@ -90,11 +90,15 @@ Request submission:
 
 Each push should add exactly one immutable request file. This prevents Team A / Team B from overwriting each other's queue manifest.
 
-Fields:
+Fields for every new request:
 - `candidate_sha`
 - `base_main_sha`
 - `work_id`
+- `capability_id` — stable ID from MoreFunOS `CAPABILITY-CATALOG.yaml`
+- `capability_action` — `REUSE | LINKUP | EXTEND | REGRESSION_REPAIR | PHYSICAL_ACCEPTANCE | NEW_BUILD | SUPERSEDE`
 - `affected_ports`
+
+The queue fails closed when capability identity/action is missing or invalid. `NEW_BUILD` cannot be used to recreate an already active `no_redo` capability.
 
 The candidate SHA is immutable after CANDIDATE_READY.
 
