@@ -100,6 +100,8 @@ Fields for every new request:
 
 The queue fails closed when capability identity/action is missing or invalid. `NEW_BUILD` cannot be used to recreate an already active `no_redo` capability.
 
+Queue / Work Item / Plan capability identity must match exactly. Every new request `work_id` must resolve to exactly one V2 Work Item, and its referenced Plan must carry the same `capability_id` and `capability_action`.
+
 The candidate SHA is immutable after CANDIDATE_READY.
 
 Important:
