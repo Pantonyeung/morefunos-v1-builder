@@ -1,0 +1,10 @@
+candidate_sha=02e8e922fc5c042570dd2ce612ca46373953bec0
+base_main_sha=02e8e922fc5c042570dd2ce612ca46373953bec0
+work_id=SYS-WI-MEMORY-FIREWALL-GOVERNANCE
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=3e29c433f0376237293491f566e4aaeb5f50a2f2
+required_core_tests=
+force_full_proof=false
