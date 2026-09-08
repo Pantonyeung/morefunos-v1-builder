@@ -75,6 +75,25 @@ const selfServiceGovernance = read('docs/workflows/SELF-SERVICE-GOVERNANCE-CONTR
 const integrationPolicy = read('INTEGRATION-POLICY.yaml');
 const failureClosure = read('docs/workflows/FAILURE-CORRECTION-CLOSURE-CONTRACT.yaml');
 
+const requestedCompletionManifestPath = requestedWorkId
+  ? `docs/workflows/completion-manifests/${requestedWorkId}.yaml`
+  : '';
+let requestedCompletionManifest = '';
+let provisionalNewBuildPaths = new Set();
+if (requestedCapabilityAction === 'NEW_BUILD' && requestedWorkId && requestedCapabilityId) {
+  const manifestAbs = path.join(root, requestedCompletionManifestPath);
+  if (fs.existsSync(manifestAbs)) {
+    requestedCompletionManifest = fs.readFileSync(manifestAbs, 'utf8');
+    requireText(requestedCompletionManifest, `work_id: ${requestedWorkId}`, 'MEMORY_GUARD_NEW_BUILD_MANIFEST_WORK_ID_MISMATCH');
+    requireText(requestedCompletionManifest, `capability_id: ${requestedCapabilityId}`, 'MEMORY_GUARD_NEW_BUILD_MANIFEST_CAPABILITY_ID_MISMATCH');
+    requireText(requestedCompletionManifest, 'capability_action: NEW_BUILD', 'MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
+    requireText(requestedCompletionManifest, 'scope_status: IMPLEMENTED_CANDIDATE', 'MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
+    provisionalNewBuildPaths = new Set(
+      [...requestedCompletionManifest.matchAll(/^  -\s+([^\s]+)\s*$/gm)].map(m => m[1].trim())
+    );
+  }
+}
+
 const requireText = (text, needle, code) => {
   if (!text.includes(needle)) throw new Error(`${code}:${needle}`);
 };
@@ -754,8 +773,15 @@ const explicitNonCapabilityPackages = new Set(
 const unclassifiedPackages = currentPackageDirs.filter(
   name => !catalogMappedPackages.has(name) && !explicitNonCapabilityPackages.has(name)
 );
-if (unclassifiedPackages.length > 0) {
-  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_UNCLASSIFIED:' + unclassifiedPackages.join(','));
+const provisionallyClassifiedNewBuildPackages = unclassifiedPackages.filter(name =>
+  requestedCapabilityAction === 'NEW_BUILD' &&
+  [...provisionalNewBuildPaths].some(p => p.startsWith(`packages/${name}/`))
+);
+const trulyUnclassifiedPackages = unclassifiedPackages.filter(
+  name => !provisionallyClassifiedNewBuildPackages.includes(name)
+);
+if (trulyUnclassifiedPackages.length > 0) {
+  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_UNCLASSIFIED:' + trulyUnclassifiedPackages.join(','));
 }
 
 const staleExplicitPackages = [...explicitNonCapabilityPackages].filter(
@@ -843,7 +869,9 @@ requireText(sourceCoverageAudit, 'rule: EVERY_APP_AND_CLOUDFLARE_RUNTIME_SURFACE
 requireText(sourceCoverageAudit, 'd1_schema_authority_coverage:', 'MEMORY_GUARD_PHASE13_D1_COVERAGE_MISSING');
 requireText(sourceCoverageAudit, 'status: PHASE_13_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE13_D1_NOT_GREEN');
 requireText(sourceCoverageAudit, 'builder_run: 34186509319', 'MEMORY_GUARD_PHASE13_D1_RUN_MISSING');
-requireText(sourceCoverageAudit, 'migration_count: 52', 'MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISMATCH');
+const migrationCountMatch = sourceCoverageAudit.match(/migration_count:\s*(\d+)/);
+if (!migrationCountMatch) throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISSING');
+const auditedMigrationCount = Number(migrationCountMatch[1]);
 requireText(sourceCoverageAudit, 'unclassified_migrations: []', 'MEMORY_GUARD_PHASE13_UNCLASSIFIED_MIGRATIONS');
 requireText(sourceCoverageAudit, 'CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_ID_MISSING');
 requireText(sourceCoverageAudit, 'CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_ID_MISSING');
@@ -853,13 +881,21 @@ requireText(catalog, 'engineering_maturity: CANONICAL_CONTRACT_ADMITTED_CURRENT_
 
 const migrationDir = path.join(root, 'infra/cloudflare/d1/migrations');
 const currentMigrations = fs.readdirSync(migrationDir).filter(name => name.endsWith('.sql')).sort();
-if (currentMigrations.length !== 52) {
-  throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT:' + currentMigrations.length);
+if (currentMigrations.length < auditedMigrationCount) {
+  throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT_REGRESSION:' + currentMigrations.length);
 }
+const provisionallyClassifiedNewBuildMigrations = [];
 for (const migration of currentMigrations) {
-  if (!sourceCoverageAudit.includes('migration: ' + migration)) {
-    throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_UNMAPPED:' + migration);
+  if (sourceCoverageAudit.includes('migration: ' + migration)) continue;
+  const relative = `infra/cloudflare/d1/migrations/${migration}`;
+  if (requestedCapabilityAction === 'NEW_BUILD' && provisionalNewBuildPaths.has(relative)) {
+    provisionallyClassifiedNewBuildMigrations.push(migration);
+    continue;
   }
+  throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_UNMAPPED:' + migration);
+}
+if (currentMigrations.length !== auditedMigrationCount + provisionallyClassifiedNewBuildMigrations.length) {
+  throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT:' + currentMigrations.length);
 }
 
 
