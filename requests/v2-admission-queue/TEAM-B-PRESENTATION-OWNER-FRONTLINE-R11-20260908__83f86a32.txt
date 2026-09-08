@@ -1,0 +1,10 @@
+candidate_sha=83f86a323b8fe1ca8e8d465bf4ec2abbac878451
+base_main_sha=3e29c433f0376237293491f566e4aaeb5f50a2f2
+work_id=TEAM-B-PRESENTATION-OWNER-FRONTLINE-R11-20260908
+capability_id=CAP-CUSTOMER-PRESENTATION-001
+capability_action=EXTEND
+affected_ports=ADMIN,OWNER
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
