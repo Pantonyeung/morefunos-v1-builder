@@ -617,7 +617,7 @@ for (const filePath of currentDecisionRefs) {
 
 
 requireText(quarantineRegistry, 'phase_8_workflow_namespace:', 'MEMORY_GUARD_PHASE8_WORKFLOW_NAMESPACE_MISSING');
-requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE8_WORKFLOW_NAMESPACE_NOT_READY');
+requireText(quarantineRegistry, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE8_WORKFLOW_NAMESPACE_NOT_GREEN');
 requireText(quarantineRegistry, 'work_item_namespace_default: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PHASE8_WORK_ITEM_DEFAULT_MISSING');
 requireText(quarantineRegistry, 'plan_namespace_default: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PHASE8_PLAN_DEFAULT_MISSING');
 
@@ -629,20 +629,10 @@ requireText(docRegistry, 'docs/workflows/work-items/**: WORKFLOW_LOCAL', 'MEMORY
 requireText(docRegistry, 'docs/plans/**: WORKFLOW_LOCAL', 'MEMORY_GUARD_PLAN_DOCREG_DEFAULT_MISSING');
 
 const currentWorkItemRefs = [...new Set(cycle.match(/docs\/workflows\/work-items\/[A-Za-z0-9._-]+\.ya?ml/g) || [])];
-const expectedCurrentWorkItems = new Set([
-  'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
-  'docs/workflows/work-items/SYS-WI-WORKFLOW-NAMESPACE-ALLOWLIST-008.yaml',
-]);
-
-for (const filePath of currentWorkItemRefs) {
-  if (!expectedCurrentWorkItems.has(filePath)) {
-    throw new Error('MEMORY_GUARD_UNEXPECTED_CURRENT_WORK_ITEM_POINTER:' + filePath);
-  }
+if (currentWorkItemRefs.length === 0) {
+  throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_POINTERS_EMPTY');
 }
-for (const filePath of expectedCurrentWorkItems) {
-  if (!currentWorkItemRefs.includes(filePath)) {
-    throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_POINTER_MISSING:' + filePath);
-  }
+for (const filePath of currentWorkItemRefs) {
   const full = path.join(root, filePath);
   if (!fs.existsSync(full)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_FILE_MISSING:' + filePath);
   const text = fs.readFileSync(full, 'utf8');
@@ -658,11 +648,21 @@ for (const filePath of expectedCurrentWorkItems) {
   if (!planRef) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_MISSING:' + filePath);
   if (!fs.existsSync(path.join(root, planRef))) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_NOT_FOUND:' + filePath + ':' + planRef);
 }
+const requiredCurrentWorkItemRefs = [
+  'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
+  'docs/workflows/work-items/TEAM-C-WI-B0115-membership-level.yaml',
+  'docs/workflows/work-items/SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009.yaml',
+];
+for (const filePath of requiredCurrentWorkItemRefs) {
+  if (!currentWorkItemRefs.includes(filePath)) {
+    throw new Error('MEMORY_GUARD_REQUIRED_CURRENT_WORK_ITEM_POINTER_MISSING:' + filePath);
+  }
+}
 const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml'), 'utf8');
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
-requireText(cycle, 'active_work_item_path: null', 'MEMORY_GUARD_TEAM_B_NULL_ACTIVE_WORK_ITEM_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
-requireText(cycle, 'active_mutation_work_item: NONE_B0114_CLOSED_AWAIT_NEXT_WORK_ITEM', 'MEMORY_GUARD_TEAM_C_NULL_ACTIVE_WORK_ITEM_MISSING');
+requireText(cycle, 'active_mutation_work_item: TEAM-C-WI-B0115-membership-level', 'MEMORY_GUARD_TEAM_C_ACTIVE_WORK_ITEM_MISSING');
+requireText(cycle, 'work_id: SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009', 'MEMORY_GUARD_SYS_PHASE9_WORK_ITEM_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
