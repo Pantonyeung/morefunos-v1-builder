@@ -858,7 +858,8 @@ for (const migration of currentMigrations) {
 
 
 requireText(sourceCoverageAudit, 'auxiliary_asset_surface_coverage:', 'MEMORY_GUARD_PHASE14_AUXILIARY_COVERAGE_MISSING');
-requireText(sourceCoverageAudit, 'status: PHASE_14_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE14_AUXILIARY_NOT_READY');
+requireText(sourceCoverageAudit, 'status: PHASE_14_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE14_AUXILIARY_NOT_GREEN');
+requireText(sourceCoverageAudit, 'builder_run: 34188356204', 'MEMORY_GUARD_PHASE14_BUILDER_RUN_MISSING');
 requireText(sourceCoverageAudit, 'ASSET-MF01-MENU-IMPORT-20260905', 'MEMORY_GUARD_PHASE14_MENU_ASSET_MISSING');
 requireText(sourceCoverageAudit, 'ASSET-KEETA-WORKER-RUNTIME-001', 'MEMORY_GUARD_PHASE14_KEETA_WORKER_ASSET_MISSING');
 requireText(auxiliaryAssetRegistry, 'registry_id: MOREFUNOS-AUXILIARY-ASSET-REGISTRY', 'MEMORY_GUARD_AUXILIARY_REGISTRY_ID_MISSING');
@@ -884,4 +885,41 @@ for (const surface of auxiliarySurfaceRoots) {
     }
   }
 }
+
+requireText(auxiliaryAssetRegistry, 'repository_shell:', 'MEMORY_GUARD_PHASE15_REPOSITORY_SHELL_MISSING');
+requireText(auxiliaryAssetRegistry, 'status: PHASE_15_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE15_REPOSITORY_SHELL_NOT_READY');
+requireText(auxiliaryAssetRegistry, 'ASSET-REPOSITORY-GOVERNANCE-CONTROL-PLANE-001', 'MEMORY_GUARD_PHASE15_GOVERNANCE_ASSET_MISSING');
+requireText(auxiliaryAssetRegistry, 'ASSET-AGENT-INSTRUCTION-SURFACE-001', 'MEMORY_GUARD_PHASE15_AGENT_ASSET_MISSING');
+requireText(auxiliaryAssetRegistry, 'ASSET-ROOT-BUILD-CONFIG-001', 'MEMORY_GUARD_PHASE15_BUILD_ASSET_MISSING');
+requireText(auxiliaryAssetRegistry, 'ASSET-PROJECT-METADATA-001', 'MEMORY_GUARD_PHASE15_METADATA_ASSET_MISSING');
+
+const auxiliaryAssetPaths = new Set(
+  [...auxiliaryAssetRegistry.matchAll(/^      -\s+(.+?)\s*$/gm)].map(m => m[1].trim())
+);
+
+const rootEntries = fs.readdirSync(root, {withFileTypes:true});
+const rootFiles = rootEntries.filter(e => e.isFile()).map(e => e.name);
+for (const fileName of rootFiles) {
+  if (!auxiliaryAssetPaths.has(fileName)) {
+    throw new Error('MEMORY_GUARD_PHASE15_UNCLASSIFIED_ROOT_FILE:' + fileName);
+  }
+}
+
+const githubRoot = path.join(root, '.github');
+const githubFiles = fs.existsSync(githubRoot) ? walkFiles(githubRoot).map(f => path.relative(root, f).split(path.sep).join('/')) : [];
+for (const filePath of githubFiles) {
+  if (!auxiliaryAssetPaths.has(filePath)) {
+    throw new Error('MEMORY_GUARD_PHASE15_UNCLASSIFIED_GITHUB_FILE:' + filePath);
+  }
+}
+if (fs.existsSync(path.join(root, '.github/workflows'))) {
+  throw new Error('MEMORY_GUARD_V2_NATIVE_WORKFLOWS_REAPPEARED');
+}
+if (rootFiles.length !== 28) {
+  throw new Error('MEMORY_GUARD_PHASE15_ROOT_FILE_COUNT_DRIFT:' + rootFiles.length);
+}
+if (githubFiles.length !== 2) {
+  throw new Error('MEMORY_GUARD_PHASE15_GITHUB_FILE_COUNT_DRIFT:' + githubFiles.length);
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
