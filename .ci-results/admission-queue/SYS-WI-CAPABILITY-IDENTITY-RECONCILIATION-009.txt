@@ -1,0 +1,13 @@
+work_id=SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009
+candidate_sha=e72121894ebc9f82226aeb29ca2f68c727a6a5ab
+base_main_sha=e72121894ebc9f82226aeb29ca2f68c727a6a5ab
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34183183792
+conclusion=failure
