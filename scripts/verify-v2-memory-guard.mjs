@@ -13,6 +13,7 @@ const required = [
   'docs/recovery/READ-FIREWALL.yaml',
   'docs/recovery/CURRENT-CYCLE.yaml',
   'docs/recovery/commander/CAPABILITY-CATALOG.yaml',
+  'docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml',
   'docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md',
   'docs/recovery/commander/CAPABILITY-IDENTITY-RECONCILIATION-2026-09-08.yaml',
   'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
@@ -50,6 +51,7 @@ const start = read('docs/recovery/START-HERE.md');
 const firewall = read('docs/recovery/READ-FIREWALL.yaml');
 const cycle = read('docs/recovery/CURRENT-CYCLE.yaml');
 const catalog = read('docs/recovery/commander/CAPABILITY-CATALOG.yaml');
+const sourceCoverageAudit = read('docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml');
 const masterRegistry = read('docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md');
 const docRegistry = read('docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml');
 const quarantineRegistry = read('docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml');
@@ -674,5 +676,36 @@ requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMOR
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
 requireText(cycle, 'active_mutation_work_item: TEAM-C-WI-B0115-membership-level', 'MEMORY_GUARD_TEAM_C_ACTIVE_WORK_ITEM_MISSING');
+
+
+requireText(sourceCoverageAudit, 'status: PHASE_10_REGISTERED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE10_SOURCE_COVERAGE_MISSING');
+for (const id of [
+  'CAP-EVENT-DURABILITY-001',
+  'CAP-MERCHANT-STORE-001',
+  'CAP-DEVICE-TRUST-001',
+  'CAP-SECURITY-CONTEXT-001',
+  'CAP-ORDER-INTAKE-001',
+  'CAP-CHANNEL-SETTLEMENT-ESTIMATE-001',
+]) {
+  if (!capabilityIds.has(id)) throw new Error('MEMORY_GUARD_PHASE10_CAPABILITY_NOT_REGISTERED:' + id);
+}
+for (const p of [
+  'packages/event-durability/durable-repositories.ts',
+  'packages/merchant-store/merchant-store.ts',
+  'packages/session-device-trust/session-device-trust.ts',
+  'packages/security-context-gateway/security-context-gateway.ts',
+  'packages/store-order-intake/store-order-intake.ts',
+  'packages/channel-settlement/d1-third-party-net-estimate-policy.ts',
+  'packages/pricing/d1-pricing-authority.ts',
+  'packages/reporting-projection/d1-reporting-snapshot.ts',
+  'packages/dine-in-service/dine-in-service.ts',
+]) {
+  if (!fs.existsSync(path.join(root, p))) throw new Error('MEMORY_GUARD_PHASE10_SOURCE_PATH_MISSING:' + p);
+}
+requireText(catalog, 'packages/pricing/d1-pricing-authority.ts', 'MEMORY_GUARD_PHASE10_PRICING_PATH_UNREGISTERED');
+requireText(catalog, 'packages/reporting-projection/d1-reporting-snapshot.ts', 'MEMORY_GUARD_PHASE10_REPORTING_PATH_UNREGISTERED');
+requireText(catalog, 'packages/dine-in-service/dine-in-service.ts', 'MEMORY_GUARD_PHASE10_DINEIN_PATH_UNREGISTERED');
+requireText(sourceCoverageAudit, 'packages/production-persistence/postgres.ts', 'MEMORY_GUARD_PHASE10_POSTGRES_CLASSIFICATION_MISSING');
+requireText(sourceCoverageAudit, 'POSTGRES_PRODUCTION_AUTHORITY_FORMALLY_EXCLUDED', 'MEMORY_GUARD_PHASE10_POSTGRES_EXCLUSION_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
