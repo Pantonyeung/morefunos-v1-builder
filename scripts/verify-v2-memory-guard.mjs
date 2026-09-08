@@ -729,13 +729,16 @@ for (const filePath of currentWorkItemRefs) {
   if (!planRef) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_MISSING:' + filePath);
   if (!fs.existsSync(path.join(root, planRef))) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_NOT_FOUND:' + filePath + ':' + planRef);
 }
-const requiredCurrentWorkItemRefs = [
-  'docs/workflows/work-items/TEAM-A-WI-A9B-PRINT-SETUP-TRANSPORT-UX-20260908.yaml',
-];
-for (const filePath of requiredCurrentWorkItemRefs) {
-  if (!currentWorkItemRefs.includes(filePath)) {
-    throw new Error('MEMORY_GUARD_REQUIRED_CURRENT_WORK_ITEM_POINTER_MISSING:' + filePath);
-  }
+const teamABlockStart = cycle.indexOf('  team_a:');
+if (teamABlockStart < 0) throw new Error('MEMORY_GUARD_TEAM_A_BLOCK_MISSING');
+const teamABlockEnd = cycle.indexOf('\n  team_b:', teamABlockStart);
+const teamABlock = cycle.slice(teamABlockStart, teamABlockEnd >= 0 ? teamABlockEnd : cycle.length);
+const teamAStatus = (teamABlock.match(/status:\\s*([^\\n]+)/)?.[1] || '').trim();
+const teamAActiveMatch = teamABlock.match(/active_work_item_path:\\s*([^\\n]+)/);
+if (!teamAActiveMatch) throw new Error('MEMORY_GUARD_TEAM_A_ACTIVE_WORK_ITEM_POINTER_MISSING');
+const teamAActiveRef = teamAActiveMatch[1].trim();
+if (teamAStatus === 'ACTIVE' && teamAActiveRef !== 'null' && !currentWorkItemRefs.includes(teamAActiveRef)) {
+  throw new Error('MEMORY_GUARD_TEAM_A_CURRENT_WORK_ITEM_NOT_DISCOVERED:' + teamAActiveRef);
 }
 const sysBlockStart = cycle.indexOf('  sys_governance:');
 if (sysBlockStart < 0) throw new Error('MEMORY_GUARD_SYS_GOVERNANCE_BLOCK_MISSING');
