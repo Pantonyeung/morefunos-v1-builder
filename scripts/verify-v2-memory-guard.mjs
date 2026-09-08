@@ -19,6 +19,10 @@ const required = [
   'PORT-IMPLEMENTATION-REGISTRY.yaml',
   'INTEGRATION-REGISTRY.yaml',
   'docs/workflows/WORK-ITEM-CONTRACT.yaml',
+  'PLAN-TEMPLATE.yaml',
+  'docs/workflows/GATE-REGISTRY.yaml',
+  'docs/workflows/WORKFLOW-REGISTRY.yaml',
+  'docs/workflows/WORK-STATE-MACHINE.yaml',
 ];
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -41,6 +45,10 @@ const workPolicy = read('WORK-POLICY.yaml');
 const portRegistry = read('PORT-IMPLEMENTATION-REGISTRY.yaml');
 const integrationRegistry = read('INTEGRATION-REGISTRY.yaml');
 const workItemContract = read('docs/workflows/WORK-ITEM-CONTRACT.yaml');
+const planTemplate = read('PLAN-TEMPLATE.yaml');
+const gateRegistry = read('docs/workflows/GATE-REGISTRY.yaml');
+const workflowRegistry = read('docs/workflows/WORKFLOW-REGISTRY.yaml');
+const workStateMachine = read('docs/workflows/WORK-STATE-MACHINE.yaml');
 
 const requireText = (text, needle, code) => {
   if (!text.includes(needle)) throw new Error(`${code}:${needle}`);
@@ -83,5 +91,10 @@ requireText(integrationRegistry, 'flow_id: INTG-KEETA-HK-001', 'MEMORY_GUARD_KEE
 requireText(integrationRegistry, 'status: ACTIVE', 'MEMORY_GUARD_NO_ACTIVE_INTEGRATION_FLOW');
 requireText(workItemContract, '- capability_id', 'MEMORY_GUARD_WORK_ITEM_CAPABILITY_ID_MISSING');
 requireText(workItemContract, '- capability_action', 'MEMORY_GUARD_WORK_ITEM_CAPABILITY_ACTION_MISSING');
+requireText(planTemplate, 'capability_id: null', 'MEMORY_GUARD_PLAN_CAPABILITY_ID_MISSING');
+requireText(planTemplate, 'capability_action: null', 'MEMORY_GUARD_PLAN_CAPABILITY_ACTION_MISSING');
+requireText(gateRegistry, 'G01A_CAPABILITY_MEMORY:', 'MEMORY_GUARD_CAPABILITY_GATE_MISSING');
+requireText(workflowRegistry, 'G01A_CAPABILITY_MEMORY', 'MEMORY_GUARD_WORKFLOW_CAPABILITY_GATE_MISSING');
+requireText(workStateMachine, 'classification_requires_capability_resolution: true', 'MEMORY_GUARD_STATE_CAPABILITY_RESOLUTION_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
