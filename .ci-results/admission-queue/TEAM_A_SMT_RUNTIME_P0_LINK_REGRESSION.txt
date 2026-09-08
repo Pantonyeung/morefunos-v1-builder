@@ -1,0 +1,13 @@
+work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
+candidate_sha=a49c2ae5aaacc452eb32f736125b00120857f868
+base_main_sha=f79eaa836772301a8f18ce721839c46d19882d41
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34202026321
+conclusion=failure
