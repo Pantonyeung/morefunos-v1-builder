@@ -1,5 +1,5 @@
 work_id=TEAM-B-ADMIN-PRINT-CENTER-PRODUCT-ROUTING-20260908
-candidate_sha=e10f5bc5561cef2234ba0d38e85b88cdb5aeab2e
+candidate_sha=7ee22060a667f88156b1803b3ab8ed7718120188
 base_main_sha=39d2f4c1aab54499c9b6c2871360a7e7b622836d
 latest_main_sha=497fb5cc4aa4e3d5cb23312467b242f7d0b8d3ec
 collision=C1
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=PRINT
 force_full_proof=false
-run_id=34183410067
+run_id=34183418900
 conclusion=success
