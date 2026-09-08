@@ -752,7 +752,8 @@ requireText(sourceCoverageAudit, 'rule: EVERY_PACKAGE_DIRECTORY_MUST_BE_CATALOG_
 requireText(sourceCoverageAudit, 'phase11_exact_proof:', 'MEMORY_GUARD_PHASE11_PROOF_MISSING');
 requireText(sourceCoverageAudit, 'builder_run: 34185108832', 'MEMORY_GUARD_PHASE11_RUN_MISSING');
 requireText(sourceCoverageAudit, 'runtime_surface_coverage:', 'MEMORY_GUARD_RUNTIME_SURFACE_COVERAGE_MISSING');
-requireText(sourceCoverageAudit, 'status: PHASE_12_REGISTERED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE12_RUNTIME_SURFACE_NOT_READY');
+requireText(sourceCoverageAudit, 'status: PHASE_12_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE12_RUNTIME_SURFACE_NOT_GREEN');
+requireText(sourceCoverageAudit, 'builder_run: 34185608047', 'MEMORY_GUARD_PHASE12_RUNTIME_SURFACE_RUN_MISSING');
 if (!capabilityIds.has('CAP-SMT-RUNTIME-OTA-001')) {
   throw new Error('MEMORY_GUARD_PHASE12_OTA_CAPABILITY_NOT_REGISTERED');
 }
@@ -817,5 +818,27 @@ if (staleExplicitInfra.length > 0) {
   throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_STALE_CLOUDFLARE_CLASSIFICATION:' + staleExplicitInfra.join(','));
 }
 requireText(sourceCoverageAudit, 'rule: EVERY_APP_AND_CLOUDFLARE_RUNTIME_SURFACE_MUST_BE_CATALOG_MAPPED_OR_EXPLICITLY_CLASSIFIED_ADAPTER', 'MEMORY_GUARD_RUNTIME_SURFACE_RULE_MISSING');
+
+
+requireText(sourceCoverageAudit, 'd1_schema_authority_coverage:', 'MEMORY_GUARD_PHASE13_D1_COVERAGE_MISSING');
+requireText(sourceCoverageAudit, 'status: PHASE_13_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE13_D1_NOT_READY');
+requireText(sourceCoverageAudit, 'migration_count: 51', 'MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISMATCH');
+requireText(sourceCoverageAudit, 'unclassified_migrations: []', 'MEMORY_GUARD_PHASE13_UNCLASSIFIED_MIGRATIONS');
+requireText(sourceCoverageAudit, 'CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_ID_MISSING');
+requireText(sourceCoverageAudit, 'CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_ID_MISSING');
+requireText(catalog, 'capability_id: CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_CATALOG_MISSING');
+requireText(catalog, 'capability_id: CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_CATALOG_MISSING');
+requireText(catalog, 'engineering_maturity: CANONICAL_CONTRACT_ADMITTED_CURRENT_D1_ADAPTER_GAP', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_MATURITY_MISCLASSIFIED');
+
+const migrationDir = path.join(root, 'infra/cloudflare/d1/migrations');
+const currentMigrations = fs.readdirSync(migrationDir).filter(name => name.endsWith('.sql')).sort();
+if (currentMigrations.length !== 51) {
+  throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT:' + currentMigrations.length);
+}
+for (const migration of currentMigrations) {
+  if (!sourceCoverageAudit.includes('migration: ' + migration)) {
+    throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_UNMAPPED:' + migration);
+  }
+}
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
