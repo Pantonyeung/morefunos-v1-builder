@@ -1,0 +1,10 @@
+candidate_sha=67853ea5bf32e38d97dc27e9b9469e0ee474baef
+base_main_sha=d91e7401e8548afa106f7a806d24a465da37d7dd
+work_id=TEAM-B-ADMIN-PRINT-CENTER-PRODUCT-ROUTING-20260908
+capability_id=CAP-PRINT-DEVICE-001
+capability_action=LINKUP
+affected_ports=ADMIN,SMT,CORE
+depends_on_specs=
+supersedes_candidate_sha=5cf802a2ba5df557cf92be4577197efc166261a7
+required_core_tests=PRINT
+force_full_proof=false
