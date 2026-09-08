@@ -55,6 +55,56 @@ jobs:
           console.log(JSON.stringify(rows));
           NODE
 
+      - name: Read target order display-code values
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ORDER_A="$(sed -n 's/^order_a=//p' requests/team-a-order-display-code-production-readback.txt | tr -d '[:space:]')"
+          ORDER_B="$(sed -n 's/^order_b=//p' requests/team-a-order-display-code-production-readback.txt | tr -d '[:space:]')"
+          [[ "$ORDER_A" =~ ^[0-9a-f-]{36}$ ]]
+          [[ "$ORDER_B" =~ ^[0-9a-f-]{36}$ ]]
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DATABASE_ID/query"
+          SQL="SELECT s.order_id,s.revision,s.lifecycle_status,s.accepted_projection_json,s.order_snapshot_json,d.display_code AS authority_display_code,d.source_order_key,d.business_date,d.sequence FROM mfos_order_state s LEFT JOIN mfos_order_display_code d ON d.order_id=s.order_id WHERE s.order_id IN ('$ORDER_A','$ORDER_B') ORDER BY s.order_id"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/target-query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl --fail-with-body --silent --show-error -X POST "$URL"             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             -H 'content-type: application/json'             --data-binary @/tmp/target-query.json > /tmp/target-result.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=require('/tmp/target-result.json');
+          if(!x.success||!x.result?.[0]?.success) throw new Error('TARGET_D1_QUERY_FAILED');
+          const rows=x.result[0].results||[];
+          if(rows.length!==2) throw new Error('TARGET_ROWS_NOT_FOUND:'+rows.length);
+          const out=rows.map(r=>{
+            const raw=r.order_snapshot_json||r.accepted_projection_json;
+            const p=raw?JSON.parse(raw):{};
+            return {
+              orderId:r.order_id,
+              revision:r.revision,
+              lifecycleStatus:r.lifecycle_status,
+              canonicalDisplayOrderCode:p?.canonicalIdentity?.displayOrderCode??null,
+              localDisplayOrderCode:p?.localDisplayOrderCode??null,
+              displayOrderCode:p?.displayOrderCode??null,
+              authorityDisplayOrderCode:r.authority_display_code??null,
+              sourceOrderKey:r.source_order_key??null,
+              businessDate:r.business_date??null,
+              sequence:r.sequence??null
+            };
+          });
+          fs.writeFileSync('/tmp/target-readback.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          NODE
+
+      - name: Upload target readback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-a-order-display-code-target-readback-${{ steps.req.outputs.source_sha }}
+          path: /tmp/target-readback.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Upload readback evidence
         if: always()
         uses: actions/upload-artifact@v4
