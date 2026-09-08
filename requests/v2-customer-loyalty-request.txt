@@ -1,4 +1,4 @@
-source_sha=9afc3a1417b5e53bc673cc9922ef7908f9423419
+source_sha=c86036462ce617243b5036e93b59529163a87c7a
 base_sha=fb659e01abb4826c28a9d4ba084f366d99700ed6
-branch_name=work/CORE/B0120-customer-auth-d1-linkup
-request_id=TEAM-C-B0120-CUSTOMER-AUTH-D1-TERMINAL-20260908-01
+branch_name=main
+request_id=TEAM-C-B0120-CUSTOMER-AUTH-D1-POST-ADMISSION-20260908-01
