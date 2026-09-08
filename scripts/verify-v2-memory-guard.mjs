@@ -36,6 +36,9 @@ const required = [
   'INTEGRATION-POLICY.yaml',
   'docs/workflows/FAILURE-CORRECTION-CLOSURE-CONTRACT.yaml',
   'docs/recovery/TEAM-HANDOFF-PROTOCOL.md',
+  'docs/GOVERNANCE.md',
+  'docs/ROOMS.md',
+  'docs/constitution/README.md',
 ];
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -396,6 +399,9 @@ for (const originalPath of phase2Quarantined) {
   if (!fs.existsSync(body)) throw new Error('MEMORY_GUARD_PHASE2_BODY_MISSING:' + basename);
 }
 const handoffProtocol = read('docs/recovery/TEAM-HANDOFF-PROTOCOL.md');
+const docsGovernance = read('docs/GOVERNANCE.md');
+const docsRooms = read('docs/ROOMS.md');
+const constitutionReadme = read('docs/constitution/README.md');
 requireText(handoffProtocol, 'CAPABILITY_ID:', 'MEMORY_GUARD_HANDOFF_CAPABILITY_ID_MISSING');
 requireText(handoffProtocol, '喺 `docs/recovery/commander/CAPABILITY-CATALOG.yaml` resolve `capability_id`', 'MEMORY_GUARD_HANDOFF_CAPABILITY_FIRST_MISSING');
 requireText(handoffProtocol, 'Repository current truth仍由：', 'MEMORY_GUARD_HANDOFF_AUTHORITY_BOUNDARY_MISSING');
@@ -887,7 +893,8 @@ for (const surface of auxiliarySurfaceRoots) {
 }
 
 requireText(auxiliaryAssetRegistry, 'repository_shell:', 'MEMORY_GUARD_PHASE15_REPOSITORY_SHELL_MISSING');
-requireText(auxiliaryAssetRegistry, 'status: PHASE_15_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE15_REPOSITORY_SHELL_NOT_READY');
+requireText(auxiliaryAssetRegistry, 'status: PHASE_15_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE15_REPOSITORY_SHELL_NOT_GREEN');
+requireText(auxiliaryAssetRegistry, 'builder_run: 34188864145', 'MEMORY_GUARD_PHASE15_BUILDER_RUN_MISSING');
 requireText(auxiliaryAssetRegistry, 'ASSET-REPOSITORY-GOVERNANCE-CONTROL-PLANE-001', 'MEMORY_GUARD_PHASE15_GOVERNANCE_ASSET_MISSING');
 requireText(auxiliaryAssetRegistry, 'ASSET-AGENT-INSTRUCTION-SURFACE-001', 'MEMORY_GUARD_PHASE15_AGENT_ASSET_MISSING');
 requireText(auxiliaryAssetRegistry, 'ASSET-ROOT-BUILD-CONFIG-001', 'MEMORY_GUARD_PHASE15_BUILD_ASSET_MISSING');
@@ -920,6 +927,36 @@ if (rootFiles.length !== 28) {
 }
 if (githubFiles.length !== 2) {
   throw new Error('MEMORY_GUARD_PHASE15_GITHUB_FILE_COUNT_DRIFT:' + githubFiles.length);
+}
+
+
+requireText(firewall, 'docs_namespace_policy:', 'MEMORY_GUARD_PHASE16_DOCS_NAMESPACE_POLICY_MISSING');
+requireText(firewall, 'current_structural_namespaces:', 'MEMORY_GUARD_PHASE16_CURRENT_STRUCTURAL_POLICY_MISSING');
+requireText(firewall, 'workflow_local_namespaces:', 'MEMORY_GUARD_PHASE16_WORKFLOW_LOCAL_POLICY_MISSING');
+requireText(firewall, 'evidence_only_namespaces:', 'MEMORY_GUARD_PHASE16_EVIDENCE_POLICY_MISSING');
+requireText(firewall, 'mixed_exact_reference_required:', 'MEMORY_GUARD_PHASE16_MIXED_POLICY_MISSING');
+
+requireText(docsGovernance, 'AI_IMPLEMENTATION_AUTHORITY: false', 'MEMORY_GUARD_PHASE16_DOCS_GOVERNANCE_AUTHORITY_STALE');
+requireText(docsGovernance, 'docs/recovery/START-HERE.md', 'MEMORY_GUARD_PHASE16_DOCS_GOVERNANCE_GATEWAY_MISSING');
+requireText(docsGovernance, 'CURRENT-CYCLE -> Capability Catalog', 'MEMORY_GUARD_PHASE16_DOCS_GOVERNANCE_CAPABILITY_FLOW_MISSING');
+
+requireText(docsRooms, 'AI_IMPLEMENTATION_AUTHORITY: false', 'MEMORY_GUARD_PHASE16_ROOMS_AUTHORITY_STALE');
+requireText(docsRooms, 'Memory Gateway -> CURRENT-CYCLE -> Capability Catalog', 'MEMORY_GUARD_PHASE16_ROOMS_CAPABILITY_FLOW_MISSING');
+requireText(docsRooms, 'Room 係正式 workflow 嘅局部工作空間', 'MEMORY_GUARD_PHASE16_ROOMS_BOUNDARY_MISSING');
+
+requireText(constitutionReadme, 'Repository 開工永遠先走 Memory Gateway', 'MEMORY_GUARD_PHASE16_CONSTITUTION_GATEWAY_MISSING');
+requireText(constitutionReadme, '今日派工只由 CURRENT-CYCLE 決定', 'MEMORY_GUARD_PHASE16_CONSTITUTION_ASSIGNMENT_BOUNDARY_MISSING');
+
+const governanceDocBlock = documentRegistryBlock('docs/GOVERNANCE.md');
+const roomsDocBlock = documentRegistryBlock('docs/ROOMS.md');
+const constitutionDocBlock = documentRegistryBlock('docs/constitution/README.md');
+for (const [name, blockText] of [
+  ['docs/GOVERNANCE.md', governanceDocBlock],
+  ['docs/ROOMS.md', roomsDocBlock],
+  ['docs/constitution/README.md', constitutionDocBlock],
+]) {
+  if (!blockText) throw new Error('MEMORY_GUARD_PHASE16_DOCREG_ENTRY_MISSING:' + name);
+  requireText(blockText, 'authority: CURRENT_REFERENCE', 'MEMORY_GUARD_PHASE16_DOCREG_NOT_CURRENT_REFERENCE');
 }
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
