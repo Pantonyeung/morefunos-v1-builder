@@ -349,7 +349,8 @@ requireText(handoffProtocol, 'Repository current truth仍由：', 'MEMORY_GUARD_
 
 
 requireText(quarantineRegistry, 'phase_3_root_final:', 'MEMORY_GUARD_PHASE3_ROOT_POLICY_MISSING');
-requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE3_NOT_READY');
+requireText(quarantineRegistry, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE3_NOT_GREEN');
+requireText(quarantineRegistry, 'builder_run: 34178825898', 'MEMORY_GUARD_PHASE3_RUN_MISSING');
 requireText(quarantineRegistry, 'root_current_allowlist:', 'MEMORY_GUARD_ROOT_ALLOWLIST_MISSING');
 requireText(firewall, 'docs/recovery/ADDRESS-BASED-WORKFLOW.md', 'MEMORY_GUARD_ADDRESS_ROUTING_NOT_BLOCKED');
 
