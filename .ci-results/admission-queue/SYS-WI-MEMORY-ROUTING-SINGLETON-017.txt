@@ -1,0 +1,13 @@
+work_id=SYS-WI-MEMORY-ROUTING-SINGLETON-017
+candidate_sha=61d36417e8d2453fa8528a5d8aef1905ee313094
+base_main_sha=655e37be01afca236ca99e5e51aaba4040d062ce
+latest_main_sha=655e37be01afca236ca99e5e51aaba4040d062ce
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34193133225
+conclusion=success
