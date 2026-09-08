@@ -294,8 +294,14 @@ requireText(quarantineRegistry, 'builder_run: 34177402845', 'MEMORY_GUARD_QUARAN
 requireText(firewall, 'docs/recovery/history/**', 'MEMORY_GUARD_HISTORY_AUTO_READ_NOT_BLOCKED');
 requireText(firewall, 'docs/recovery/NEW-CHAT-SEAMLESS-*.md', 'MEMORY_GUARD_ROOT_NEW_CHAT_AUTO_READ_NOT_BLOCKED');
 
-const quarantineOriginals = [...quarantineRegistry.matchAll(/^    - original_path:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
-const quarantineBodies = [...quarantineRegistry.matchAll(/^      historical_body:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+const phase1Start = quarantineRegistry.indexOf('phase_1_root_new_chat:');
+const phase2Start = quarantineRegistry.indexOf('phase_2_root_governance:');
+const phase1Block = quarantineRegistry.slice(
+  phase1Start,
+  phase2Start > phase1Start ? phase2Start : quarantineRegistry.length,
+);
+const quarantineOriginals = [...phase1Block.matchAll(/^    - original_path:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+const quarantineBodies = [...phase1Block.matchAll(/^      historical_body:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
 if (quarantineOriginals.length !== 7 || quarantineBodies.length !== 7) {
   throw new Error('MEMORY_GUARD_QUARANTINE_PHASE1_COUNT_MISMATCH:' + quarantineOriginals.length + ':' + quarantineBodies.length);
 }
