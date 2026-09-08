@@ -746,8 +746,21 @@ const teamBBlockEnd = cycle.indexOf('\n  team_c:', teamBBlockStart);
 const teamBBlock = cycle.slice(teamBBlockStart, teamBBlockEnd >= 0 ? teamBBlockEnd : cycle.length);
 const teamBMutation = (teamBBlock.match(/active_mutation_work_item:\s*([^\n]+)/)?.[1] || '').trim();
 const teamBActiveRef = (teamBBlock.match(/active_work_item_path:\s*([^\n]+)/)?.[1] || '').trim();
+const teamAOwnsRef = teamAActiveRef === 'null' || /^docs\/workflows\/work-items\/TEAM-A-WI-[A-Za-z0-9._-]+\.ya?ml$/.test(teamAActiveRef);
+if (!teamAOwnsRef) {
+  throw new Error('MEMORY_GUARD_TEAM_A_CROSS_TEAM_POINTER:' + teamAActiveRef);
+}
+const teamBOwnsRef = teamBActiveRef === 'null' || /^docs\/workflows\/work-items\/TEAM-B-WI-[A-Za-z0-9._-]+\.ya?ml$/.test(teamBActiveRef);
+if (!teamBOwnsRef) {
+  throw new Error('MEMORY_GUARD_TEAM_B_CROSS_TEAM_POINTER:' + teamBActiveRef);
+}
 if (teamBMutation === 'NONE_READBACK_HANDSHAKE_GATE_ONLY' && teamBActiveRef !== 'null') {
   throw new Error('MEMORY_GUARD_TEAM_B_HANDSHAKE_POINTER_MUST_BE_NULL:' + teamBActiveRef);
+}
+const teamCActiveRef = (teamCBlock.match(/active_work_item_path:\s*([^\n]+)/)?.[1] || '').trim();
+const teamCOwnsRef = teamCActiveRef === 'null' || /^docs\/workflows\/work-items\/TEAM-C-WI-[A-Za-z0-9._-]+\.ya?ml$/.test(teamCActiveRef);
+if (!teamCOwnsRef) {
+  throw new Error('MEMORY_GUARD_TEAM_C_CROSS_TEAM_POINTER:' + teamCActiveRef);
 }
 const sysBlockStart = cycle.indexOf('  sys_governance:');
 if (sysBlockStart < 0) throw new Error('MEMORY_GUARD_SYS_GOVERNANCE_BLOCK_MISSING');
