@@ -1,0 +1,10 @@
+candidate_sha=02263887d518a23002a0b60eb325d2fbf8b6ac06
+base_main_sha=ab2d0c0a6f9647d4608f8ae2b16cb620e4e8be48
+work_id=SYS-WI-TEAM-ROUTING-OWNERSHIP-20260908
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=SYS
+depends_on_specs=
+supersedes_candidate_sha=c59d8f7e3386d637bd50a4ed40a27d07969419a5
+required_core_tests=
+force_full_proof=true
