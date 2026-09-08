@@ -1,3 +1,4 @@
+import './verify-v2-android-release-contract.mjs';
 import './verify-android-release-ota-endpoint-contract.mjs';
 import './verify-runtime-release-private-delivery-contract.mjs';
 import './verify-owner-control-runtime-release-retired.mjs';
