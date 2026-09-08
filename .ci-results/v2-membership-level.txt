@@ -2,5 +2,5 @@ source_sha=3b9141f573515ac3bdaf861dce91eaeb0dafa5a8
 work_id=TEAM-C-WI-B0115-membership-level
 capability_id=CAP-MEMBERSHIP-LEVEL-001
 capability_action=NEW_BUILD
-run_id=34194668613
-conclusion=failure
+run_id=34194729322
+conclusion=success
