@@ -1,4 +1,4 @@
-source_sha=6dc56fcd1574aeb9f843d669f4318f13e4ee6676
+source_sha=c25769729406b42042a5f51d94abce95af175e71
 base_sha=b6b21341c076da17ce3b2772e3d0650aaf01a455
 branch_name=work/CORE/B0127-event-durability-runtime-proof
 verification_phase=CANDIDATE
