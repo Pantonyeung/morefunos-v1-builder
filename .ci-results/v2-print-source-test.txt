@@ -1,6 +1,6 @@
-source_sha=493b62424397a59c53105bf0b8d34601a50692d7
-branch_name=main
-request_id=TEAM-B-POST-ADMISSION-PRINT-20260906
-run_id=34017265044
+source_sha=751c6f59ecdd7a66469bf0bbd507a1f253aeabe1
+branch_name=work/TEAM-B/admin-print-center-product-routing-20260908
+request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-PRINT-R10-20260908
+run_id=34182573495
 run_attempt=1
-conclusion=success
+conclusion=failure
