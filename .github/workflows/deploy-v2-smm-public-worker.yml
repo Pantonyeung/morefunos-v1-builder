@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           COMPARE="$(gh api "repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...main")"; STATUS="$(jq -r '.status' <<<"$COMPARE")"
           [[ "$STATUS" == "identical" || "$STATUS" == "ahead" ]] || { echo "::error::SOURCE_NOT_ADMITTED_ANCESTOR status=$STATUS source=$SOURCE_SHA"; exit 1; }
-          CHANGED="$(jq -r '.files[]?.filename' <<<"$COMPARE" | grep -E '^(apps/smm-web/|infra/cloudflare/smm-web-worker/|packages/smm-ui-integration/|packages/frontline-ui-integration/order-realtime-controller\.ts$)' || true)"
+          CHANGED="$(jq -r '.files[]?.filename' <<<"$COMPARE" | grep -E '^(apps/smm-web/|infra/cloudflare/smm-web-worker/|packages/smm-ui-integration/|packages/order/|packages/frontline-ui-integration/order-realtime-controller\.ts$)' || true)"
           test -z "$CHANGED" || { printf '::error::SMM_RELEVANT_MAIN_MOVED\n%s\n' "$CHANGED"; exit 1; }
           echo "v2-admitted-source=PASS source=$SOURCE_SHA"
 
