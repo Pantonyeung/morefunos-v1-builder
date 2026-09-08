@@ -1,5 +1,5 @@
-source_sha=62e0410df9f2c41edc61220b9f085b7df34f312b
-base_sha=89667551b4199065f695d63f2a6d1c096e64c21f
-branch_name=main
+source_sha=726cd58e384bc2040fb9c9501afbe30a88763602
+base_sha=26c598c55ce7bd47050042e1c26b62683f2d0f0d
+branch_name=work/CORE/B0132-customer-crm-runtime-linkup
 verification_phase=CANDIDATE
-request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-CORE-POST-ADMISSION-20260908-01
+request_id=TEAM-C-B0132-CUSTOMER-CRM-CORE-CANDIDATE-20260908-01
