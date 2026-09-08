@@ -509,7 +509,14 @@ jobs:
           set -euo pipefail
           auths="$(cat ../evidence/candidate-authorities.txt ../evidence/main-authorities.txt | sort -u)"
           tests="$REQUIRED_CORE_TESTS"
-          if [[ ",$tests," == *,ORDER_ADMISSION,* ]]; then
+          if [[ ",$tests," == *,B0117_ATTRIBUTION,* ]]; then
+            node --test --test-concurrency=1 \
+              packages/order/b0117-frontline-customer-attribution.test.ts \
+              packages/order/d1-customer-order-attribution.test.ts \
+              packages/order/d1-store-order-acceptance.test.ts \
+              packages/order/direct-order-variation.test.ts \
+              packages/order/staff-direct-order-identity-parity.test.ts
+          elif [[ ",$tests," == *,ORDER_ADMISSION,* ]]; then
             node --test --test-concurrency=1 \
               packages/order/canonical-order-identity.test.ts \
               packages/order/d1-order-display-code.test.ts \
