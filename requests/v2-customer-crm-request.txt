@@ -1,5 +1,5 @@
-source_sha=96af2b5e3d8fbf3a36f2c1d044dd33f452e9e5fd
+source_sha=26826bd0a7b2cf60f66592ea62eb24847ff2f6da
 work_id=TEAM-C-WI-B0134-customer-crm-terminal-closure
 capability_id=CAP-CUSTOMER-CRM-001
 capability_action=RUNTIME_PROOF
-request_id=TEAM-C-B0134-CUSTOMER-CRM-EXACT-MAIN-20260908-02
+request_id=TEAM-C-B0134-CUSTOMER-CRM-EXACT-MAIN-20260908-03
