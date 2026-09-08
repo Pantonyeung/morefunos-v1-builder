@@ -1,0 +1,13 @@
+work_id=SMM_SUBMIT_TEST_BOUNDARY_R2
+candidate_sha=3e28db6fd15bb140f75d3761849c28c3c17a841d
+base_main_sha=c52cd911cbae69b112fe67106c5c564b630b652c
+latest_main_sha=c52cd911cbae69b112fe67106c5c564b630b652c
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34174981996
+conclusion=success
