@@ -749,7 +749,12 @@ const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
-requireText(cycle, 'active_mutation_work_item: TEAM-C-WI-B0115-membership-level', 'MEMORY_GUARD_TEAM_C_ACTIVE_WORK_ITEM_MISSING');
+if (
+  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0115-membership-level') &&
+  !cycle.includes('active_mutation_work_item: NONE_B0115_CLOSED_AWAITING_FRESH_B0116_ROUTING')
+) {
+  throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID');
+}
 
 
 requireText(sourceCoverageAudit, 'status: PHASE_10_COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_PHASE10_SOURCE_COVERAGE_NOT_GREEN');
