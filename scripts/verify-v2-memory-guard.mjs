@@ -17,6 +17,7 @@ const required = [
   'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
   'docs/recovery/commander/CAPABILITY-DEEP-AUDIT-2026-09-08.md',
   'docs/recovery/commander/HISTORICAL-CAPABILITY-LINEAGE-2026-09-08.md',
+  'docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml',
   'GOVERNANCE-RULES.yaml',
   'WORK-POLICY.yaml',
   'PORT-IMPLEMENTATION-REGISTRY.yaml',
@@ -48,6 +49,7 @@ const firewall = read('docs/recovery/READ-FIREWALL.yaml');
 const cycle = read('docs/recovery/CURRENT-CYCLE.yaml');
 const catalog = read('docs/recovery/commander/CAPABILITY-CATALOG.yaml');
 const docRegistry = read('docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml');
+const quarantineRegistry = read('docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml');
 const governance = read('GOVERNANCE-RULES.yaml');
 const workPolicy = read('WORK-POLICY.yaml');
 const portRegistry = read('PORT-IMPLEMENTATION-REGISTRY.yaml');
@@ -283,4 +285,30 @@ requireText(cycle, 'keep_current_cycle_compact: true', 'MEMORY_GUARD_CURRENT_COM
 requireText(cycle, 'historical_incident_detail_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_HISTORY_POLLUTION_RULE_MISSING');
 requireText(cycle, 'old_builder_run_log_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_OLD_RUN_RULE_MISSING');
 requireText(cycle, 'historical_cycle_snapshot:', 'MEMORY_GUARD_CURRENT_HISTORY_SNAPSHOT_POINTER_MISSING');
+
+requireText(quarantineRegistry, 'registry_id: MOREFUNOS-HISTORICAL-REPORT-QUARANTINE', 'MEMORY_GUARD_QUARANTINE_REGISTRY_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_QUARANTINE_PHASE1_NOT_READY');
+requireText(firewall, 'docs/recovery/history/**', 'MEMORY_GUARD_HISTORY_AUTO_READ_NOT_BLOCKED');
+requireText(firewall, 'docs/recovery/NEW-CHAT-SEAMLESS-*.md', 'MEMORY_GUARD_ROOT_NEW_CHAT_AUTO_READ_NOT_BLOCKED');
+
+const quarantineOriginals = [...quarantineRegistry.matchAll(/^  - original_path:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+const quarantineBodies = [...quarantineRegistry.matchAll(/^    historical_body:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+if (quarantineOriginals.length !== 7 || quarantineBodies.length !== 7) {
+  throw new Error('MEMORY_GUARD_QUARANTINE_PHASE1_COUNT_MISMATCH:' + quarantineOriginals.length + ':' + quarantineBodies.length);
+}
+for (let i = 0; i < quarantineOriginals.length; i += 1) {
+  const original = path.join(root, quarantineOriginals[i]);
+  const body = path.join(root, quarantineBodies[i]);
+  if (!fs.existsSync(original)) throw new Error('MEMORY_GUARD_QUARANTINE_POINTER_MISSING:' + quarantineOriginals[i]);
+  if (!fs.existsSync(body)) throw new Error('MEMORY_GUARD_QUARANTINE_BODY_MISSING:' + quarantineBodies[i]);
+  const originalText = fs.readFileSync(original, 'utf8');
+  const bodyText = fs.readFileSync(body, 'utf8');
+  if (!originalText.includes('HISTORICAL_COMPATIBILITY_POINTER')) {
+    throw new Error('MEMORY_GUARD_QUARANTINE_POINTER_NOT_TOMBSTONED:' + quarantineOriginals[i]);
+  }
+  if (!bodyText.includes('DOCUMENT_CLASS: HISTORICAL_EVIDENCE')) {
+    throw new Error('MEMORY_GUARD_QUARANTINE_BODY_NOT_EVIDENCE:' + quarantineBodies[i]);
+  }
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
