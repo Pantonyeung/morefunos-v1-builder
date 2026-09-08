@@ -123,11 +123,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
         run: |
-          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
-            -f state=success \
-            -f context='builder/v2-smm-complete-product-032' \
-            -f description='Team3 SMM 032 Builder passed' \
-            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+              -f state=success \
+              -f context='builder/v2-smm-complete-product-032' \
+              -f description='Team3 SMM 032 Builder passed' \
+              -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'; then
+              exit 0
+            fi
+            sleep "$attempt"
+          done
+          echo "SMM_SUCCESS_STATUS_PUBLISH_FAILED" >&2
+          exit 1
 
       - name: Publish failure status
         if: failure()
