@@ -1,0 +1,6 @@
+source_sha=da4920891994ac249b4582badccb563308cbfbae
+work_id=TEAM-C-WI-B0115-membership-level
+capability_id=CAP-MEMBERSHIP-LEVEL-001
+capability_action=NEW_BUILD
+run_id=34183048063
+conclusion=failure
