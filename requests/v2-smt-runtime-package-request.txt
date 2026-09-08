@@ -1,3 +1,3 @@
 source_sha=f5d9d3c4857cff36c2065db9aeb21f52c83dd029
 channel=candidate
-request_id=TEAM-A-SMT-P0-LINK-PHYSICAL-F5D9-20260908
+request_id=TEAM-A-SMT-P0-LINK-PHYSICAL-F5D9-20260908-R2
