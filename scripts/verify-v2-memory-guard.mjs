@@ -822,7 +822,7 @@ requireText(sourceCoverageAudit, 'rule: EVERY_APP_AND_CLOUDFLARE_RUNTIME_SURFACE
 
 requireText(sourceCoverageAudit, 'd1_schema_authority_coverage:', 'MEMORY_GUARD_PHASE13_D1_COVERAGE_MISSING');
 requireText(sourceCoverageAudit, 'status: PHASE_13_CLASSIFIED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE13_D1_NOT_READY');
-requireText(sourceCoverageAudit, 'migration_count: 51', 'MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISMATCH');
+requireText(sourceCoverageAudit, 'migration_count: 52', 'MEMORY_GUARD_PHASE13_MIGRATION_COUNT_MISMATCH');
 requireText(sourceCoverageAudit, 'unclassified_migrations: []', 'MEMORY_GUARD_PHASE13_UNCLASSIFIED_MIGRATIONS');
 requireText(sourceCoverageAudit, 'CAP-PRODUCT-COMBO-001', 'MEMORY_GUARD_PHASE13_COMBO_ID_MISSING');
 requireText(sourceCoverageAudit, 'CAP-CUSTOMER-AUTH-001', 'MEMORY_GUARD_PHASE13_CUSTOMER_AUTH_ID_MISSING');
@@ -832,7 +832,7 @@ requireText(catalog, 'engineering_maturity: CANONICAL_CONTRACT_ADMITTED_CURRENT_
 
 const migrationDir = path.join(root, 'infra/cloudflare/d1/migrations');
 const currentMigrations = fs.readdirSync(migrationDir).filter(name => name.endsWith('.sql')).sort();
-if (currentMigrations.length !== 51) {
+if (currentMigrations.length !== 52) {
   throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT:' + currentMigrations.length);
 }
 for (const migration of currentMigrations) {
