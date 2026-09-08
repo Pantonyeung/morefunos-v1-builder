@@ -347,4 +347,50 @@ requireText(handoffProtocol, 'CAPABILITY_ID:', 'MEMORY_GUARD_HANDOFF_CAPABILITY_
 requireText(handoffProtocol, '未 resolve Capability ID 前', 'MEMORY_GUARD_HANDOFF_CAPABILITY_FIRST_MISSING');
 requireText(handoffProtocol, 'Handoff 不是 current product truth', 'MEMORY_GUARD_HANDOFF_AUTHORITY_BOUNDARY_MISSING');
 
+
+requireText(quarantineRegistry, 'phase_3_root_final:', 'MEMORY_GUARD_PHASE3_ROOT_POLICY_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE3_NOT_READY');
+requireText(quarantineRegistry, 'root_current_allowlist:', 'MEMORY_GUARD_ROOT_ALLOWLIST_MISSING');
+requireText(firewall, 'docs/recovery/ADDRESS-BASED-WORKFLOW.md', 'MEMORY_GUARD_ADDRESS_ROUTING_NOT_BLOCKED');
+
+const addressPath = path.join(root, 'docs/recovery/ADDRESS-BASED-WORKFLOW.md');
+const addressHistory = path.join(root, 'docs/recovery/history/root-governance/ADDRESS-BASED-WORKFLOW.md');
+if (!fs.existsSync(addressPath) || !fs.readFileSync(addressPath, 'utf8').includes('HISTORICAL_COMPATIBILITY_POINTER')) {
+  throw new Error('MEMORY_GUARD_ADDRESS_ROUTING_NOT_TOMBSTONED');
+}
+if (!fs.existsSync(addressHistory) || !fs.readFileSync(addressHistory, 'utf8').includes('HISTORICAL_EVIDENCE')) {
+  throw new Error('MEMORY_GUARD_ADDRESS_HISTORY_MISSING');
+}
+
+const realDevicePath = path.join(root, 'docs/recovery/REAL-DEVICE-MASTER-CHECKLIST.md');
+const realDeviceHistory = path.join(root, 'docs/recovery/history/root-acceptance/REAL-DEVICE-MASTER-CHECKLIST-R2-PRE-REFRESH-2026-09-08.md');
+if (!fs.existsSync(realDevicePath)) throw new Error('MEMORY_GUARD_REAL_DEVICE_CHECKLIST_MISSING');
+if (!fs.existsSync(realDeviceHistory)) throw new Error('MEMORY_GUARD_REAL_DEVICE_R2_ARCHIVE_MISSING');
+const realDevice = fs.readFileSync(realDevicePath, 'utf8');
+requireText(realDevice, 'CURRENT_CAMPAIGN: 2026-09-08_FRONTLINE_PHYSICAL_AND_GOLDEN', 'MEMORY_GUARD_REAL_DEVICE_CAMPAIGN_STALE');
+requireText(realDevice, '# A9 — FRONTLINE PHYSICAL ACCEPTANCE', 'MEMORY_GUARD_REAL_DEVICE_A9_MISSING');
+requireText(realDevice, '# A10 — FRONTLINE GOLDEN DAY', 'MEMORY_GUARD_REAL_DEVICE_A10_MISSING');
+requireText(realDevice, '# A11/B11 — FULL OPERATIONAL HANDSHAKE', 'MEMORY_GUARD_REAL_DEVICE_A11_MISSING');
+if (realDevice.includes('CURRENT_CAMPAIGN: R2') || realDevice.includes('d40a70acaa2ec7dbb549a81ccf8092e3a028bc28')) {
+  throw new Error('MEMORY_GUARD_REAL_DEVICE_OLD_R2_TRUTH_PRESENT');
+}
+
+const recoveryRoot = path.join(root, 'docs/recovery');
+const allowedCurrentRootFiles = new Set([
+  'CURRENT-CYCLE.yaml',
+  'READ-FIREWALL.yaml',
+  'START-HERE.md',
+  'REAL-DEVICE-MASTER-CHECKLIST.md',
+  'TEAM-HANDOFF-PROTOCOL.md',
+]);
+for (const entry of fs.readdirSync(recoveryRoot, {withFileTypes:true})) {
+  if (!entry.isFile()) continue;
+  if (allowedCurrentRootFiles.has(entry.name)) continue;
+  const full = path.join(recoveryRoot, entry.name);
+  const text = fs.readFileSync(full, 'utf8');
+  if (!text.includes('HISTORICAL_COMPATIBILITY_POINTER')) {
+    throw new Error('MEMORY_GUARD_RECOVERY_ROOT_UNCLASSIFIED_LONG_FORM:' + entry.name);
+  }
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
