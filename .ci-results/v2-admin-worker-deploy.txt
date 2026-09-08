@@ -1,7 +1,7 @@
-source_sha=16291b3d4d39a376ccb090717402bec7f18ff71c
-request_id=TEAM-A-FRONTLINE-ISOLATION-SMT-DIAGNOSTICS-ADMIN-DEPLOY-20260908
-run_id=34246617287
+source_sha=1860baec1b0765db3c838b1ac6952bba54f1732d
+request_id=TEAM-A-FRONTLINE-ISOLATION-SMT-DIAGNOSTICS-ADMIN-DEPLOY-R2-20260908
+run_id=34246806987
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=5e0d3ec2-ed93-4612-967f-287ed6a0a2fd
