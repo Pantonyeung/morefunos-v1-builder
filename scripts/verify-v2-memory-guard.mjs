@@ -582,6 +582,11 @@ for (const filePath of currentDecisionRefs) {
 }
 
 
+requireText(quarantineRegistry, 'phase_8_workflow_namespace:', 'MEMORY_GUARD_PHASE8_WORKFLOW_NAMESPACE_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE8_WORKFLOW_NAMESPACE_NOT_READY');
+requireText(quarantineRegistry, 'work_item_namespace_default: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PHASE8_WORK_ITEM_DEFAULT_MISSING');
+requireText(quarantineRegistry, 'plan_namespace_default: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PHASE8_PLAN_DEFAULT_MISSING');
+
 requireText(firewall, 'workflow_namespace_policy:', 'MEMORY_GUARD_WORKFLOW_NAMESPACE_POLICY_MISSING');
 requireText(firewall, 'work_item_default_class: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_WORK_ITEM_NAMESPACE_DEFAULT_MISSING');
 requireText(firewall, 'plan_default_class: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PLAN_NAMESPACE_DEFAULT_MISSING');
