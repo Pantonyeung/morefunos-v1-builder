@@ -1,5 +1,5 @@
-source_sha=5cf802a2ba5df557cf92be4577197efc166261a7
-request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-CORE-R12-20260908
-run_id=34183030662
+source_sha=ef720c50e77afbe8874d530529603a935059f744
+request_id=TEAM-B-PRINT-DESIGN-CENTER-CORE-POST-ADMISSION-20260908
+run_id=34183674597
 run_attempt=1
-conclusion=failure
+conclusion=success
