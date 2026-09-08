@@ -1,5 +1,5 @@
-source_sha=5b681ce941714bc7713fd42afbee8a30c176d0a8
-base_sha=bb89a8e0cae33659eef4698e23e41933f9f2d718
-branch_name=work/CORE/B0126-fulfillment-runtime-proof
+source_sha=6dc56fcd1574aeb9f843d669f4318f13e4ee6676
+base_sha=b6b21341c076da17ce3b2772e3d0650aaf01a455
+branch_name=work/CORE/B0127-event-durability-runtime-proof
 verification_phase=CANDIDATE
-request_id=TEAM-C-B0126-FULFILLMENT-RUNTIME-CORE-20260908-01
+request_id=TEAM-C-B0127-EVENT-DURABILITY-CORE-VERIFY-20260908-01
