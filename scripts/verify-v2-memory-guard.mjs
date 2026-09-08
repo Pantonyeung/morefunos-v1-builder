@@ -212,6 +212,10 @@ requireText(roomTemplate, '歷史只可 EVIDENCE_MODE + 同一 Capability ID 解
 requireText(branchPolicy, 'resolve_capability_id_and_action', 'MEMORY_GUARD_BRANCH_CAPABILITY_BYPASS');
 requireText(selfServiceGovernance, 'capability_resolution_required_before_workspace_reservation: true', 'MEMORY_GUARD_SELF_SERVICE_CAPABILITY_BYPASS');
 requireText(selfServiceGovernance, 'memory_guard_pass_true', 'MEMORY_GUARD_SELF_SERVICE_ADMISSION_BYPASS');
+requireText(selfServiceGovernance, 'required_for_new_records_after_memory_firewall:', 'MEMORY_GUARD_RESERVATION_CAPABILITY_ID_MISSING');
+requireText(selfServiceGovernance, 'completion_manifest_required_for_new_records_after_memory_firewall:', 'MEMORY_GUARD_COMPLETION_CAPABILITY_ID_MISSING');
+requireText(branchPolicy, 'create_exact_workspace_reservation_record_with_capability_id_and_action', 'MEMORY_GUARD_BRANCH_RESERVATION_CAPABILITY_MISSING');
+requireText(branchPolicy, 'create_completion_manifest_with_capability_id_and_action', 'MEMORY_GUARD_BRANCH_COMPLETION_CAPABILITY_MISSING');
 requireText(integrationPolicy, 'active_flow_requires_capability_id: true', 'MEMORY_GUARD_INTEGRATION_CAPABILITY_BYPASS');
 requireText(failureClosure, 'current_cycle_capability_registry_and_workflow_local_updates_complete_before_terminal_seal', 'MEMORY_GUARD_FAILURE_CLOSURE_STALE');
 
