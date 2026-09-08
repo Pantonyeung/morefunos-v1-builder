@@ -1,3 +1,3 @@
-source_sha=64ecc3ddb0ab9a409bcb95ec416979fbbb629661
-migration_file=0051-customer-crm-foundation.sql
-request_id=TEAM-C-B0114-CRM-D1-PRODUCTION-20260908
+source_sha=f84953e3d3ca8e13fc13fb4e0262976a411de711
+migration_file=0052-membership-level.sql
+request_id=TEAM-C-B0115-MEMBERSHIP-D1-PRODUCTION-20260908
