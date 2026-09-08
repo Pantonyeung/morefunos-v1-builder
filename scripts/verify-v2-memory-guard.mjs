@@ -393,4 +393,34 @@ for (const entry of fs.readdirSync(recoveryRoot, {withFileTypes:true})) {
   }
 }
 
+
+requireText(quarantineRegistry, 'phase_4_commander_high_risk:', 'MEMORY_GUARD_PHASE4_COMMANDER_QUARANTINE_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE4_COMMANDER_NOT_READY');
+const commanderPhase4 = [
+  ['docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md','docs/recovery/history/commander/WORK-ACCEPTANCE-JOURNAL-PRE-QUARANTINE-2026-09-08.md'],
+  ['docs/recovery/commander/ACTIVE-CHANGE-LEASES.yaml','docs/recovery/history/commander/ACTIVE-CHANGE-LEASES-PRE-QUARANTINE-2026-09-08.yaml'],
+  ['docs/recovery/commander/ADMISSION-QUEUE.yaml','docs/recovery/history/commander/ADMISSION-QUEUE-PRE-QUARANTINE-2026-09-08.yaml'],
+  ['docs/recovery/commander/COMMANDER-MASTER-LEDGER.md','docs/recovery/history/commander/COMMANDER-MASTER-LEDGER-PRE-QUARANTINE-2026-09-08.md'],
+];
+for (const [pointerPath, historyPath] of commanderPhase4) {
+  const pointer = path.join(root, pointerPath);
+  const history = path.join(root, historyPath);
+  if (!fs.existsSync(pointer)) throw new Error('MEMORY_GUARD_PHASE4_POINTER_MISSING:' + pointerPath);
+  if (!fs.existsSync(history)) throw new Error('MEMORY_GUARD_PHASE4_HISTORY_MISSING:' + historyPath);
+  const pointerText = fs.readFileSync(pointer, 'utf8');
+  if (!pointerText.includes('HISTORICAL_COMPATIBILITY_POINTER')) {
+    throw new Error('MEMORY_GUARD_PHASE4_POINTER_NOT_TOMBSTONED:' + pointerPath);
+  }
+}
+const journalPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md'), 'utf8');
+if (journalPointer.includes('WORK REMAINS OPEN') || journalPointer.includes('STATUS: ACTIVE_APPEND_ONLY_AUTHORITY')) {
+  throw new Error('MEMORY_GUARD_PHASE4_JOURNAL_STALE_AUTHORITY_PRESENT');
+}
+const commanderLedgerPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/COMMANDER-MASTER-LEDGER.md'), 'utf8');
+if (commanderLedgerPointer.includes('ACTIVE_MANDATORY_READ') || commanderLedgerPointer.includes('4/20 SMT server operations')) {
+  throw new Error('MEMORY_GUARD_PHASE4_MASTER_LEDGER_STALE_AUTHORITY_PRESENT');
+}
+requireText(firewall, 'docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md', 'MEMORY_GUARD_PHASE4_JOURNAL_NOT_BLOCKED');
+requireText(firewall, 'docs/recovery/commander/COMMANDER-MASTER-LEDGER.md', 'MEMORY_GUARD_PHASE4_LEDGER_NOT_BLOCKED');
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
