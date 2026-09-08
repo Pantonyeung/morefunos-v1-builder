@@ -1,0 +1,7 @@
+candidate_sha=c78ef6fe052f42492cf5942c4c3f751893acbf71
+base_main_sha=810782b45c549be173db373c80ad58ec621ee64b
+work_id=SMM_SUBMIT_TEST_BOUNDARY_R1
+affected_ports=SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
