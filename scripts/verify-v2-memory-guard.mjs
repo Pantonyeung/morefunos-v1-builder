@@ -757,6 +757,12 @@ if (!teamBOwnsRef) {
 if (teamBMutation === 'NONE_READBACK_HANDSHAKE_GATE_ONLY' && teamBActiveRef !== 'null') {
   throw new Error('MEMORY_GUARD_TEAM_B_HANDSHAKE_POINTER_MUST_BE_NULL:' + teamBActiveRef);
 }
+const teamCStart = cycle.indexOf('\n  team_c:\n');
+const teamCEnd = cycle.indexOf('\n  sys_governance:\n', teamCStart);
+if (teamCStart < 0 || teamCEnd < 0) {
+  throw new Error('MEMORY_GUARD_TEAM_C_BLOCK_MISSING');
+}
+const teamCBlock = cycle.slice(teamCStart, teamCEnd);
 const teamCActiveRef = (teamCBlock.match(/active_work_item_path:\s*([^\n]+)/)?.[1] || '').trim();
 const teamCOwnsRef = teamCActiveRef === 'null' || /^docs\/workflows\/work-items\/TEAM-C-WI-[A-Za-z0-9._-]+\.ya?ml$/.test(teamCActiveRef);
 if (!teamCOwnsRef) {
@@ -812,12 +818,6 @@ const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
-const teamCStart = cycle.indexOf('\n  team_c:\n');
-const teamCEnd = cycle.indexOf('\n  sys_governance:\n', teamCStart);
-if (teamCStart < 0 || teamCEnd < 0) {
-  throw new Error('MEMORY_GUARD_TEAM_C_BLOCK_MISSING');
-}
-const teamCBlock = cycle.slice(teamCStart, teamCEnd);
 requireText(
   teamCBlock,
   'authority: docs/recovery/decisions/TEAM-C-FEATURE-EXPANSION-CHARTER-2026-09-08.md',
