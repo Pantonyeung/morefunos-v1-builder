@@ -49,6 +49,7 @@ const start = read('docs/recovery/START-HERE.md');
 const firewall = read('docs/recovery/READ-FIREWALL.yaml');
 const cycle = read('docs/recovery/CURRENT-CYCLE.yaml');
 const catalog = read('docs/recovery/commander/CAPABILITY-CATALOG.yaml');
+const masterRegistry = read('docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md');
 const docRegistry = read('docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml');
 const quarantineRegistry = read('docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml');
 const governance = read('GOVERNANCE-RULES.yaml');
@@ -100,6 +101,39 @@ for (const raw of catalog.split(/\r?\n/)) {
   }
 }
 
+
+
+const legacyCapabilityMap = new Map();
+for (const match of catalog.matchAll(/legacy_id:\s*(CAP-[A-Z0-9-]+)\s*\n\s*canonical_id:\s*(CAP-[A-Z0-9-]+)/g)) {
+  const legacyId = match[1];
+  const canonicalId = match[2];
+  if (legacyCapabilityMap.has(legacyId) && legacyCapabilityMap.get(legacyId) !== canonicalId) {
+    throw new Error('MEMORY_GUARD_LEGACY_ID_AMBIGUOUS:' + legacyId);
+  }
+  if (capabilityIds.has(legacyId)) {
+    throw new Error('MEMORY_GUARD_LEGACY_ID_ALSO_CANONICAL:' + legacyId);
+  }
+  if (!capabilityIds.has(canonicalId)) {
+    throw new Error('MEMORY_GUARD_LEGACY_TARGET_MISSING:' + legacyId + ':' + canonicalId);
+  }
+  legacyCapabilityMap.set(legacyId, canonicalId);
+}
+
+const masterCapabilityIds = new Set(
+  [...masterRegistry.matchAll(/\b(CAP-[A-Z0-9-]+)\b/g)].map(m => m[1]),
+);
+for (const masterId of masterCapabilityIds) {
+  if (!capabilityIds.has(masterId) && !legacyCapabilityMap.has(masterId)) {
+    throw new Error('MEMORY_GUARD_MASTER_ID_UNRESOLVED:' + masterId);
+  }
+}
+for (const canonicalId of capabilityIds) {
+  if (!masterCapabilityIds.has(canonicalId)) {
+    throw new Error('MEMORY_GUARD_CANONICAL_ID_MISSING_HUMAN_MASTER:' + canonicalId);
+  }
+}
+requireText(masterRegistry, '## Phase 9｜Canonical Capability Identity Reconciliation', 'MEMORY_GUARD_PHASE9_HUMAN_RECONCILIATION_MISSING');
+requireText(catalog, 'legacy_capability_id_mappings:', 'MEMORY_GUARD_PHASE9_LEGACY_MAPPING_MISSING');
 
 if (!requestedWorkId) throw new Error('MEMORY_GUARD_WORK_ID_MISSING');
 
