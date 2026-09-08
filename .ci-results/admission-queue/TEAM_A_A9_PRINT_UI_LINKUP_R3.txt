@@ -1,0 +1,13 @@
+work_id=TEAM_A_A9_PRINT_UI_LINKUP_R3
+candidate_sha=70b65f631bb75db6b3db90bfcbb2b189d7676399
+base_main_sha=12b8160945a343211a14aca3121d37fdb5893a3c
+latest_main_sha=12b8160945a343211a14aca3121d37fdb5893a3c
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34174425729
+conclusion=success
