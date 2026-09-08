@@ -1,5 +1,5 @@
 work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
-candidate_sha=aef0923c787a27f54ac62d44c6746392a2ea2489
+candidate_sha=679772daf7a1ebfd300cea5ceafca2230f879b1a
 base_main_sha=c7e00b6ddb7343c257c3adb1d6f6014d719806fe
 latest_main_sha=c7e00b6ddb7343c257c3adb1d6f6014d719806fe
 collision=C0
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34203410394
+run_id=34203557549
 conclusion=failure
