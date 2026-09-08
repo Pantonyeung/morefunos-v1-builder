@@ -1,0 +1,10 @@
+candidate_sha=ca9b920c82ad6ba8e33cab8fc0b4235407193439
+base_main_sha=ca9b920c82ad6ba8e33cab8fc0b4235407193439
+work_id=SYS-WI-RUNTIME-SURFACE-COVERAGE-012
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
