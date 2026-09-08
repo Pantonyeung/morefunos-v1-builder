@@ -1,0 +1,13 @@
+work_id=SYS-WI-MEMORY-QUARANTINE-004
+candidate_sha=237f42a4c2fd0d5ba6c265bdec80c041e2d7289a
+base_main_sha=237f42a4c2fd0d5ba6c265bdec80c041e2d7289a
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34179324948
+conclusion=failure
