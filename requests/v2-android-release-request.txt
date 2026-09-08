@@ -1,2 +1,4 @@
-source_sha=f91a2540d23ddb0290d36342ce0ec8cc28c71ba8
-request_id=TEAM-A-A9-SIGNED-RELEASE-0.1.15-R2-20260908
+source_sha=bad9e8e858628189c8955241d0dee5e27bbf1b7f
+expected_version_name=0.1.16-g6-carrier-recovery
+expected_version_code=26
+request_id=TEAM-A-A9-SIGNED-RELEASE-0.1.16-20260908
