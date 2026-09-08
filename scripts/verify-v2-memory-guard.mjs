@@ -344,8 +344,8 @@ for (const originalPath of phase2Quarantined) {
 }
 const handoffProtocol = read('docs/recovery/TEAM-HANDOFF-PROTOCOL.md');
 requireText(handoffProtocol, 'CAPABILITY_ID:', 'MEMORY_GUARD_HANDOFF_CAPABILITY_ID_MISSING');
-requireText(handoffProtocol, '未 resolve Capability ID 前', 'MEMORY_GUARD_HANDOFF_CAPABILITY_FIRST_MISSING');
-requireText(handoffProtocol, 'Handoff 不是 current product truth', 'MEMORY_GUARD_HANDOFF_AUTHORITY_BOUNDARY_MISSING');
+requireText(handoffProtocol, '喺 `docs/recovery/commander/CAPABILITY-CATALOG.yaml` resolve `capability_id`', 'MEMORY_GUARD_HANDOFF_CAPABILITY_FIRST_MISSING');
+requireText(handoffProtocol, 'Repository current truth仍由：', 'MEMORY_GUARD_HANDOFF_AUTHORITY_BOUNDARY_MISSING');
 
 
 requireText(quarantineRegistry, 'phase_3_root_final:', 'MEMORY_GUARD_PHASE3_ROOT_POLICY_MISSING');
