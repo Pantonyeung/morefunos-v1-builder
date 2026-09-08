@@ -685,6 +685,8 @@ const decisionAllowlist = [
   'docs/recovery/decisions/DOMAIN-SPECIFIC-CONSISTENCY-AND-FAST-PATH-CONSTITUTION-2026-09-08.md',
   'docs/recovery/decisions/CANONICAL-ORDER-IDENTITY-CONTRACT-2026-09-05.md',
   'docs/recovery/decisions/FRONTLINE-OFFLINE-OPERATIONAL-BUNDLE-2026-09-07.md',
+  'docs/recovery/decisions/CAPABILITY-OPERATIONAL-LINKAGE-CLOSURE-RULE-2026-09-08.md',
+  'docs/recovery/decisions/TEAM-C-MATURITY-PROGRESS-METRIC-2026-09-08.md',
 ];
 
 for (const filePath of decisionAllowlist) {
