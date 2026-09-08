@@ -1,4 +1,4 @@
-source_sha=c86036462ce617243b5036e93b59529163a87c7a
-base_sha=fb659e01abb4826c28a9d4ba084f366d99700ed6
-branch_name=main
-request_id=TEAM-C-B0120-CUSTOMER-AUTH-D1-POST-ADMISSION-20260908-01
+source_sha=4a1fcd890124446fffa192849664c162922fea6d
+base_sha=430b7848b88e447137546a52b11fbb2c711fa19f
+branch_name=work/CORE/B0125-loyalty-customer-self-service-linkup
+request_id=TEAM-C-B0125-LOYALTY-REGRESSION-VERIFY-20260908-01
