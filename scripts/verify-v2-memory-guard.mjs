@@ -637,6 +637,10 @@ const commanderAllowlist = [
   'docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml',
   'docs/recovery/commander/CORE-FAST-AND-FRESH-GATE-2026-09-08.md',
   'docs/recovery/commander/TWO-TEAM-END-TO-END-OPERATIONAL-ROADMAP-2026-09-07.md',
+  'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-BACKFILL-QUEUE.yaml',
+  'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-GAP-REGISTER.yaml',
+  'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-REGISTRY.yaml',
+  'docs/recovery/commander/GLOBAL-CODE-SIMPLICITY-RULE.yaml',
 ];
 
 const documentRegistryBlock = (filePath) => {
