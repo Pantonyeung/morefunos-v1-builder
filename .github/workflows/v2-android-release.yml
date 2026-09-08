@@ -10,6 +10,14 @@ on:
         description: Exact Morefun-v2 source SHA
         required: true
         type: string
+      expected_version_name:
+        description: Expected Android versionName
+        required: true
+        type: string
+      expected_version_code:
+        description: Expected Android versionCode
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -50,16 +58,28 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_EXPECTED_VERSION_NAME: ${{ inputs.expected_version_name }}
+          INPUT_EXPECTED_VERSION_CODE: ${{ inputs.expected_version_code }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            EXPECTED_VERSION_NAME="$(printf '%s' "$INPUT_EXPECTED_VERSION_NAME" | tr -d '\r\n')"
+            EXPECTED_VERSION_CODE="$(printf '%s' "$INPUT_EXPECTED_VERSION_CODE" | tr -d '[:space:]')"
           else
             test -f requests/v2-android-release-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-android-release-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            EXPECTED_VERSION_NAME="$(sed -n 's/^expected_version_name=//p' requests/v2-android-release-request.txt | tr -d '\r\n')"
+            EXPECTED_VERSION_CODE="$(sed -n 's/^expected_version_code=//p' requests/v2-android-release-request.txt | tr -d '[:space:]')"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          test -n "$EXPECTED_VERSION_NAME"
+          [[ "$EXPECTED_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "expected_version_name=$EXPECTED_VERSION_NAME"
+            echo "expected_version_code=$EXPECTED_VERSION_CODE"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Require source and signing credentials
         shell: bash
@@ -218,6 +238,8 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+          EXPECTED_VERSION_NAME: ${{ steps.request.outputs.expected_version_name }}
+          EXPECTED_VERSION_CODE: ${{ steps.request.outputs.expected_version_code }}
         run: |
           set -euo pipefail
           BUILD_FILE="apps/smt-android/app/build.gradle.kts"
@@ -226,8 +248,8 @@ jobs:
           VERSION_CODE="$(awk '/versionCode = / {print $3; exit}' "$BUILD_FILE")"
           PACKAGE_ID="$(awk -F'"' '/applicationId = / {print $2; exit}' "$BUILD_FILE")"
           test "$PACKAGE_ID" = "com.morefunos.smt"
-          test "$VERSION_NAME" = "0.1.15-g6-carrier"
-          test "$VERSION_CODE" -ge 25
+          test "$VERSION_NAME" = "$EXPECTED_VERSION_NAME"
+          test "$VERSION_CODE" = "$EXPECTED_VERSION_CODE"
           test -s "$SIGNED"
 
           APK_SHA256="$(sha256sum "$SIGNED" | awk '{print $1}')"
