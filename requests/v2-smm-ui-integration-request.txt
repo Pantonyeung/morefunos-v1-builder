@@ -1,4 +1,4 @@
-source_sha=15297326b324d425d0d3fea80a307498fd7161c0
-base_sha=15297326b324d425d0d3fea80a307498fd7161c0
-branch_name=main
-request_id=TEAMA-SMM-OPS-WORKFLOW-R1-POST-UI-20260907
+source_sha=03f43955010268f0e5001c42c0c86d3120ec8cf5
+base_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
+branch_name=work/CORE/B0129-operational-capacity-runtime-proof
+request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-SMM-VERIFY-20260908-01
