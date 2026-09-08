@@ -1,0 +1,13 @@
+work_id=SYS-WI-TEAM-ROUTING-DISJOINT-CLEANUP-20260908
+candidate_sha=4acbf8b0fa9f7b2c75e295b1af32669f9a308ac9
+base_main_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
+latest_main_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
+collision=C0
+impact=V0
+reason=CANDIDATE_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34218782014
+conclusion=success
