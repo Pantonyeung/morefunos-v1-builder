@@ -1,5 +1,5 @@
-source_sha=c25769729406b42042a5f51d94abce95af175e71
+source_sha=36dece13e1da2e6a5d7ea8e6f613a56a09e3c445
 base_sha=b6b21341c076da17ce3b2772e3d0650aaf01a455
 branch_name=work/CORE/B0127-event-durability-runtime-proof
-verification_phase=CANDIDATE
-request_id=TEAM-C-B0127-EVENT-DURABILITY-CORE-VERIFY-20260908-01
+verification_phase=FINAL_MERGE_REQUEST
+request_id=TEAM-C-B0127-EVENT-DURABILITY-TERMINAL-CORE-20260908-01
