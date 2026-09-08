@@ -1,5 +1,5 @@
-source_sha=aa86b15a9d4f057f5647a42f4d96fa4eb8f34103
-request_id=TEAM-A-SMM-OPEN-ORDERS-INNER-ERROR-20260908
-run_id=34238670997
+source_sha=c191709e6af534ebab2fd57d47e2af7d0876298b
+request_id=TEAM-A-SMM-DIAGNOSTICS-CENTER-20260908
+run_id=34240301292
 run_attempt=1
-conclusion=success
+conclusion=failure
