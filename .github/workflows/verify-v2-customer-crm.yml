@@ -65,7 +65,7 @@ jobs:
           test -n "$WORK_ID"
           [[ "$CAPABILITY_ID" =~ ^CAP-[A-Z0-9][A-Z0-9-]*$ ]]
           case "$CAPABILITY_ACTION" in
-            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|NEW_BUILD|SUPERSEDE) ;;
+            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|RUNTIME_PROOF|NEW_BUILD|SUPERSEDE) ;;
             *) exit 27 ;;
           esac
           {
