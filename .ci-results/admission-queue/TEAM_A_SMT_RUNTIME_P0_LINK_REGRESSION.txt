@@ -1,5 +1,5 @@
 work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
-candidate_sha=bc9900221505a57fbe2f7a7c7ec5e777033b059a
+candidate_sha=dd60476244f8b699225721a15fd56a73010fc401
 base_main_sha=f79eaa836772301a8f18ce721839c46d19882d41
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34202239567
+run_id=34202399599
 conclusion=failure
