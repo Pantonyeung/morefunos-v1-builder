@@ -1,7 +1,7 @@
 work_id=TEAM-C-WI-B0114-customer-crm-foundation
-candidate_sha=a6b9c9edb2510d25cd64a3da3439da7eaf54b8b3
+candidate_sha=d42399d0152147a2de7b56d127ea746a19f38ccc
 base_main_sha=660165d0c25e91b2bad6a8dbdc39d3db1d579f7d
-latest_main_sha=8c27cdeecab5d8cd416bc48dab7715efb27924d3
+latest_main_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
 collision=C1
 impact=V2
 reason=DEPENDENCY_OR_PACKAGE_TOUCH
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=ORDER
 force_full_proof=true
-run_id=34180562721
+run_id=34180620519
 conclusion=failure
