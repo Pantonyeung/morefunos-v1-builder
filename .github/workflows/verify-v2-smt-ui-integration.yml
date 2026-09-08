@@ -75,6 +75,10 @@ jobs:
       - name: Pricing admission tests
         working-directory: source
         run: npm run test:core-pricing
+
+      - name: Core Fulfillment tests
+        working-directory: source
+        run: npm run test:core-fulfillment
       - name: SMT Node-compatible integration tests
         working-directory: source
         shell: bash
