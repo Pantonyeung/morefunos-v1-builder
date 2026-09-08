@@ -1,5 +1,5 @@
-source_sha=7805b5d512a247aeeca200de4842d7a553910c19
-base_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
-branch_name=work/TEAM-B/admin-print-center-product-routing-20260908
+source_sha=5b681ce941714bc7713fd42afbee8a30c176d0a8
+base_sha=bb89a8e0cae33659eef4698e23e41933f9f2d718
+branch_name=work/CORE/B0126-fulfillment-runtime-proof
 verification_phase=CANDIDATE
-request_id=TEAM-B-PRINT-CENTER-TEMPLATE-DYNAMIC-R5-CORE-20260908
+request_id=TEAM-C-B0126-FULFILLMENT-RUNTIME-CORE-20260908-01
