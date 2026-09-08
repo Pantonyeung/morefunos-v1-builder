@@ -1,5 +1,5 @@
 work_id=TEAM-C-WI-B0117-frontline-customer-order-attribution
-candidate_sha=3736d674117cd0a470d215598958146cac9ddb0f
+candidate_sha=41d53a1fe3ed7af74faa03dddf04365028191a5d
 base_main_sha=a499039470621f71311bc6ff927b4563015fe378
 latest_main_sha=a499039470621f71311bc6ff927b4563015fe378
 collision=C0
@@ -7,7 +7,7 @@ impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
 apply_status=DISJOINT_OVERLAY
 depends_on_specs=
-required_core_tests=ORDER
+required_core_tests=B0117_ATTRIBUTION
 force_full_proof=false
-run_id=34198286284
-conclusion=failure
+run_id=34198445482
+conclusion=success
