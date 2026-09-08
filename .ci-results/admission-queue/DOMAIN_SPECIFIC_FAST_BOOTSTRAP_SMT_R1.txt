@@ -1,0 +1,13 @@
+work_id=DOMAIN_SPECIFIC_FAST_BOOTSTRAP_SMT_R1
+candidate_sha=5c9e2211669e300baa625e77105228012bf6a350
+base_main_sha=9a26395c15d375bacaa3524997fdb1afc8d6dc05
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=docs/recovery/decisions/domain-specific-consistency-and-fast-path-constitution-2026-09-08.md
+required_core_tests=
+force_full_proof=true
+run_id=34172284589
+conclusion=failure
