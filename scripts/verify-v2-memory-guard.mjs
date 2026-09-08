@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(process.argv[2] || 'candidate');
+const requestedCapabilityId = (process.argv[3] || '').trim().toUpperCase();
+const requestedCapabilityAction = (process.argv[4] || '').trim().toUpperCase();
 
 const required = [
   'AUTHORITY.md',
@@ -94,6 +96,17 @@ for (const raw of catalog.split(/\r?\n/)) {
   }
 }
 
+if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(requestedCapabilityId)) {
+  throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ID_INVALID:' + requestedCapabilityId);
+}
+const allowedCapabilityActions = new Set(['REUSE','LINKUP','EXTEND','REGRESSION_REPAIR','PHYSICAL_ACCEPTANCE','NEW_BUILD','SUPERSEDE']);
+if (!allowedCapabilityActions.has(requestedCapabilityAction)) {
+  throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ACTION_INVALID:' + requestedCapabilityAction);
+}
+if (!capabilityIds.has(requestedCapabilityId)) {
+  throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_NOT_IN_CATALOG:' + requestedCapabilityId);
+}
+
 for (const requiredCapability of [
   'CAP-ORDER-IDENTITY-001',
   'CAP-CUSTOMER-ORDER-001',
@@ -116,6 +129,16 @@ for (const raw of integrationRegistry.split(/\r?\n/)) {
   const listRef = raw.match(/^\s+-\s+(CAP-[A-Z0-9-]+)\s*$/);
   if (listRef) integrationCapabilityRefs.add(listRef[1]);
 }
+if (requestedCapabilityAction === 'NEW_BUILD') {
+  const marker = '- capability_id: ' + requestedCapabilityId;
+  const startIndex = catalog.indexOf(marker);
+  const nextIndex = catalog.indexOf('\n  - capability_id:', startIndex + marker.length);
+  const block = startIndex >= 0 ? catalog.slice(startIndex, nextIndex >= 0 ? nextIndex : catalog.length) : '';
+  if (/no_redo:\s*true/.test(block) && !/lifecycle:\s*(PARTIAL|DRAFT|DISCOVERED)/.test(block)) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_REUSES_NO_REDO_CAPABILITY:' + requestedCapabilityId);
+  }
+}
+
 for (const id of integrationCapabilityRefs) {
   if (!capabilityIds.has(id)) throw new Error('MEMORY_GUARD_DANGLING_INTEGRATION_CAPABILITY_REF:' + id);
 }
