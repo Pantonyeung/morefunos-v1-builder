@@ -1,0 +1,13 @@
+work_id=MEMORY_FIREWALL_GOVERNANCE_PROOF_R2
+candidate_sha=93408d95e1722b9abcfa26e7dafaf661e040b8da
+base_main_sha=93408d95e1722b9abcfa26e7dafaf661e040b8da
+latest_main_sha=93408d95e1722b9abcfa26e7dafaf661e040b8da
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34175850087
+conclusion=success
