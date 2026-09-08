@@ -1,0 +1,11 @@
+candidate_sha=c067603713e0d75bd69913b982c0d09b2ec98363
+base_main_sha=d49588be9f0a89b7b25123b1ac46c5eef6b1bb5f
+work_id=SYS-WI-NEW-BUILD-CATALOG-SEAL-018
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=c067603713e0d75bd69913b982c0d09b2ec98363
+required_core_tests=
+force_full_proof=false
+retry_reason=LATEST_MAIN_ADVANCED_TO_3db26d0c4a494a914ba017dc3edcd7e72d0cb0be_AFTER_PRIOR_GREEN
