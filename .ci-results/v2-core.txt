@@ -1,5 +1,5 @@
-source_sha=ab2d0c0a6f9647d4608f8ae2b16cb620e4e8be48
-request_id=TEAM-C-B0127-EVENT-DURABILITY-POST-ADMISSION-CORE-20260908-01
-run_id=34218359433
+source_sha=8d0b2f10bb910f34bac2b313c463d87124ddb1fb
+request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-CORE-TERMINAL-20260908-01
+run_id=34219571708
 run_attempt=1
-conclusion=success
+conclusion=failure
