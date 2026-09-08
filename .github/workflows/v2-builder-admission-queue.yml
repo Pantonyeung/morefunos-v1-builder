@@ -19,6 +19,14 @@ on:
         description: Acceptance/work object ID
         required: true
         type: string
+      capability_id:
+        description: Stable MoreFunOS Capability ID, e.g. CAP-ORDER-IDENTITY-001
+        required: true
+        type: string
+      capability_action:
+        description: REUSE, LINKUP, EXTEND, REGRESSION_REPAIR, PHYSICAL_ACCEPTANCE, NEW_BUILD, or SUPERSEDE
+        required: true
+        type: string
       affected_ports:
         description: Comma-separated SMT,SMM,ADMIN,OWNER,CUSTOMER,CORE
         required: false
@@ -74,6 +82,8 @@ jobs:
           INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           INPUT_BASE_MAIN_SHA: ${{ inputs.base_main_sha }}
           INPUT_WORK_ID: ${{ inputs.work_id }}
+          INPUT_CAPABILITY_ID: ${{ inputs.capability_id }}
+          INPUT_CAPABILITY_ACTION: ${{ inputs.capability_action }}
           INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
           INPUT_DEPENDS_ON_SPECS: ${{ inputs.depends_on_specs }}
           INPUT_SUPERSEDES_CANDIDATE_SHA: ${{ inputs.supersedes_candidate_sha }}
@@ -92,6 +102,8 @@ jobs:
             CANDIDATE_SHA="$(printf '%s' "$INPUT_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BASE_MAIN_SHA="$(printf '%s' "$INPUT_BASE_MAIN_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             WORK_ID="$(printf '%s' "$INPUT_WORK_ID" | tr -d '\r\n')"
+            CAPABILITY_ID="$(printf '%s' "$INPUT_CAPABILITY_ID" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            CAPABILITY_ACTION="$(printf '%s' "$INPUT_CAPABILITY_ACTION" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             AFFECTED_PORTS="$(printf '%s' "$INPUT_AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(printf '%s' "$INPUT_DEPENDS_ON_SPECS" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             SUPERSEDES_CANDIDATE_SHA="$(printf '%s' "$INPUT_SUPERSEDES_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
@@ -122,6 +134,8 @@ jobs:
             CANDIDATE_SHA="$(read_request candidate_sha "$REQUEST_FILE" | tr '[:upper:]' '[:lower:]')"
             BASE_MAIN_SHA="$(read_request base_main_sha "$REQUEST_FILE" | tr '[:upper:]' '[:lower:]')"
             WORK_ID="$(read_request work_id "$REQUEST_FILE")"
+            CAPABILITY_ID="$(read_request capability_id "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            CAPABILITY_ACTION="$(read_request capability_action "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             DEPENDS_ON_SPECS="$(read_request depends_on_specs "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             SUPERSEDES_CANDIDATE_SHA="$(read_request supersedes_candidate_sha "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
@@ -136,6 +150,11 @@ jobs:
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           test -n "$WORK_ID"
+          [[ "$CAPABILITY_ID" =~ ^CAP-[A-Z0-9][A-Z0-9-]*$ ]]
+          case "$CAPABILITY_ACTION" in
+            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|NEW_BUILD|SUPERSEDE) ;;
+            *) echo "CAPABILITY_ACTION_INVALID:$CAPABILITY_ACTION" >&2; exit 27 ;;
+          esac
 
           if [[ "$REQUEST_FILE" != "WORKFLOW_DISPATCH" ]]; then
             mapfile -t SAME_WORK_FILES < <(
@@ -171,6 +190,8 @@ jobs:
           echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "base_main_sha=$BASE_MAIN_SHA" >> "$GITHUB_OUTPUT"
           echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
+          echo "capability_id=$CAPABILITY_ID" >> "$GITHUB_OUTPUT"
+          echo "capability_action=$CAPABILITY_ACTION" >> "$GITHUB_OUTPUT"
           echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
           echo "depends_on_specs=$DEPENDS_ON_SPECS" >> "$GITHUB_OUTPUT"
@@ -206,7 +227,7 @@ jobs:
 
       - name: Run V2 Memory Guard
         shell: bash
-        run: node scripts/verify-v2-memory-guard.mjs candidate
+        run: node scripts/verify-v2-memory-guard.mjs candidate "${{ steps.request.outputs.capability_id }}" "${{ steps.request.outputs.capability_action }}"
 
       - name: Analyze impact and build integration working tree
         id: impact
