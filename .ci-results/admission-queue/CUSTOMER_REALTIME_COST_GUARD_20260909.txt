@@ -1,0 +1,13 @@
+work_id=CUSTOMER_REALTIME_COST_GUARD_20260909
+candidate_sha=ab1330a8a435c66105d695e1943ba6a34dd04725
+base_main_sha=3a100616603ad3c69cda03ef5b3b2224adbf15ec
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34292166462
+conclusion=failure
