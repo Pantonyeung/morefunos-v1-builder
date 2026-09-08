@@ -1,7 +1,7 @@
 work_id=TEAM_A_A9_PRINT_ROUTING_SETTINGS_R2
-candidate_sha=290bbb44e74f2f9248c3bb45762df50f9773658d
-base_main_sha=0d00d0aaad6ddd773f51521061323d42b042c71b
-latest_main_sha=0d00d0aaad6ddd773f51521061323d42b042c71b
+candidate_sha=7e606b385e7c0770125e07dac16b548fd09a02dc
+base_main_sha=a499039470621f71311bc6ff927b4563015fe378
+latest_main_sha=a499039470621f71311bc6ff927b4563015fe378
 collision=C0
 impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=PRINT
 force_full_proof=true
-run_id=34196197390
+run_id=34198288469
 conclusion=success
