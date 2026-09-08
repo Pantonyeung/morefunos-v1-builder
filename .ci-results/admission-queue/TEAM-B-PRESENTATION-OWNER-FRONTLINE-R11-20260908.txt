@@ -1,0 +1,13 @@
+work_id=TEAM-B-PRESENTATION-OWNER-FRONTLINE-R11-20260908
+candidate_sha=83f86a323b8fe1ca8e8d465bf4ec2abbac878451
+base_main_sha=3e29c433f0376237293491f566e4aaeb5f50a2f2
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34176754382
+conclusion=failure
