@@ -1,0 +1,13 @@
+work_id=SYS-WI-WORKFLOW-NAMESPACE-ALLOWLIST-008
+candidate_sha=0374719a5cdd71c231c2496bc1a8cab3ca9a1241
+base_main_sha=0374719a5cdd71c231c2496bc1a8cab3ca9a1241
+latest_main_sha=0374719a5cdd71c231c2496bc1a8cab3ca9a1241
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34181857523
+conclusion=success
