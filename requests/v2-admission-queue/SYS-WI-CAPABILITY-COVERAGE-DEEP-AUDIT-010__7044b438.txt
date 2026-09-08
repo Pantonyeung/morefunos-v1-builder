@@ -1,0 +1,10 @@
+candidate_sha=7044b438f25282756072141959a4e515dcb24b76
+base_main_sha=7044b438f25282756072141959a4e515dcb24b76
+work_id=SYS-WI-CAPABILITY-COVERAGE-DEEP-AUDIT-010
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
