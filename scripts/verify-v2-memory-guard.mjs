@@ -82,27 +82,28 @@ let requestedCompletionManifest = '';
 let provisionalNewBuildPaths = new Set();
 if (requestedCapabilityAction === 'NEW_BUILD' && requestedWorkId && requestedCapabilityId) {
   const manifestAbs = path.join(root, requestedCompletionManifestPath);
-  if (fs.existsSync(manifestAbs)) {
-    requestedCompletionManifest = fs.readFileSync(manifestAbs, 'utf8');
-    if (!requestedCompletionManifest.includes(`work_id: ${requestedWorkId}`)) {
-      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_WORK_ID_MISMATCH');
-    }
-    if (!requestedCompletionManifest.includes(`capability_id: ${requestedCapabilityId}`)) {
-      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_CAPABILITY_ID_MISMATCH');
-    }
-    if (!requestedCompletionManifest.includes('capability_action: NEW_BUILD')) {
-      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
-    }
-    if (
-      !requestedCompletionManifest.includes('scope_status: IMPLEMENTED_CANDIDATE') &&
-      !requestedCompletionManifest.includes('scope_status: ADMITTED_PRODUCTION_SCHEMA_PROVEN')
-    ) {
-      throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
-    }
-    provisionalNewBuildPaths = new Set(
-      [...requestedCompletionManifest.matchAll(/^  -\s+([^\s]+)\s*$/gm)].map(m => m[1].trim())
-    );
+  if (!fs.existsSync(manifestAbs)) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_REQUIRED:' + requestedCompletionManifestPath);
   }
+  requestedCompletionManifest = fs.readFileSync(manifestAbs, 'utf8');
+  if (!requestedCompletionManifest.includes(`work_id: ${requestedWorkId}`)) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_WORK_ID_MISMATCH');
+  }
+  if (!requestedCompletionManifest.includes(`capability_id: ${requestedCapabilityId}`)) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_CAPABILITY_ID_MISMATCH');
+  }
+  if (!requestedCompletionManifest.includes('capability_action: NEW_BUILD')) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
+  }
+  if (
+    !requestedCompletionManifest.includes('scope_status: IMPLEMENTED_CANDIDATE') &&
+    !requestedCompletionManifest.includes('scope_status: ADMITTED_PRODUCTION_SCHEMA_PROVEN')
+  ) {
+    throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
+  }
+  provisionalNewBuildPaths = new Set(
+    [...requestedCompletionManifest.matchAll(/^  -\s+([^\s]+)\s*$/gm)].map(m => m[1].trim())
+  );
 }
 
 const requireText = (text, needle, code) => {
@@ -171,6 +172,24 @@ for (const canonicalId of capabilityIds) {
   }
 }
 requireText(masterRegistry, '## Phase 9｜Canonical Capability Identity Reconciliation', 'MEMORY_GUARD_PHASE9_HUMAN_RECONCILIATION_MISSING');
+if (requestedCapabilityAction === 'NEW_BUILD') {
+  const requestedCanonicalPaths = capabilityPaths
+    .filter(entry => entry.capabilityId === requestedCapabilityId)
+    .map(entry => entry.path);
+  const manifestPackageRoots = new Set(
+    [...provisionalNewBuildPaths]
+      .filter(p => p.startsWith('packages/'))
+      .map(p => p.split('/').slice(0, 2).join('/'))
+  );
+  for (const packageRoot of manifestPackageRoots) {
+    if (!requestedCanonicalPaths.some(p => p.startsWith(packageRoot + '/'))) {
+      throw new Error(
+        'MEMORY_GUARD_NEW_BUILD_PACKAGE_NOT_SEALED_TO_REQUESTED_CAPABILITY:' +
+        packageRoot + ':' + requestedCapabilityId
+      );
+    }
+  }
+}
 requireText(catalog, 'legacy_capability_id_mappings:', 'MEMORY_GUARD_PHASE9_LEGACY_MAPPING_MISSING');
 
 if (!requestedWorkId) throw new Error('MEMORY_GUARD_WORK_ID_MISSING');
@@ -813,15 +832,8 @@ const explicitNonCapabilityPackages = new Set(
 const unclassifiedPackages = currentPackageDirs.filter(
   name => !catalogMappedPackages.has(name) && !explicitNonCapabilityPackages.has(name)
 );
-const provisionallyClassifiedNewBuildPackages = unclassifiedPackages.filter(name =>
-  requestedCapabilityAction === 'NEW_BUILD' &&
-  [...provisionalNewBuildPaths].some(p => p.startsWith(`packages/${name}/`))
-);
-const trulyUnclassifiedPackages = unclassifiedPackages.filter(
-  name => !provisionallyClassifiedNewBuildPackages.includes(name)
-);
-if (trulyUnclassifiedPackages.length > 0) {
-  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_UNCLASSIFIED:' + trulyUnclassifiedPackages.join(','));
+if (unclassifiedPackages.length > 0) {
+  throw new Error('MEMORY_GUARD_PACKAGE_TOPOLOGY_UNCLASSIFIED:' + unclassifiedPackages.join(','));
 }
 
 const staleExplicitPackages = [...explicitNonCapabilityPackages].filter(
@@ -924,18 +936,32 @@ const currentMigrations = fs.readdirSync(migrationDir).filter(name => name.endsW
 if (currentMigrations.length < auditedMigrationCount) {
   throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT_REGRESSION:' + currentMigrations.length);
 }
-const provisionallyClassifiedNewBuildMigrations = [];
 for (const migration of currentMigrations) {
-  if (sourceCoverageAudit.includes('migration: ' + migration)) continue;
-  const relative = `infra/cloudflare/d1/migrations/${migration}`;
-  if (requestedCapabilityAction === 'NEW_BUILD' && provisionalNewBuildPaths.has(relative)) {
-    provisionallyClassifiedNewBuildMigrations.push(migration);
-    continue;
+  if (!sourceCoverageAudit.includes('migration: ' + migration)) {
+    throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_UNMAPPED:' + migration);
   }
-  throw new Error('MEMORY_GUARD_PHASE13_MIGRATION_UNMAPPED:' + migration);
 }
-if (currentMigrations.length !== auditedMigrationCount + provisionallyClassifiedNewBuildMigrations.length) {
+if (currentMigrations.length !== auditedMigrationCount) {
   throw new Error('MEMORY_GUARD_PHASE13_CURRENT_MIGRATION_COUNT:' + currentMigrations.length);
+}
+if (requestedCapabilityAction === 'NEW_BUILD') {
+  for (const relative of provisionalNewBuildPaths) {
+    if (!relative.startsWith('infra/cloudflare/d1/migrations/') || !relative.endsWith('.sql')) continue;
+    const migration = relative.split('/').pop();
+    const migrationMarker = '    - migration: ' + migration;
+    const start = sourceCoverageAudit.indexOf(migrationMarker);
+    if (start < 0) {
+      throw new Error('MEMORY_GUARD_NEW_BUILD_MIGRATION_NOT_SEALED:' + migration);
+    }
+    const next = sourceCoverageAudit.indexOf('\n    - migration:', start + migrationMarker.length);
+    const block = sourceCoverageAudit.slice(start, next >= 0 ? next : sourceCoverageAudit.length);
+    if (!block.includes(requestedCapabilityId)) {
+      throw new Error(
+        'MEMORY_GUARD_NEW_BUILD_MIGRATION_NOT_SEALED_TO_REQUESTED_CAPABILITY:' +
+        migration + ':' + requestedCapabilityId
+      );
+    }
+  }
 }
 
 
