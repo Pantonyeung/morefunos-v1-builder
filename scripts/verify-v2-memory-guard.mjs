@@ -712,10 +712,27 @@ const sysBlockStart = cycle.indexOf('  sys_governance:');
 if (sysBlockStart < 0) throw new Error('MEMORY_GUARD_SYS_GOVERNANCE_BLOCK_MISSING');
 const sysBlockEnd = cycle.indexOf('\nnext_joint_gate:', sysBlockStart);
 const sysBlock = cycle.slice(sysBlockStart, sysBlockEnd >= 0 ? sysBlockEnd : cycle.length);
+const sysStatus = (sysBlock.match(/status:\s*([^\n]+)/)?.[1] || '').trim();
+const sysWorkId = (sysBlock.match(/work_id:\s*([^\n]+)/)?.[1] || '').trim();
+const sysCapabilityId = (sysBlock.match(/capability_id:\s*([^\n]+)/)?.[1] || '').trim();
+const sysCapabilityAction = (sysBlock.match(/capability_action:\s*([^\n]+)/)?.[1] || '').trim();
+const sysNextGate = (sysBlock.match(/next_gate:\s*([^\n]+)/)?.[1] || '').trim();
 const sysWorkItemMatch = sysBlock.match(/active_work_item_path:\s*([^\n]+)/);
 if (!sysWorkItemMatch) throw new Error('MEMORY_GUARD_SYS_ACTIVE_WORK_ITEM_POINTER_MISSING');
 const sysWorkItemRef = sysWorkItemMatch[1].trim();
-if (!currentWorkItemRefs.includes(sysWorkItemRef)) {
+
+if (sysStatus === 'MAINTENANCE_GUARD') {
+  if (sysWorkId !== 'NONE') throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_WORK_ID_INVALID:' + sysWorkId);
+  if (sysWorkItemRef !== 'null') throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_ACTIVE_POINTER_INVALID:' + sysWorkItemRef);
+  if (sysCapabilityId !== 'CAP-GOV-MEMORY-001') throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_CAPABILITY_INVALID:' + sysCapabilityId);
+  if (sysCapabilityAction !== 'REUSE') throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_ACTION_INVALID:' + sysCapabilityAction);
+  if (sysNextGate !== 'FRESH_CURRENT_ROUTING_BYPASS_REQUIRED_FOR_NEW_WORK') {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_NEXT_GATE_INVALID:' + sysNextGate);
+  }
+  if (!/last_closed_work_id:\s*SYS-WI-MEMORY-ROUTING-SINGLETON-017/.test(sysBlock)) {
+    throw new Error('MEMORY_GUARD_SYS_MAINTENANCE_LAST_CLOSED_WORK_MISSING');
+  }
+} else if (!currentWorkItemRefs.includes(sysWorkItemRef)) {
   throw new Error('MEMORY_GUARD_SYS_CURRENT_WORK_ITEM_NOT_DISCOVERED:' + sysWorkItemRef);
 }
 const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml'), 'utf8');
