@@ -1,6 +1,6 @@
 work_id=TEAM-C-WI-B0115-membership-level
-candidate_sha=da4920891994ac249b4582badccb563308cbfbae
-base_main_sha=4e601a2a0d61a09d0d3fc997c9cf3c47a7ac9519
+candidate_sha=9bb70df9143789c23806a87cf66dce3641d3634c
+base_main_sha=957731fad61f749180931e13cb6512f937f718fc
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34183043030
+run_id=34183280862
 conclusion=failure
