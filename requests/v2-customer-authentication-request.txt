@@ -1,5 +1,5 @@
-source_sha=706f64e9ecde3998cc7f88704ed41c22751e1284
-base_sha=c86036462ce617243b5036e93b59529163a87c7a
-branch_name=main
+source_sha=7ac87f76640e7a84f1af48dedb1e3bc57ba29318
+base_sha=9409c429ecdc0a752b68970097a9aaa434df3d92
+branch_name=work/CORE/B0121-customer-auth-runtime-proof
 verification_phase=CANDIDATE
-request_id=TEAM-C-CUSTOMER-AUTH-RUNTIME-PROOF-20260908-01
+request_id=TEAM-C-B0121-AUTH-RUNTIME-PROOF-20260908-01
