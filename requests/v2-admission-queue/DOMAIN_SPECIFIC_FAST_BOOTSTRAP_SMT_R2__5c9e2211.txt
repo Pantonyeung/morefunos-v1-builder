@@ -1,0 +1,7 @@
+candidate_sha=5c9e2211669e300baa625e77105228012bf6a350
+base_main_sha=9a26395c15d375bacaa3524997fdb1afc8d6dc05
+work_id=DOMAIN_SPECIFIC_FAST_BOOTSTRAP_SMT_R2
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
