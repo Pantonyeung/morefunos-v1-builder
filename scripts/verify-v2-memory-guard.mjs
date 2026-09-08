@@ -276,4 +276,11 @@ requireText(branchPolicy, 'create_completion_manifest_with_capability_id_and_act
 requireText(integrationPolicy, 'active_flow_requires_capability_id: true', 'MEMORY_GUARD_INTEGRATION_CAPABILITY_BYPASS');
 requireText(failureClosure, 'current_cycle_capability_registry_and_workflow_local_updates_complete_before_terminal_seal', 'MEMORY_GUARD_FAILURE_CLOSURE_STALE');
 
+
+const cycleLineCount = cycle.split(/\r?\n/).length;
+if (cycleLineCount > 220) throw new Error('MEMORY_GUARD_CURRENT_CYCLE_TOO_LARGE:' + cycleLineCount);
+requireText(cycle, 'keep_current_cycle_compact: true', 'MEMORY_GUARD_CURRENT_COMPACT_RULE_MISSING');
+requireText(cycle, 'historical_incident_detail_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_HISTORY_POLLUTION_RULE_MISSING');
+requireText(cycle, 'old_builder_run_log_in_current_cycle: FORBIDDEN', 'MEMORY_GUARD_CURRENT_OLD_RUN_RULE_MISSING');
+requireText(cycle, 'historical_cycle_snapshot:', 'MEMORY_GUARD_CURRENT_HISTORY_SNAPSHOT_POINTER_MISSING');
 console.log('MoreFunOS V2 Memory Guard: PASS');
