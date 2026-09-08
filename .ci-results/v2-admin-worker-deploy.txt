@@ -1,7 +1,7 @@
-source_sha=5ff557ebfc1afec5fbdf5a9b57ba8eef2eb29c5e
-request_id=TEAM-B-PRINT-DESIGN-CENTER-ADMIN-PROD-20260908
-run_id=34183793121
+source_sha=dbbf16965da86509ca90094c2f60374aac2615c5
+request_id=TEAM-A-SMT-CONNECTIVITY-ADMIN-WORKER-DEPLOY-20260908
+run_id=34205485202
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=eed0888a-8781-4f31-a333-36b4fedf444e
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
