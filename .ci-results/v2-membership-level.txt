@@ -1,6 +1,6 @@
-source_sha=f84953e3d3ca8e13fc13fb4e0262976a411de711
+source_sha=24d2324791df86bd55e38b561597a68bea42a9af
 work_id=TEAM-C-WI-B0115-membership-level
 capability_id=CAP-MEMBERSHIP-LEVEL-001
 capability_action=NEW_BUILD
-run_id=34193989054
-conclusion=success
+run_id=34194453237
+conclusion=failure
