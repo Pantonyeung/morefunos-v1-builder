@@ -29,16 +29,18 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smm-public-worker-deploy.txt | tr -d '[:space:]')"
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-      - name: Require source equals current V2 main HEAD
+      - name: Require admitted source with no newer SMM-relevant changes
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
         run: |
           set -euo pipefail
-          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
-          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
-          echo "v2-main-pin=PASS sha=$MAIN_SHA"
+          COMPARE="$(gh api "repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...main")"; STATUS="$(jq -r '.status' <<<"$COMPARE")"
+          [[ "$STATUS" == "identical" || "$STATUS" == "ahead" ]] || { echo "::error::SOURCE_NOT_ADMITTED_ANCESTOR status=$STATUS source=$SOURCE_SHA"; exit 1; }
+          CHANGED="$(jq -r '.files[]?.filename' <<<"$COMPARE" | grep -E '^(apps/smm-web/|infra/cloudflare/smm-web-worker/|packages/smm-ui-integration/|packages/frontline-ui-integration/order-realtime-controller\.ts$)' || true)"
+          test -z "$CHANGED" || { printf '::error::SMM_RELEVANT_MAIN_MOVED\n%s\n' "$CHANGED"; exit 1; }
+          echo "v2-admitted-source=PASS source=$SOURCE_SHA"
 
       - uses: actions/checkout@v7
         with:
