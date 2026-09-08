@@ -1,4 +1,4 @@
-source_sha=03f43955010268f0e5001c42c0c86d3120ec8cf5
+source_sha=8d0b2f10bb910f34bac2b313c463d87124ddb1fb
 base_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
 branch_name=work/CORE/B0129-operational-capacity-runtime-proof
-request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-SMM-VERIFY-20260908-01
+request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-SMM-TERMINAL-20260908-01
