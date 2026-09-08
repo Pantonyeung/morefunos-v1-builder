@@ -1,0 +1,13 @@
+work_id=SYS-WI-NEW-BUILD-CATALOG-SEAL-018
+candidate_sha=99fa95660200a0462ddd051d20c06c9e6aa40962
+base_main_sha=6d71251bfd9377ae1c092a6884b2e97bb42c1590
+latest_main_sha=0d6e29139bc2be82ff9ae11071b936bdffbabbb3
+collision=C0
+impact=V0
+reason=CANDIDATE_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34194970927
+conclusion=success
