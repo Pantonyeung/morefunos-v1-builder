@@ -1,0 +1,6 @@
+source_sha=9c6ee01d2161beb07b9cff65f6ed7be8fc5eb72e
+work_id=TEAM-C-WI-B0114-customer-crm-foundation
+capability_id=CAP-CUSTOMER-CRM-001
+capability_action=NEW_BUILD
+run_id=34181191972
+conclusion=success
