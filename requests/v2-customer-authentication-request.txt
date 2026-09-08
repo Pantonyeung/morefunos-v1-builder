@@ -1,5 +1,5 @@
-source_sha=b7c31424ee217a2f717511c36e4be36587a63f3b
-base_sha=0ba8fc0a30f2cb41128f659cec1b99f89e84130f
-branch_name=landing/team1-customer-production-runtime-clean-20260903
+source_sha=706f64e9ecde3998cc7f88704ed41c22751e1284
+base_sha=c86036462ce617243b5036e93b59529163a87c7a
+branch_name=main
 verification_phase=CANDIDATE
-# retrigger=TEAM1-CUSTOMER-D1-AUTH-RED
+request_id=TEAM-C-CUSTOMER-AUTH-RUNTIME-PROOF-20260908-01
