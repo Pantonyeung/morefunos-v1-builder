@@ -288,7 +288,9 @@ requireText(cycle, 'old_builder_run_log_in_current_cycle: FORBIDDEN', 'MEMORY_GU
 requireText(cycle, 'historical_cycle_snapshot:', 'MEMORY_GUARD_CURRENT_HISTORY_SNAPSHOT_POINTER_MISSING');
 
 requireText(quarantineRegistry, 'registry_id: MOREFUNOS-HISTORICAL-REPORT-QUARANTINE', 'MEMORY_GUARD_QUARANTINE_REGISTRY_MISSING');
-requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_QUARANTINE_PHASE1_NOT_READY');
+requireText(quarantineRegistry, 'phase_1_root_new_chat:', 'MEMORY_GUARD_QUARANTINE_PHASE1_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_QUARANTINE_PHASE1_NOT_GREEN');
+requireText(quarantineRegistry, 'builder_run: 34177402845', 'MEMORY_GUARD_QUARANTINE_PHASE1_RUN_MISSING');
 requireText(firewall, 'docs/recovery/history/**', 'MEMORY_GUARD_HISTORY_AUTO_READ_NOT_BLOCKED');
 requireText(firewall, 'docs/recovery/NEW-CHAT-SEAMLESS-*.md', 'MEMORY_GUARD_ROOT_NEW_CHAT_AUTO_READ_NOT_BLOCKED');
 
