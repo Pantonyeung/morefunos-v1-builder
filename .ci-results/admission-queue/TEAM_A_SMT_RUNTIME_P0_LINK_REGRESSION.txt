@@ -1,6 +1,6 @@
 work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
-candidate_sha=d1103614127e4272894e574b43f3ba2a6ab98908
-base_main_sha=d1103614127e4272894e574b43f3ba2a6ab98908
+candidate_sha=6b7ec270cd4c7ff458a4ed8094e66bf8136c0ba9
+base_main_sha=6b7ec270cd4c7ff458a4ed8094e66bf8136c0ba9
 latest_main_sha=6b7ec270cd4c7ff458a4ed8094e66bf8136c0ba9
 collision=C0
 impact=V0
@@ -9,5 +9,5 @@ apply_status=SKIPPED
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34204500407
+run_id=34204505278
 conclusion=success
