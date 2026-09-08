@@ -1,7 +1,7 @@
-source_sha=f26f01e38c6f9b7c011abb5ab31b87fe9d64b257
-request_id=TEAM-A-SMT-CONNECTIVITY-ADMIN-WORKER-DEPLOY-R3-20260908
-run_id=34205712741
+source_sha=ccb655137da075dc47ce0fa9ef5786b7f3e502a9
+request_id=TEAM-A-SMM-DIAGNOSTICS-UPSTREAM-ADMIN-DEPLOY-20260908
+run_id=34244104195
 run_attempt=1
-conclusion=success
+conclusion=failure
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=92c7f3bc-0357-4b2d-8790-7ad9af51a9f3
+worker_version=4e4aa47b-3b6f-4218-9c38-75dcba895529
