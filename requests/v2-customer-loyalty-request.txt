@@ -1,4 +1,4 @@
-source_sha=4a1fcd890124446fffa192849664c162922fea6d
+source_sha=5771f53eba09c3345b16dd7231ee4d0a00f8ac40
 base_sha=430b7848b88e447137546a52b11fbb2c711fa19f
 branch_name=work/CORE/B0125-loyalty-customer-self-service-linkup
-request_id=TEAM-C-B0125-LOYALTY-REGRESSION-VERIFY-20260908-01
+request_id=TEAM-C-B0125-LOYALTY-REGRESSION-VERIFY-20260908-02
