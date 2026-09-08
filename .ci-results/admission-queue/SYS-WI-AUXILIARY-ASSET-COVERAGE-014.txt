@@ -1,0 +1,13 @@
+work_id=SYS-WI-AUXILIARY-ASSET-COVERAGE-014
+candidate_sha=19aed7a6d3849ac85195495a415bd3e13f9cf532
+base_main_sha=19aed7a6d3849ac85195495a415bd3e13f9cf532
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34187025446
+conclusion=failure
