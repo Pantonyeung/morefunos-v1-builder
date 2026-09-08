@@ -1,0 +1,10 @@
+candidate_sha=7afb3a8a4d5b635822571037ab4d8b559f8ade7d
+base_main_sha=7afb3a8a4d5b635822571037ab4d8b559f8ade7d
+work_id=SYS-WI-MEMORY-QUARANTINE-001
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
