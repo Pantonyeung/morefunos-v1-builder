@@ -1,0 +1,7 @@
+candidate_sha=66f5dc7b2030bc2daa3cd29c2a7e255eec2a80de
+base_main_sha=ae5e3d1b1d05a9c5c58b1a6cd142ea37f6847eab
+work_id=DOMAIN_SPECIFIC_FAST_BOOTSTRAP_SMM_R1
+affected_ports=SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
