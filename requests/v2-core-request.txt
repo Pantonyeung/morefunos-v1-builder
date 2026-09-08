@@ -1,5 +1,5 @@
-source_sha=726cd58e384bc2040fb9c9501afbe30a88763602
+source_sha=aae5f6e619045e76dfe5eb0730b6e3116f8e3989
 base_sha=26c598c55ce7bd47050042e1c26b62683f2d0f0d
 branch_name=work/CORE/B0132-customer-crm-runtime-linkup
-verification_phase=CANDIDATE
-request_id=TEAM-C-B0132-CUSTOMER-CRM-CORE-CANDIDATE-20260908-01
+verification_phase=FINAL_MERGE_REQUEST
+request_id=TEAM-C-B0132-CUSTOMER-CRM-CORE-TERMINAL-20260908-01
