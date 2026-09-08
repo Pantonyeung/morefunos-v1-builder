@@ -23,6 +23,11 @@ const required = [
   'docs/workflows/GATE-REGISTRY.yaml',
   'docs/workflows/WORKFLOW-REGISTRY.yaml',
   'docs/workflows/WORK-STATE-MACHINE.yaml',
+  'ROOM-TEMPLATE.yaml',
+  'BRANCH-POLICY.yaml',
+  'docs/workflows/SELF-SERVICE-GOVERNANCE-CONTRACT.yaml',
+  'INTEGRATION-POLICY.yaml',
+  'docs/workflows/FAILURE-CORRECTION-CLOSURE-CONTRACT.yaml',
 ];
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -49,6 +54,11 @@ const planTemplate = read('PLAN-TEMPLATE.yaml');
 const gateRegistry = read('docs/workflows/GATE-REGISTRY.yaml');
 const workflowRegistry = read('docs/workflows/WORKFLOW-REGISTRY.yaml');
 const workStateMachine = read('docs/workflows/WORK-STATE-MACHINE.yaml');
+const roomTemplate = read('ROOM-TEMPLATE.yaml');
+const branchPolicy = read('BRANCH-POLICY.yaml');
+const selfServiceGovernance = read('docs/workflows/SELF-SERVICE-GOVERNANCE-CONTRACT.yaml');
+const integrationPolicy = read('INTEGRATION-POLICY.yaml');
+const failureClosure = read('docs/workflows/FAILURE-CORRECTION-CLOSURE-CONTRACT.yaml');
 
 const requireText = (text, needle, code) => {
   if (!text.includes(needle)) throw new Error(`${code}:${needle}`);
@@ -174,5 +184,12 @@ requireText(workStateMachine, 'classification_requires_capability_resolution: tr
 requireText(cycle, 'CONSTITUTION_GATE: PASS_ACCEPTED_B0015', 'MEMORY_GUARD_CONSTITUTION_GATE_NOT_CURRENT');
 requireText(cycle, 'cross_port_gap_register_read_mode: EVIDENCE_MODE_ONLY_FOR_EXPLICIT_GAP_OR_REGRESSION_INVESTIGATION', 'MEMORY_GUARD_STALE_GAP_MANDATORY_READ');
 requireText(cycle, 'LATEST_MAIN_SHA_AT_COMMANDER_REFRESH: DYNAMIC_RESOLVE_REQUIRED_DO_NOT_TRUST_CACHED_SHA', 'MEMORY_GUARD_CACHED_MAIN_SHA_PRESENT');
+requireText(roomTemplate, 'Memory Gateway + Read Firewall + CURRENT-CYCLE + Capability Catalog', 'MEMORY_GUARD_ROOM_TEMPLATE_STALE');
+requireText(roomTemplate, '歷史只可 EVIDENCE_MODE + 同一 Capability ID 解鎖', 'MEMORY_GUARD_ROOM_HISTORY_BYPASS');
+requireText(branchPolicy, 'resolve_capability_id_and_action', 'MEMORY_GUARD_BRANCH_CAPABILITY_BYPASS');
+requireText(selfServiceGovernance, 'capability_resolution_required_before_workspace_reservation: true', 'MEMORY_GUARD_SELF_SERVICE_CAPABILITY_BYPASS');
+requireText(selfServiceGovernance, 'memory_guard_pass_true', 'MEMORY_GUARD_SELF_SERVICE_ADMISSION_BYPASS');
+requireText(integrationPolicy, 'active_flow_requires_capability_id: true', 'MEMORY_GUARD_INTEGRATION_CAPABILITY_BYPASS');
+requireText(failureClosure, 'current_cycle_capability_registry_and_workflow_local_updates_complete_before_terminal_seal', 'MEMORY_GUARD_FAILURE_CLOSURE_STALE');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
