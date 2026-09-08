@@ -8,3 +8,4 @@ depends_on_specs=
 supersedes_candidate_sha=df395dcf0f72e77cb7e43418d99ca83e975bffb8
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
+retry_nonce=20260908T1707HKT
