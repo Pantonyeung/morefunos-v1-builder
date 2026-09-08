@@ -1,0 +1,10 @@
+candidate_sha=5c3f5985680f698b6c3d0f747db4a0b99b9d1c9f
+base_main_sha=5c3f5985680f698b6c3d0f747db4a0b99b9d1c9f
+work_id=SYS-WI-DECISION-NAMESPACE-ALLOWLIST-007
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
