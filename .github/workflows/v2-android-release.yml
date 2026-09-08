@@ -1,0 +1,329 @@
+name: V2 Android Signed Release
+
+on:
+  push:
+    paths:
+      - 'requests/v2-android-release-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  SOURCE_REPO: Pantonyeung/Morefun-v2
+  EXPECTED_APP_SIGNING_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+
+jobs:
+  release:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Publish signed release pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/v2-android-signed-release' \
+            -f description='V2 signed Android release running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Verify V2 Android release contract
+        run: node scripts/verify-v2-android-release-contract.mjs
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-android-release-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-android-release-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require source and signing credentials
+        shell: bash
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$KEYSTORE_B64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Root TypeScript typecheck
+        working-directory: source
+        run: npm run typecheck
+
+      - name: SMT Node-compatible integration tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find packages/smt-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 't2-smt-worker-mount.test.ts' -print | sort)
+          test "${#tests[@]}" -gt 0
+          node --test "${tests[@]}"
+
+      - name: Install SMT app dependencies
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build SMT web bundle
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck && npm run build
+
+      - name: Android runtime persistence regression tests
+        working-directory: source
+        run: gradle -p apps/smt-android :app:testDebugUnitTest --no-daemon
+
+      - name: Android release Java compile
+        working-directory: source
+        run: gradle -p apps/smt-android :app:compileReleaseJavaWithJavac --no-daemon
+
+      - name: Android release lint
+        working-directory: source
+        run: gradle -p apps/smt-android :app:lintRelease --no-daemon
+
+      - name: Android unsigned release assemble
+        working-directory: source
+        run: gradle -p apps/smt-android :app:assembleRelease --no-daemon
+
+      - name: Require unsigned release APK
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test -s apps/smt-android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Align and stable-sign release APK
+        id: signing
+        shell: bash
+        working-directory: source
+        env:
+          V1_ANDROID_KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          V1_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          V1_ANDROID_KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          V1_ANDROID_KEY_PASSWORD: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          test -x "$ZIPALIGN"
+          test -x "$APKSIGNER"
+
+          KEYSTORE="$RUNNER_TEMP/morefunos-app-signing.p12"
+          UNSIGNED="apps/smt-android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED="apps/smt-android/app/build/outputs/apk/release/app-release-aligned.apk"
+          SIGNED="apps/smt-android/app/build/outputs/apk/release/app-release-signed.apk"
+          cleanup() { rm -f "$KEYSTORE"; }
+          trap cleanup EXIT
+
+          printf '%s' "$V1_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+
+          "$ZIPALIGN" -v -p 4 "$UNSIGNED" "$ALIGNED"
+          "$APKSIGNER" sign \
+            --ks "$KEYSTORE" \
+            --ks-type PKCS12 \
+            --ks-key-alias "$V1_ANDROID_KEY_ALIAS" \
+            --ks-pass env:V1_ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:V1_ANDROID_KEY_PASSWORD \
+            --out "$SIGNED" \
+            "$ALIGNED"
+
+          VERIFY_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$SIGNED")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          CERT_SHA256="$(printf '%s\n' "$VERIFY_OUTPUT" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1 | tr -d ':[:space:]' | tr 'A-F' 'a-f')"
+          test "$CERT_SHA256" = "$EXPECTED_APP_SIGNING_CERT_SHA256"
+          "$ZIPALIGN" -c -v 4 "$SIGNED"
+
+          echo "certificate_sha256=$CERT_SHA256" >> "$GITHUB_OUTPUT"
+          echo "signed_apk=$SIGNED" >> "$GITHUB_OUTPUT"
+
+      - name: Generate immutable release metadata
+        id: metadata
+        shell: bash
+        working-directory: source
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+        run: |
+          set -euo pipefail
+          BUILD_FILE="apps/smt-android/app/build.gradle.kts"
+          SIGNED="apps/smt-android/app/build/outputs/apk/release/app-release-signed.apk"
+          VERSION_NAME="$(awk -F'"' '/versionName = / {print $2; exit}' "$BUILD_FILE")"
+          VERSION_CODE="$(awk '/versionCode = / {print $3; exit}' "$BUILD_FILE")"
+          PACKAGE_ID="$(awk -F'"' '/applicationId = / {print $2; exit}' "$BUILD_FILE")"
+          test "$PACKAGE_ID" = "com.morefunos.smt"
+          test "$VERSION_NAME" = "0.1.15-g6-carrier"
+          test "$VERSION_CODE" -ge 25
+          test -s "$SIGNED"
+
+          APK_SHA256="$(sha256sum "$SIGNED" | awk '{print $1}')"
+          APK_BYTES="$(stat -c%s "$SIGNED")"
+          APK_FILENAME="MoreFunOS-SMT-${VERSION_NAME}-${SOURCE_SHA:0:12}.apk"
+          cp "$SIGNED" "$APK_FILENAME"
+          printf '%s  %s\n' "$APK_SHA256" "$APK_FILENAME" > SHA256SUMS
+
+          export SOURCE_SHA VERSION_NAME VERSION_CODE PACKAGE_ID APK_SHA256 APK_BYTES APK_FILENAME CERT_SHA256
+          node <<'NODE'
+          const fs=require('node:fs');
+          const m={
+            sourceRepository:'Pantonyeung/Morefun-v2',
+            sourceSha:process.env.SOURCE_SHA,
+            packageId:process.env.PACKAGE_ID,
+            versionName:process.env.VERSION_NAME,
+            versionCode:Number(process.env.VERSION_CODE),
+            releaseKind:'SIGNED_RELEASE_APK',
+            apkFilename:process.env.APK_FILENAME,
+            apkSha256:process.env.APK_SHA256,
+            apkBytes:Number(process.env.APK_BYTES),
+            appSigningCertificateSha256:process.env.CERT_SHA256,
+            builderRepository:process.env.GITHUB_REPOSITORY,
+            builderSha:process.env.GITHUB_SHA,
+            builderRunId:process.env.GITHUB_RUN_ID,
+            builtAtUtc:new Date().toISOString(),
+          };
+          fs.writeFileSync('build-metadata.json',JSON.stringify(m,null,2)+'\n');
+          NODE
+
+          {
+            echo "apk_filename=$APK_FILENAME"
+            echo "apk_sha256=$APK_SHA256"
+            echo "version_name=$VERSION_NAME"
+            echo "version_code=$VERSION_CODE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write signed release evidence
+        shell: bash
+        working-directory: source
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          APK_SHA256: ${{ steps.metadata.outputs.apk_sha256 }}
+          CERT_SHA256: ${{ steps.signing.outputs.certificate_sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          {
+            echo "source_repo=Pantonyeung/Morefun-v2"
+            echo "source_sha=$SOURCE_SHA"
+            echo "release_kind=SIGNED_RELEASE_APK"
+            echo "apk_sha256=$APK_SHA256"
+            echo "certificate_sha256=$CERT_SHA256"
+            echo "workflow=v2-android-release.yml"
+          } > release-evidence/summary.txt
+          cp build-metadata.json SHA256SUMS release-evidence/
+
+      - name: Upload signed release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-signed-release-${{ steps.request.outputs.source_sha }}
+          path: |
+            source/${{ steps.metadata.outputs.apk_filename }}
+            source/build-metadata.json
+            source/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload signed release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smt-signed-release-evidence-${{ steps.request.outputs.source_sha }}
+          path: source/release-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish signed release success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-android-signed-release' \
+            -f description='V2 signed Android release passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish signed release failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-android-signed-release' \
+            -f description='V2 signed Android release failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
