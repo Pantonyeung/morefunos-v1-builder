@@ -748,4 +748,74 @@ if (staleExplicitPackages.length > 0) {
 requireText(sourceCoverageAudit, 'unclassified_packages: 0', 'MEMORY_GUARD_PACKAGE_TOPOLOGY_BASELINE_NOT_ZERO');
 requireText(sourceCoverageAudit, 'rule: EVERY_PACKAGE_DIRECTORY_MUST_BE_CATALOG_MAPPED_OR_EXPLICITLY_CLASSIFIED_NONCAPABILITY', 'MEMORY_GUARD_PACKAGE_TOPOLOGY_RULE_MISSING');
 
+
+requireText(sourceCoverageAudit, 'phase11_exact_proof:', 'MEMORY_GUARD_PHASE11_PROOF_MISSING');
+requireText(sourceCoverageAudit, 'builder_run: 34185108832', 'MEMORY_GUARD_PHASE11_RUN_MISSING');
+requireText(sourceCoverageAudit, 'runtime_surface_coverage:', 'MEMORY_GUARD_RUNTIME_SURFACE_COVERAGE_MISSING');
+requireText(sourceCoverageAudit, 'status: PHASE_12_REGISTERED_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_PHASE12_RUNTIME_SURFACE_NOT_READY');
+if (!capabilityIds.has('CAP-SMT-RUNTIME-OTA-001')) {
+  throw new Error('MEMORY_GUARD_PHASE12_OTA_CAPABILITY_NOT_REGISTERED');
+}
+requireText(catalog, 'apps/smt-android/app/src/main/java/com/morefunos/smt/PrintCommandController.java', 'MEMORY_GUARD_PHASE12_NATIVE_PRINT_PATH_MISSING');
+requireText(catalog, 'infra/cloudflare/smt-ota-worker/src/index.js', 'MEMORY_GUARD_PHASE12_OTA_WORKER_PATH_MISSING');
+requireText(catalog, 'RuntimeBundleVerifier.java', 'MEMORY_GUARD_PHASE12_OTA_VERIFIER_PATH_MISSING');
+requireText(catalog, 'RuntimeInstaller.java', 'MEMORY_GUARD_PHASE12_OTA_INSTALLER_PATH_MISSING');
+
+const runtimeCoverageStart = sourceCoverageAudit.indexOf('runtime_surface_coverage:');
+const runtimeCoverage = runtimeCoverageStart >= 0 ? sourceCoverageAudit.slice(runtimeCoverageStart) : '';
+
+const appsMarker = '  apps:';
+const infraMarker = '  infra_cloudflare:';
+const appsStart = runtimeCoverage.indexOf(appsMarker);
+const infraStart = runtimeCoverage.indexOf(infraMarker);
+if (appsStart < 0 || infraStart < 0 || infraStart <= appsStart) {
+  throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_APPS_BLOCK_MISSING');
+}
+const appsBlock = runtimeCoverage.slice(appsStart, infraStart);
+const explicitApps = new Set(
+  [...appsBlock.matchAll(/^\s{6}- name:\s*([^\s]+)\s*$/gm)].map(m => m[1].trim())
+);
+const currentApps = fs.readdirSync(path.join(root, 'apps'), {withFileTypes:true})
+  .filter(entry => entry.isDirectory())
+  .map(entry => entry.name)
+  .sort();
+const catalogMappedApps = new Set([...catalog.matchAll(/apps\/([^/\s]+)\//g)].map(m => m[1]));
+const unclassifiedApps = currentApps.filter(
+  name => !catalogMappedApps.has(name) && !explicitApps.has(name)
+);
+if (unclassifiedApps.length > 0) {
+  throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_UNCLASSIFIED_APP:' + unclassifiedApps.join(','));
+}
+const staleExplicitApps = [...explicitApps].filter(name => !currentApps.includes(name));
+if (staleExplicitApps.length > 0) {
+  throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_STALE_APP_CLASSIFICATION:' + staleExplicitApps.join(','));
+}
+
+const registeredMarker = '  registered_capability:';
+const registeredStart = runtimeCoverage.indexOf(registeredMarker);
+const infraBlock = runtimeCoverage.slice(
+  infraStart,
+  registeredStart > infraStart ? registeredStart : runtimeCoverage.length,
+);
+const explicitInfra = new Set(
+  [...infraBlock.matchAll(/^\s{6}- name:\s*([^\s]+)\s*$/gm)].map(m => m[1].trim())
+);
+const cloudflareRoot = path.join(root, 'infra/cloudflare');
+const currentInfra = fs.readdirSync(cloudflareRoot, {withFileTypes:true})
+  .filter(entry => entry.isDirectory())
+  .map(entry => entry.name)
+  .sort();
+const catalogMappedInfra = new Set([...catalog.matchAll(/infra\/cloudflare\/([^/\s]+)\//g)].map(m => m[1]));
+const unclassifiedInfra = currentInfra.filter(
+  name => !catalogMappedInfra.has(name) && !explicitInfra.has(name)
+);
+if (unclassifiedInfra.length > 0) {
+  throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_UNCLASSIFIED_CLOUDFLARE:' + unclassifiedInfra.join(','));
+}
+const staleExplicitInfra = [...explicitInfra].filter(name => !currentInfra.includes(name));
+if (staleExplicitInfra.length > 0) {
+  throw new Error('MEMORY_GUARD_RUNTIME_SURFACE_STALE_CLOUDFLARE_CLASSIFICATION:' + staleExplicitInfra.join(','));
+}
+requireText(sourceCoverageAudit, 'rule: EVERY_APP_AND_CLOUDFLARE_RUNTIME_SURFACE_MUST_BE_CATALOG_MAPPED_OR_EXPLICITLY_CLASSIFIED_ADAPTER', 'MEMORY_GUARD_RUNTIME_SURFACE_RULE_MISSING');
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
