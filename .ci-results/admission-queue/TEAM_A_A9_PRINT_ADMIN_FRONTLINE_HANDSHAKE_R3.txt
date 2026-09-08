@@ -1,0 +1,13 @@
+work_id=TEAM_A_A9_PRINT_ADMIN_FRONTLINE_HANDSHAKE_R3
+candidate_sha=37f2dc159bdf68683119c34d8400b28011b24837
+base_main_sha=f50e53565c8e576c5f47dfd1ae66b149880b41ce
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34183039519
+conclusion=failure
