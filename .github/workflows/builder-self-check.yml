@@ -71,6 +71,10 @@ jobs:
         shell: bash
         run: node scripts/verify-active-workflow-topology.mjs
 
+      - name: Verify V2 Memory Guard topology
+        shell: bash
+        run: node scripts/verify-v2-memory-guard-policy.mjs
+
       - name: Inventory remaining workflow debt
         continue-on-error: true
         shell: bash
