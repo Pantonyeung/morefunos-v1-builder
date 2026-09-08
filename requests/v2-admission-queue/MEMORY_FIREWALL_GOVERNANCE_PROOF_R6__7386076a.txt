@@ -1,0 +1,10 @@
+candidate_sha=7386076a21f1446e507e8df86406ec222f07a6f7
+base_main_sha=7386076a21f1446e507e8df86406ec222f07a6f7
+work_id=MEMORY_FIREWALL_GOVERNANCE_PROOF_R6
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
