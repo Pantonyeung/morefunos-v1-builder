@@ -1,0 +1,10 @@
+candidate_sha=93cfb5dd0cccabaded8d84b57e83b56dc1fb35c0
+base_main_sha=93cfb5dd0cccabaded8d84b57e83b56dc1fb35c0
+work_id=SYS-WI-MEMORY-FIREWALL-COMMANDER-PATTERNS-005
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=93cfb5dd0cccabaded8d84b57e83b56dc1fb35c0
+required_core_tests=
+force_full_proof=false
