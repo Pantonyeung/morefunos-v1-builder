@@ -322,9 +322,9 @@ for (let i = 0; i < quarantineOriginals.length; i += 1) {
 
 
 requireText(quarantineRegistry, 'phase_2_root_governance:', 'MEMORY_GUARD_QUARANTINE_PHASE2_MISSING');
-const phase2Start = quarantineRegistry.indexOf('phase_2_root_governance:');
-const phase3Start = quarantineRegistry.indexOf('phase_3_root_final:');
-const phase2Block = quarantineRegistry.slice(phase2Start, phase3Start > phase2Start ? phase3Start : quarantineRegistry.length);
+const phase2GovernanceStart = quarantineRegistry.indexOf('phase_2_root_governance:');
+const phase3RootStart = quarantineRegistry.indexOf('phase_3_root_final:');
+const phase2Block = quarantineRegistry.slice(phase2GovernanceStart, phase3RootStart > phase2GovernanceStart ? phase3RootStart : quarantineRegistry.length);
 requireText(phase2Block, 'status: COMPLETE_BUILDER_GREEN', 'MEMORY_GUARD_QUARANTINE_PHASE2_NOT_GREEN');
 const phase2Quarantined = [
   'docs/recovery/COMMAND-CENTER.md',
