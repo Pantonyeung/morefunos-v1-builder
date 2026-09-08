@@ -1,0 +1,10 @@
+candidate_sha=4acbf8b0fa9f7b2c75e295b1af32669f9a308ac9
+base_main_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
+work_id=SYS-WI-TEAM-ROUTING-DISJOINT-CLEANUP-20260908
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=SYS
+depends_on_specs=
+supersedes_candidate_sha=02263887d518a23002a0b60eb325d2fbf8b6ac06
+required_core_tests=
+force_full_proof=true
