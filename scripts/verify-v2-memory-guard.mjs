@@ -291,8 +291,8 @@ requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF',
 requireText(firewall, 'docs/recovery/history/**', 'MEMORY_GUARD_HISTORY_AUTO_READ_NOT_BLOCKED');
 requireText(firewall, 'docs/recovery/NEW-CHAT-SEAMLESS-*.md', 'MEMORY_GUARD_ROOT_NEW_CHAT_AUTO_READ_NOT_BLOCKED');
 
-const quarantineOriginals = [...quarantineRegistry.matchAll(/^  - original_path:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
-const quarantineBodies = [...quarantineRegistry.matchAll(/^    historical_body:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+const quarantineOriginals = [...quarantineRegistry.matchAll(/^    - original_path:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
+const quarantineBodies = [...quarantineRegistry.matchAll(/^      historical_body:\s*(.+?)\s*$/gm)].map(m => m[1].trim());
 if (quarantineOriginals.length !== 7 || quarantineBodies.length !== 7) {
   throw new Error('MEMORY_GUARD_QUARANTINE_PHASE1_COUNT_MISMATCH:' + quarantineOriginals.length + ':' + quarantineBodies.length);
 }
