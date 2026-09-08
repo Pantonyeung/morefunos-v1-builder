@@ -19,6 +19,10 @@ requireAll([
   'V1_ANDROID_KEY_ALIAS',
   'V1_ANDROID_KEY_PASSWORD',
   'EXPECTED_APP_SIGNING_CERT_SHA256',
+  'expected_version_name',
+  'expected_version_code',
+  'EXPECTED_VERSION_NAME',
+  'EXPECTED_VERSION_CODE',
   ':app:testDebugUnitTest',
   ':app:compileReleaseJavaWithJavac',
   ':app:lintRelease',
@@ -36,5 +40,6 @@ if (/persist-credentials:\s*true/.test(text)) throw new Error('V2_ANDROID_RELEAS
 if (/:app:assembleDebug/.test(text)) throw new Error('V2_ANDROID_RELEASE_DEBUG_ASSEMBLE_FORBIDDEN');
 if (/app-debug\.apk/.test(text)) throw new Error('V2_ANDROID_RELEASE_DEBUG_APK_FORBIDDEN');
 if (/source_repo=Pantonyeung\/morefunos-v1\b/.test(text)) throw new Error('V2_ANDROID_RELEASE_V1_SOURCE_FORBIDDEN');
+if (/test "\$VERSION_NAME" = "0\.1\./.test(text)) throw new Error('V2_ANDROID_RELEASE_HARDCODED_VERSION_FORBIDDEN');
 
 console.log('V2 Android signed release contract: PASS');
