@@ -1,6 +1,6 @@
-source_sha=
-work_id=
-capability_id=
-capability_action=
-run_id=34241379261
+source_sha=6d83112e52ced3228367d4dc45496434292d7b19
+work_id=TEAM-C-LINKAGE-CUSTOMER360-20260909
+capability_id=CAP-CUSTOMER-CRM-001
+capability_action=LINKUP
+run_id=34241488132
 conclusion=failure
