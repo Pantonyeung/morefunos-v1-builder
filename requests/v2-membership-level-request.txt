@@ -1,5 +1,5 @@
-source_sha=24d2324791df86bd55e38b561597a68bea42a9af
+source_sha=3b9141f573515ac3bdaf861dce91eaeb0dafa5a8
 work_id=TEAM-C-WI-B0115-membership-level
 capability_id=CAP-MEMBERSHIP-LEVEL-001
 capability_action=NEW_BUILD
-request_id=TEAM-C-B0115-CLOSURE-R2-24d23247-20260908
+request_id=TEAM-C-B0115-CLOSURE-R3-3b9141f5-20260908
