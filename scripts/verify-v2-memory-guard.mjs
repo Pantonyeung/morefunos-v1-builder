@@ -414,9 +414,10 @@ for (const [pointerPath, historyPath] of commanderPhase4) {
   }
 }
 const journalPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/WORK-ACCEPTANCE-JOURNAL.md'), 'utf8');
-if (journalPointer.includes('WORK REMAINS OPEN') || journalPointer.includes('STATUS: ACTIVE_APPEND_ONLY_AUTHORITY')) {
+if (journalPointer.includes('STATUS: ACTIVE_APPEND_ONLY_AUTHORITY')) {
   throw new Error('MEMORY_GUARD_PHASE4_JOURNAL_STALE_AUTHORITY_PRESENT');
 }
+requireText(journalPointer, 'DOCUMENT_CLASS: HISTORICAL_COMPATIBILITY_POINTER', 'MEMORY_GUARD_PHASE4_JOURNAL_POINTER_CLASS_MISSING');
 const commanderLedgerPointer = fs.readFileSync(path.join(root, 'docs/recovery/commander/COMMANDER-MASTER-LEDGER.md'), 'utf8');
 if (commanderLedgerPointer.includes('ACTIVE_MANDATORY_READ') || commanderLedgerPointer.includes('4/20 SMT server operations')) {
   throw new Error('MEMORY_GUARD_PHASE4_MASTER_LEDGER_STALE_AUTHORITY_PRESENT');
