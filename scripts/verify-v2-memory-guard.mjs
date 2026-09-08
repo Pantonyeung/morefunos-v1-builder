@@ -229,7 +229,18 @@ const scalarField = (text, key) => {
 if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(requestedCapabilityId)) {
   throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ID_INVALID:' + requestedCapabilityId);
 }
-const allowedCapabilityActions = new Set(['REUSE','LINKUP','EXTEND','REGRESSION_REPAIR','PHYSICAL_ACCEPTANCE','RUNTIME_PROOF','NEW_BUILD','SUPERSEDE']);
+const capabilityActionBlock = workItemContract.match(
+  /allowed_capability_actions:\s*\n((?:\s+-\s+[A-Z0-9_]+\s*\n?)+)/,
+);
+if (!capabilityActionBlock) {
+  throw new Error('MEMORY_GUARD_WORK_ITEM_CONTRACT_CAPABILITY_ACTIONS_MISSING');
+}
+const allowedCapabilityActions = new Set(
+  [...capabilityActionBlock[1].matchAll(/^\s+-\s+([A-Z0-9_]+)\s*$/gm)].map(m => m[1]),
+);
+if (allowedCapabilityActions.size === 0) {
+  throw new Error('MEMORY_GUARD_WORK_ITEM_CONTRACT_CAPABILITY_ACTIONS_EMPTY');
+}
 if (!allowedCapabilityActions.has(requestedCapabilityAction)) {
   throw new Error('MEMORY_GUARD_REQUEST_CAPABILITY_ACTION_INVALID:' + requestedCapabilityAction);
 }
