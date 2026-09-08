@@ -799,7 +799,9 @@ if (
   !cycle.includes('active_mutation_work_item: NONE_B0117_CLOSED_AWAITING_FRESH_RFM_IMPLEMENTATION_ROUTING') &&
   !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0118-rfm-projection') &&
   !cycle.includes('active_mutation_work_item: NONE_B0118_CLOSED_AWAITING_FRESH_ADMIN_OWNER_RFM_CONSUMPTION_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0119-admin-owner-rfm-consumption')
+  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0119-admin-owner-rfm-consumption') &&
+  !cycle.includes('active_mutation_work_item: NONE_B0119_CLOSED_AWAITING_FRESH_B0120_ROUTING') &&
+  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0120-customer-auth-d1-linkup')
 ) {
   throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID');
 }
