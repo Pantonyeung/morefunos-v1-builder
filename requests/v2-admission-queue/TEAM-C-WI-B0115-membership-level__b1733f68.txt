@@ -1,0 +1,10 @@
+candidate_sha=b1733f686a682c9c4a6b8871b4008fbf251aaf2a
+base_main_sha=600f5e45e7599a54b4b6c42be2499cbfe0fd97c2
+work_id=TEAM-C-WI-B0115-membership-level
+capability_id=CAP-MEMBERSHIP-LEVEL-001
+capability_action=NEW_BUILD
+affected_ports=CORE,CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=315ab24f45d95e5368e5e5544d8c1f2d6f48d9ff
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
