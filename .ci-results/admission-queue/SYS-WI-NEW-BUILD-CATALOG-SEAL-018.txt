@@ -1,13 +1,13 @@
 work_id=SYS-WI-NEW-BUILD-CATALOG-SEAL-018
-candidate_sha=d49588be9f0a89b7b25123b1ac46c5eef6b1bb5f
+candidate_sha=c067603713e0d75bd69913b982c0d09b2ec98363
 base_main_sha=d49588be9f0a89b7b25123b1ac46c5eef6b1bb5f
 latest_main_sha=d49588be9f0a89b7b25123b1ac46c5eef6b1bb5f
 collision=C0
 impact=V0
-reason=ALREADY_ADMITTED_OR_NOOP
-apply_status=SKIPPED
+reason=CANDIDATE_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=
 force_full_proof=false
-run_id=34195047631
+run_id=34195234626
 conclusion=success
