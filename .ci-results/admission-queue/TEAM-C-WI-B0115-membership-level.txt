@@ -1,0 +1,13 @@
+work_id=TEAM-C-WI-B0115-membership-level
+candidate_sha=da4920891994ac249b4582badccb563308cbfbae
+base_main_sha=4e601a2a0d61a09d0d3fc997c9cf3c47a7ac9519
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34183043030
+conclusion=failure
