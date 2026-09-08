@@ -1,0 +1,9 @@
+candidate_sha=db50a3ad7564f83327adb2d0f44577984045d2a7
+base_main_sha=fb43835893b074af3607bba3e1feafcfcc945b4c
+work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
+capability_id=CAP-FRONTLINE-BOOTSTRAP-001
+capability_action=REGRESSION
+affected_ports=SMT,SMM
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
