@@ -485,4 +485,49 @@ for (let i = 0; i < phase5Pointers.length; i += 1) {
   requireText(firewall, pointerPath, 'MEMORY_GUARD_PHASE5_POINTER_NOT_BLOCKED');
 }
 
+
+requireText(firewall, 'commander_namespace_policy:', 'MEMORY_GUARD_COMMANDER_NAMESPACE_POLICY_MISSING');
+requireText(firewall, 'default_class: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_COMMANDER_NAMESPACE_DEFAULT_CLASS_MISSING');
+requireText(firewall, 'default_current_mode_read: FORBIDDEN', 'MEMORY_GUARD_COMMANDER_NAMESPACE_DEFAULT_READ_NOT_FORBIDDEN');
+requireText(docRegistry, 'docs/recovery/commander/**: HISTORICAL_EVIDENCE', 'MEMORY_GUARD_COMMANDER_DOCREG_DEFAULT_MISSING');
+
+const commanderAllowlist = [
+  'docs/recovery/commander/CAPABILITY-CATALOG.yaml',
+  'docs/recovery/commander/CAPABILITY-MASTER-REGISTRY.md',
+  'docs/recovery/commander/DOCUMENT-AUTHORITY-REGISTRY.yaml',
+  'docs/recovery/commander/CAPABILITY-DEEP-AUDIT-2026-09-08.md',
+  'docs/recovery/commander/HISTORICAL-CAPABILITY-LINEAGE-2026-09-08.md',
+  'docs/recovery/commander/HISTORICAL-REPORT-QUARANTINE-REGISTRY.yaml',
+  'docs/recovery/commander/CORE-FAST-AND-FRESH-GATE-2026-09-08.md',
+  'docs/recovery/commander/TWO-TEAM-END-TO-END-OPERATIONAL-ROADMAP-2026-09-07.md',
+];
+
+const documentRegistryBlock = (filePath) => {
+  const marker = '  - path: ' + filePath;
+  const start = docRegistry.indexOf(marker);
+  if (start < 0) return '';
+  const next = docRegistry.indexOf('\n  - path:', start + marker.length);
+  const defaults = docRegistry.indexOf('\ndefaults:', start + marker.length);
+  const ends = [next, defaults].filter(x => x >= 0);
+  const end = ends.length ? Math.min(...ends) : docRegistry.length;
+  return docRegistry.slice(start, end);
+};
+
+for (const filePath of commanderAllowlist) {
+  if (!fs.existsSync(path.join(root, filePath))) {
+    throw new Error('MEMORY_GUARD_COMMANDER_ALLOWLIST_FILE_MISSING:' + filePath);
+  }
+  requireText(firewall, '    - ' + filePath, 'MEMORY_GUARD_COMMANDER_ALLOWLIST_ENTRY_MISSING');
+  const blockText = documentRegistryBlock(filePath);
+  if (!blockText) throw new Error('MEMORY_GUARD_COMMANDER_ALLOWLIST_DOCREG_ENTRY_MISSING:' + filePath);
+  requireText(blockText, 'authority: CURRENT_REFERENCE', 'MEMORY_GUARD_COMMANDER_ALLOWLIST_DOCREG_NOT_CURRENT_REFERENCE');
+}
+
+const currentCommanderRefs = [...new Set(cycle.match(/docs\/recovery\/commander\/[A-Za-z0-9._-]+/g) || [])];
+for (const filePath of currentCommanderRefs) {
+  if (!commanderAllowlist.includes(filePath)) {
+    throw new Error('MEMORY_GUARD_CURRENT_CYCLE_COMMANDER_REF_NOT_ALLOWLISTED:' + filePath);
+  }
+}
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
