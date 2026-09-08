@@ -84,6 +84,32 @@ jobs:
           console.log('pricing_publication_schema=PASS rows='+rows.length);
           NODE
 
+      - name: Verify Customer CRM migration
+        if: steps.req.outputs.migration_file == '0051-customer-crm-foundation.sql'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/customer-crm-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_customer_relationship','mfos_customer_contact_event','mfos_customer_tag_definition','mfos_customer_tag_assignment','mfos_customer_crm_idempotency','mfos_customer_crm_audit') ORDER BY name\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/customer-crm-verify.json > /tmp/customer-crm-verify-result.json
+          node - <<'NODE'
+          const x=require('/tmp/customer-crm-verify-result.json');
+          if(x.success!==true) throw new Error('D1_QUERY_FAILED');
+          const tables=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expected=[
+            'mfos_customer_contact_event',
+            'mfos_customer_crm_audit',
+            'mfos_customer_crm_idempotency',
+            'mfos_customer_relationship',
+            'mfos_customer_tag_assignment',
+            'mfos_customer_tag_definition',
+          ].sort();
+          if(JSON.stringify(tables)!==JSON.stringify(expected)){
+            throw new Error('CUSTOMER_CRM_TABLES_MISSING:'+JSON.stringify(tables));
+          }
+          console.log('customer_crm_schema=PASS '+tables.join(','));
+          NODE
+
       - name: Seal durable migration result
         if: always()
         env:
