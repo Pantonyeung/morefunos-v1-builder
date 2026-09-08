@@ -115,6 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           cd source
+          npm install --no-save --ignore-scripts --no-audit --no-fund typescript@7.0.2 @types/node@24
           npx tsc --noEmit -p tsconfig.json --types node | tee "$RUNNER_TEMP/v2-customer-loyalty-typecheck.log"
 
       - name: Governance guard
