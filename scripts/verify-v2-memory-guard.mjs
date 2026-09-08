@@ -32,6 +32,7 @@ const required = [
   'docs/workflows/SELF-SERVICE-GOVERNANCE-CONTRACT.yaml',
   'INTEGRATION-POLICY.yaml',
   'docs/workflows/FAILURE-CORRECTION-CLOSURE-CONTRACT.yaml',
+  'docs/recovery/TEAM-HANDOFF-PROTOCOL.md',
 ];
 
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -310,5 +311,32 @@ for (let i = 0; i < quarantineOriginals.length; i += 1) {
     throw new Error('MEMORY_GUARD_QUARANTINE_BODY_NOT_EVIDENCE:' + quarantineBodies[i]);
   }
 }
+
+
+requireText(quarantineRegistry, 'phase_2_root_governance:', 'MEMORY_GUARD_QUARANTINE_PHASE2_MISSING');
+requireText(quarantineRegistry, 'status: COMPLETE_AWAITING_EXACT_BUILDER_PROOF', 'MEMORY_GUARD_QUARANTINE_PHASE2_NOT_READY');
+const phase2Quarantined = [
+  'docs/recovery/COMMAND-CENTER.md',
+  'docs/recovery/COMMANDER-BOOTSTRAP.md',
+  'docs/recovery/GAP-LEDGER.yaml',
+  'docs/recovery/LANDING-LEDGER.yaml',
+  'docs/recovery/THREE-TO-TWO-TEAM-TRANSITION.md',
+  'docs/recovery/KEETA-HISTORICAL-ASSET-NO-REDO-LEDGER-2026-09-04.md',
+];
+for (const originalPath of phase2Quarantined) {
+  const original = path.join(root, originalPath);
+  if (!fs.existsSync(original)) throw new Error('MEMORY_GUARD_PHASE2_POINTER_MISSING:' + originalPath);
+  const text = fs.readFileSync(original, 'utf8');
+  if (!text.includes('HISTORICAL_COMPATIBILITY_POINTER')) {
+    throw new Error('MEMORY_GUARD_PHASE2_NOT_TOMBSTONED:' + originalPath);
+  }
+  const basename = path.basename(originalPath);
+  const body = path.join(root, 'docs/recovery/history/root-governance', basename);
+  if (!fs.existsSync(body)) throw new Error('MEMORY_GUARD_PHASE2_BODY_MISSING:' + basename);
+}
+const handoffProtocol = read('docs/recovery/TEAM-HANDOFF-PROTOCOL.md');
+requireText(handoffProtocol, 'CAPABILITY_ID:', 'MEMORY_GUARD_HANDOFF_CAPABILITY_ID_MISSING');
+requireText(handoffProtocol, '未 resolve Capability ID 前', 'MEMORY_GUARD_HANDOFF_CAPABILITY_FIRST_MISSING');
+requireText(handoffProtocol, 'Handoff 不是 current product truth', 'MEMORY_GUARD_HANDOFF_AUTHORITY_BOUNDARY_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
