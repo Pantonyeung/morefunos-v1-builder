@@ -1,0 +1,13 @@
+work_id=SYS-WI-MEMORY-QUARANTINE-001
+candidate_sha=7afb3a8a4d5b635822571037ab4d8b559f8ade7d
+base_main_sha=7afb3a8a4d5b635822571037ab4d8b559f8ade7d
+latest_main_sha=7afb3a8a4d5b635822571037ab4d8b559f8ade7d
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34177402845
+conclusion=success
