@@ -1,0 +1,10 @@
+candidate_sha=19aed7a6d3849ac85195495a415bd3e13f9cf532
+base_main_sha=19aed7a6d3849ac85195495a415bd3e13f9cf532
+work_id=SYS-WI-AUXILIARY-ASSET-COVERAGE-014
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=19aed7a6d3849ac85195495a415bd3e13f9cf532
+required_core_tests=
+force_full_proof=false
