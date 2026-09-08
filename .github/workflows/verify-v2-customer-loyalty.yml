@@ -85,6 +85,10 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
 
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
       - name: Customer Loyalty focused tests
         run: |
           set -euo pipefail
@@ -95,7 +99,6 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          npm install --no-save --ignore-scripts typescript@7.0.2 @types/node@24
           npx tsc --noEmit -p tsconfig.json --types node | tee "$RUNNER_TEMP/v2-customer-loyalty-typecheck.log"
 
       - name: Governance guard
