@@ -1,0 +1,10 @@
+candidate_sha=0bc551f67029ef8e149c80044fe16f6677771b5a
+base_main_sha=0bc551f67029ef8e149c80044fe16f6677771b5a
+work_id=SYS-WI-REPOSITORY-SHELL-COVERAGE-015
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
