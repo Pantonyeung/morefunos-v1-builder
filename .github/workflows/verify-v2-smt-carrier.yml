@@ -147,9 +147,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts
-          grep -Eq "infra/cloudflare/admin-web-worker/(index|runtime)\.ts" source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts
-          echo "t2-smt-worker-mount.test.ts imports an admitted Cloudflare Worker seam (index.ts or runtime.ts) and is intentionally excluded from plain Node carrier verification; Workers-runtime verification belongs to the dedicated Cloudflare test/deploy lane." >> "$GITHUB_STEP_SUMMARY"
+          WORKER_TEST=source/packages/smt-ui-integration/t2-smt-worker-mount.test.ts
+          if [[ -f "$WORKER_TEST" ]]; then
+            grep -Eq "infra/cloudflare/admin-web-worker/(index|runtime)\.ts" "$WORKER_TEST"
+            echo "t2-smt-worker-mount.test.ts imports an admitted Cloudflare Worker seam and is intentionally excluded from plain Node carrier verification." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Exact source predates t2-smt-worker-mount.test.ts; Worker-runtime separation is not a carrier prerequisite for this historical donor. Carrier verification continues with the exact source's own test set." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Install SMT app dependencies
         working-directory: source/apps/smt-clean
