@@ -793,7 +793,8 @@ if (
   !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_ONLY_NO_PRODUCT_MUTATION') &&
   !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_CLOSED_AWAITING_FRESH_B0117_ROUTING') &&
   !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0117-frontline-customer-order-attribution') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0117_CLOSED_AWAITING_FRESH_RFM_IMPLEMENTATION_ROUTING')
+  !cycle.includes('active_mutation_work_item: NONE_B0117_CLOSED_AWAITING_FRESH_RFM_IMPLEMENTATION_ROUTING') &&
+  !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0118-rfm-projection')
 ) {
   throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID');
 }
