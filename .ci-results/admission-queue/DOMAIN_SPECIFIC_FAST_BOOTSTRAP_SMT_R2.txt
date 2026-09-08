@@ -1,0 +1,13 @@
+work_id=DOMAIN_SPECIFIC_FAST_BOOTSTRAP_SMT_R2
+candidate_sha=5c9e2211669e300baa625e77105228012bf6a350
+base_main_sha=9a26395c15d375bacaa3524997fdb1afc8d6dc05
+latest_main_sha=ae5e3d1b1d05a9c5c58b1a6cd142ea37f6847eab
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
+run_id=34172569471
+conclusion=failure
