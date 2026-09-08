@@ -1,5 +1,5 @@
-source_sha=15820bb362ed2f5cb038ef0f679bc23b5510a152
+source_sha=3457a18269cd4a211369c18b4f34270381210362
 base_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
 branch_name=work/TEAM-B/admin-print-center-product-routing-20260908
 verification_phase=CANDIDATE
-request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-CORE-R7-20260908
+request_id=TEAM-B-PRINT-DYNAMIC-TEMPLATE-CORE-R8-20260908
