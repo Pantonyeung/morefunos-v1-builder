@@ -1,0 +1,7 @@
+candidate_sha=5b813de4df210e458c6b6d8b0087d10e8ee1ec47
+base_main_sha=e773477575c9f2ff9e09eb325f9fd8240ba1ecb4
+work_id=DOMAIN_SPECIFIC_CUSTOMER_BROWSE_NETWORK_SUBMIT_R1
+affected_ports=CUSTOMER
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
