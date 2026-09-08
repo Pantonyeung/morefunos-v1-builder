@@ -1,5 +1,5 @@
-source_sha=5539f054a3eb596dab92c6d100617bdf3f96aecb
-request_id=TEAM-A-SMM-FRESH-START-LOGOUT-CACHE-R2-20260908
-run_id=34233750372
+source_sha=ec26e7e42cb64c8a2da04c3d9e3ddf453b9527e3
+request_id=TEAM-A-SMM-KEETA-FALLBACK-FAIL-OPEN-20260908
+run_id=34235210387
 run_attempt=1
 conclusion=success
