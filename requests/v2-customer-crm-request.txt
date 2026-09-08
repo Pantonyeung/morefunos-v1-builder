@@ -1,5 +1,2 @@
-source_sha=26826bd0a7b2cf60f66592ea62eb24847ff2f6da
-work_id=TEAM-C-WI-B0134-customer-crm-terminal-closure
-capability_id=CAP-CUSTOMER-CRM-001
-capability_action=RUNTIME_PROOF
-request_id=TEAM-C-B0134-CUSTOMER-CRM-EXACT-MAIN-20260908-03
+source_sha=6d83112e52ced3228367d4dc45496434292d7b19
+request_id=TEAM-C-LINKAGE-CUSTOMER360-CRM-20260909
