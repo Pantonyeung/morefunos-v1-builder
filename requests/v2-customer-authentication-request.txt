@@ -1,5 +1,5 @@
-source_sha=addcc5e5af8ad936e012edca0b3abc3a29c733ce
+source_sha=6f6202eb2a0a29be13ec14f4d162fd861a26497d
 base_sha=2432139394db79657471a8931204718eb62b08f9
 branch_name=work/CORE/B0121-customer-auth-runtime-proof
 verification_phase=FINAL_MERGE_REQUEST
-request_id=TEAM-C-B0121-AUTH-TERMINAL-20260908-01
+request_id=TEAM-C-B0121-CUSTOMER-AUTH-RUNTIME-PROOF-TERMINAL-20260908-01
