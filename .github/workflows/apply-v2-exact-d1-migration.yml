@@ -135,6 +135,30 @@ jobs:
           console.log('membership_schema=PASS '+tables.join(','));
           NODE
 
+      - name: Verify Customer RFM projection migration
+        if: steps.req.outputs.migration_file == '0053-customer-rfm-projection.sql'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/rfm-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_customer_rfm_projection','mfos_customer_rfm_projection_meta') ORDER BY name; SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_mfos_customer_rfm_segment','idx_mfos_customer_rfm_generation','idx_mfos_customer_order_ownership_customer') ORDER BY name;\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/rfm-verify.json > /tmp/rfm-verify-result.json
+          node - <<'NODE'
+          const x=require('/tmp/rfm-verify-result.json');
+          if(x.success!==true) throw new Error('D1_QUERY_FAILED');
+          const tables=(x.result?.[0]?.results||[]).map(r=>r.name).sort();
+          const expectedTables=['mfos_customer_rfm_projection','mfos_customer_rfm_projection_meta'].sort();
+          if(JSON.stringify(tables)!==JSON.stringify(expectedTables)){
+            throw new Error('RFM_TABLES_MISSING:'+JSON.stringify(tables));
+          }
+          const indexes=(x.result?.[1]?.results||[]).map(r=>r.name).sort();
+          const expectedIndexes=['idx_mfos_customer_order_ownership_customer','idx_mfos_customer_rfm_generation','idx_mfos_customer_rfm_segment'].sort();
+          if(JSON.stringify(indexes)!==JSON.stringify(expectedIndexes)){
+            throw new Error('RFM_INDEXES_MISSING:'+JSON.stringify(indexes));
+          }
+          console.log('customer_rfm_schema=PASS tables='+tables.join(',')+' indexes='+indexes.join(','));
+          NODE
+
       - name: Seal durable migration result
         if: always()
         env:
