@@ -1,0 +1,10 @@
+candidate_sha=f73ee3a7172d8632152d87f81b59f58907addefa
+base_main_sha=f73ee3a7172d8632152d87f81b59f58907addefa
+work_id=SYS-WI-D1-SCHEMA-AUTHORITY-COVERAGE-013
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=7c2921717ae406b878eba8fcee8f6950ee474f64
+required_core_tests=
+force_full_proof=false
