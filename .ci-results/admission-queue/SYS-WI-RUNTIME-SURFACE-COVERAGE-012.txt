@@ -1,0 +1,13 @@
+work_id=SYS-WI-RUNTIME-SURFACE-COVERAGE-012
+candidate_sha=ca9b920c82ad6ba8e33cab8fc0b4235407193439
+base_main_sha=ca9b920c82ad6ba8e33cab8fc0b4235407193439
+latest_main_sha=ca9b920c82ad6ba8e33cab8fc0b4235407193439
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=
+force_full_proof=false
+run_id=34185608047
+conclusion=success
