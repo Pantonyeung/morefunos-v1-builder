@@ -1,6 +1,6 @@
 work_id=TEAM_A_A9_PRINT_ROUTING_SETTINGS_R2
-candidate_sha=d77fade880b16d336f41006ba4803c9bc9065cfb
-base_main_sha=d026390e6bbf0d9c81d5a89d540bf96d2f08fd67
+candidate_sha=b687554a9d619f3bf8ce1b41eff4e1b540686b67
+base_main_sha=1386c7c3a6a1520daf54e81b8c624bfc6a7ab7bf
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=PRINT
 force_full_proof=true
-run_id=34189213585
+run_id=34189319069
 conclusion=failure
