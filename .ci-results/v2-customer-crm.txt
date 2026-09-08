@@ -1,6 +1,6 @@
-source_sha=14e2464759390283e7cde18b46d4e736b5176f21
-work_id=TEAM-C-LINKAGE-CUSTOMER360-20260909
+source_sha=a784f9f96e6a14a9220f793628589eac152be630
+work_id=TEAM-C-WI-B0146-customer360-admin-consumer-linkup
 capability_id=CAP-CUSTOMER-CRM-001
 capability_action=LINKUP
-run_id=34241587812
+run_id=34242307819
 conclusion=failure
