@@ -1,5 +1,5 @@
-candidate_sha=58676b17ba79d836b475a3f5b946bea9411dcd66
-base_main_sha=678f5c613aaff5db9f6fe22f29a30a1d4715a1e1
-work_id=TEAMA-SMT-GOLDEN-ORDERING-INLINE-DRIVE-AUTHORITY-20260907-04
+candidate_sha=3ab7713da591f0ecbecda9998b9a4be708be3717
+base_main_sha=275753fafb366cc7d424101d9551cb2ad96383ec
+work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
 affected_ports=SMT
 queue_attempt=1
