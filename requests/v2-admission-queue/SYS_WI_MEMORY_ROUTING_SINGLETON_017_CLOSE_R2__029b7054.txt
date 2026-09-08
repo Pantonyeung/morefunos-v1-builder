@@ -8,3 +8,4 @@ depends_on_specs=
 supersedes_candidate_sha=25d82e31b01b31f3af1389a3bf81311135e79c65
 required_core_tests=
 force_full_proof=false
+retry_reason=BUILDER_GUARD_SYS_MAINTENANCE_LIFECYCLE_FIXED_547c246863b28b6bdb512fcf1788d0029cc2bb5d
