@@ -1,0 +1,10 @@
+candidate_sha=0caef2bd9a1cb20851aa4904e6aef84d9e77b186
+base_main_sha=24d73d0ec1f3fd7591d0cce9d31842f01196a798
+work_id=TEAM-C-WI-B0119-admin-owner-rfm-consumption
+capability_id=CAP-REPORTING-001
+capability_action=EXTEND
+affected_ports=CORE;ADMIN;OWNER
+depends_on_specs=
+supersedes_candidate_sha=3f560ffeeaefa35e86f855c1754ac5f612d76b1f
+required_core_tests=
+force_full_proof=true
