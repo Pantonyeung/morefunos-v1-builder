@@ -581,4 +581,46 @@ for (const filePath of currentDecisionRefs) {
   }
 }
 
+
+requireText(firewall, 'workflow_namespace_policy:', 'MEMORY_GUARD_WORKFLOW_NAMESPACE_POLICY_MISSING');
+requireText(firewall, 'work_item_default_class: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_WORK_ITEM_NAMESPACE_DEFAULT_MISSING');
+requireText(firewall, 'plan_default_class: WORKFLOW_LOCAL_NOT_CURRENT', 'MEMORY_GUARD_PLAN_NAMESPACE_DEFAULT_MISSING');
+requireText(firewall, 'active_or_open_status_alone_authorizes_current_read: false', 'MEMORY_GUARD_WORKFLOW_ACTIVE_FLAG_BYPASS');
+requireText(docRegistry, 'docs/workflows/work-items/**: WORKFLOW_LOCAL', 'MEMORY_GUARD_WORK_ITEM_DOCREG_DEFAULT_MISSING');
+requireText(docRegistry, 'docs/plans/**: WORKFLOW_LOCAL', 'MEMORY_GUARD_PLAN_DOCREG_DEFAULT_MISSING');
+
+const currentWorkItemRefs = [...new Set(cycle.match(/docs\/workflows\/work-items\/[A-Za-z0-9._-]+\.ya?ml/g) || [])];
+const expectedCurrentWorkItems = new Set([
+  'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
+  'docs/workflows/work-items/TEAM-C-WI-B0114-customer-crm-foundation.yaml',
+  'docs/workflows/work-items/SYS-WI-WORKFLOW-NAMESPACE-ALLOWLIST-008.yaml',
+]);
+
+for (const filePath of currentWorkItemRefs) {
+  if (!expectedCurrentWorkItems.has(filePath)) {
+    throw new Error('MEMORY_GUARD_UNEXPECTED_CURRENT_WORK_ITEM_POINTER:' + filePath);
+  }
+}
+for (const filePath of expectedCurrentWorkItems) {
+  if (!currentWorkItemRefs.includes(filePath)) {
+    throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_POINTER_MISSING:' + filePath);
+  }
+  const full = path.join(root, filePath);
+  if (!fs.existsSync(full)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_FILE_MISSING:' + filePath);
+  const text = fs.readFileSync(full, 'utf8');
+  const workId = scalarField(text, 'work_id');
+  const capId = scalarField(text, 'capability_id').toUpperCase();
+  const capAction = scalarField(text, 'capability_action').toUpperCase();
+  const planRef = scalarField(text, 'plan');
+  const active = scalarField(text, 'ACTIVE').toLowerCase();
+  if (!workId) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_ID_MISSING:' + filePath);
+  if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(capId)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_CAPABILITY_INVALID:' + filePath);
+  if (!allowedCapabilityActions.has(capAction)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_ACTION_INVALID:' + filePath + ':' + capAction);
+  if (active !== 'true') throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_NOT_ACTIVE:' + filePath);
+  if (!planRef) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_MISSING:' + filePath);
+  if (!fs.existsSync(path.join(root, planRef))) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_PLAN_NOT_FOUND:' + filePath + ':' + planRef);
+}
+requireText(cycle, 'active_work_item_path: null', 'MEMORY_GUARD_TEAM_B_NULL_ACTIVE_WORK_ITEM_MISSING');
+requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
+
 console.log('MoreFunOS V2 Memory Guard: PASS');
