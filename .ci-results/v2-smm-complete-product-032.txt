@@ -1,5 +1,5 @@
-source_sha=4892a4db0d37bfc05ec9386935331501b122ff45
-request_id=TEAM-A-SMM-EXTERNAL-ORDER-ONLINE-GATE-20260908
-run_id=34231385691
+source_sha=605dfd1e8a6b16d89a44aec2921e49e1f224394d
+request_id=TEAM-A-SMM-FRESH-START-LOGOUT-CACHE-20260908
+run_id=34232949003
 run_attempt=1
-conclusion=success
+conclusion=failure
