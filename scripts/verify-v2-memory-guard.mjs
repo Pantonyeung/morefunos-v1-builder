@@ -93,7 +93,10 @@ if (requestedCapabilityAction === 'NEW_BUILD' && requestedWorkId && requestedCap
     if (!requestedCompletionManifest.includes('capability_action: NEW_BUILD')) {
       throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_ACTION_MISMATCH');
     }
-    if (!requestedCompletionManifest.includes('scope_status: IMPLEMENTED_CANDIDATE')) {
+    if (
+      !requestedCompletionManifest.includes('scope_status: IMPLEMENTED_CANDIDATE') &&
+      !requestedCompletionManifest.includes('scope_status: ADMITTED_PRODUCTION_SCHEMA_PROVEN')
+    ) {
       throw new Error('MEMORY_GUARD_NEW_BUILD_MANIFEST_STATUS_MISMATCH');
     }
     provisionalNewBuildPaths = new Set(
