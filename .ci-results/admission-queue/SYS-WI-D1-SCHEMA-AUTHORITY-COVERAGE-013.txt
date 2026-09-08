@@ -1,6 +1,6 @@
 work_id=SYS-WI-D1-SCHEMA-AUTHORITY-COVERAGE-013
-candidate_sha=7c2921717ae406b878eba8fcee8f6950ee474f64
-base_main_sha=7c2921717ae406b878eba8fcee8f6950ee474f64
+candidate_sha=f73ee3a7172d8632152d87f81b59f58907addefa
+base_main_sha=f73ee3a7172d8632152d87f81b59f58907addefa
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=
 force_full_proof=false
-run_id=34186191726
+run_id=34186382838
 conclusion=failure
