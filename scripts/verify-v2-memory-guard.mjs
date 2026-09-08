@@ -653,18 +653,26 @@ for (const filePath of currentWorkItemRefs) {
 const requiredCurrentWorkItemRefs = [
   'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml',
   'docs/workflows/work-items/TEAM-C-WI-B0115-membership-level.yaml',
-  'docs/workflows/work-items/SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009.yaml',
 ];
 for (const filePath of requiredCurrentWorkItemRefs) {
   if (!currentWorkItemRefs.includes(filePath)) {
     throw new Error('MEMORY_GUARD_REQUIRED_CURRENT_WORK_ITEM_POINTER_MISSING:' + filePath);
   }
 }
+const sysBlockStart = cycle.indexOf('  sys_governance:');
+if (sysBlockStart < 0) throw new Error('MEMORY_GUARD_SYS_GOVERNANCE_BLOCK_MISSING');
+const sysBlockEnd = cycle.indexOf('\nnext_joint_gate:', sysBlockStart);
+const sysBlock = cycle.slice(sysBlockStart, sysBlockEnd >= 0 ? sysBlockEnd : cycle.length);
+const sysWorkItemMatch = sysBlock.match(/active_work_item_path:\s*([^\n]+)/);
+if (!sysWorkItemMatch) throw new Error('MEMORY_GUARD_SYS_ACTIVE_WORK_ITEM_POINTER_MISSING');
+const sysWorkItemRef = sysWorkItemMatch[1].trim();
+if (!currentWorkItemRefs.includes(sysWorkItemRef)) {
+  throw new Error('MEMORY_GUARD_SYS_CURRENT_WORK_ITEM_NOT_DISCOVERED:' + sysWorkItemRef);
+}
 const teamAWorkItem = fs.readFileSync(path.join(root, 'docs/workflows/work-items/TEAM-A-WI-A9-PRINT-ROUTING-SETTINGS-20260908.yaml'), 'utf8');
 requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMORY_GUARD_TEAM_A_LINKUP_REOPENED');
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY', 'MEMORY_GUARD_TEAM_B_HANDSHAKE_ONLY_MARKER_MISSING');
 requireText(cycle, 'active_mutation_work_item: TEAM-C-WI-B0115-membership-level', 'MEMORY_GUARD_TEAM_C_ACTIVE_WORK_ITEM_MISSING');
-requireText(cycle, 'work_id: SYS-WI-CAPABILITY-IDENTITY-RECONCILIATION-009', 'MEMORY_GUARD_SYS_PHASE9_WORK_ITEM_MISSING');
 
 console.log('MoreFunOS V2 Memory Guard: PASS');
