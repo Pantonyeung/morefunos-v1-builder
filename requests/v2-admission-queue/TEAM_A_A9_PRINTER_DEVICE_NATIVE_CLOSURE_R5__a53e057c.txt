@@ -1,0 +1,10 @@
+candidate_sha=a53e057cbd0070b50b1296c0206cfd275428b11c
+base_main_sha=6e5194a157e73eed35742fe12b1d951cb7baf4a9
+work_id=TEAM_A_A9_PRINTER_DEVICE_NATIVE_CLOSURE_20260908
+capability_id=CAP-PRINT-DEVICE-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT
+depends_on_specs=
+supersedes_candidate_sha=2d3739a98bbc60cf9fed720a299d24a93a0b4f04
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
