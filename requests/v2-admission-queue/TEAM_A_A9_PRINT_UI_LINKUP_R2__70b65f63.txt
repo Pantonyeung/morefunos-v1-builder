@@ -1,0 +1,7 @@
+candidate_sha=70b65f631bb75db6b3db90bfcbb2b189d7676399
+base_main_sha=af72a2b33bff497dc377ce6f2968ff6342d289c6
+work_id=TEAM_A_A9_PRINT_UI_LINKUP_R2
+affected_ports=SMT
+depends_on_specs=
+required_core_tests=ORDER_ADMISSION
+force_full_proof=true
