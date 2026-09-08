@@ -1,0 +1,10 @@
+candidate_sha=63529b6cd07dced1a3b75ced70f4260bc0f23d7c
+base_main_sha=63529b6cd07dced1a3b75ced70f4260bc0f23d7c
+work_id=SYS-WI-CAPABILITY-TOPOLOGY-DRIFT-GUARD-011
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
