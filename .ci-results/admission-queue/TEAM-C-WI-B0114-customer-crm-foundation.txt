@@ -1,7 +1,7 @@
 work_id=TEAM-C-WI-B0114-customer-crm-foundation
-candidate_sha=9c6ee01d2161beb07b9cff65f6ed7be8fc5eb72e
-base_main_sha=881bc9a554afa3b3352a63ead039f79db2a88321
-latest_main_sha=881bc9a554afa3b3352a63ead039f79db2a88321
+candidate_sha=7f2c1832ff4c797b0890f593f0ec20e7c6f02186
+base_main_sha=5c3f5985680f698b6c3d0f747db4a0b99b9d1c9f
+latest_main_sha=5c3f5985680f698b6c3d0f747db4a0b99b9d1c9f
 collision=C0
 impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=ORDER_ADMISSION
 force_full_proof=true
-run_id=34181006379
+run_id=34181338697
 conclusion=success
