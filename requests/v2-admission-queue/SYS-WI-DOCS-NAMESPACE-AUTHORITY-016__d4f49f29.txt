@@ -1,0 +1,10 @@
+candidate_sha=d4f49f29351adcfed71602d0938a59fcdcf6446a
+base_main_sha=d4f49f29351adcfed71602d0938a59fcdcf6446a
+work_id=SYS-WI-DOCS-NAMESPACE-AUTHORITY-016
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=false
