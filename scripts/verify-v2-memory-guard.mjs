@@ -906,7 +906,7 @@ for (const fileName of rootFiles) {
 }
 
 const githubRoot = path.join(root, '.github');
-const githubFiles = fs.existsSync(githubRoot) ? walkFiles(githubRoot).map(f => path.relative(root, f).split(path.sep).join('/')) : [];
+const githubFiles = fs.existsSync(githubRoot) ? walkAllFiles(githubRoot).map(f => path.relative(root, f).split(path.sep).join('/')) : [];
 for (const filePath of githubFiles) {
   if (!auxiliaryAssetPaths.has(filePath)) {
     throw new Error('MEMORY_GUARD_PHASE15_UNCLASSIFIED_GITHUB_FILE:' + filePath);
