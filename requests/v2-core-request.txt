@@ -1,5 +1,5 @@
-source_sha=8d0b2f10bb910f34bac2b313c463d87124ddb1fb
+source_sha=c50f90b9d94ece4ef9d63493ed9303cc232c0e8f
 base_sha=02b9b2448f82250c7f556ade477dfef04c608cc7
 branch_name=work/CORE/B0129-operational-capacity-runtime-proof
 verification_phase=FINAL_MERGE_REQUEST
-request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-CORE-TERMINAL-20260908-01
+request_id=TEAM-C-B0129-OPERATIONAL-CAPACITY-CORE-TERMINAL-20260908-02
