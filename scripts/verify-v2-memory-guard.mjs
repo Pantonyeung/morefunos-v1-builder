@@ -790,7 +790,8 @@ requireText(cycle, 'active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY
 if (
   !cycle.includes('active_mutation_work_item: TEAM-C-WI-B0115-membership-level') &&
   !cycle.includes('active_mutation_work_item: NONE_B0115_CLOSED_AWAITING_FRESH_B0116_ROUTING') &&
-  !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_ONLY_NO_PRODUCT_MUTATION')
+  !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_ONLY_NO_PRODUCT_MUTATION') &&
+  !cycle.includes('active_mutation_work_item: NONE_B0116_RESEARCH_CLOSED_AWAITING_FRESH_B0117_ROUTING')
 ) {
   throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID');
 }
