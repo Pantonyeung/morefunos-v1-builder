@@ -1,0 +1,10 @@
+candidate_sha=d77fade880b16d336f41006ba4803c9bc9065cfb
+base_main_sha=d026390e6bbf0d9c81d5a89d540bf96d2f08fd67
+work_id=TEAM_A_A9_PRINT_ROUTING_SETTINGS_R2
+capability_id=CAP-PRINT-DEVICE-001
+capability_action=LINKUP
+affected_ports=SMT
+depends_on_specs=
+supersedes_candidate_sha=2afba64edd033dc98dbc21a3acade6be31675ca6
+required_core_tests=PRINT
+force_full_proof=true
