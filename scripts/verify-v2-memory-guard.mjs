@@ -740,6 +740,15 @@ const teamAActiveRef = teamAActiveMatch[1].trim();
 if (teamAStatus === 'ACTIVE' && teamAActiveRef !== 'null' && !currentWorkItemRefs.includes(teamAActiveRef)) {
   throw new Error('MEMORY_GUARD_TEAM_A_CURRENT_WORK_ITEM_NOT_DISCOVERED:' + teamAActiveRef);
 }
+const teamBBlockStart = cycle.indexOf('  team_b:');
+if (teamBBlockStart < 0) throw new Error('MEMORY_GUARD_TEAM_B_BLOCK_MISSING');
+const teamBBlockEnd = cycle.indexOf('\n  team_c:', teamBBlockStart);
+const teamBBlock = cycle.slice(teamBBlockStart, teamBBlockEnd >= 0 ? teamBBlockEnd : cycle.length);
+const teamBMutation = (teamBBlock.match(/active_mutation_work_item:\s*([^\n]+)/)?.[1] || '').trim();
+const teamBActiveRef = (teamBBlock.match(/active_work_item_path:\s*([^\n]+)/)?.[1] || '').trim();
+if (teamBMutation === 'NONE_READBACK_HANDSHAKE_GATE_ONLY' && teamBActiveRef !== 'null') {
+  throw new Error('MEMORY_GUARD_TEAM_B_HANDSHAKE_POINTER_MUST_BE_NULL:' + teamBActiveRef);
+}
 const sysBlockStart = cycle.indexOf('  sys_governance:');
 if (sysBlockStart < 0) throw new Error('MEMORY_GUARD_SYS_GOVERNANCE_BLOCK_MISSING');
 const sysBlockEnd = cycle.indexOf('\nnext_joint_gate:', sysBlockStart);
