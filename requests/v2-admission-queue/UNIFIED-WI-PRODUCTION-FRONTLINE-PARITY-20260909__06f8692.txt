@@ -1,0 +1,8 @@
+candidate_sha=06f8692bbe9cd50352cdc390bd5266e684e828de
+base_main_sha=a4fe1d227e8494a8263763dac24318ac7deca199
+work_id=UNIFIED-WI-PRODUCTION-FRONTLINE-PARITY-20260909
+capability_id=CAP-PRODUCTION-KDS-001
+capability_action=LINKUP
+affected_ports=SMT,CORE
+required_core_tests=
+force_full_proof=true
