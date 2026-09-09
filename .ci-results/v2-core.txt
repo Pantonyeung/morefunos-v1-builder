@@ -1,5 +1,5 @@
-source_sha=22bdbcb8dd92d61fe87873ee365149a1da999898
-request_id=TEAM-C-DINE-IN-COMMAND-ENTRY-CORE-20260909-02
-run_id=34295544206
+source_sha=5dd1997b331f127ec08c158e7b8fa4369d3b94b7
+request_id=TEAM-C-DINEIN-CORE-COMMAND-LINKUP-20260909-03
+run_id=34295657177
 run_attempt=1
-conclusion=failure
+conclusion=success
