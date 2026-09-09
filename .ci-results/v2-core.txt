@@ -1,5 +1,5 @@
-source_sha=e7abb2bbc5b1e3058dad24f80260e5600c832260
-request_id=TEAM-C-PRODUCTION-KDS-D1-FEED-CORE-20260909-01
-run_id=34317140667
+source_sha=0cd29b39bf073204cb76966ee59effa0bf6b84e8
+request_id=TEAM-C-PRODUCTION-KDS-D1-FEED-CORE-20260909-02
+run_id=34317391617
 run_attempt=1
-conclusion=failure
+conclusion=success
