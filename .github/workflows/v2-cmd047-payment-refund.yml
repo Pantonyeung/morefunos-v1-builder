@@ -68,6 +68,12 @@ jobs:
           set -euo pipefail
           node --test --experimental-strip-types source/verification/cmd047-payment-refund-d1.test.mjs 2>&1 | tee evidence/cmd047-payment-refund.log
 
+      - name: Payment Refund diagnostics contracts
+        working-directory: source
+        run: |
+          node --test --experimental-strip-types packages/payment/t2-d1-payment-refund-authority.test.ts
+          node --test --experimental-strip-types packages/admin-ui-integration/admin-payment-refund-linkage.test.ts
+
       - name: Run root TypeScript typecheck
         working-directory: source
         shell: bash
