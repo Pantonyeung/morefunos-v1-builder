@@ -1,6 +1,6 @@
-source_sha=0fed4072063a4505c6095052eee9e24feb6a8444
-apk_source_sha=6614dd9847d183c4bbbbcfc153dab25e3b175e46
-signed_release_run_id=34306478167
-expected_version_name=1.0.0
-expected_version_code=100
-request_id=TEAM-A-SMT-1.0-CARRIER-OTA-PUBLISH-R2-20260909
+source_sha=27622017338dd3229c240426a452cf17647e4082
+apk_source_sha=27622017338dd3229c240426a452cf17647e4082
+signed_release_run_id=34357702380
+expected_version_name=1.0.1
+expected_version_code=101
+request_id=TEAM-A-SMT-1.0.1-NATIVE-GATEWAY-CARRIER-OTA-PUBLISH-20260909
