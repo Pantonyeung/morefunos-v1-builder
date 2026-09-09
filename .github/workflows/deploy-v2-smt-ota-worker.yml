@@ -1,0 +1,113 @@
+name: V2 SMT OTA Worker Deploy
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-ota-worker-deploy-request.txt'
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: v2-smt-ota-worker-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Publish deploy pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=pending             -f context='builder/v2-smt-ota-worker-deploy'             -f description='V2 SMT OTA Worker deploy running'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-ota-worker-deploy-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Worker dependencies
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Worker contract tests
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: node --test
+
+      - name: Deploy exact Worker
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      - name: Prove public worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGIN='https://morefunos-v2-smt-ota.pantonyeung.workers.dev'
+          RUNTIME_STATUS="$(curl --silent --show-error --output /tmp/runtime.json --write-out '%{http_code}' "$ORIGIN/runtime-update.json")"
+          test "$RUNTIME_STATUS" = '200' -o "$RUNTIME_STATUS" = '404'
+          CARRIER_STATUS="$(curl --silent --show-error --output /tmp/carrier.txt --write-out '%{http_code}' "$ORIGIN/carrier-update.json")"
+          test "$CARRIER_STATUS" = '200' -o "$CARRIER_STATUS" = '404'
+
+      - name: Publish deploy success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=success             -f context='builder/v2-smt-ota-worker-deploy'             -f description='V2 SMT OTA Worker deploy passed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish deploy failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=failure             -f context='builder/v2-smt-ota-worker-deploy'             -f description='V2 SMT OTA Worker deploy failed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
