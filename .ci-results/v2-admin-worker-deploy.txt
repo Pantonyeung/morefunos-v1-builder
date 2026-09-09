@@ -1,7 +1,7 @@
-source_sha=5ddaa0de4cc2f7ab8ecd830d5aaff7c664ce7e95
-request_id=TEAM-A-KEETA-REALTIME-DOORBELL-ADMIN-DEPLOY-20260909
-run_id=34286263716
+source_sha=dac0f5442b7562001796d777424c2e7b56e8f42c
+request_id=TEAM-A-PRINT-REGISTRY-LINKUP-20260909-01
+run_id=34299817970
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=b6c2493c-ff54-4bc1-9fe9-c3f3c704ee22
+worker_version=e31ac165-9aea-43f9-bdaf-e3791d13fdf0
