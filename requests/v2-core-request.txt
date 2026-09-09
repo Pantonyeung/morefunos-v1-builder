@@ -1,5 +1,5 @@
-source_sha=bb6d1a52d3e210c1b8109799833bbe2d5aed8bce
+source_sha=d5030b12a5be1b2538bb1fe9e65bdfc070a022ea
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-NATIVE-GATEWAY-DIAGNOSTICS-CORE-R2-20260909
+request_id=TEAM-A-SMT-GATEWAY-DIAGNOSTICS-CORE-R3-20260909
