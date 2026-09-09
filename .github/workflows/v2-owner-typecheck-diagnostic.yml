@@ -60,7 +60,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           mkdir -p .ci-results
-          cp source/owner-typecheck.txt ".ci-results/v2-owner-typecheck-${SOURCE_SHA}.txt"
+          cp owner-typecheck.txt ".ci-results/v2-owner-typecheck-${SOURCE_SHA}.txt"
           git add .ci-results
           git commit -m "ci(diag): Owner typecheck ${SOURCE_SHA}" || exit 0
           git push origin HEAD:main
