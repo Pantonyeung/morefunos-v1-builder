@@ -1,5 +1,5 @@
-source_sha=9b09693234723f006dc886c33502b7a82ad1a657
+source_sha=4ae830f24abee22707151a37e669f9caf2014a8a
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-PRODUCTION-OPS-READ-MODEL-CORE-20260909-02
+request_id=TEAM-C-PRODUCTION-OPS-SMM-LINKUP-CORE-20260909-01
