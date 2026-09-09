@@ -1,0 +1,80 @@
+name: V2 SMT Pricing Diagnostics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-smt-pricing-diagnostics-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-pricing-diagnostics-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Require source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - name: Verify exact source
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+      - name: Pricing diagnostics contracts
+        working-directory: source
+        run: |
+          node --test --experimental-strip-types packages/pricing/frontline-pricing-realtime-parity.test.ts
+          node --test --experimental-strip-types packages/system-diagnostics/pricing-smt-applied-wiring.test.ts
+      - name: Root TypeScript
+        working-directory: source
+        run: npm run typecheck
+      - name: SMT runtime tests
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund && npm test
+      - name: SMT runtime typecheck
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck
+      - name: SMT runtime build
+        working-directory: source/apps/smt-clean
+        run: npm run build
+      - name: Write evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-smt-pricing-diagnostics.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-smt-pricing-diagnostics-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
