@@ -1,2 +1,3 @@
 source_sha=311672fa1f0dd567644c8fb61d64dfce42724dc5
 request_id=team-c-payment-refund-customer-rerun-after-print-syntax-fix-20260909
+retry=2
