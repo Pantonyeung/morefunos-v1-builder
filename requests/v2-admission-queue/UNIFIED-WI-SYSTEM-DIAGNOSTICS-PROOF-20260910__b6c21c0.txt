@@ -1,0 +1,8 @@
+candidate_sha=b6c21c0128ccb9e777b1831bfaf586b6af3bbdc5
+base_main_sha=52e6b850c04f3fafaeed9c83374217aaec31c65c
+work_id=UNIFIED-WI-SYSTEM-DIAGNOSTICS-PROOF-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=RUNTIME_PROOF
+affected_ports=CORE,ADMIN,OWNER,SMT,SMM,CUSTOMER
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
