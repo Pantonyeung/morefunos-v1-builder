@@ -1,5 +1,5 @@
-source_sha=26808977e2c7ecf259fb26f42cdef3fb589df61d
-request_id=TEAM-C-C2-C3-CORRECTED-CORE-GATE-20260909-02
-run_id=34323182064
+source_sha=896b99633cb28ccfac27406c59b24017cbe2da9a
+request_id=TEAM-C-C2-C3-CORRECTED-CORE-GATE-20260909-03
+run_id=34323285126
 run_attempt=1
 conclusion=failure
