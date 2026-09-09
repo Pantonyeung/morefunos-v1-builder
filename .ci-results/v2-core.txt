@@ -1,5 +1,5 @@
-source_sha=UNKNOWN
-request_id=TEAM-C-DINEIN-CORE-COMMAND-LINKUP-20260909-01
-run_id=34295479611
+source_sha=22bdbcb8dd92d61fe87873ee365149a1da999898
+request_id=TEAM-C-DINE-IN-COMMAND-ENTRY-CORE-20260909-02
+run_id=34295544206
 run_attempt=1
 conclusion=failure
