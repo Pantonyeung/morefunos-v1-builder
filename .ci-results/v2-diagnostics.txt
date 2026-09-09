@@ -1,5 +1,5 @@
 source_sha=45483bb8832bf49a16c6b1ded412e5bdb6183d5a
-request_id=team-c-availability-smt-smm-apply-20260909
-run_id=34357113961
+request_id=team-c-availability-endpoint-apply-20260909
+run_id=34357320285
 run_attempt=1
 conclusion=success
