@@ -1,0 +1,2 @@
+source_sha=a31aa6cb482f012abe4a0dda2198e8e80998d9cf
+reason=fulfillment-core-d1-applied-checkpoint
