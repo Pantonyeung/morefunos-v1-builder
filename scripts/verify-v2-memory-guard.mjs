@@ -672,6 +672,7 @@ const commanderAllowlist = [
   'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-BACKFILL-QUEUE.yaml',
   'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-GAP-REGISTER.yaml',
   'docs/recovery/commander/CAPABILITY-OPERATIONAL-LINKAGE-REGISTRY.yaml',
+  'docs/recovery/commander/SYSTEM-DIAGNOSTICS-COVERAGE-REGISTRY.yaml',
   'docs/recovery/commander/GLOBAL-CODE-SIMPLICITY-RULE.yaml',
 ];
 
