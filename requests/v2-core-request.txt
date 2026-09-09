@@ -1,5 +1,5 @@
-source_sha=23dcc6dcbcaa972beb04cb6d48de7a85fb9eadbb
+source_sha=896b99633cb28ccfac27406c59b24017cbe2da9a
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-FRONTLINE-CHAIN-DIAGNOSTICS-CORE-20260909-R1
+request_id=TEAM-C-C2-C3-CORRECTED-CORE-GATE-20260909-04
