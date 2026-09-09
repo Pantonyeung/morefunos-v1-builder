@@ -1,5 +1,5 @@
-source_sha=daa27b9f2acb7d4c7104eb39b057427463daf752
-request_id=TEAM-A-PRINT-DRAIN-CONFIG-HYDRATION-CORE-20260909-R1
-run_id=34338029560
+source_sha=2a3bafaeb604b1c497f23f0a47fcb9a3c4d11682
+request_id=TEAM-A-PRINT-DISPATCH-ROUTE-DIAGNOSTIC-CORE-20260909-R1
+run_id=34340750050
 run_attempt=1
 conclusion=success
