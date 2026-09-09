@@ -1,5 +1,5 @@
-source_sha=c4c9cd2b3c08282e37d0929d79f4ae4b451b4995
-request_id=team-c-payment-refund-customer-readback-20260909
-run_id=34346839533
+source_sha=311672fa1f0dd567644c8fb61d64dfce42724dc5
+request_id=team-c-payment-refund-customer-rerun-after-print-syntax-fix-20260909
+run_id=34347085804
 run_attempt=1
-conclusion=failure
+conclusion=success
