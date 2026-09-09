@@ -1,0 +1,10 @@
+candidate_sha=77c6ebfe1691f86e4b6e40fb3d4869ab8ec69dba
+base_main_sha=c32702c0463773001f1005aed21d4dd5d9917d31
+work_id=TEAM_C_ABC_FULL_SYSTEM_CONSOLIDATION_20260909
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=LINKUP
+affected_ports=SMT,SMM,ADMIN,OWNER
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=true
