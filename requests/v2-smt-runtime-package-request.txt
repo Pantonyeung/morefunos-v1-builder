@@ -1,2 +1,3 @@
-source_sha=7439db68dbd1a5880e6b63556423f27ae89b4c0b
+source_sha=eed42b7223f5376c95666259367187f9f2f90874
 channel=candidate
+request_id=TEAM-A-SMT-ORDER-SYNC-VISIBLE-P0-20260909-R1
