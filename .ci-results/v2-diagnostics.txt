@@ -1,5 +1,5 @@
-source_sha=10927d372d695b1975b18993a8b071f0c1814ca8
-request_id=TEAM-C-CUSTOMER-ORDER-DURABLE-REALTIME-DIAGNOSTICS-20260909-02
-run_id=34332530793
+source_sha=cc7f14c419534f17f67f821009be1650547d73f4
+request_id=team-c-customer360-readback-20260909
+run_id=34340914258
 run_attempt=1
 conclusion=success
