@@ -1,7 +1,7 @@
-source_sha=a44377f66a7716a89f30c5f2dd49e0504d5a5d9f
-request_id=TEAM-A-PRINTER-NATIVE-HEALTH-DETAIL-DEPLOY-20260909-R1
-run_id=34343971193
+source_sha=ff27845e0421406f29a35d61f0781d9a4de032fb
+request_id=TEAM-A-NATIVE-PRINTER-CODE-FIRST-BLOCKER-DEPLOY-20260909-R1
+run_id=34344973194
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=89a78836-b7d4-4a4c-b6ba-7e7f4d225e30
+worker_version=fe30332f-f311-41f8-afd2-0687c2fa532c
