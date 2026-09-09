@@ -1,7 +1,7 @@
-source_sha=c71990845e0b844377465b84c4fcad6296894b95
-request_id=TEAM-A-SMT-NATIVE-GATEWAY-DIAGNOSTICS-ADMIN-20260909
-run_id=34360317810
+source_sha=bb6d1a52d3e210c1b8109799833bbe2d5aed8bce
+request_id=TEAM-A-SMT-NATIVE-GATEWAY-DIAGNOSTICS-ADMIN-R2-20260909
+run_id=34360935239
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=2a542927-b8bd-4d11-b5f3-28c123d8ef37
