@@ -1,7 +1,7 @@
-source_sha=64c01b7d0663097871012b10ce73d45a66060274
-request_id=TEAM-A-SMT-OUTER-RUNTIME-ERROR-CODE-DEPLOY-20260909-R1
-run_id=34330294457
+source_sha=596205f86e41b954de03672b872be18f8d579328
+request_id=TEAM-A-SMT-CANONICAL-STAFF-SESSION-DEPLOY-20260909-R1
+run_id=34331084483
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=1d3a8e7e-f062-4c48-85c7-e91ca60da4fb
+worker_version=82371a1e-9f62-49d8-a235-7d92b770a9f1
