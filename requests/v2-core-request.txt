@@ -1,5 +1,5 @@
-source_sha=78bff42d11ad53a6c8df2e425da0d750ca5252c7
+source_sha=6504dc0a86cbfd3774c76d6e4a5350587a7f090e
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-INVENTORY-STATISTICAL-CORE-20260909-01
+request_id=TEAM-C-INVENTORY-STATISTICAL-CORE-20260909-02
