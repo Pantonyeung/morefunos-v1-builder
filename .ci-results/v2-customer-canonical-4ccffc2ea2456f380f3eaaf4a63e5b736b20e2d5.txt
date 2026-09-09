@@ -1,0 +1,126 @@
+exit_code=1
+✔ CUS public Availability consumer replaces caller store with trusted store scope (2.636386ms)
+✔ CUS Pricing consumer delegates money authority to pricing.quote.v1 trusted context (1.003256ms)
+✔ CUS runtime resolves profile and order only through trusted subject/store context (6.542865ms)
+✔ CUS runtime fails closed when trusted customer subject or store scope is missing (3.817978ms)
+✔ Customer notice endpoint consumes canonical D1 notice authority with store, surface and active-window predicates (63.531952ms)
+✔ Customer notice endpoint fails closed for invalid surface and non-GET method (5.309217ms)
+✔ Customer ordering projection is composed only from DIRECT-visible canonical MF01 D1 Catalog/Pricing/Availability/Operational truth (17.236972ms)
+✔ CUS readMenu consumes admitted menu using trusted store scope (3.75884ms)
+✔ CUS readMenu fails closed without trusted store scope (0.721078ms)
+✖ P0 Customer runtime does not poll pricing Core every 500ms (11.136863ms)
+✔ P0 Customer boot wires an IndexedDB runtime snapshot store (6.924481ms)
+✔ P0 Customer cached snapshot is browse-only until canonical freshness is proven (5.054219ms)
+✔ customer upload stores R2 proof, persists metadata, emits signal and still reports payment unconfirmed (47.687464ms)
+✔ Firebase signal failure cannot undo already committed D1/R2 proof (3.127865ms)
+✔ R2 object is compensated when canonical D1 persistence fails (2.521056ms)
+✔ POST /api/customer/orders strips browser authority fields and invokes canonical submit (59.081728ms)
+✔ GET /api/customer/order-status validates bearer lookup token but does not pass it into canonical identity request (1.286146ms)
+✔ GET /api/customer/profile invokes trusted canonical profile read without browser customerId (0.836539ms)
+✔ GET /api/customer/ordering fails closed until complete canonical projection is supplied (1.211916ms)
+✔ handler rejects wrong methods and malformed lifecycle token (1.682383ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 19
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 790.089276
+
+✖ failing tests:
+
+test at packages/customer-ui-integration/p0-customer-local-first-runtime.test.ts:5:1
+✖ P0 Customer runtime does not poll pricing Core every 500ms (11.136863ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /30000/. Input:
+  
+  'function isPricingRealtimeInvalidation(data){\n' +
+    '  let value=data;\n' +
+    "  if(typeof value==='string'){try{value=JSON.parse(value)}catch{return false}}\n" +
+    '  return Boolean(\n' +
+    "    value&&typeof value==='object'&&!Array.isArray(value)\n" +
+    "    &&value.type==='PRICING_REVISION_ACTIVATED'\n" +
+    "    &&typeof value.storeId==='string'&&value.storeId.trim()\n" +
+    '    &&Number.isSafeInteger(value.revision)&&value.revision>0\n' +
+    "    &&typeof value.requestId==='string'&&value.requestId.trim()\n" +
+    "    &&typeof value.occurredAt==='string'&&Number.isFinite(Date.parse(value.occurredAt))\n" +
+    '  );\n' +
+    '}\n' +
+    '\n' +
+    '\n' +
+    'function isPresentationRealtimeInvalidation(data){\n' +
+    '  let value=data;\n' +
+    "  if(typeof value==='string'){try{value=JSON.parse(value)}catch{return false}}\n" +
+    '  return Boolean(\n' +
+    "    value&&typeof value==='object'&&!Array.isArray(value)\n" +
+    "    &&value.type==='CANONICAL_REFRESH'\n" +
+    "    &&value.aggregateType==='PRESENTATION'\n" +
+    "    &&value.aggregateId==='CUSTOMER_HOME'\n" +
+    '    &&Number.isSafeInteger(value.version)&&value.version>0\n' +
+    "    &&typeof value.occurredAt==='string'&&Number.isFinite(Date.parse(value.occurredAt))\n" +
+    '  );\n' +
+    '}\n' +
+    '\n' +
+    'export {\n' +
+    '  assertCustomerRuntimeSnapshot,\n' +
+    '  createCustomerOrderLookupToken,\n' +
+    '  createCustomerRuntimeAdapter,\n' +
+    '  readCustomerOrderLifecycleRuntime,\n' +
+    '  readCustomerOrderingRuntime,\n' +
+    '  submitCustomerOrderRuntime,\n' +
+    "} from './customer-runtime-adapter.js';\n" +
+    '\n' +
+    "export { createCustomerRuntimeStore } from './customer-runtime-store.js';\n" +
+    "export { bindCustomerRuntimeStore, bootCustomerRuntime, renderCustomerRuntimeState } from './customer-runtime-ui-binding.js';\n" +
+    'export {\n' +
+    '  createCustomerCanonicalPresentation,\n' +
+    '  getCustomerCanonicalPresentation,\n' +
+    '  publishCustomerRuntimeState,\n' +
+    '  subscribeCustomerCanonicalPresentation,\n' +
+    "} from './customer-canonical-presentation.js';\n" +
+    '\n' +
+    "import { bootCustomerRuntime } from './customer-runtime-ui-binding.js';\n" +
+    "import { publishCustomerRuntimeState } from './customer-canonical-presentation.js';\n" +
+    "export {readCustomerConsumption} from './customer-consumption-meter.js';\n" +
+    '\n' +
+    'let activeCustomerRuntimeStore = null;\n' +
+    'const runtimeReadyListeners = new Set();\n' +
+    '\n' +
+    'export function getCustomerRuntimeStore() {\n' +
+    '  return activeCustomerRuntimeStore;\n' +
+    '}\n' +
+    '\n' +
+    'export function subscribeCustomerRuntimeStoreReady(listener) {\n' +
+    "  if (typeof listener !== 'function') throw new Error('CUSTOMER_RUNTIME_READY_LISTENER_REQUIRED');\n" +
+    '  runtimeReadyListeners.add(listener);\n' +
+    '  if (activeCustomerRuntimeStore) listener(activeCustomerRuntimeStore);\n' +
+    '  return () => runtimeReadyListeners.delete(listener);\n' +
+    '}\n' +
+    '\n' +
+    "if (typeof window !== 'undefined' && typeof document !== 'undefined') {\n" +
+    '  const configured = window.__MOREFUNOS_CUSTOMER_RUNTIME_CONFIG__ || {};\n' +
+    '  const controller = new AbortController();\n' +
+    '  let stop = () => {};\n' +
+    "  window.addEventListener('pagehide', () => { stop(); controller.abort(); }, { once: true });\n" +
+    '  queueMicrotask(async () => {\n' +
+    '    const result = await bootCustomerRuntime({ ...configured, signal: controller.signal });\n' +
+    '    activeCustomerRuntimeStore = result.store;\n' +
+    '    stop = result.store.subscribe((state) => publishCustomerRuntimeState(state));\n' +
+    '    // Customer network policy: demand-only. Boot loads the canonical snapshot once.\n' +
+    '    // No long-lived WebSocket, no polling, no background reconcile.\n' +
+    '    // Fresh reads happen only through explicit customer actions (submit/read lifecycle/refresh)\n' +
+    '    // or after a notification click re-opens the app.\n' +
+    '    for (const listener of runtimeReadyListeners) listener(result.store);\n' +
+    '  });\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/packages/customer-ui-integration/p0-customer-local-first-runtime.test.ts:8:9)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "function isPricingRealtimeInvalidation(data){\n  let value=data;\n  if(typeof value==='string'){try{value=JSON.parse(value)}catch{return false}}\n  return Boolean(\n    value&&typeof value==='object'&&!Array.isArray(value)\n    &&value.type==='PRICING_REVISION_ACTIVATED'\n    &&typeof value.storeId==='string'&&value.storeId.trim()\n    &&Number.isSafeInteger(value.revision)&&value.revision>0\n    &&typeof value.requestId==='string'&&value.requestId.trim()\n    &&typeof value.occurredAt==='string'&&Number.isFinite(Date.parse(value.occurredAt))\n  );\n}\n\n\nfunction isPresentationRealtimeInvalidation(data){\n  let value=data;\n  if(typeof value==='string'){try{value=JSON.parse(value)}catch{return false}}\n  return Boolean(\n    value&&typeof value==='object'&&!Array.isArray(value)\n    &&value.type==='CANONICAL_REFRESH'\n    &&value.aggregateType==='PRESENTATION'\n    &&value.aggregateId==='CUSTOMER_HOME'\n    &&Number.isSafeInteger(value.version)&&value.version>0\n    &&typeof value.occurredAt==='string'&&Number.isFinite(Date.parse(value.occurredAt))\n  );\n}\n\nexport {\n  assertCustomerRuntimeSnapshot,\n  createCustomerOrderLookupToken,\n  createCustomerRuntimeAdapter,\n  readCustomerOrderLifecycleRuntime,\n  readCustomerOrderingRuntime,\n  submitCustomerOrderRuntime,\n} from './customer-runtime-adapter.js';\n\nexport { createCustomerRuntimeStore } from './customer-runtime-store.js';\nexport { bindCustomerRuntimeStore, bootCustomerRuntime, renderCustomerRuntimeState } from './customer-runtime-ui-binding.js';\nexport {\n  createCustomerCanonicalPresentation,\n  getCustomerCanonicalPresentation,\n  publishCustomerRuntimeState,\n  subscribeCustomerCanonicalPresentation,\n} from './customer-canonical-presentation.js';\n\nimport { bootCustomerRuntime } from './customer-runtime-ui-binding.js';\nimport { publishCustomerRuntimeState } from './customer-canonical-presentation.js';\nexport {readCustomerConsumption} from './customer-consumption-meter.js';\n\nlet activeCustomerRuntimeStore = null;\nconst runtimeReadyListeners = new Set();\n\nexport function getCustomerRuntimeStore() {\n  return activeCustomerRuntimeStore;\n}\n\nexport function subscribeCustomerRuntimeStoreReady(listener) {\n  if (typeof listener !== 'function') throw new Error('CUSTOMER_RUNTIME_READY_LISTENER_REQUIRED');\n  runtimeReadyListeners.add(listener);\n  if (activeCustomerRuntimeStore) listener(activeCustomerRuntimeStore);\n  return () => runtimeReadyListeners.delete(listener);\n}\n\nif (typeof window !== 'undefined' && typeof document !== 'undefined') {\n  const configured = window.__MOREFUNOS_CUSTOMER_RUNTIME_CONFIG__ || {};\n  const controller = new AbortController();\n  let stop = () => {};\n  window.addEventListener('pagehide', () => { stop(); controller.abort(); }, { once: true });\n  queueMicrotask(async () => {\n    const result = await bootCustomerRuntime({ ...configured, signal: controller.signal });\n    activeCustomerRuntimeStore = result.store;\n    stop = result.store.subscribe((state) => publishCustomerRuntimeState(state));\n    // Customer network policy: demand-only. Boot loads the canonical snapshot once.\n    // No long-lived WebSocket, no polling, no background reconcile.\n    // Fresh reads happen only through explicit customer actions (submit/read lifecycle/refresh)\n    // or after a notification click re-opens the app.\n    for (const listener of runtimeReadyListeners) listener(result.store);\n  });\n}\n",
+    expected: /30000/,
+    operator: 'match',
+    diff: 'simple'
+  }
