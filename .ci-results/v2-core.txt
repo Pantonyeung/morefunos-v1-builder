@@ -1,5 +1,5 @@
-source_sha=46b4be412741a78eb6995d79720af98d3f4b59c2
-request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-CORE-20260909-R4
-run_id=34348243587
+source_sha=8e5e1c1a0f8c03a307e5ab36f89cdd205ed25b7b
+request_id=TEAM-A-SMT-PRINT-EXACT-NATIVE-FAILURE-CORE-20260909-R1
+run_id=34349180883
 run_attempt=1
 conclusion=success
