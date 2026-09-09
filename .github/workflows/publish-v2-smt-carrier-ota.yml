@@ -1,0 +1,202 @@
+name: V2 SMT Carrier OTA Publish
+
+on:
+  push:
+    paths:
+      - 'requests/v2-smt-carrier-ota-publish-request.txt'
+
+permissions:
+  contents: read
+  actions: read
+  statuses: write
+
+concurrency:
+  group: v2-smt-carrier-ota-production
+  cancel-in-progress: false
+
+env:
+  OTA_ORIGIN: https://morefunos-v2-smt-ota.pantonyeung.workers.dev
+  EXPECTED_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+
+jobs:
+  publish:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=pending             -f context='builder/v2-smt-carrier-ota-publish'             -f description='V2 SMT Carrier OTA publish running'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve publish request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          F='requests/v2-smt-carrier-ota-publish-request.txt'
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$F" | tr -d '[:space:]')"
+          APK_SOURCE_SHA="$(sed -n 's/^apk_source_sha=//p' "$F" | tr -d '[:space:]')"
+          RELEASE_RUN_ID="$(sed -n 's/^signed_release_run_id=//p' "$F" | tr -d '[:space:]')"
+          EXPECTED_VERSION_NAME="$(sed -n 's/^expected_version_name=//p' "$F" | tr -d '\r\n')"
+          EXPECTED_VERSION_CODE="$(sed -n 's/^expected_version_code=//p' "$F" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$APK_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$EXPECTED_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]
+          test -n "$EXPECTED_VERSION_NAME"
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "apk_source_sha=$APK_SOURCE_SHA"
+            echo "release_run_id=$RELEASE_RUN_ID"
+            echo "expected_version_name=$EXPECTED_VERSION_NAME"
+            echo "expected_version_code=$EXPECTED_VERSION_CODE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require credentials
+        env:
+          SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Checkout exact Morefun-v2 publisher source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify publisher source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Download signed rescue APK artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: v2-smt-signed-release-${{ steps.request.outputs.apk_source_sha }}
+          run-id: ${{ steps.request.outputs.release_run_id }}
+          github-token: ${{ github.token }}
+          path: release
+
+      - name: Verify signed release metadata
+        id: metadata
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.request.outputs.apk_source_sha }}
+          EXPECTED_VERSION_NAME: ${{ steps.request.outputs.expected_version_name }}
+          EXPECTED_VERSION_CODE: ${{ steps.request.outputs.expected_version_code }}
+        run: |
+          set -euo pipefail
+          test -s release/build-metadata.json
+          node <<'NODE'
+          const fs=require('node:fs');
+          const m=JSON.parse(fs.readFileSync('release/build-metadata.json','utf8'));
+          const e=process.env;
+          if(m.sourceSha!==e.EXPECTED_SOURCE_SHA) throw new Error('CARRIER_ARTIFACT_SOURCE_SHA_MISMATCH');
+          if(m.versionName!==e.EXPECTED_VERSION_NAME) throw new Error('CARRIER_VERSION_NAME_MISMATCH');
+          if(String(m.versionCode)!==e.EXPECTED_VERSION_CODE) throw new Error('CARRIER_VERSION_CODE_MISMATCH');
+          if(m.packageId!=='com.morefunos.smt') throw new Error('CARRIER_PACKAGE_ID_MISMATCH');
+          if(m.appSigningCertificateSha256!==process.env.EXPECTED_CERT_SHA256) throw new Error('CARRIER_SIGNING_CERT_MISMATCH');
+          if(!m.apkFilename||!m.apkSha256) throw new Error('CARRIER_METADATA_INCOMPLETE');
+          if(!fs.existsSync('release/'+m.apkFilename)) throw new Error('CARRIER_APK_MISSING');
+          process.stdout.write(m.apkFilename+'\n');
+          NODE
+          APK_FILENAME="$(node -p "require('./release/build-metadata.json').apkFilename")"
+          APK_SHA256="$(node -p "require('./release/build-metadata.json').apkSha256")"
+          ACTUAL_SHA256="$(sha256sum "release/$APK_FILENAME" | awk '{print $1}')"
+          test "$ACTUAL_SHA256" = "$APK_SHA256"
+          echo "apk_filename=$APK_FILENAME" >> "$GITHUB_OUTPUT"
+          echo "apk_sha256=$APK_SHA256" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Carrier OTA manifest
+        shell: bash
+        env:
+          VERSION_NAME: ${{ steps.request.outputs.expected_version_name }}
+          VERSION_CODE: ${{ steps.request.outputs.expected_version_code }}
+          APK_FILENAME: ${{ steps.metadata.outputs.apk_filename }}
+          APK_SHA256: ${{ steps.metadata.outputs.apk_sha256 }}
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const m={
+            versionCode:Number(process.env.VERSION_CODE),
+            versionName:process.env.VERSION_NAME,
+            packageName:'com.morefunos.smt',
+            apkUrl:process.env.APK_FILENAME,
+            apkSha256:process.env.APK_SHA256,
+          };
+          fs.writeFileSync('carrier-update.json',JSON.stringify(m,null,2)+'\n');
+          NODE
+          cat carrier-update.json
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned OTA Worker dependencies
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Publish signed Carrier APK and pointer
+        working-directory: source/infra/cloudflare/smt-ota-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          APK: ${{ github.workspace }}/release/${{ steps.metadata.outputs.apk_filename }}
+          MANIFEST: ${{ github.workspace }}/carrier-update.json
+        run: node scripts/publish-carrier.mjs "$APK" "$MANIFEST" "$OTA_ORIGIN/"
+
+      - name: Independent public proof
+        shell: bash
+        env:
+          EXPECTED_VERSION_NAME: ${{ steps.request.outputs.expected_version_name }}
+          EXPECTED_VERSION_CODE: ${{ steps.request.outputs.expected_version_code }}
+          EXPECTED_SHA256: ${{ steps.metadata.outputs.apk_sha256 }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 2 --retry-all-errors             "$OTA_ORIGIN/carrier-update.json" -o /tmp/carrier-update.json
+          node <<'NODE'
+          const fs=require('node:fs');
+          const m=JSON.parse(fs.readFileSync('/tmp/carrier-update.json','utf8'));
+          if(m.versionName!==process.env.EXPECTED_VERSION_NAME) throw new Error('PUBLIC_CARRIER_VERSION_NAME_MISMATCH');
+          if(String(m.versionCode)!==process.env.EXPECTED_VERSION_CODE) throw new Error('PUBLIC_CARRIER_VERSION_CODE_MISMATCH');
+          if(m.apkSha256!==process.env.EXPECTED_SHA256) throw new Error('PUBLIC_CARRIER_HASH_MISMATCH');
+          if(m.packageName!=='com.morefunos.smt') throw new Error('PUBLIC_CARRIER_PACKAGE_MISMATCH');
+          fs.writeFileSync('/tmp/apk-url',m.apkUrl);
+          NODE
+          APK_URL="$(cat /tmp/apk-url)"
+          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 2 --retry-all-errors             "$OTA_ORIGIN/$APK_URL" -o /tmp/carrier.apk
+          test "$(sha256sum /tmp/carrier.apk | awk '{print $1}')" = "$EXPECTED_SHA256"
+
+      - name: Publish success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=success             -f context='builder/v2-smt-carrier-ota-publish'             -f description='V2 SMT Carrier OTA publish passed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=failure             -f context='builder/v2-smt-carrier-ota-publish'             -f description='V2 SMT Carrier OTA publish failed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
