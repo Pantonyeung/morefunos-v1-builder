@@ -1,5 +1,5 @@
-source_sha=bb6d1a52d3e210c1b8109799833bbe2d5aed8bce
-request_id=team-a-native-print-gateway-diagnostics-r2-20260909
-run_id=34360939857
+source_sha=d5030b12a5be1b2538bb1fe9e65bdfc070a022ea
+request_id=team-a-native-print-gateway-diagnostics-r3-20260909
+run_id=34361786201
 run_attempt=1
-conclusion=failure
+conclusion=success
