@@ -1,5 +1,5 @@
-source_sha=38eaeba5970d501ba8319e45e04e789b12ac68a3
-request_id=team-c-catalog-realtime-sent-20260909
-run_id=34358401583
+source_sha=6a0d572e0bda47eccb08619df5653f48ca3d55d9
+request_id=team-c-catalog-category-fanout-20260909
+run_id=34359014102
 run_attempt=1
 conclusion=success
