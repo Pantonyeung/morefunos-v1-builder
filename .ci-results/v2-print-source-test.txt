@@ -1,6 +1,6 @@
-source_sha=013607424a704ba1c0fcc2f8cd6663b0cca213c5
+source_sha=b20181c1391e883ebdc7767841c6c2c6c74aa3f7
 branch_name=main
-request_id=team-c-print-layout-repair-final-20260909
-run_id=34347277439
+request_id=team-c-print-layout-authority-reconciled-20260909
+run_id=34347933755
 run_attempt=1
-conclusion=failure
+conclusion=success
