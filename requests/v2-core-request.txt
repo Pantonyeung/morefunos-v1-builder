@@ -1,5 +1,5 @@
-source_sha=1869cb0fbdf5116845cf3006e4f7efc57290b417
+source_sha=0ae50148102d5ce8a59811480bebd6bf45594ed6
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-PRODUCTION-KDS-STATION-ROUTING-CORE-20260909-01
+request_id=TEAM-A-SMT-ORDER-SYNC-VISIBLE-P0-CORE-20260909-R3
