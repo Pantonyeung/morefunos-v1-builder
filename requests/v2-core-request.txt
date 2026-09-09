@@ -1,5 +1,5 @@
-source_sha=9df0c62dc198de639fd98718cd3f54a4760a39f5
+source_sha=9703aea8dc06b7dc5fc7e2397a1c08bd1351632f
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R2
+request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R3
