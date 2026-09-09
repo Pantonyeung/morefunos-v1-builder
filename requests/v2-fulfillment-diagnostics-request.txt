@@ -1,2 +1,2 @@
-source_sha=a31aa6cb482f012abe4a0dda2198e8e80998d9cf
-reason=fulfillment-core-d1-applied-checkpoint
+source_sha=e6f13aa93a1ed54ed862eb01f6eeb763dc615a13
+reason=stable-fulfillment-trace-and-admin-readback
