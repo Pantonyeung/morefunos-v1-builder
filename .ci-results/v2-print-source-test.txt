@@ -1,6 +1,6 @@
-source_sha=791f9e1685f6d6f8c0d4ee8344f8547dac91316e
+source_sha=0cd0da6c648bdbda71ed24ca8e945d8ad72a1a9d
 branch_name=main
-request_id=team-c-catalog-cross-regression-20260909
-run_id=34357527828
+request_id=team-c-catalog-readbacks-cross-print-rerun-20260909
+run_id=34357930590
 run_attempt=1
 conclusion=success
