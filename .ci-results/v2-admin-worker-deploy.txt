@@ -1,7 +1,7 @@
-source_sha=596205f86e41b954de03672b872be18f8d579328
-request_id=TEAM-A-SMT-CANONICAL-STAFF-SESSION-DEPLOY-20260909-R1
-run_id=34331084483
+source_sha=87363473d09300003e14f76252d0ff553607e17a
+request_id=TEAM-A-PRINTJOB-RETRY-DIAGNOSTIC-DEPLOY-20260909-R1
+run_id=34331723094
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=82371a1e-9f62-49d8-a235-7d92b770a9f1
+worker_version=3aa29b51-d2e7-47c8-97a8-c3e860813aa7
