@@ -1,5 +1,5 @@
-source_sha=b7db91329a375146ac48ef21e0796e99e6840e4f
-request_id=TEAM-A-PRINT-OUTBOX-SCHEMA-FIX-CORE-20260909-R1
-run_id=34332862337
+source_sha=e21a0a490d4325fcf1154b6ff8cc614adbf2dc40
+request_id=TEAM-A-PRINT-SNAPSHOT-IDEMPOTENCY-FIX-CORE-20260909-R1
+run_id=34334084843
 run_attempt=1
 conclusion=success
