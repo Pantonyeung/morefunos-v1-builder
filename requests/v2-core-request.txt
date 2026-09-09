@@ -1,5 +1,5 @@
-source_sha=8558fabe87c6b46fc51abc8ac0c88d840a875a44
+source_sha=ac5a0f9ed10eb95d42a4bd3b6502f8760a189772
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-ORDER-SYNC-DIAGNOSTIC-P0-20260909-R1
+request_id=TEAM-C-PRODUCTION-PACKING-FOUNDATION-CORE-20260909-01
