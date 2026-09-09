@@ -1,7 +1,7 @@
-source_sha=9035bf8efb0be59986f72b5a986b4c7fd9b3c47a
-request_id=TEAM-A-DIAGNOSTIC-PROBE-ISOLATION-DEPLOY-20260909-R1
-run_id=34332220174
+source_sha=c50176e79609dbf003c83e1e85f35e6c7c68ccaf
+request_id=TEAM-C-CUSTOMER-ORDER-REALTIME-ADMIN-WORKER-20260909-01
+run_id=34332342838
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=bed6f695-22c1-400a-942c-d1682391ca72
