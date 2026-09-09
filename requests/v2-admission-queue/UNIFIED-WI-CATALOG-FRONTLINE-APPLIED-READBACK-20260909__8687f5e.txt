@@ -1,0 +1,8 @@
+candidate_sha=8687f5e372c083da2c81a2e29f04e14804521264
+base_main_sha=c32702c0463773001f1005aed21d4dd5d9917d31
+work_id=UNIFIED-WI-CATALOG-FRONTLINE-APPLIED-READBACK-20260909
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=LINKUP
+affected_ports=SMT,SMM,CUSTOMER,ADMIN,CORE
+required_core_tests=CATALOG
+force_full_proof=true
