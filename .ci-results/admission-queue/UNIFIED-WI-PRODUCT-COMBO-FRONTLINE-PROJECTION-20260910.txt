@@ -1,6 +1,6 @@
 work_id=UNIFIED-WI-PRODUCT-COMBO-FRONTLINE-PROJECTION-20260910
-candidate_sha=3a44b3da877ab427d2d60061c45a17fee168151c
-base_main_sha=14cdfad7c14985fca12a96f992f3e60e3026db17
+candidate_sha=b50740160688f6beea0a07d4d65863c9e3d21e36
+base_main_sha=3a44b3da877ab427d2d60061c45a17fee168151c
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=CATALOG
 force_full_proof=true
-run_id=34416023709
+run_id=34416143693
 conclusion=failure
