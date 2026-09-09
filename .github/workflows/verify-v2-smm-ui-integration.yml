@@ -161,6 +161,11 @@ jobs:
           mapfile -t files < <(find packages/smm-ui-integration -maxdepth 1 -name '*.test.ts' ! -name 'b0314-owner-feedback-closure.test.ts' ! -name 'trusted-worker-runtime.test.ts' | sort)
           node --test "${files[@]}"
 
+      - name: SMM Order applied diagnostics checkpoint test
+        if: ${{ steps.test_rest.outcome == 'success' }}
+        working-directory: source
+        run: node --test packages/system-diagnostics/smm-order-applied-wiring.test.ts
+
       - name: Mark remaining tests success
         if: ${{ steps.test_rest.outcome == 'success' }}
         env:
