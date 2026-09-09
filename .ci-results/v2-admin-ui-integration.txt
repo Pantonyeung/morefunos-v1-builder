@@ -1,5 +1,5 @@
-source_sha=e1523f06bef58d62346c2a21fc3207b0ec629fbc
-request_id=TEAM-C-PAYMENT-REFUND-RUNTIME-PROOF-UI-20260909-02
-run_id=34301425107
+source_sha=59835d518610b726780bf71c883953696287c6f3
+request_id=TEAM-C-PAYMENT-REFUND-RUNTIME-PROOF-UI-20260909-03
+run_id=34301494185
 run_attempt=1
-conclusion=failure
+conclusion=success
