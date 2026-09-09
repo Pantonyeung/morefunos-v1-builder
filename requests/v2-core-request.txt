@@ -1,5 +1,5 @@
-source_sha=0c6d4c9eb97cefa7b6507eeeabb3f0feb9d47396
+source_sha=e995e91b7c796338f07f7a23b315db1e51ac87b2
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-ORDER-SYNC-CORE-RUNTIME-PROOF-20260909-01
+request_id=TEAM-C-HUMAN-CUSTODY-D1-CORE-20260909-01
