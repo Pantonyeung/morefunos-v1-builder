@@ -1,5 +1,5 @@
-source_sha=ab0e5c25589bfb4790e9c45522875294a36252ff
+source_sha=e7abb2bbc5b1e3058dad24f80260e5600c832260
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-PRODUCTION-KDS-FOUNDATION-CORE-20260909-01
+request_id=TEAM-C-PRODUCTION-KDS-D1-FEED-CORE-20260909-01
