@@ -1,7 +1,7 @@
-source_sha=fdb00c5391540a78ff21313d2a5b9de923dff1bf
-request_id=TEAM-A-PRINT-CAMPAIGN-DEPLOY-20260909-R2
-run_id=34315649109
+source_sha=d5bb4824102f8d9490d2e45bf0257db1a524a52a
+request_id=TEAM-A-PRINT-CAMPAIGN-DEPLOY-20260909-R3
+run_id=34315742682
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=67a1e0ba-2f82-4907-88dd-578146d6291f
