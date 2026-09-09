@@ -526,7 +526,23 @@ jobs:
               packages/order/order-port-contract.test.ts \
               packages/order/staff-direct-order-identity-parity.test.ts
           elif grep -qx ORDER <<<"$auths" || [[ ",$tests," == *,ORDER,* ]]; then
-            npm run test:core-order
+            grep -q 'postgres_production_authority: false' docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml
+            grep -q 'POSTGRES_PRODUCTION_AUTHORITY_FORMALLY_EXCLUDED' docs/recovery/commander/CAPABILITY-SOURCE-COVERAGE-AUDIT-2026-09-08.yaml
+            mapfile -t legacy_postgres_order_tests < <(find packages/order -maxdepth 1 -type f -name 'postgres-*.integration.test.ts' -printf '%f\n' | sort)
+            expected_legacy_postgres_order_tests=(
+              postgres-acceptance.integration.test.ts
+              postgres-customer-order-ownership.integration.test.ts
+              postgres-order-read-model.integration.test.ts
+              postgres-order-state.integration.test.ts
+            )
+            [[ "${legacy_postgres_order_tests[*]}" == "${expected_legacy_postgres_order_tests[*]}" ]] || {
+              echo "ORDER_LEGACY_POSTGRES_TEST_SET_DRIFT" >&2
+              printf 'observed=%s\n' "${legacy_postgres_order_tests[*]}" >&2
+              exit 27
+            }
+            mapfile -t canonical_order_tests < <(find packages/order -maxdepth 1 -type f -name '*.test.ts' ! -name 'postgres-*.integration.test.ts' -print | sort)
+            [[ "${#canonical_order_tests[@]}" -gt 0 ]] || { echo "ORDER_CANONICAL_TEST_SET_EMPTY" >&2; exit 28; }
+            node --test --test-concurrency=1 "${canonical_order_tests[@]}"
           fi
           if grep -qx PRICING <<<"$auths" || [[ ",$tests," == *,PRICING,* ]]; then npm run test:core-pricing; fi
           if grep -qx AVAILABILITY <<<"$auths" || [[ ",$tests," == *,AVAILABILITY,* ]]; then npm run test:core-availability; fi
