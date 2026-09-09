@@ -1,0 +1,13 @@
+work_id=UNIFIED-WI-SYSTEM-DIAGNOSTICS-PROOF-20260910
+candidate_sha=b64d6b0eeb6a1f39d8d85e6580338d16a6f12094
+base_main_sha=5c1073753d5f8b027cce43cc9a2da1496d79719b
+latest_main_sha=b64d6b0eeb6a1f39d8d85e6580338d16a6f12094
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34418213013
+conclusion=failure
