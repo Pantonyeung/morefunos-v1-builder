@@ -1,5 +1,5 @@
-source_sha=1e49e5693c32b99ec481b80279667654c559b80f
-request_id=TEAM-C-B0137-OWNER-PREFERENCE-LINKUP-20260908
-run_id=34233901178
+source_sha=064f9c1ccf572f41fb4c28223eccbfcd1b594a9c
+request_id=team-c-fulfillment-owner-readback-20260909
+run_id=34338648212
 run_attempt=1
-conclusion=success
+conclusion=failure
