@@ -159,6 +159,33 @@ jobs:
           console.log('customer_rfm_schema=PASS tables='+tables.join(',')+' indexes='+indexes.join(','));
           NODE
 
+      - name: Verify System Diagnostics trace migration
+        if: steps.req.outputs.migration_file == '0054-system-diagnostics-trace.sql'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          node -e "require('fs').writeFileSync('/tmp/system-diagnostics-verify.json',JSON.stringify({sql:\"SELECT name FROM sqlite_master WHERE type='table' AND name='mfos_system_diagnostic_trace_event'; SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_mfos_system_diagnostic_trace_store_trace','idx_mfos_system_diagnostic_trace_store_journey_recent','idx_mfos_system_diagnostic_trace_store_recent') ORDER BY name;\"}))"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/system-diagnostics-verify.json > /tmp/system-diagnostics-verify-result.json
+          node - <<'NODE'
+          const x=require('/tmp/system-diagnostics-verify-result.json');
+          if(x.success!==true) throw new Error('D1_QUERY_FAILED');
+          const tables=(x.result?.[0]?.results||[]).map(r=>r.name);
+          if(JSON.stringify(tables)!==JSON.stringify(['mfos_system_diagnostic_trace_event'])){
+            throw new Error('SYSTEM_DIAGNOSTICS_TABLE_MISSING:'+JSON.stringify(tables));
+          }
+          const indexes=(x.result?.[1]?.results||[]).map(r=>r.name).sort();
+          const expected=[
+            'idx_mfos_system_diagnostic_trace_store_journey_recent',
+            'idx_mfos_system_diagnostic_trace_store_recent',
+            'idx_mfos_system_diagnostic_trace_store_trace',
+          ].sort();
+          if(JSON.stringify(indexes)!==JSON.stringify(expected)){
+            throw new Error('SYSTEM_DIAGNOSTICS_INDEXES_MISSING:'+JSON.stringify(indexes));
+          }
+          console.log('system_diagnostics_schema=PASS table='+tables[0]+' indexes='+indexes.join(','));
+          NODE
+
       - name: Seal durable migration result
         if: always()
         env:
