@@ -1,4 +1,4 @@
-source_sha=3c104722edd1392c4785c4bad5db37623ea3205c
-expected_version_name=0.1.19-g6-recovery-014-restored
-expected_version_code=29
-request_id=TEAM-A-014-RECOVERY-SIGNED-RELEASE-20260908
+source_sha=6614dd9847d183c4bbbbcfc153dab25e3b175e46
+expected_version_name=1.0.0
+expected_version_code=100
+request_id=TEAM-A-SMT-1.0-SIGNED-RESCUE-APK-20260909
