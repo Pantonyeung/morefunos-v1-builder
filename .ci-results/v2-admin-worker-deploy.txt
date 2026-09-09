@@ -1,7 +1,7 @@
-source_sha=627d6fd756ab7199b14bb904b49afcb541a55d18
-request_id=TEAM-A-RUNTIME-SMOKE-PRINT-DEPLOY-20260909-R1
-run_id=34316933241
+source_sha=15798f2defb121291127412613a58c4013836e76
+request_id=TEAM-A-DIRECT-ORDER-AVAILABILITY-DEPLOY-20260909-R1
+run_id=34317697012
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=1208133a-7e3b-444d-bd84-a3e215687403
+worker_version=0d201ff4-f2c8-4b05-a896-63c237e2eb3c
