@@ -264,20 +264,51 @@ if (workItemMatches.length === 0) throw new Error('MEMORY_GUARD_WORK_ITEM_NOT_FO
 if (workItemMatches.length !== 1) throw new Error('MEMORY_GUARD_WORK_ITEM_NOT_UNIQUE:' + requestedWorkId + ':' + workItemMatches.length);
 
 const workItem = workItemMatches[0];
-const wiCapabilityId = scalarField(workItem.text, 'capability_id').toUpperCase();
-const wiCapabilityAction = scalarField(workItem.text, 'capability_action').toUpperCase();
-if (wiCapabilityId !== requestedCapabilityId) {
-  throw new Error('MEMORY_GUARD_WORK_ITEM_CAPABILITY_ID_MISMATCH:' + requestedWorkId + ':' + wiCapabilityId + ':' + requestedCapabilityId);
-}
-if (wiCapabilityAction !== requestedCapabilityAction) {
-  throw new Error('MEMORY_GUARD_WORK_ITEM_CAPABILITY_ACTION_MISMATCH:' + requestedWorkId + ':' + wiCapabilityAction + ':' + requestedCapabilityAction);
+const unifiedPool = scalarField(workItem.text, 'execution_model').toUpperCase() === 'SINGLE_FULL_SYSTEM_CONSOLIDATION_POOL';
+let planText = '';
+
+if (unifiedPool) {
+  if (!workItem.text.includes(requestedCapabilityId)) {
+    throw new Error('MEMORY_GUARD_UNIFIED_WORK_ITEM_CAPABILITY_MISSING:' + requestedWorkId + ':' + requestedCapabilityId);
+  }
+  const unifiedPlanMatches = [];
+  for (const file of walkFiles(path.join(root, 'docs/plans'))) {
+    const text = fs.readFileSync(file, 'utf8');
+    const planWorkId = scalarField(text, 'work_id');
+    const planParentWorkId = scalarField(text, 'parent_work_id');
+    const planCapabilityId = scalarField(text, 'capability_id').toUpperCase();
+    const planCapabilityAction = scalarField(text, 'capability_action').toUpperCase();
+    const planStatus = scalarField(text, 'status').toUpperCase();
+    if ((planWorkId === requestedWorkId || planParentWorkId === requestedWorkId) &&
+        planCapabilityId === requestedCapabilityId &&
+        planCapabilityAction === requestedCapabilityAction &&
+        planStatus === 'ACCEPTED') {
+      unifiedPlanMatches.push({file, text});
+    }
+  }
+  if (unifiedPlanMatches.length === 0) {
+    throw new Error('MEMORY_GUARD_UNIFIED_PLAN_NOT_FOUND:' + requestedWorkId + ':' + requestedCapabilityId + ':' + requestedCapabilityAction);
+  }
+  if (unifiedPlanMatches.length !== 1) {
+    throw new Error('MEMORY_GUARD_UNIFIED_PLAN_NOT_UNIQUE:' + requestedWorkId + ':' + requestedCapabilityId + ':' + unifiedPlanMatches.length);
+  }
+  planText = unifiedPlanMatches[0].text;
+} else {
+  const wiCapabilityId = scalarField(workItem.text, 'capability_id').toUpperCase();
+  const wiCapabilityAction = scalarField(workItem.text, 'capability_action').toUpperCase();
+  if (wiCapabilityId !== requestedCapabilityId) {
+    throw new Error('MEMORY_GUARD_WORK_ITEM_CAPABILITY_ID_MISMATCH:' + requestedWorkId + ':' + wiCapabilityId + ':' + requestedCapabilityId);
+  }
+  if (wiCapabilityAction !== requestedCapabilityAction) {
+    throw new Error('MEMORY_GUARD_WORK_ITEM_CAPABILITY_ACTION_MISMATCH:' + requestedWorkId + ':' + wiCapabilityAction + ':' + requestedCapabilityAction);
+  }
+  const planRef = scalarField(workItem.text, 'plan');
+  if (!planRef) throw new Error('MEMORY_GUARD_WORK_ITEM_PLAN_MISSING:' + requestedWorkId);
+  const planFile = path.join(root, planRef);
+  if (!fs.existsSync(planFile)) throw new Error('MEMORY_GUARD_WORK_ITEM_PLAN_NOT_FOUND:' + requestedWorkId + ':' + planRef);
+  planText = fs.readFileSync(planFile, 'utf8');
 }
 
-const planRef = scalarField(workItem.text, 'plan');
-if (!planRef) throw new Error('MEMORY_GUARD_WORK_ITEM_PLAN_MISSING:' + requestedWorkId);
-const planFile = path.join(root, planRef);
-if (!fs.existsSync(planFile)) throw new Error('MEMORY_GUARD_WORK_ITEM_PLAN_NOT_FOUND:' + requestedWorkId + ':' + planRef);
-const planText = fs.readFileSync(planFile, 'utf8');
 const planCapabilityId = scalarField(planText, 'capability_id').toUpperCase();
 const planCapabilityAction = scalarField(planText, 'capability_action').toUpperCase();
 if (planCapabilityId !== requestedCapabilityId) {
@@ -286,6 +317,7 @@ if (planCapabilityId !== requestedCapabilityId) {
 if (planCapabilityAction !== requestedCapabilityAction) {
   throw new Error('MEMORY_GUARD_PLAN_CAPABILITY_ACTION_MISMATCH:' + requestedWorkId + ':' + planCapabilityAction + ':' + requestedCapabilityAction);
 }
+
 for (const requiredCapability of [
   'CAP-ORDER-IDENTITY-001',
   'CAP-CUSTOMER-ORDER-001',
