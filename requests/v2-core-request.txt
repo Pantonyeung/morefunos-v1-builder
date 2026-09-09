@@ -1,5 +1,5 @@
-source_sha=f874b9c742255a4cc7ba6af23efab6387289a130
+source_sha=4930c3489c79cb46512930e71c022b914382a84b
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-DIAGNOSTIC-WORKER-CHAIN-FIX-20260909-R1
+request_id=TEAM-C-SYSTEM-LINK-DIAGNOSTICS-P0C-CORE-20260909-01
