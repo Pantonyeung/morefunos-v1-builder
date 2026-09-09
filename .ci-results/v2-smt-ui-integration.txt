@@ -1,5 +1,5 @@
-source_sha=888f7b523071eb259621b8bf1823b20dc9a43bea
-request_id=TEAM-A-LAN-PROBE-IMMEDIATE-FEEDBACK-20260909
-run_id=34307722353
+source_sha=f00356ed06a553917d184df1652806b2a207c508
+request_id=TEAM-A-ADMIN-AUTHORITATIVE-PRINT-BINDING-UX-20260909
+run_id=34308477553
 run_attempt=1
-conclusion=success
+conclusion=failure
