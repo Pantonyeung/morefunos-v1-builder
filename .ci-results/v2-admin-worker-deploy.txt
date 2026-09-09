@@ -1,7 +1,7 @@
-source_sha=146778cbc9f6322b8a02f5545a77ca7783f0c768
-request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-DEPLOY-20260909-R3
-run_id=34347928027
+source_sha=46b4be412741a78eb6995d79720af98d3f4b59c2
+request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-DEPLOY-20260909-R4
+run_id=34348240392
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=666b5cae-2ae0-4f89-8c5f-0fccb358eb4b
