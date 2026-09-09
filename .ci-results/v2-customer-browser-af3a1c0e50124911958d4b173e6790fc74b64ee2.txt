@@ -1,0 +1,73 @@
+exit_code=1
+✔ canonical menu presentation is derived only from runtime products (2.092488ms)
+✔ orders and member fail closed when no canonical projection exists (1.276567ms)
+✔ canonical lifecycle renders when runtime store owns one (0.442578ms)
+✔ runtime failure exposes unavailable presentation and never fixtures (0.281605ms)
+✔ production-visible source has zero known fixture markers (11.111586ms)
+✔ live canonical ordering product shape renders HKD priceMinor without fixture pricing (0.413815ms)
+✔ canonical customer profile projects loyalty and membership without inventing a tier (0.407355ms)
+✔ canonical Customer Home notices preserve human content and priority without fixtures (0.329888ms)
+✔ canonical product media survives presentation normalization and legacy media ref maps only to public media route (0.429318ms)
+customer closure v3 canonical-authority boundary: PASS
+✔ apps/customer-web/customer-closure-static.test.mjs (78.642944ms)
+✔ customer consumption meter counts API and socket attempts without network calls (36.53282ms)
+✔ P0 customer runtime is demand-only: no persistent polling or long-lived WebSocket (5.559571ms)
+✔ P0 customer consumption meter remains local-only (3.091596ms)
+✖ P0 customer push requires explicit user action and no background polling (8.426298ms)
+✔ P0 push click opens canonical orders surface instead of embedding business truth (4.038516ms)
+customer PWA shell + refresh persistence static contract: PASS
+✔ apps/customer-web/customer-pwa-static.test.mjs (53.795249ms)
+✔ customer runtime reads same-origin canonical ordering projection with no-store cache (65.409756ms)
+✔ customer order lookup token uses 256 bits of caller-side secure randomness (0.745886ms)
+✔ customer order transport POSTs lookup capability only at Customer boundary (2.209845ms)
+✔ customer lifecycle lookup uses same-origin GET plus bearer capability and accepts canonical accepted state (1.414735ms)
+✔ wrong lifecycle capability fails closed without fixture fallback (1.279281ms)
+✔ customer order transport rejects invalid lookup capability before fetch (0.741539ms)
+✔ HTTP errors fail closed instead of falling back to fixture business truth (0.77472ms)
+✔ invalid canonical state and cross-origin endpoint fail closed (1.040431ms)
+✔ browser adapter accepts production D1 submit presenter and preserves server lookup token (71.042266ms)
+✔ browser adapter accepts production D1 lifecycle presenter and normalizes it for presentation (1.330769ms)
+✔ browser adapter reads canonical loyalty profile with same-origin credentials and no customerId input (3.248483ms)
+✔ runtime store loads canonical snapshot without DOM dependency (2.864844ms)
+✔ runtime store fails closed and disables submission when read fails (2.538601ms)
+✔ runtime store blocks order submission unless canonical runtime is ready and open (0.540906ms)
+✔ runtime store delegates submit and lifecycle through adapter only (0.489499ms)
+✔ P0 customer boot renders cached ordering snapshot before remote refresh (16.29246ms)
+✔ P0 pricing realtime revision avoids an extra revision heartbeat GET (0.653095ms)
+✔ runtime store loads canonical customer profile without blocking ordering when profile is unavailable (0.681339ms)
+✔ runtime store loads Customer Home notices without blocking ordering on notice failure (0.982032ms)
+✔ customer submit intent rebinds only current canonical product identity and quantity (2.395205ms)
+✔ customer submit fails closed when cart no longer maps to an available canonical product (0.527286ms)
+✔ pending identity survives refresh and is reused instead of minting a second idempotency key (1.654847ms)
+✔ accepted identity persists the server-returned lookup capability and same canonical order id (0.414686ms)
+✔ customer shell mounts controlled submit and no longer advertises the old disabled handoff message (8.08356ms)
+✔ presentation files do not own network or Firebase transport (6.146918ms)
+✔ adapter and store stay UI-agnostic (1.584352ms)
+✔ runtime bridge is composition-only and DOM binding is isolated (2.339952ms)
+ℹ tests 43
+ℹ suites 0
+ℹ pass 42
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 388.781265
+
+✖ failing tests:
+
+test at apps/customer-web/customer-push-policy.test.mjs:5:1
+✖ P0 customer push requires explicit user action and no background polling (8.426298ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/runner/work/morefunos-v1-builder/morefunos-v1-builder/source/apps/customer-web/customer-push-policy.test.mjs:13:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
