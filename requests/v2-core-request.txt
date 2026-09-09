@@ -1,5 +1,5 @@
-source_sha=0cd29b39bf073204cb76966ee59effa0bf6b84e8
+source_sha=15798f2defb121291127412613a58c4013836e76
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-PRODUCTION-KDS-D1-FEED-CORE-20260909-02
+request_id=TEAM-A-DIRECT-ORDER-AVAILABILITY-P0-20260909-R1
