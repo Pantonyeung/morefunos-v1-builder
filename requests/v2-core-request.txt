@@ -1,5 +1,5 @@
-source_sha=505cfb7d1d686d8c44a90e4c13d674fd07c948a0
+source_sha=daa27b9f2acb7d4c7104eb39b057427463daf752
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-CORE-20260909-R2
+request_id=TEAM-A-PRINT-DRAIN-CONFIG-HYDRATION-CORE-20260909-R1
