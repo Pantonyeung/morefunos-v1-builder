@@ -1,24 +1,24 @@
 exit_code=1
-✔ CUS public Availability consumer replaces caller store with trusted store scope (2.636386ms)
-✔ CUS Pricing consumer delegates money authority to pricing.quote.v1 trusted context (1.003256ms)
-✔ CUS runtime resolves profile and order only through trusted subject/store context (6.542865ms)
-✔ CUS runtime fails closed when trusted customer subject or store scope is missing (3.817978ms)
-✔ Customer notice endpoint consumes canonical D1 notice authority with store, surface and active-window predicates (63.531952ms)
-✔ Customer notice endpoint fails closed for invalid surface and non-GET method (5.309217ms)
-✔ Customer ordering projection is composed only from DIRECT-visible canonical MF01 D1 Catalog/Pricing/Availability/Operational truth (17.236972ms)
-✔ CUS readMenu consumes admitted menu using trusted store scope (3.75884ms)
-✔ CUS readMenu fails closed without trusted store scope (0.721078ms)
-✖ P0 Customer runtime does not poll pricing Core every 500ms (11.136863ms)
-✔ P0 Customer boot wires an IndexedDB runtime snapshot store (6.924481ms)
-✔ P0 Customer cached snapshot is browse-only until canonical freshness is proven (5.054219ms)
-✔ customer upload stores R2 proof, persists metadata, emits signal and still reports payment unconfirmed (47.687464ms)
-✔ Firebase signal failure cannot undo already committed D1/R2 proof (3.127865ms)
-✔ R2 object is compensated when canonical D1 persistence fails (2.521056ms)
-✔ POST /api/customer/orders strips browser authority fields and invokes canonical submit (59.081728ms)
-✔ GET /api/customer/order-status validates bearer lookup token but does not pass it into canonical identity request (1.286146ms)
-✔ GET /api/customer/profile invokes trusted canonical profile read without browser customerId (0.836539ms)
-✔ GET /api/customer/ordering fails closed until complete canonical projection is supplied (1.211916ms)
-✔ handler rejects wrong methods and malformed lifecycle token (1.682383ms)
+✔ CUS public Availability consumer replaces caller store with trusted store scope (8.084591ms)
+✔ CUS Pricing consumer delegates money authority to pricing.quote.v1 trusted context (0.863751ms)
+✔ CUS runtime resolves profile and order only through trusted subject/store context (5.044677ms)
+✔ CUS runtime fails closed when trusted customer subject or store scope is missing (1.068213ms)
+✔ Customer notice endpoint consumes canonical D1 notice authority with store, surface and active-window predicates (53.418541ms)
+✔ Customer notice endpoint fails closed for invalid surface and non-GET method (1.288017ms)
+✔ Customer ordering projection is composed only from DIRECT-visible canonical MF01 D1 Catalog/Pricing/Availability/Operational truth (10.939245ms)
+✔ CUS readMenu consumes admitted menu using trusted store scope (3.158617ms)
+✔ CUS readMenu fails closed without trusted store scope (0.601838ms)
+✖ P0 Customer runtime does not poll pricing Core every 500ms (13.197306ms)
+✔ P0 Customer boot wires an IndexedDB runtime snapshot store (6.677631ms)
+✔ P0 Customer cached snapshot is browse-only until canonical freshness is proven (4.705085ms)
+✔ customer upload stores R2 proof, persists metadata, emits signal and still reports payment unconfirmed (35.087464ms)
+✔ Firebase signal failure cannot undo already committed D1/R2 proof (1.621913ms)
+✔ R2 object is compensated when canonical D1 persistence fails (4.76971ms)
+✔ POST /api/customer/orders strips browser authority fields and invokes canonical submit (31.695714ms)
+✔ GET /api/customer/order-status validates bearer lookup token but does not pass it into canonical identity request (0.97084ms)
+✔ GET /api/customer/profile invokes trusted canonical profile read without browser customerId (0.813437ms)
+✔ GET /api/customer/ordering fails closed until complete canonical projection is supplied (0.753528ms)
+✔ handler rejects wrong methods and malformed lifecycle token (1.057809ms)
 ℹ tests 20
 ℹ suites 0
 ℹ pass 19
@@ -26,12 +26,12 @@ exit_code=1
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 790.089276
+ℹ duration_ms 717.665938
 
 ✖ failing tests:
 
 test at packages/customer-ui-integration/p0-customer-local-first-runtime.test.ts:5:1
-✖ P0 Customer runtime does not poll pricing Core every 500ms (11.136863ms)
+✖ P0 Customer runtime does not poll pricing Core every 500ms (13.197306ms)
   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /30000/. Input:
   
   'function isPricingRealtimeInvalidation(data){\n' +
