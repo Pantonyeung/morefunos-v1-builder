@@ -166,6 +166,11 @@ jobs:
         working-directory: source
         run: node --test packages/system-diagnostics/smm-order-applied-wiring.test.ts
 
+      - name: SMM Pricing applied diagnostics checkpoint test
+        if: ${{ steps.test_rest.outcome == 'success' }}
+        working-directory: source
+        run: node --test packages/system-diagnostics/pricing-smm-applied-wiring.test.ts
+
       - name: Mark remaining tests success
         if: ${{ steps.test_rest.outcome == 'success' }}
         env:
