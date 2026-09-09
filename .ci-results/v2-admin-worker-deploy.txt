@@ -1,7 +1,7 @@
-source_sha=eeca8a19fe759f0ba9a69067ea721ac7b3f1b9dc
-request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-DEPLOY-20260909-R1
-run_id=34335873389
+source_sha=505cfb7d1d686d8c44a90e4c13d674fd07c948a0
+request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-DEPLOY-20260909-R2
+run_id=34335971641
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=088b5d0f-8199-4509-82f6-54b59e0d11bf
