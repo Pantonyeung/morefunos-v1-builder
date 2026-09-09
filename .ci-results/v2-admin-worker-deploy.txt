@@ -1,7 +1,7 @@
-source_sha=419fdff5acc4e7c4064786a41c6a930a9ec73e4f
-request_id=TEAM-A-SMT-CANONICAL-ERROR-EVIDENCE-DEPLOY-20260909-R1
-run_id=34327420097
+source_sha=9805cf37f3acdf32b406949e1f684234b0a4269f
+request_id=TEAM-A-SMT-CANONICAL-ERROR-EVIDENCE-AND-ALERT-UI-DEPLOY-20260909-R1
+run_id=34327584427
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=fb9d8e2e-1f7d-460d-8c20-246456cca9ac
+worker_version=575fadab-e403-45ba-b500-f10ec7646148
