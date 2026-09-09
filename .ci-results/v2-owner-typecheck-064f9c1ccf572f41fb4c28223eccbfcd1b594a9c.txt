@@ -1,0 +1,8 @@
+exit_code=2
+
+> @morefunos/owner-web@0.1.0-v2-b0280 typecheck
+> tsc --noEmit -p tsconfig.json
+
+src/owner-network-runtime.ts(85,25): error TS7006: Parameter 'request' implicitly has an 'any' type.
+src/owner-network-runtime.ts(85,33): error TS7006: Parameter 'context' implicitly has an 'any' type.
+src/owner-network-runtime.ts(89,23): error TS7031: Binding element 'payload' implicitly has an 'any' type.
