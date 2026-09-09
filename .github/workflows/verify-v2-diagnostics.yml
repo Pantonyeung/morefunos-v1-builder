@@ -86,7 +86,9 @@ jobs:
 
       - name: Customer Profile diagnostics contract
         working-directory: source
-        run: node --test --experimental-strip-types packages/customer-crm/d1-customer-360-runtime.test.ts
+        run: |
+          node --test --experimental-strip-types packages/customer-crm/d1-customer-360-runtime.test.ts
+          node --test --experimental-strip-types packages/customer-crm/d1-customer-crm-authority.test.ts
 
       - name: Root monorepo typecheck
         working-directory: source
