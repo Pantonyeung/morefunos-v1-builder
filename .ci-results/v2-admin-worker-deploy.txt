@@ -1,7 +1,7 @@
-source_sha=83f44bd9846f1eb176a0937752ba625aea41aa38
-request_id=TEAM-A-FRONTLINE-CHAIN-DIAGNOSTICS-DEPLOY-20260909-R5
-run_id=34324528310
+source_sha=f874b9c742255a4cc7ba6af23efab6387289a130
+request_id=TEAM-A-SMT-DIAGNOSTIC-WORKER-CHAIN-DEPLOY-20260909-R1
+run_id=34326287231
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=599a2f6a-d52e-4492-a40e-eef808b18e6d
+worker_version=a724e978-2f8c-45ab-82e2-2680fbeba57b
