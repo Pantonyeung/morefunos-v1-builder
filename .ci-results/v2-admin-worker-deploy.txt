@@ -1,7 +1,7 @@
-source_sha=daa27b9f2acb7d4c7104eb39b057427463daf752
-request_id=TEAM-A-PRINT-DRAIN-CONFIG-HYDRATION-DEPLOY-20260909-R1
-run_id=34338025709
+source_sha=2a3bafaeb604b1c497f23f0a47fcb9a3c4d11682
+request_id=TEAM-A-PRINT-DISPATCH-ROUTE-DIAGNOSTIC-DEPLOY-20260909-R1
+run_id=34340744365
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=95828293-2d3f-4978-bf73-ba14410734aa
+worker_version=e90fd09d-ec0a-4251-a1d1-3d47577eef1a
