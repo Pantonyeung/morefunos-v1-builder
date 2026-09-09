@@ -782,11 +782,22 @@ for (const filePath of currentWorkItemRefs) {
   if (!fs.existsSync(full)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_FILE_MISSING:' + filePath);
   const text = fs.readFileSync(full, 'utf8');
   const workId = scalarField(text, 'work_id');
+  if (!workId) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_ID_MISSING:' + filePath);
+
+  const unifiedPool = scalarField(text, 'execution_model').toUpperCase() === 'SINGLE_FULL_SYSTEM_CONSOLIDATION_POOL';
+  if (unifiedPool) {
+    const status = scalarField(text, 'STATUS').toUpperCase();
+    const ownerAuthority = scalarField(text, 'owner_authority');
+    if (status !== 'ACTIVE') throw new Error('MEMORY_GUARD_CURRENT_UNIFIED_WORK_ITEM_NOT_ACTIVE:' + filePath);
+    if (!ownerAuthority) throw new Error('MEMORY_GUARD_CURRENT_UNIFIED_WORK_ITEM_OWNER_AUTHORITY_MISSING:' + filePath);
+    if (!fs.existsSync(path.join(root, ownerAuthority))) throw new Error('MEMORY_GUARD_CURRENT_UNIFIED_WORK_ITEM_OWNER_AUTHORITY_NOT_FOUND:' + filePath + ':' + ownerAuthority);
+    continue;
+  }
+
   const capId = scalarField(text, 'capability_id').toUpperCase();
   const capAction = scalarField(text, 'capability_action').toUpperCase();
   const planRef = scalarField(text, 'plan');
   const active = scalarField(text, 'ACTIVE').toLowerCase();
-  if (!workId) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_ID_MISSING:' + filePath);
   if (!/^CAP-[A-Z0-9][A-Z0-9-]*$/.test(capId)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_CAPABILITY_INVALID:' + filePath);
   if (!allowedCapabilityActions.has(capAction)) throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_ACTION_INVALID:' + filePath + ':' + capAction);
   if (active !== 'true') throw new Error('MEMORY_GUARD_CURRENT_WORK_ITEM_NOT_ACTIVE:' + filePath);
