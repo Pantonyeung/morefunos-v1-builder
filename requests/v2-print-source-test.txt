@@ -1,3 +1,3 @@
-source_sha=627d6fd756ab7199b14bb904b49afcb541a55d18
+source_sha=311672fa1f0dd567644c8fb61d64dfce42724dc5
 branch_name=main
-request_id=TEAM-A-RUNTIME-SMOKE-PRINT-20260909-R1
+request_id=team-c-global-print-syntax-fix-20260909
