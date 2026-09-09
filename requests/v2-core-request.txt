@@ -1,5 +1,5 @@
-source_sha=722bf86fac46c118949e743cf031eeb58736a31b
+source_sha=81bcd8094c26f72feb726e7f1808edabeafda64f
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-PRODUCTION-ETA-FOUNDATION-CORE-20260909-01
+request_id=TEAM-C-PRODUCTION-OPS-CONFIG-CORE-20260909-01
