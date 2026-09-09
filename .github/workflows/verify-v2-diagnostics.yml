@@ -1,0 +1,165 @@
+name: V2 Diagnostics Web Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-diagnostics-request.txt'
+  pull_request:
+    paths:
+      - 'requests/v2-diagnostics-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=pending             -f context='builder/v2-diagnostics-web'             -f description='Diagnostics Builder running'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-diagnostics-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-diagnostics-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: System Diagnostics package tests
+        working-directory: source
+        run: node --test packages/system-diagnostics/*.test.ts
+
+      - name: Root monorepo typecheck
+        working-directory: source
+        run: npm run typecheck
+
+      - name: Diagnostics app typecheck
+        working-directory: source/apps/diagnostics-web
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck
+
+      - name: Diagnostics app build
+        working-directory: source/apps/diagnostics-web
+        run: npm run build
+
+      - name: Write evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          mkdir -p evidence
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-diagnostics.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-diagnostics-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=success             -f context='builder/v2-diagnostics-web'             -f description='Diagnostics Builder passed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA"             -f state=failure             -f context='builder/v2-diagnostics-web'             -f description='Diagnostics Builder failed'             -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Seal durable Builder result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-diagnostics-request.txt | tr -d '\r\n')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+              echo "request_id=${REQUEST_ID:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "run_attempt=$RUN_ATTEMPT"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-diagnostics.txt
+            git add .ci-results/v2-diagnostics.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): V2 Diagnostics ${CONCLUSION} ${SOURCE_SHA:-UNKNOWN}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          echo "RESULT_SEAL_PUSH_FAILED" >&2
+          exit 1
