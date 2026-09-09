@@ -65,6 +65,10 @@ jobs:
         working-directory: source
         run: node --test --experimental-strip-types packages/order/t2-d1-order-state-adapter.test.ts
 
+      - name: Customer Order diagnostics and display-code checkpoint
+        working-directory: source
+        run: node --test --experimental-strip-types packages/order/d1-customer-order-variation.test.ts
+
       - name: Run root TypeScript typecheck
         working-directory: source
         run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
