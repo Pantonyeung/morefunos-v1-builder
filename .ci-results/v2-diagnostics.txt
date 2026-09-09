@@ -1,5 +1,5 @@
-source_sha=ae3dbc5211b19306f45c40f5afb013d2e032b5da
-request_id=team-c-pricing-customer-readback-20260909
-run_id=34358472248
+source_sha=6a0d572e0bda47eccb08619df5653f48ca3d55d9
+request_id=team-c-catalog-category-fanout-20260909
+run_id=34358999552
 run_attempt=1
 conclusion=success
