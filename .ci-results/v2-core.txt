@@ -1,5 +1,5 @@
-source_sha=9df0c62dc198de639fd98718cd3f54a4760a39f5
-request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R2
-run_id=34350435004
+source_sha=9703aea8dc06b7dc5fc7e2397a1c08bd1351632f
+request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R3
+run_id=34351036371
 run_attempt=1
 conclusion=success
