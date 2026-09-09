@@ -1,2 +1,4 @@
-source_sha=fc7b51b35526dff47e44fddff02a28915f623799
-request_id=TEAM-C-PRODUCT-MEDIA-SMM-EXACT-20260909-02
+source_sha=22bdbcb8dd92d61fe87873ee365149a1da999898
+base_sha=80b15567a8a2c1687f30bdb988afb5aee25eb4c6
+branch_name=main
+request_id=TEAM-C-DINE-IN-COMMAND-ENTRY-SMM-20260909-02
