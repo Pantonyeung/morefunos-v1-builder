@@ -1,2 +1,2 @@
-source_sha=bc1df3467caffdd38890f07a1ba6e4b9c07a903f
-reason=smm-order-applied-diagnostic-contract
+source_sha=47c4bc56d282ee0d28e12044a2b875a5148de816
+request_id=team-c-pricing-smm-applied-20260909
