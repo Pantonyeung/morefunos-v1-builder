@@ -1,7 +1,7 @@
-source_sha=84a45048197c890fbd42fddd67a729ef048825a8
-request_id=TEAM-A-SMT-STAFF-SESSION-ROTATION-GRACE-DEPLOY-20260909-R2
-run_id=34342157284
+source_sha=37154362fd640c4056d69df8448f557dde850f8b
+request_id=TEAM-A-SMT-PRINTER-HEALTH-STAFF-AUTH-DEPLOY-20260909-R1
+run_id=34343153215
 run_attempt=1
-conclusion=failure
+conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=7b50bcbf-621f-45b8-92ae-60f7419e5cd0
+worker_version=20d61e38-1c15-4cdb-8fdb-a7716153d728
