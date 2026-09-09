@@ -1,1 +1,2 @@
 source_sha=064f9c1ccf572f41fb4c28223eccbfcd1b594a9c
+retry=3
