@@ -1,5 +1,5 @@
-source_sha=55082987ce6267c4651540566de6eacfa7106f69
-request_id=TEAM-C-PRODUCTION-KDS-SMM-FEED-CORE-20260909-03
-run_id=34318292767
+source_sha=ef31b8cefdf2baa73e0a971189a70f4d7cbd0ed1
+request_id=TEAM-A-SMT-ORDER-SYNC-VISIBLE-P0-CORE-20260909-R2
+run_id=34319088945
 run_attempt=1
 conclusion=success
