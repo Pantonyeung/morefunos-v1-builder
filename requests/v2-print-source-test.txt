@@ -1,3 +1,3 @@
-source_sha=0c6200fbe24f96e894d2fb8aec45dce8aede1675
+source_sha=fdb00c5391540a78ff21313d2a5b9de923dff1bf
 branch_name=main
-request_id=TEAM-A-PRINT-TEMPLATE-RECOVERY-20260909-R1
+request_id=TEAM-A-PRINT-CAMPAIGN-RECOVERY-20260909-R2
