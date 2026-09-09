@@ -1,5 +1,5 @@
-source_sha=dc659da5d9c09edf6d2ce18b41d477df501a68d5
+source_sha=f1f8070410f1c4be3d36700e2b8e80111dc3d017
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-PRINT-ROUTE-HOLD-CLASSIFICATION-CORE-20260909-R1
+request_id=TEAM-A-SMT-STAFF-SESSION-ROTATION-GRACE-CORE-20260909-R1
