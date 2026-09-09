@@ -222,6 +222,18 @@ jobs:
             echo 'no human-custody tests present' | tee "$RUNNER_TEMP/v2-core-human-custody-tests.log"
           fi
 
+      - name: Core Production KDS tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/production-kds/*.test.ts' > /dev/null; then
+            node --test packages/production-kds/*.test.ts | tee "$RUNNER_TEMP/v2-core-production-kds-tests.log"
+          else
+            echo 'no production-kds tests present' | tee "$RUNNER_TEMP/v2-core-production-kds-tests.log"
+            exit 1
+          fi
+
       - name: Core Inventory tests
         shell: bash
         run: |
