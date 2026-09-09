@@ -1,0 +1,6 @@
+candidate_sha=fbede95d1e8abb0471c2fcd5299e966f49560aab
+base_main_sha=45216b517160e669a97eac593ab5ec530b0751b1
+work_id=TEAM_A_SMT_RUNTIME_P0_LINK_REGRESSION
+capability_id=CAP-FRONTLINE-DIAGNOSTICS-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT,SMM,ADMIN
