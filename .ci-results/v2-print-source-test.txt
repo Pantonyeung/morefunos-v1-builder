@@ -1,6 +1,6 @@
-source_sha=0cd0da6c648bdbda71ed24ca8e945d8ad72a1a9d
+source_sha=38eaeba5970d501ba8319e45e04e789b12ac68a3
 branch_name=main
-request_id=team-c-catalog-readbacks-cross-print-rerun-20260909
-run_id=34357930590
+request_id=team-c-catalog-realtime-cross-print-20260909
+run_id=34358417516
 run_attempt=1
 conclusion=success
