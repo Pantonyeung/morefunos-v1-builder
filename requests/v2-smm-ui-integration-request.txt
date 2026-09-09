@@ -1,4 +1,2 @@
-source_sha=22bdbcb8dd92d61fe87873ee365149a1da999898
-base_sha=80b15567a8a2c1687f30bdb988afb5aee25eb4c6
-branch_name=main
-request_id=TEAM-C-DINE-IN-COMMAND-ENTRY-SMM-20260909-02
+source_sha=5dd1997b331f127ec08c158e7b8fa4369d3b94b7
+request_id=TEAM-C-DINEIN-SMM-COMMAND-LINKUP-20260909-02
