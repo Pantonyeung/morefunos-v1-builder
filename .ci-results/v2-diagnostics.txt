@@ -1,5 +1,5 @@
-source_sha=883060bf371946cc765fe7361c8933cb1cf62956
-request_id=TEAM-C-SYSTEM-LINK-DIAGNOSTICS-P0D-COVERAGE-20260909-01
-run_id=34328174388
+source_sha=bf62ea1227bf72ebaa72cf0a4dad4bd4bcb9f248
+request_id=TEAM-C-SYSTEM-LINK-DIAGNOSTICS-P0E-CHECKPOINT-TDD-RED-20260909-01
+run_id=34328426535
 run_attempt=1
-conclusion=success
+conclusion=failure
