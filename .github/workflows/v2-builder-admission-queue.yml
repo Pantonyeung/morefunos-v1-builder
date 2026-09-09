@@ -152,7 +152,7 @@ jobs:
           test -n "$WORK_ID"
           [[ "$CAPABILITY_ID" =~ ^CAP-[A-Z0-9][A-Z0-9-]*$ ]]
           case "$CAPABILITY_ACTION" in
-            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|NEW_BUILD|SUPERSEDE) ;;
+            REUSE|LINKUP|EXTEND|REGRESSION_REPAIR|PHYSICAL_ACCEPTANCE|RUNTIME_PROOF|NEW_BUILD|SUPERSEDE) ;;
             *) echo "CAPABILITY_ACTION_INVALID:$CAPABILITY_ACTION" >&2; exit 27 ;;
           esac
 
@@ -612,7 +612,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload queue evidence
-        if: always()
+        if: ${{ always() && steps.request.outputs.work_id != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: v2-admission-queue-${{ steps.request.outputs.work_id }}-${{ steps.request.outputs.candidate_sha }}
@@ -621,7 +621,7 @@ jobs:
           retention-days: 30
 
       - name: Seal durable queue result
-        if: always()
+        if: ${{ always() && steps.request.outputs.work_id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           WORK_ID: ${{ steps.request.outputs.work_id }}
