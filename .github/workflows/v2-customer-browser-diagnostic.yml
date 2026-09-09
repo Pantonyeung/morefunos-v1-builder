@@ -1,0 +1,58 @@
+name: V2 Customer Browser Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['requests/v2-customer-browser-diagnostic-request.txt']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: true}
+      - id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-customer-browser-diagnostic-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: Capture browser tests
+        shell: bash
+        run: |
+          set +e
+          cd source
+          node --test apps/customer-web/*.test.mjs > ../customer-browser.txt 2>&1
+          CODE=$?
+          cd ..
+          echo "exit_code=$CODE" | cat - customer-browser.txt > customer-browser.with-code.txt
+          mv customer-browser.with-code.txt customer-browser.txt
+          exit 0
+      - name: Seal diagnostic
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p .ci-results
+          cp customer-browser.txt ".ci-results/v2-customer-browser-${SOURCE_SHA}.txt"
+          git add .ci-results
+          git commit -m "ci(diag): Customer browser ${SOURCE_SHA}" || exit 0
+          git push origin HEAD:main
