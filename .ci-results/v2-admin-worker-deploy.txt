@@ -1,7 +1,7 @@
-source_sha=0071324ceed320311974071c06beb64f40e00dee
-request_id=TEAM-A-PRINT-LEGACY-LAYOUT-REPAIR-DEPLOY-20260909-R1
-run_id=34334933865
+source_sha=eeca8a19fe759f0ba9a69067ea721ac7b3f1b9dc
+request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-DEPLOY-20260909-R1
+run_id=34335873389
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=6d1de12d-111c-4130-8389-444ef96efb7e
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
