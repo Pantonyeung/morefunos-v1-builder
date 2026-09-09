@@ -1,5 +1,5 @@
-source_sha=8309c6201cd3d60d9805163e0a52f77c7e7e6d90
-request_id=TEAM-A-SMT-ORDER-SYNC-DIAGNOSTIC-P0-20260909-R2
-run_id=34320613602
+source_sha=59fd0b903fb0beb4fb5029d513edfa6ceca6e2b1
+request_id=TEAM-C-PRODUCTION-OPS-READ-MODEL-CORE-20260909-01
+run_id=34321047004
 run_attempt=1
-conclusion=success
+conclusion=failure
