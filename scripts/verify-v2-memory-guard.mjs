@@ -720,6 +720,11 @@ const decisionAllowlist = [
   'docs/recovery/decisions/FRONTLINE-OFFLINE-OPERATIONAL-BUNDLE-2026-09-07.md',
   'docs/recovery/decisions/CAPABILITY-OPERATIONAL-LINKAGE-CLOSURE-RULE-2026-09-08.md',
   'docs/recovery/decisions/TEAM-C-MATURITY-PROGRESS-METRIC-2026-09-08.md',
+  'docs/recovery/decisions/ALL-TEAMS-ORIGINAL-OWNER-COMPENSATORY-LINKAGE-RULE-2026-09-09.md',
+  'docs/recovery/decisions/CROSS-TEAM-CHAIN-DIRECT-EXECUTION-RULE-2026-09-09.md',
+  'docs/recovery/decisions/CONTINUOUS-LINKUP-DIAGNOSTICS-ACCEPTANCE-RULE-2026-09-09.md',
+  'docs/recovery/decisions/SYSTEM-LINK-DIAGNOSTICS-UNIVERSAL-COVERAGE-RULE-2026-09-09.md',
+  'docs/recovery/decisions/OWNER-ABC-FULL-SYSTEM-CONSOLIDATION-2026-09-09.md',
 ];
 
 for (const filePath of decisionAllowlist) {
