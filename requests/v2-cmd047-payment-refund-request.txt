@@ -1,3 +1,2 @@
-source_sha=3fef8ac13c14e6c68f798944ed8b8757d299357a
-scope=T2-SMT-D1-PAYMENT-REFUND-AUTHORITY-RED
-attempt=1
+source_sha=f79b61bb0fb34d71fec62a6b48ce37082d49bc0a
+reason=payment-refund-diagnostics-checkpoints
