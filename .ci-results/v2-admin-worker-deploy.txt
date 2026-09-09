@@ -1,7 +1,7 @@
-source_sha=c54b3b1571c7b2b102023e11241fd9f38ed0a477
-request_id=TEAM-A-AUTO-PRINT-SERVER-BAG-LABEL-DEPLOY-20260909
-run_id=34312721048
+source_sha=0c6200fbe24f96e894d2fb8aec45dce8aede1675
+request_id=TEAM-A-PRINT-TEMPLATE-RECOVERY-DEPLOY-20260909-R1
+run_id=34314035670
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=9cc81bab-95a7-4399-84de-2efd7d3b17fa
