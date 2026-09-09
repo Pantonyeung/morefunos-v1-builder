@@ -2,4 +2,4 @@ source_sha=9bc29d8ad687f234d66a7ce24dcb2f12584e71ef
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-FRONTLINE-CHAIN-DIAGNOSTICS-CORE-20260909-R3
+request_id=TEAM-C-FOUR-DIGIT-C2-C3-CORE-20260909-01
