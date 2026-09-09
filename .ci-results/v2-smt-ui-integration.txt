@@ -1,5 +1,5 @@
-source_sha=2d6ed1dfaea0881648f8dfc3f5cbe8b68fb453cd
-request_id=TEAM-A-ADMIN-AUTHORITATIVE-PRINT-BINDING-UX-R3-20260909
-run_id=34308661164
+source_sha=c339512219f81f1c554de3ea622be134f99eec39
+request_id=TEAM-A-ADMIN-AUTHORITATIVE-PRINT-BINDING-UX-R4-20260909
+run_id=34308766405
 run_attempt=1
-conclusion=failure
+conclusion=success
