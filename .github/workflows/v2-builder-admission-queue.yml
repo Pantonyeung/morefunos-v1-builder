@@ -564,6 +564,11 @@ jobs:
           fi
           if grep -qx PRINT <<<"$auths" || [[ ",$tests," == *,PRINT,* ]]; then npm run test:print; fi
           if grep -qx CATALOG <<<"$auths" || [[ ",$tests," == *,CATALOG,* ]]; then npm run test:core-catalog; fi
+          if [[ ",$tests," == *,DIAGNOSTICS,* ]]; then
+            mapfile -t diagnostics_tests < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
+            [[ "${#diagnostics_tests[@]}" -gt 0 ]] || { echo "DIAGNOSTICS_TEST_SET_EMPTY" >&2; exit 29; }
+            node --test --test-concurrency=1 "${diagnostics_tests[@]}"
+          fi
 
       - name: SMT integration proof
         if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'SMT')
