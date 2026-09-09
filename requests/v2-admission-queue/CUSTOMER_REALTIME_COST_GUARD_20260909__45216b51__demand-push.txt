@@ -1,0 +1,6 @@
+candidate_sha=45216b517160e669a97eac593ab5ec530b0751b1
+base_main_sha=0dde84f67a91c17d0002d4b6b4e2a8da3ad967ae
+work_id=CUSTOMER_REALTIME_COST_GUARD_20260909
+capability_id=CAP-CUSTOMER-PRESENTATION-001
+capability_action=REGRESSION_REPAIR
+affected_ports=Customer,Admin,SMT,SMM
