@@ -1,5 +1,5 @@
-source_sha=f071083d4ed6433302c60e203be74e116c36f2ad
-request_id=TEAM-A-SMT-PRINT-EXACT-NATIVE-FAILURE-CORE-20260909-R2
-run_id=34349397306
+source_sha=8c7a83624ed24ce1070ac945adae30b3f82b7f21
+request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R1
+run_id=34350070973
 run_attempt=1
 conclusion=success
