@@ -575,6 +575,15 @@ jobs:
         working-directory: integration/apps/smm-web
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
 
+      - name: Customer integration proof
+        if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'CUSTOMER')
+        working-directory: integration
+        run: |
+          node --test packages/customer-ui-integration/*.test.ts
+          npm --prefix apps/customer-web install --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/customer-web test
+          npm --prefix apps/customer-web run build
+
       - name: Admin integration proof
         if: (steps.impact.outputs.impact != 'V0' || steps.request.outputs.force_full_proof == 'true') && contains(steps.request.outputs.affected_ports, 'ADMIN')
         working-directory: integration/apps/admin-web
