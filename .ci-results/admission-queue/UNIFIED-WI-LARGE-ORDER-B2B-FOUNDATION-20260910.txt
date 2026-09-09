@@ -1,6 +1,6 @@
 work_id=UNIFIED-WI-LARGE-ORDER-B2B-FOUNDATION-20260910
-candidate_sha=14cdfad7c14985fca12a96f992f3e60e3026db17
-base_main_sha=4d4d4c8bb2aeddb9f291ad411b6a10fb795f0855
+candidate_sha=9e74d659cbbd6babaff4261402530a1d7d67cd32
+base_main_sha=14cdfad7c14985fca12a96f992f3e60e3026db17
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
 impact=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=PRICING,ORDER
 force_full_proof=true
-run_id=34415603430
+run_id=34415720555
 conclusion=failure
