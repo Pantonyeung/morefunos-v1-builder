@@ -1,2 +1,2 @@
-source_sha=d9f8e8515c6d0d1712264cbb60a71883db349d96
-request_id=team-c-pricing-realtime-hub-received-20260909
+source_sha=38eaeba5970d501ba8319e45e04e789b12ac68a3
+request_id=team-c-catalog-realtime-sent-20260909
