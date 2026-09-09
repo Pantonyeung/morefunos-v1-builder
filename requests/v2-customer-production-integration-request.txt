@@ -1,2 +1,2 @@
-source_sha=38eaeba5970d501ba8319e45e04e789b12ac68a3
-request_id=team-c-catalog-realtime-sent-20260909
+source_sha=ae3dbc5211b19306f45c40f5afb013d2e032b5da
+request_id=team-c-pricing-customer-readback-20260909
