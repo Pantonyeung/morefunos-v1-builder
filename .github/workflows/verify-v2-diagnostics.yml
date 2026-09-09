@@ -84,6 +84,10 @@ jobs:
         working-directory: source
         run: node --test packages/system-diagnostics/*.test.ts
 
+      - name: Customer Profile diagnostics contract
+        working-directory: source
+        run: node --test --experimental-strip-types packages/customer-crm/d1-customer-360-runtime.test.ts
+
       - name: Root monorepo typecheck
         working-directory: source
         run: npm run typecheck
