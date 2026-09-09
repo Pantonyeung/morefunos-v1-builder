@@ -1,0 +1,13 @@
+work_id=UNIFIED-WI-CATALOG-FRONTLINE-APPLIED-READBACK-20260909
+candidate_sha=a4fe1d227e8494a8263763dac24318ac7deca199
+base_main_sha=920573789bb7205f33c582eef29837fde2e29db2
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=CATALOG
+force_full_proof=true
+run_id=34365842574
+conclusion=failure
