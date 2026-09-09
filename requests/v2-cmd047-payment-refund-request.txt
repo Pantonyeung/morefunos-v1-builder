@@ -1,2 +1,2 @@
 source_sha=f79b61bb0fb34d71fec62a6b48ce37082d49bc0a
-reason=payment-refund-diagnostics-checkpoints
+reason=payment-refund-diagnostics-after-stale-builder-repair
