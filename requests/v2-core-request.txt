@@ -1,5 +1,5 @@
-source_sha=146778cbc9f6322b8a02f5545a77ca7783f0c768
+source_sha=46b4be412741a78eb6995d79720af98d3f4b59c2
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-CORE-20260909-R3
+request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-CORE-20260909-R4
