@@ -1,5 +1,5 @@
-source_sha=eeca8a19fe759f0ba9a69067ea721ac7b3f1b9dc
+source_sha=505cfb7d1d686d8c44a90e4c13d674fd07c948a0
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-CORE-20260909-R1
+request_id=TEAM-A-PRINT-LAYOUT-REPAIR-REVISION-FIX-CORE-20260909-R2
