@@ -1,5 +1,5 @@
-source_sha=dac0f5442b7562001796d777424c2e7b56e8f42c
-request_id=TEAM-A-SMT-ORDER-SYNC-PRINT-LINKUP-20260909-01
-run_id=34299804609
+source_sha=1865fa692053f2c8cfdfdc7c06b24315ed4363ea
+request_id=TEAM-A-PRINT-LOAD-BLACKSCREEN-INTEGRATION-20260909
+run_id=34302762508
 run_attempt=1
-conclusion=success
+conclusion=failure
