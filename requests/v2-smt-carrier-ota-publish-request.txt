@@ -3,4 +3,4 @@ apk_source_sha=6614dd9847d183c4bbbbcfc153dab25e3b175e46
 signed_release_run_id=34306478167
 expected_version_name=1.0.0
 expected_version_code=100
-request_id=TEAM-A-SMT-1.0-CARRIER-OTA-PUBLISH-20260909
+request_id=TEAM-A-SMT-1.0-CARRIER-OTA-PUBLISH-R2-20260909
