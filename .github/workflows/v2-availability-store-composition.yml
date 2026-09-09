@@ -71,6 +71,16 @@ jobs:
           set -euo pipefail
           node --test --experimental-strip-types packages/availability/*.test.ts 2>&1 | tee ../evidence/availability-tests.log
 
+      - name: Run Availability realtime endpoint apply proof
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --experimental-strip-types \
+            packages/frontline-ui-integration/operational-context-realtime-controller.test.ts \
+            packages/frontline-ui-integration/operational-context-realtime-wiring.test.ts \
+            2>&1 | tee ../evidence/availability-realtime-apply-tests.log
+
       - name: Run Admin Availability production wiring tests
         working-directory: source
         shell: bash
