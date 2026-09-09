@@ -1,5 +1,5 @@
-source_sha=eb31fd24b063f154fd6904673b39b1cab5cb826b
-request_id=TEAM-C-CUSTOMER-PRODUCT-MEDIA-RENDER-20260909-01
-run_id=34287343567
+source_sha=4ccffc2ea2456f380f3eaaf4a63e5b736b20e2d5
+request_id=team-c-fulfillment-customer-readback-20260909
+run_id=34339342549
 run_attempt=1
-conclusion=success
+conclusion=failure
