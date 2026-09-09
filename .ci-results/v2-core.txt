@@ -1,5 +1,5 @@
-source_sha=4ae830f24abee22707151a37e669f9caf2014a8a
-request_id=TEAM-C-PRODUCTION-OPS-SMM-LINKUP-CORE-20260909-01
-run_id=34322267462
+source_sha=26808977e2c7ecf259fb26f42cdef3fb589df61d
+request_id=TEAM-C-C2-C3-CORRECTED-CORE-GATE-20260909-01
+run_id=34322972886
 run_attempt=1
-conclusion=success
+conclusion=failure
