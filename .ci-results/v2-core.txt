@@ -1,5 +1,5 @@
-source_sha=ef31b8cefdf2baa73e0a971189a70f4d7cbd0ed1
-request_id=TEAM-A-SMT-ORDER-SYNC-VISIBLE-P0-CORE-20260909-R2
-run_id=34319088945
+source_sha=1869cb0fbdf5116845cf3006e4f7efc57290b417
+request_id=TEAM-C-PRODUCTION-KDS-STATION-ROUTING-CORE-20260909-01
+run_id=34319234819
 run_attempt=1
 conclusion=success
