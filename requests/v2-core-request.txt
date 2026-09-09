@@ -1,5 +1,5 @@
-source_sha=d6cc42d8f9607e1c91aadedc37bb26b08cab61bc
+source_sha=e94c3255dd2c101f8093ca3ccbe24cfa80601597
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-NATIVE-PRINT-GATEWAY-CORE-20260909-R1
+request_id=TEAM-A-SMT-NATIVE-PRINT-GATEWAY-CORE-R2-20260909
