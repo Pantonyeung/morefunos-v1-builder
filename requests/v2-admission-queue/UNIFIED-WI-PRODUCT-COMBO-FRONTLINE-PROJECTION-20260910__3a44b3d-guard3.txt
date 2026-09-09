@@ -1,0 +1,10 @@
+candidate_sha=3a44b3da877ab427d2d60061c45a17fee168151c
+base_main_sha=14cdfad7c14985fca12a96f992f3e60e3026db17
+work_id=UNIFIED-WI-PRODUCT-COMBO-FRONTLINE-PROJECTION-20260910
+capability_id=CAP-PRODUCT-COMBO-001
+capability_action=LINKUP
+affected_ports=SMT,SMM,CUSTOMER,CORE,ADMIN
+depends_on_specs=
+supersedes_candidate_sha=3a44b3da877ab427d2d60061c45a17fee168151c
+required_core_tests=CATALOG
+force_full_proof=true
