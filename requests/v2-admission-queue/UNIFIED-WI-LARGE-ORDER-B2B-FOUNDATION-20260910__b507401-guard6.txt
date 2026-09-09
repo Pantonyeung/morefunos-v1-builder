@@ -1,0 +1,10 @@
+candidate_sha=b50740160688f6beea0a07d4d65863c9e3d21e36
+base_main_sha=5041574436f2017c81e3ef2a3a88e40d0311ad64
+work_id=UNIFIED-WI-LARGE-ORDER-B2B-FOUNDATION-20260910
+capability_id=CAP-LARGE-ORDER-B2B-001
+capability_action=EXTEND
+affected_ports=ADMIN,CORE
+depends_on_specs=
+supersedes_candidate_sha=b50740160688f6beea0a07d4d65863c9e3d21e36
+required_core_tests=PRICING,ORDER
+force_full_proof=true
