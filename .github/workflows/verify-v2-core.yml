@@ -222,16 +222,34 @@ jobs:
             echo 'no human-custody tests present' | tee "$RUNNER_TEMP/v2-core-human-custody-tests.log"
           fi
 
-      - name: Core Production KDS tests
+      - name: Core Production Operations tests
         shell: bash
         run: |
           set -euo pipefail
           cd source
-          if compgen -G 'packages/production-kds/*.test.ts' > /dev/null; then
-            node --test packages/production-kds/*.test.ts | tee "$RUNNER_TEMP/v2-core-production-kds-tests.log"
-          else
-            echo 'no production-kds tests present' | tee "$RUNNER_TEMP/v2-core-production-kds-tests.log"
+          FILES=()
+          for pattern in \
+            'packages/production-kds/*.test.ts' \
+            'packages/production-packing/*.test.ts' \
+            'packages/production-eta/*.test.ts' \
+            'packages/production-operations/*.test.ts'; do
+            while IFS= read -r file; do FILES+=("$file"); done < <(compgen -G "$pattern" || true)
+          done
+          if [[ "${#FILES[@]}" -eq 0 ]]; then
+            echo 'no production operations tests present' | tee "$RUNNER_TEMP/v2-core-production-operations-tests.log"
             exit 1
+          fi
+          node --test "${FILES[@]}" | tee "$RUNNER_TEMP/v2-core-production-operations-tests.log"
+
+      - name: Core Large Order B2B tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          if compgen -G 'packages/large-order-b2b/*.test.ts' > /dev/null; then
+            node --test packages/large-order-b2b/*.test.ts | tee "$RUNNER_TEMP/v2-core-large-order-b2b-tests.log"
+          else
+            echo 'no large-order-b2b tests present' | tee "$RUNNER_TEMP/v2-core-large-order-b2b-tests.log"
           fi
 
       - name: Core Inventory tests
@@ -343,6 +361,8 @@ jobs:
             ${{ runner.temp }}/v2-core-payment-tests.log
             ${{ runner.temp }}/v2-core-fulfillment-tests.log
             ${{ runner.temp }}/v2-core-human-custody-tests.log
+            ${{ runner.temp }}/v2-core-production-operations-tests.log
+            ${{ runner.temp }}/v2-core-large-order-b2b-tests.log
             ${{ runner.temp }}/v2-core-inventory-tests.log
             ${{ runner.temp }}/v2-integration-tests.log
             ${{ runner.temp }}/v2-core-typecheck.log
