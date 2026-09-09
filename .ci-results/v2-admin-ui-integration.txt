@@ -1,5 +1,5 @@
-source_sha=d0eed8f863e0f2b4b7d404c011e1a8174d31d630
-request_id=TEAM-C-STAFF-RBAC-ROLE-MANAGEMENT-ADMIN-UI-20260909-01
-run_id=34290814910
+source_sha=b3aef869670f7e19d75abc156ad8899c6608e31e
+request_id=TEAM-C-ADMIN-OPEN-ORDERS-RUNTIME-PROOF-UI-20260909-01
+run_id=34299010512
 run_attempt=1
-conclusion=success
+conclusion=failure
