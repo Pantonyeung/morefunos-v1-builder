@@ -1,6 +1,6 @@
-source_sha=fdb00c5391540a78ff21313d2a5b9de923dff1bf
+source_sha=d5bb4824102f8d9490d2e45bf0257db1a524a52a
 branch_name=main
-request_id=TEAM-A-PRINT-CAMPAIGN-RECOVERY-20260909-R2
-run_id=34315642773
+request_id=TEAM-A-PRINT-CAMPAIGN-RECOVERY-20260909-R3
+run_id=34315738703
 run_attempt=1
-conclusion=failure
+conclusion=success
