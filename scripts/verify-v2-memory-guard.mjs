@@ -894,7 +894,10 @@ requireText(teamAWorkItem, 'code_linkup_status: CLOSED_ADMITTED_NO_REDO', 'MEMOR
 requireText(teamAWorkItem, 'physical_acceptance_status: PENDING_OWNER_REAL_DEVICE', 'MEMORY_GUARD_TEAM_A_PHYSICAL_ACCEPTANCE_STATE_MISSING');
 const teamBPaused = teamBBlock.includes('status: PAUSED_OWNER_DIRECTIVE') && teamBBlock.includes('active_mutation_work_item: NONE');
 const teamBHandshakeOnly = teamBBlock.includes('active_mutation_work_item: NONE_READBACK_HANDSHAKE_GATE_ONLY');
-if (!teamBPaused && !teamBHandshakeOnly) {
+const teamBUnifiedSupport = teamBBlock.includes('status: TEAM_C_CONSOLIDATION_SUPPORT_NO_INDEPENDENT_LANE')
+  && teamBBlock.includes('active_mutation_work_item: NONE')
+  && teamBBlock.includes('active_work_item_path: null');
+if (!teamBPaused && !teamBHandshakeOnly && !teamBUnifiedSupport) {
   throw new Error('MEMORY_GUARD_TEAM_B_STATE_INVALID');
 }
 requireText(
@@ -909,7 +912,10 @@ if (!teamCMutationMatch) {
 const teamCMutation = teamCMutationMatch[1];
 const teamCActiveWorkItem = /^TEAM-C-WI-B\d{4}-[a-z0-9-]+$/.test(teamCMutation);
 const teamCNoMutationState = /^NONE_B\d{4}_[A-Z0-9_]+$/.test(teamCMutation);
-if (!teamCActiveWorkItem && !teamCNoMutationState) {
+const teamCUnifiedConsolidation = teamCMutation === 'TEAM_C_ABC_FULL_SYSTEM_CONSOLIDATION_20260909'
+  && teamCActiveRef === 'docs/workflows/work-items/TEAM-C-WI-ABC-FULL-SYSTEM-CONSOLIDATION-20260909.yaml'
+  && teamCBlock.includes('status: FULL_SYSTEM_CONSOLIDATION_LEAD');
+if (!teamCActiveWorkItem && !teamCNoMutationState && !teamCUnifiedConsolidation) {
   throw new Error('MEMORY_GUARD_TEAM_C_ROUTING_STATE_INVALID:' + teamCMutation);
 }
 
