@@ -1,2 +1,2 @@
-source_sha=5f8ffa5bd5cc565fc969a19d42bebcfbdf185167
-request_id=TEAM-C-DINEIN-SMM-TERMINAL-20260909-04
+source_sha=0c6d4c9eb97cefa7b6507eeeabb3f0feb9d47396
+request_id=TEAM-C-ORDER-SYNC-SMM-RUNTIME-PROOF-20260909-01
