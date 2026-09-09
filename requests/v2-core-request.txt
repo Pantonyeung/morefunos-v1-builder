@@ -1,5 +1,5 @@
-source_sha=f071083d4ed6433302c60e203be74e116c36f2ad
+source_sha=8c7a83624ed24ce1070ac945adae30b3f82b7f21
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-A-SMT-PRINT-EXACT-NATIVE-FAILURE-CORE-20260909-R2
+request_id=TEAM-A-SMT-PRINT-HEALTH-BOOT-CORE-20260909-R1
