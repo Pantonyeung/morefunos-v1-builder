@@ -1,5 +1,5 @@
-source_sha=362ad701de933473e2de19098e3920e819a64b65
-request_id=TEAM-A-SMT-TWO-STAGE-PRINT-TEST-SAVE-UX-R2-20260909
-run_id=34310379904
+source_sha=cdd6d82af5c0cdc613441aa3303c460c685c96e1
+request_id=TEAM-A-AUTO-ORDER-PHYSICAL-PRINT-CHAIN-R1-20260909
+run_id=34312364047
 run_attempt=1
-conclusion=success
+conclusion=failure
