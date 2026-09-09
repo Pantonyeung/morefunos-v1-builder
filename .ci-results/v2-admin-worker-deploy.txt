@@ -1,7 +1,7 @@
-source_sha=dc659da5d9c09edf6d2ce18b41d477df501a68d5
-request_id=TEAM-A-PRINT-ROUTE-HOLD-CLASSIFICATION-DEPLOY-20260909-R1
-run_id=34341072570
+source_sha=f1f8070410f1c4be3d36700e2b8e80111dc3d017
+request_id=TEAM-A-SMT-STAFF-SESSION-ROTATION-GRACE-DEPLOY-20260909-R1
+run_id=34341756398
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=12a9f641-5b29-4b14-b627-55ad055dc7cb
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
