@@ -1,5 +1,5 @@
-source_sha=b70c3114ef7d2df383c681714ce3029ae0f40813
-request_id=TEAM-C-STORE-CONFIG-ADMIN-LINKUP-UI-20260909-03
-run_id=34306692818
+source_sha=78bff42d11ad53a6c8df2e425da0d750ca5252c7
+request_id=TEAM-C-INVENTORY-STATISTICAL-ADMIN-UI-20260909-01
+run_id=34307367191
 run_attempt=1
-conclusion=success
+conclusion=failure
