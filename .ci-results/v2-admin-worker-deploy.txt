@@ -1,7 +1,7 @@
-source_sha=ff27845e0421406f29a35d61f0781d9a4de032fb
-request_id=TEAM-A-NATIVE-PRINTER-CODE-FIRST-BLOCKER-DEPLOY-20260909-R1
-run_id=34344973194
+source_sha=c7cf0169e694efdf67717b002296d822e00e618f
+request_id=TEAM-A-SMT-PRINT-AGENT-LAST-MILE-DEPLOY-20260909-R1
+run_id=34346804917
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=fe30332f-f311-41f8-afd2-0687c2fa532c
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
