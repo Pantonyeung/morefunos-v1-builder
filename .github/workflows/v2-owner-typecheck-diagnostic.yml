@@ -1,0 +1,66 @@
+name: V2 Owner Typecheck Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-owner-typecheck-diagnostic-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-owner-typecheck-diagnostic-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - working-directory: source/apps/owner-web
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Capture Owner typecheck
+        shell: bash
+        run: |
+          set +e
+          cd source/apps/owner-web
+          npm run typecheck > ../../../owner-typecheck.txt 2>&1
+          CODE=$?
+          cd ../../..
+          echo "exit_code=$CODE" | cat - owner-typecheck.txt > owner-typecheck.with-code.txt
+          mv owner-typecheck.with-code.txt owner-typecheck.txt
+          exit 0
+      - name: Seal diagnostic
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p .ci-results
+          cp source/owner-typecheck.txt ".ci-results/v2-owner-typecheck-${SOURCE_SHA}.txt"
+          git add .ci-results
+          git commit -m "ci(diag): Owner typecheck ${SOURCE_SHA}" || exit 0
+          git push origin HEAD:main
