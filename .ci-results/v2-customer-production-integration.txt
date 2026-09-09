@@ -1,5 +1,5 @@
-source_sha=4ccffc2ea2456f380f3eaaf4a63e5b736b20e2d5
-request_id=team-c-fulfillment-customer-readback-20260909
-run_id=34339342549
+source_sha=af3a1c0e50124911958d4b173e6790fc74b64ee2
+request_id=team-c-fulfillment-customer-readback-rerun-20260909
+run_id=34339534501
 run_attempt=1
 conclusion=failure
