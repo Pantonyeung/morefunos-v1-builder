@@ -1,5 +1,5 @@
-source_sha=22bdbcb8dd92d61fe87873ee365149a1da999898
-base_sha=fad2c7b9aa5de48742998626a8b3f87e0cd495ba
+source_sha=5dd1997b331f127ec08c158e7b8fa4369d3b94b7
+base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=TEAM-C-DINE-IN-COMMAND-ENTRY-CORE-20260909-02
+request_id=TEAM-C-DINEIN-CORE-COMMAND-LINKUP-20260909-03
