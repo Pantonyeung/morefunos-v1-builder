@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-10T02:04:35.323Z",
-  "sourceSha": "7f5f0e3698f98b319ca06e70197eeaff47d81b66",
-  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R5",
+  "generatedAt": "2026-09-10T02:12:34.371Z",
+  "sourceSha": "0768405387dd19964c0ac86795e942747ab9c9ad",
+  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R6",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 51,
+  "rowCount": 67,
   "traceCount": 2,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
@@ -78,7 +78,7 @@
           "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:19",
           "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
           "status": "PENDING",
-          "firstFailedEdgeId": null,
+          "firstFailedEdgeId": "d1-smm-order-sync-applied",
           "latencyMs": null,
           "lastAt": "2026-09-10T01:40:02.819Z",
           "eventCount": 1,
@@ -114,10 +114,10 @@
           "traceId": "smt-printer-device-list:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:4",
           "journeyId": "STORE_CONFIGURATION_FANOUT_V1",
           "status": "PENDING",
-          "firstFailedEdgeId": null,
+          "firstFailedEdgeId": "d1-admin-store-config-readback",
           "latencyMs": null,
-          "lastAt": "2026-09-10T02:04:16.901Z",
-          "eventCount": 50,
+          "lastAt": "2026-09-10T02:12:16.787Z",
+          "eventCount": 66,
           "edges": [
             {
               "edgeId": "d1-admin-store-config-readback",
