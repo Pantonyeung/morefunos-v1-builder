@@ -1,0 +1,92 @@
+name: V2 Round011 Print Edge Diagnostic
+
+on:
+  push:
+    paths:
+      - 'requests/v2-diagnostics/round011-print-edge.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve frozen candidate
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST='requests/v2-diagnostics/round011-print-edge.txt'
+          CANDIDATE_SHA="$(sed -n 's/^candidate_sha=//p' "$REQUEST" | tail -n1 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout frozen Morefun-v2 candidate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.candidate_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: candidate
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install dependencies
+        working-directory: candidate
+        run: npm ci
+
+      - name: ORDER canonical proof with durable log
+        id: order
+        continue-on-error: true
+        shell: bash
+        working-directory: candidate
+        run: |
+          set -o pipefail
+          npm run test:core-order 2>&1 | tee "$RUNNER_TEMP/round011-order.log"
+
+      - name: PRINT canonical proof with durable log
+        id: print
+        if: always()
+        continue-on-error: true
+        shell: bash
+        working-directory: candidate
+        run: |
+          set -o pipefail
+          npm run test:print 2>&1 | tee "$RUNNER_TEMP/round011-print.log"
+
+      - name: Upload ROUND011 diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: round011-print-edge-diagnostic-${{ steps.request.outputs.candidate_sha }}
+          path: |
+            ${{ runner.temp }}/round011-order.log
+            ${{ runner.temp }}/round011-print.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Preserve RED semantics
+        if: always()
+        shell: bash
+        env:
+          ORDER_OUTCOME: ${{ steps.order.outcome }}
+          PRINT_OUTCOME: ${{ steps.print.outcome }}
+        run: |
+          set -euo pipefail
+          echo "ORDER_OUTCOME=$ORDER_OUTCOME"
+          echo "PRINT_OUTCOME=$PRINT_OUTCOME"
+          [[ "$ORDER_OUTCOME" == 'success' && "$PRINT_OUTCOME" == 'success' ]]
