@@ -104,9 +104,9 @@ No team should need a separate round merely to retrieve the real Guard error.
 
 `Morefun-v2/AUTHORITY.md` -> source and authority rules.
 `Morefun-v2/docs/recovery/START-HERE.md` -> worker entry/routing.
-`Morefun-v2/docs/governance/SYS-SPEC-0003-worker-context-document-governance.md` -> worker/document responsibility and context rules.
+`Morefun-v2/docs/governance/SYS-SPEC-SCOPED-GUARD-AND-WORKER-CONTEXT-2026-09-10.md` -> canonical worker/document responsibility and context rules.
 `Morefun-v2/CURRENT-CYCLE.yaml` -> current operational governance.
-`Morefun-v2/CAPABILITY-CATALOG.yaml` -> capability identity/path truth.
+`Morefun-v2/docs/recovery/commander/CAPABILITY-CATALOG.yaml` -> capability identity/path truth.
 This file -> Builder Guard behavior only.
 
 ## Success criteria
