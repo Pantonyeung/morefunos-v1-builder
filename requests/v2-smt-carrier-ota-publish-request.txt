@@ -1,6 +1,6 @@
-source_sha=d5030b12a5be1b2538bb1fe9e65bdfc070a022ea
-apk_source_sha=d5030b12a5be1b2538bb1fe9e65bdfc070a022ea
-signed_release_run_id=34362080904
-expected_version_name=1.0.2
-expected_version_code=102
-request_id=TEAM-A-SMT-1.0.2-RESTART-SAFE-GATEWAY-OTA-PUBLISH-20260909
+source_sha=914f78a67e3e5a057212b9470555bf5b3ada0a1e
+apk_source_sha=914f78a67e3e5a057212b9470555bf5b3ada0a1e
+signed_release_run_id=34422371625
+expected_version_name=1.0.3
+expected_version_code=103
+request_id=F2-SMT-CARRIER-1.0.3-INSTALLER-REPAIR-OTA-PUBLISH-20260910
