@@ -53,7 +53,10 @@ jobs:
           test -n "$COOKIE"
           HTTP="$(curl -sS -o /tmp/business-day.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day")"
           echo "business_day_http=$HTTP" | tee -a evidence/http-status.txt
-          test "$HTTP" = 200
+          if [[ "$HTTP" != 200 ]]; then
+            node -e "const x=require('/tmp/business-day.json'); console.log('business_day_code='+String(x.code||'UNKNOWN'))" | tee -a evidence/http-status.txt
+            exit 41
+          fi
           node - <<'NODE' | tee evidence/admin-business-day.txt
           const x=require('/tmp/business-day.json');
           if(!x.ok||!x.value) throw new Error('ADMIN_BUSINESS_DAY_READBACK_INVALID');
