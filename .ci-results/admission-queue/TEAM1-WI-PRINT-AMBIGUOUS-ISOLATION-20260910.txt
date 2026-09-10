@@ -1,0 +1,13 @@
+work_id=TEAM1-WI-PRINT-AMBIGUOUS-ISOLATION-20260910
+candidate_sha=e2ff215a6297343948af742496f870a9a4d70a07
+base_main_sha=9f7c89caf4c04aa68689acb1ebf83e852f0a3ee3
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34447796023
+conclusion=failure
