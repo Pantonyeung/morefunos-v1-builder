@@ -1,0 +1,2 @@
+TARGET_BRANCH=work/PRT/B0321-smt-durable-print-readback-no-poll
+EXPECTED_HEAD=3cae4b2e1653e8c7abed5c6881b24c256f45e6b9
