@@ -1,0 +1,13 @@
+work_id=F2-WI-ADMIN-REPORTING-READBACK-20260910
+candidate_sha=1d406a7dc0e786becd56198b543f928be1494903
+base_main_sha=e028cf4e08e6e8116dad5187853ea06af9c1b3cd
+latest_main_sha=a31cb4100162b653a9b63454344c3da453267f92
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34425277438
+conclusion=success
