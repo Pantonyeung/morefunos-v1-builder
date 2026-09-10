@@ -7,6 +7,9 @@ on:
         description: Exact frozen Morefun-v2 SHA to diagnose
         required: true
         type: string
+  push:
+    paths:
+      - 'requests/v2-proof-diagnostic/*.txt'
 
 permissions:
   contents: read
@@ -16,12 +19,37 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Checkout Builder request
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Resolve candidate SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            CANDIDATE_SHA="$(printf '%s' "$INPUT_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            REQUEST_FILE="$(git diff --name-only HEAD^ HEAD -- 'requests/v2-proof-diagnostic/*.txt' | head -n1)"
+            test -n "$REQUEST_FILE"
+            CANDIDATE_SHA="$(sed -n 's/^candidate_sha=//p' "$REQUEST_FILE" | tail -n1 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
       - name: Checkout V2 candidate
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
-          ref: ${{ inputs.candidate_sha }}
+          ref: ${{ steps.request.outputs.candidate_sha }}
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: candidate
           fetch-depth: 0
           persist-credentials: false
 
@@ -31,33 +59,37 @@ jobs:
           node-version: '24'
 
       - name: Install
+        working-directory: candidate
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck
-        run: npm run typecheck 2>&1 | tee typecheck.log
+        working-directory: candidate
+        run: npm run typecheck 2>&1 | tee ../typecheck.log
 
       - name: ORDER proof with durable log
         id: order
         continue-on-error: true
+        working-directory: candidate
         shell: bash
         run: |
           set -o pipefail
           mapfile -t canonical_order_tests < <(find packages/order -maxdepth 1 -type f -name '*.test.ts' ! -name 'postgres-*.integration.test.ts' -print | sort)
-          node --test --test-concurrency=1 "${canonical_order_tests[@]}" 2>&1 | tee order-proof.log
+          node --test --test-concurrency=1 "${canonical_order_tests[@]}" 2>&1 | tee ../order-proof.log
 
       - name: PRINT proof with durable log
         id: print
         continue-on-error: true
+        working-directory: candidate
         shell: bash
         run: |
           set -o pipefail
-          npm run test:print 2>&1 | tee print-proof.log
+          npm run test:print 2>&1 | tee ../print-proof.log
 
       - name: Upload proof diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-proof-diagnostic-${{ inputs.candidate_sha }}
+          name: v2-proof-diagnostic-${{ steps.request.outputs.candidate_sha }}
           path: |
             typecheck.log
             order-proof.log
