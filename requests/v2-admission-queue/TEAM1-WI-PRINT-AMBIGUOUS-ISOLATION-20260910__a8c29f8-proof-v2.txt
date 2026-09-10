@@ -1,0 +1,9 @@
+candidate_sha=a8c29f8d49334eb7a2bc1ea5e896532aefb49fda
+base_main_sha=d3a9820183446aaead4d47184fb5052941ea2f8c
+work_id=TEAM1-WI-PRINT-AMBIGUOUS-ISOLATION-20260910
+capability_id=CAP-PRINT-AUTO-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT
+required_core_tests=PRINT
+force_full_proof=true
+proof_source_sha=a8c29f8d49334eb7a2bc1ea5e896532aefb49fda
