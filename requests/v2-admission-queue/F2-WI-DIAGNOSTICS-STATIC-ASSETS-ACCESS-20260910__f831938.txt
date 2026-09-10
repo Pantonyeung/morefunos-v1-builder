@@ -1,0 +1,10 @@
+candidate_sha=f831938035b824e22c21adb039a8f9e6dcc1e102
+base_main_sha=430477fdba8b4c14c5400fb052cf88a70c3aee53
+work_id=F2-WI-DIAGNOSTICS-STATIC-ASSETS-ACCESS-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=REGRESSION_REPAIR
+affected_ports=CORE
+depends_on_specs=
+supersedes_candidate_sha=1e12580dd41231396feacbe5ad8469a74f8a137e
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
