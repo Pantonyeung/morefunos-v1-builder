@@ -1,0 +1,13 @@
+work_id=F2-WI-DIAGNOSTICS-FIRST-UNRESOLVED-EDGE-20260910
+candidate_sha=0c5362ac963320e49fdc9defa63910aca41e04bf
+base_main_sha=899bb8c8142fb2f6687f4722fa444d29d20f3585
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34428228716
+conclusion=failure
