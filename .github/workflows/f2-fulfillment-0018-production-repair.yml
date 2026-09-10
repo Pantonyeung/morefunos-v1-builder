@@ -35,13 +35,27 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Fetch exact admitted migration 0018
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact V2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify and stage exact admitted migration 0018
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence
-          URL="https://raw.githubusercontent.com/$V2_REPO/${{ steps.req.outputs.source_sha }}/infra/cloudflare/d1/migrations/0018-fulfillment-runtime-authority.sql"
-          curl -fsSL "$URL" -o /tmp/0018.sql
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          cp source/infra/cloudflare/d1/migrations/0018-fulfillment-runtime-authority.sql /tmp/0018.sql
           test -s /tmp/0018.sql
           grep -Fq 'CREATE TABLE IF NOT EXISTS mfos_fulfillment_state' /tmp/0018.sql
           grep -Fq 'CREATE TABLE IF NOT EXISTS mfos_fulfillment_policy' /tmp/0018.sql
