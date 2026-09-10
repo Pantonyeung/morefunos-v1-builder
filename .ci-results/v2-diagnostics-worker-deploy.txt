@@ -1,7 +1,7 @@
-source_sha=bbf9baafc4ab1547d7762340fbc527fb8f18eef4
-request_id=diagnostics-http-control-plane-20260910-r3-smoke-debug
-run_id=34420744447
+source_sha=0768405387dd19964c0ac86795e942747ab9c9ad
+request_id=F2-DIAGNOSTICS-FIRST-UNRESOLVED-EDGE-DEPLOY-20260910
+run_id=34428621734
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-diagnostics.pantonyeung.workers.dev
-worker_version=cba8f0d7-6e9c-4aa4-bd1c-4371051aa98e
+worker_version=f9405f87-fd70-4443-841d-b97f1bf15f62
