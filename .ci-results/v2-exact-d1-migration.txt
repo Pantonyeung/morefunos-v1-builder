@@ -1,6 +1,6 @@
-source_sha=7e7d500da26483d60ea5d881d580166ad41e6a26
-migration_file=0054-system-diagnostics-trace.sql
-request_id=F2-SYSTEM-DIAGNOSTICS-D1-PRODUCTION-20260910
-run_id=34425333768
+source_sha=9a5e75633186d606e50792e84d1c350b54780874
+migration_file=0054-business-day-close-variance-policy.sql
+request_id=ROUND019-E-BUSINESS-DAY-CLOSE-VARIANCE-PRODUCTION-SCHEMA-20260911
+run_id=34518543226
 run_attempt=1
 conclusion=success
