@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
-          cat > /tmp/shape.sql <<'SQL'
+          read -r -d '' SQL <<'SQL' || true
           SELECT 'accepted_top' AS scope, je.key AS json_key, je.type AS json_type, COUNT(*) AS occurrences
           FROM mfos_order_state o, json_each(o.accepted_projection_json) je
           WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
@@ -62,7 +62,7 @@ jobs:
           GROUP BY li_key.key,li_key.type
           ORDER BY scope,json_key,json_type;
           SQL
-          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --file /tmp/shape.sql > evidence/raw.json
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json
           node - <<'NODE'
           const fs=require('node:fs');
           const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
