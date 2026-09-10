@@ -78,8 +78,9 @@ jobs:
             native.includes("incomingEvidence==='native-print:'+request.dispatchAttemptId"),
             'legacy carrier evidenceId remains accepted');
           check('TAIL_AMBIGUOUS_ISOLATION',
-            trusted.includes("const active=all.find(job=>job.state==='PRINTING')") && !trusted.includes("job.state==='PRINTING'||job.state==='AMBIGUOUS'"),
-            'AMBIGUOUS sibling does not block independent pending output');
+            trusted.includes("const active=all.find(job=>job.state==='PRINTING');")
+              && trusted.includes("const job=all.find(candidate=>candidate.origin==='AUTO_ORDER'&&(candidate.state==='PENDING'||candidate.state==='HOLD'));"),
+            'only PRINTING blocks dispatch; pending/HOLD independent outputs remain selectable');
 
           const failed=checks.filter(x=>!x.ok);
           console.log(`SUMMARY total=${checks.length} pass=${checks.length-failed.length} fail=${failed.length}`);
