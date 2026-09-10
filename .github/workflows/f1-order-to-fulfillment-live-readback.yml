@@ -62,6 +62,39 @@ jobs:
           }
           NODE
 
+      - name: Diagnose first missing Order against Fulfillment prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          TARGET="$(cat /tmp/target-order)"
+          query(){
+            NAME="$1"; SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/diag-$NAME.json"
+          }
+          query order "SELECT order_id,store_id,revision,lifecycle_status,order_snapshot_json,accepted_projection_json FROM mfos_order_state WHERE order_id='$TARGET' LIMIT 1"
+          query policy "SELECT store_id,intent,scope_key,policy_ref,policy_version,mode,active FROM mfos_fulfillment_policy ORDER BY updated_at DESC LIMIT 10"
+          query idempotency "SELECT idempotency_key,completed_at FROM mfos_fulfillment_idempotency ORDER BY completed_at DESC LIMIT 10"
+          TARGET="$TARGET" node - <<'NODE' | tee evidence/prerequisites.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/diag-'+n+'.json','utf8')).result?.[0]?.results||[];
+          const row=rows('order')[0];
+          if(!row)throw new Error('TARGET_ORDER_MISSING');
+          const raw=row.order_snapshot_json||row.accepted_projection_json||'{}';
+          let p={};try{p=JSON.parse(raw)}catch{}
+          console.log('db_order_id='+row.order_id);
+          console.log('db_store_id='+row.store_id);
+          console.log('db_revision='+row.revision);
+          console.log('db_lifecycle='+row.lifecycle_status);
+          console.log('projection_orderId='+String(p.orderId??''));
+          console.log('projection_storeId='+String(p.storeId??''));
+          console.log('projection_orderRevision='+String(p.orderRevision??''));
+          console.log('projection_revision='+String(p.revision??''));
+          console.log('policy_rows='+rows('policy').length);
+          console.log('fulfillment_idempotency_rows='+rows('idempotency').length);
+          NODE
+
       - name: Trigger post-commit recovery without creating business data
         shell: bash
         run: |
