@@ -48,10 +48,15 @@ on:
         default: ''
         type: string
       force_full_proof:
-        description: Force affected-port integration proof even when candidate is already admitted (post-admission exact-main verification only)
+        description: Force affected-port integration proof even when candidate is already admitted
         required: false
         default: false
         type: boolean
+      proof_source_sha:
+        description: Optional exact Morefun-v2 source SHA to execute proof against while candidate_sha supplies the governance envelope
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -89,6 +94,7 @@ jobs:
           INPUT_SUPERSEDES_CANDIDATE_SHA: ${{ inputs.supersedes_candidate_sha }}
           INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
           INPUT_FORCE_FULL_PROOF: ${{ inputs.force_full_proof }}
+          INPUT_PROOF_SOURCE_SHA: ${{ inputs.proof_source_sha }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
@@ -109,6 +115,7 @@ jobs:
             SUPERSEDES_CANDIDATE_SHA="$(printf '%s' "$INPUT_SUPERSEDES_CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(printf '%s' "$INPUT_REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(printf '%s' "$INPUT_FORCE_FULL_PROOF" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            PROOF_SOURCE_SHA="$(printf '%s' "$INPUT_PROOF_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUEST_FILE=WORKFLOW_DISPATCH
           else
             mapfile -t REQUEST_FILES < <(
@@ -141,12 +148,18 @@ jobs:
             SUPERSEDES_CANDIDATE_SHA="$(read_request supersedes_candidate_sha "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(read_request force_full_proof "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            PROOF_SOURCE_SHA="$(read_request proof_source_sha "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           fi
           DEPENDS_ON_SPECS="${DEPENDS_ON_SPECS:-}"
           SUPERSEDES_CANDIDATE_SHA="${SUPERSEDES_CANDIDATE_SHA:-}"
           REQUIRED_CORE_TESTS="${REQUIRED_CORE_TESTS:-}"
           FORCE_FULL_PROOF="${FORCE_FULL_PROOF:-false}"
+          PROOF_SOURCE_SHA="${PROOF_SOURCE_SHA:-}"
           [[ "$FORCE_FULL_PROOF" == "true" || "$FORCE_FULL_PROOF" == "false" ]]
+          if [[ -n "$PROOF_SOURCE_SHA" ]]; then
+            [[ "$PROOF_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$FORCE_FULL_PROOF" == "true" ]] || { echo "PROOF_SOURCE_SHA_REQUIRES_FORCE_FULL_PROOF" >&2; exit 28; }
+          fi
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
           test -n "$WORK_ID"
@@ -198,6 +211,7 @@ jobs:
           echo "supersedes_candidate_sha=$SUPERSEDES_CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
           echo "force_full_proof=$FORCE_FULL_PROOF" >> "$GITHUB_OUTPUT"
+          echo "proof_source_sha=$PROOF_SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
@@ -237,12 +251,20 @@ jobs:
           BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
           DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
           FORCE_FULL_PROOF: ${{ steps.request.outputs.force_full_proof }}
+          PROOF_SOURCE_SHA: ${{ steps.request.outputs.proof_source_sha }}
           SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         run: |
           set -euo pipefail
           LATEST_SHA="$(git -C latest rev-parse HEAD)"
           ACTUAL_CANDIDATE="$(git -C candidate rev-parse HEAD)"
           test "$ACTUAL_CANDIDATE" = "$CANDIDATE_SHA"
+          if [[ -n "$PROOF_SOURCE_SHA" ]]; then
+            git -C candidate cat-file -e "${PROOF_SOURCE_SHA}^{commit}"
+            git -C candidate merge-base --is-ancestor "$PROOF_SOURCE_SHA" "$CANDIDATE_SHA" || {
+              echo "PROOF_SOURCE_NOT_ANCESTOR_OF_GOVERNANCE_ENVELOPE:$PROOF_SOURCE_SHA:$CANDIDATE_SHA" >&2
+              exit 29
+            }
+          fi
           git -C latest cat-file -e "${BASE_SHA}^{commit}"
           git -C candidate cat-file -e "${BASE_SHA}^{commit}"
           if ! git -C latest merge-base --is-ancestor "$BASE_SHA" "$LATEST_SHA"; then
@@ -313,7 +335,12 @@ jobs:
           fi
 
           rm -rf integration
-          if [[ "$ALREADY_ADMITTED" == true && "$FORCE_FULL_PROOF" == true ]]; then
+          if [[ -n "$PROOF_SOURCE_SHA" && "$FORCE_FULL_PROOF" == true ]]; then
+            cp -a candidate integration
+            git -C integration checkout --detach "$PROOF_SOURCE_SHA"
+            test "$(git -C integration rev-parse HEAD)" = "$PROOF_SOURCE_SHA"
+            VERIFICATION_SOURCE=EXACT_PROOF_SOURCE
+          elif [[ "$ALREADY_ADMITTED" == true && "$FORCE_FULL_PROOF" == true ]]; then
             cp -a candidate integration
             VERIFICATION_SOURCE=FROZEN_CANDIDATE
           else
@@ -475,6 +502,7 @@ jobs:
             echo "latest_main_sha=$LATEST_SHA"
             echo "already_admitted=$ALREADY_ADMITTED"
             echo "verification_source=$VERIFICATION_SOURCE"
+            echo "proof_source_sha=${PROOF_SOURCE_SHA:-}"
             echo "collision=$COLLISION"
             echo "impact=$IMPACT"
             echo "reason=$REASON"
