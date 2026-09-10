@@ -65,7 +65,10 @@ jobs:
           set -euo pipefail
           cat > /tmp/evaluate.mjs <<'NODE'
           import fs from 'node:fs';
-          import {SYSTEM_DIAGNOSTIC_JOURNEYS,evaluateSystemDiagnosticJourney} from process.cwd()+'/source/packages/system-diagnostics/system-link-diagnostics.ts';
+          import path from 'node:path';
+          import {pathToFileURL} from 'node:url';
+          const diagnosticsModule=await import(pathToFileURL(path.join(process.cwd(),'source/packages/system-diagnostics/system-link-diagnostics.ts')).href);
+          const {SYSTEM_DIAGNOSTIC_JOURNEYS,evaluateSystemDiagnosticJourney}=diagnosticsModule;
 
           const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
           const batches=Array.isArray(raw)?raw:[raw];
