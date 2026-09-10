@@ -1,0 +1,13 @@
+work_id=F2-WI-SMM-CAPACITY-READBACK-SINK-20260910
+candidate_sha=be8fdff02e8e96ccc9f599dd4497dafe8323d032
+base_main_sha=8318b9fd24cf1dfd81c8d124730f2f00c57c1911
+latest_main_sha=be8fdff02e8e96ccc9f599dd4497dafe8323d032
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34422621290
+conclusion=success
