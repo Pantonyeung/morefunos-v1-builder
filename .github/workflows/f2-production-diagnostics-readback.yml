@@ -54,7 +54,16 @@ jobs:
           mkdir -p evidence
           CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
           SQL="SELECT store_id,trace_id,journey_id,edge_id,source_endpoint,target_endpoint,stage,occurred_at,expected_version,observed_version,expected_fingerprint,observed_fingerprint,error_code,ingested_at FROM mfos_system_diagnostic_trace_event ORDER BY occurred_at DESC LIMIT 5000;"
-          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json
+          set +e
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json 2> evidence/readback.stderr.txt
+          STATUS=$?
+          set -e
+          if [[ "$STATUS" -ne 0 ]]; then
+            echo "D1_READBACK_EXIT=$STATUS" >&2
+            cat evidence/readback.stderr.txt >&2 || true
+            test -s evidence/raw.json && cat evidence/raw.json >&2 || true
+            exit "$STATUS"
+          fi
 
       - name: Evaluate traces with V2 canonical journey specs
         env:
@@ -169,7 +178,8 @@ jobs:
             if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then
               cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/f2-production-diagnostics-readback.json
             else
-              printf '{"sourceSha":"%s","requestId":"%s","runId":"%s","conclusion":"%s","error":"READBACK_FAILED"}\n' "$SOURCE_SHA" "$REQUEST_ID" "$RUN_ID" "$CONCLUSION" > .ci-results/f2-production-diagnostics-readback.json
+              STDERR="$(tail -c 4000 "$GITHUB_WORKSPACE/evidence/readback.stderr.txt" 2>/dev/null | tr '\n' ' ' | sed 's/"/\\\"/g' || true)"
+              printf '{"sourceSha":"%s","requestId":"%s","runId":"%s","conclusion":"%s","error":"READBACK_FAILED","stderr":"%s"}\n' "$SOURCE_SHA" "$REQUEST_ID" "$RUN_ID" "$CONCLUSION" "$STDERR" > .ci-results/f2-production-diagnostics-readback.json
             fi
             git add .ci-results/f2-production-diagnostics-readback.json
             if ! git diff --cached --quiet; then git commit -m "diag(result): F2 production trace readback $CONCLUSION"; fi
