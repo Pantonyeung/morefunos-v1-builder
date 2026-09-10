@@ -1,1 +1,341 @@
-{"sourceSha":"7e7d500da26483d60ea5d881d580166ad41e6a26","requestId":"F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R2","runId":"34425263645","conclusion":"failure","error":"READBACK_FAILED","stderr":""}
+{
+  "generatedAt": "2026-09-10T01:25:25.816Z",
+  "sourceSha": "729282bca86b953fa7d5ecd9adb49feb4cd030ce",
+  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R3",
+  "mode": "REMOTE_D1_SELECT_ONLY",
+  "rowCount": 0,
+  "traceCount": 0,
+  "stores": [],
+  "byJourney": {
+    "LARGE_ORDER_B2B_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "CHANNEL_SETTLEMENT_ESTIMATE_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "MERCHANT_STORE_IDENTITY_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "EVENT_DURABILITY_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "OPERATIONAL_CAPACITY_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "ORDER_SYNC_RECONCILIATION_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "STORE_CONFIGURATION_FANOUT_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "IDENTITY_SECURITY_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "BUSINESS_OPERATIONS_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "MANAGEMENT_REPORTING_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "PRODUCTION_OPERATIONS_SMT_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "CATALOG_PUBLICATION_FANOUT_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "PRICING_PUBLICATION_FANOUT_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "AVAILABILITY_PUBLICATION_FANOUT_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "CUSTOMER_PROFILE_GROWTH_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "PAYMENT_TO_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "REFUND_TO_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMT_PAYMENT_INGRESS_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMM_PAYMENT_INGRESS_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMT_REFUND_INGRESS_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMM_REFUND_INGRESS_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "CUSTOMER_ORDER_END_TO_END_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "INVENTORY_STATISTICAL_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMM_PRINT_CANONICAL_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "HUMAN_CUSTODY_FRONTLINE_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "PRINT_OFFLINE_INTENT_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "PRINT_RUNTIME_READBACK_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "ORDER_TO_PRINT_DEVICE_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMT_CONFIRM_TO_ADMIN_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    },
+    "SMM_CONFIRM_TO_ADMIN_V1": {
+      "traceCount": 0,
+      "counts": {
+        "PASS": 0,
+        "PENDING": 0,
+        "FAIL": 0,
+        "UNKNOWN": 0
+      },
+      "latest": [],
+      "latestPass": null
+    }
+  }
+}
