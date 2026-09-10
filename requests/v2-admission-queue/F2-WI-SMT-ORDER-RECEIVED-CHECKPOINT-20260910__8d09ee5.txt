@@ -1,0 +1,10 @@
+candidate_sha=8d09ee5e3120595125dddcdd9c2db70d54da7141
+base_main_sha=f831938035b824e22c21adb039a8f9e6dcc1e102
+work_id=F2-WI-SMT-ORDER-RECEIVED-CHECKPOINT-20260910
+capability_id=CAP-CUSTOMER-ORDER-001
+capability_action=LINKUP
+affected_ports=SMT,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
