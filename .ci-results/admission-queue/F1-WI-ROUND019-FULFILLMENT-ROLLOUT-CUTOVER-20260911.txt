@@ -1,0 +1,13 @@
+work_id=F1-WI-ROUND019-FULFILLMENT-ROLLOUT-CUTOVER-20260911
+candidate_sha=42d9388795f0e9e78f54d44c23048389b988173f
+base_main_sha=a2178045d74369064e4a1594908a531b0dee99c7
+latest_main_sha=a2178045d74369064e4a1594908a531b0dee99c7
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34541772052
+conclusion=success
