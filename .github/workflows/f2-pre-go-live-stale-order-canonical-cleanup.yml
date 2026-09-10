@@ -1,0 +1,148 @@
+name: F2 Pre Go Live Stale Order Canonical Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-pre-go-live-stale-order-canonical-cleanup-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SMT_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      CUTOFF: 2026-09-10T23:18:26Z
+      CLEANUP_REASON: PRE_GO_LIVE_STALE_ORDER_CLEANUP_20260911
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-pre-go-live-stale-order-canonical-cleanup-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$ADMIN_LOGIN_SECRET"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight exact stale order set
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT o.order_id,o.store_id,o.revision,o.lifecycle_status,o.created_at,
+                      (SELECT COUNT(*) FROM mfos_payment_state p WHERE p.order_id=o.order_id) AS payment_count,
+                      (SELECT COUNT(*) FROM mfos_outbox x WHERE x.aggregate_id=o.order_id AND x.event_type IN ('OrderCompleted','OrderCancelled')) AS terminal_event_count
+                 FROM mfos_order_state o
+                WHERE o.lifecycle_status='ACCEPTED'
+                ORDER BY o.created_at ASC,o.order_id ASC"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/preflight.json
+          CUTOFF="$CUTOFF" node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const x=require('./evidence/preflight.json');
+          const rows=x.result?.[0]?.results||[];
+          if(!x.success)throw new Error('STALE_ORDER_PREFLIGHT_D1_FAILED');
+          const cutoff=Date.parse(process.env.CUTOFF);
+          const unsafe=rows.filter(r=>Date.parse(r.created_at)>=cutoff||Number(r.payment_count)!==0||Number(r.terminal_event_count)!==0);
+          console.log('accepted_count='+rows.length);
+          console.log('unsafe_count='+unsafe.length);
+          console.log('cutoff='+process.env.CUTOFF);
+          if(rows.length!==45)throw new Error('STALE_ORDER_SET_CHANGED_FAIL_CLOSED:'+rows.length);
+          if(unsafe.length)throw new Error('STALE_ORDER_UNSAFE_ROWS_FAIL_CLOSED:'+unsafe.length);
+          fs.writeFileSync('/tmp/orders.json',JSON.stringify(rows));
+          console.log('preflight=PASS');
+          NODE
+
+      - name: Acquire trusted SMT session
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMT_ORIGIN/api/smt/session")"
+          echo "session_http=$HTTP" | tee evidence/session.txt
+          test "$HTTP" = 200
+          TOKEN="$(node -p "require('/tmp/session.json').sessionToken||''")"
+          test -n "$TOKEN"
+          echo "$TOKEN" >/tmp/token
+          node -e "const x=require('/tmp/session.json');console.log('store_id='+String(x.storeId||''));console.log('operator_id_present='+String(Boolean(x.operatorId||x.staffId||x.actorId)))" | tee -a evidence/session.txt
+
+      - name: Canonically cancel stale pre-go-live orders
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/token)"
+          node - <<'NODE' >/tmp/cancel-lines.jsonl
+          const rows=require('/tmp/orders.json');
+          for(const r of rows){
+            process.stdout.write(JSON.stringify({
+              orderId:r.order_id,
+              expectedRevision:Number(r.revision),
+              idempotencyKey:'pre-go-live-cleanup:'+r.order_id+':'+r.revision,
+            })+'\n');
+          }
+          NODE
+          : > evidence/cancel-results.txt
+          while IFS= read -r line; do
+            ORDER_ID="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(x.orderId)")"
+            REV="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(String(x.expectedRevision))")"
+            IDEM="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(x.idempotencyKey)")"
+            ORDER_ID="$ORDER_ID" REV="$REV" IDEM="$IDEM" CLEANUP_REASON="$CLEANUP_REASON" node -e "require('fs').writeFileSync('/tmp/cancel.json',JSON.stringify({operationId:'order.cancel.v1',request:{orderId:process.env.ORDER_ID,expectedRevision:Number(process.env.REV),idempotencyKey:process.env.IDEM,reason:process.env.CLEANUP_REASON}}))"
+            HTTP="$(curl -sS -o /tmp/cancel.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/cancel.json "$SMT_ORIGIN/api/smt/runtime")"
+            echo "$ORDER_ID http=$HTTP" >> evidence/cancel-results.txt
+            if [[ "$HTTP" != 200 ]]; then
+              cat /tmp/cancel.out.json >> evidence/cancel-results.txt
+              exit 1
+            fi
+            ORDER_ID="$ORDER_ID" REV="$REV" node -e "const x=require('/tmp/cancel.out.json');const v=x.value??x;if(v.orderId!==process.env.ORDER_ID||v.lifecycleStatus!=='CANCELLED'||Number(v.revision)!==Number(process.env.REV)+1){console.error(JSON.stringify(x));process.exit(1)}"
+          done < /tmp/cancel-lines.jsonl
+
+      - name: Verify canonical cleanup postcondition
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){
+            NAME="$1"; SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/post-$NAME.json"
+          }
+          query open "SELECT COUNT(*) AS count_value FROM mfos_order_state WHERE lifecycle_status='ACCEPTED'"
+          query cancelled "SELECT COUNT(*) AS count_value FROM mfos_order_state WHERE lifecycle_status='CANCELLED' AND updated_at>='2026-09-10T23:45:00Z'"
+          query audit "SELECT COUNT(*) AS count_value FROM mfos_order_lifecycle_audit WHERE command_kind='CANCEL' AND idempotency_key LIKE 'pre-go-live-cleanup:%'"
+          query events "SELECT COUNT(*) AS count_value FROM mfos_outbox WHERE event_type='OrderCancelled' AND payload_json LIKE '%PRE_GO_LIVE_STALE_ORDER_CLEANUP_20260911%'"
+          node - <<'NODE' | tee evidence/postcondition.txt
+          const fs=require('fs');
+          const count=n=>Number(JSON.parse(fs.readFileSync('evidence/post-'+n+'.json','utf8')).result?.[0]?.results?.[0]?.count_value??-1);
+          const open=count('open'), cancelled=count('cancelled'), audit=count('audit'), events=count('events');
+          console.log('accepted_remaining='+open);
+          console.log('recent_cancelled='+cancelled);
+          console.log('cleanup_audit_rows='+audit);
+          console.log('cleanup_cancel_events='+events);
+          if(open!==0||audit!==45||events!==45)process.exit(1);
+          console.log('canonical_cleanup=PASS');
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-pre-go-live-stale-order-canonical-cleanup-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
