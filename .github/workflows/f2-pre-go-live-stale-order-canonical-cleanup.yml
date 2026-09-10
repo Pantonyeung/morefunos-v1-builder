@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SMT_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      SMM_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
       ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -69,18 +69,26 @@ jobs:
           console.log('preflight=PASS');
           NODE
 
-      - name: Acquire trusted SMT session
+      - name: Acquire trusted SMM Owner Test session
         shell: bash
         run: |
           set -euo pipefail
           BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
-          HTTP="$(curl -sS -o /tmp/session.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMT_ORIGIN/api/smt/session")"
-          echo "session_http=$HTTP" | tee evidence/session.txt
-          test "$HTTP" = 200
-          TOKEN="$(node -p "require('/tmp/session.json').sessionToken||''")"
+          PAIR_HTTP="$(curl -sS -o /tmp/pair.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMM_ORIGIN/api/smm/session")"
+          echo "pair_http=$PAIR_HTTP" | tee evidence/session.txt
+          test "$PAIR_HTTP" = 200
+          PAIR_TOKEN="$(node -p "require('/tmp/pair.json').sessionToken||''")"
+          test -n "$PAIR_TOKEN"
+          OWNER_HTTP="$(curl -sS -o /tmp/owner-test.json -w '%{http_code}' -H "authorization: Bearer $PAIR_TOKEN" -H 'content-type: application/json' --data "$BODY" "$SMM_ORIGIN/api/smm/owner-test-session")"
+          echo "owner_test_http=$OWNER_HTTP" | tee -a evidence/session.txt
+          test "$OWNER_HTTP" = 200
+          TOKEN="$(node -p "require('/tmp/owner-test.json').sessionToken||''")"
+          MODE="$(node -p "require('/tmp/owner-test.json').mode||''")"
           test -n "$TOKEN"
+          test "$MODE" = "OWNER_TEST"
           echo "$TOKEN" >/tmp/token
-          node -e "const x=require('/tmp/session.json');console.log('store_id='+String(x.storeId||''));console.log('operator_id_present='+String(Boolean(x.operatorId||x.staffId||x.actorId)))" | tee -a evidence/session.txt
+          node -e "const x=require('/tmp/owner-test.json');console.log('store_id='+String(x.storeId||''));console.log('operator_id_present='+String(Boolean(x.operatorId||x.staffId||x.actorId)));console.log('mounted_cancel='+String((x.mountedOperationIds||[]).includes('order.cancel.v1')))" | tee -a evidence/session.txt
+          node -e "const x=require('/tmp/owner-test.json');if(!(x.mountedOperationIds||[]).includes('order.cancel.v1'))process.exit(1)"
 
       - name: Canonically cancel stale pre-go-live orders
         shell: bash
@@ -103,7 +111,7 @@ jobs:
             REV="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(String(x.expectedRevision))")"
             IDEM="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(x.idempotencyKey)")"
             ORDER_ID="$ORDER_ID" REV="$REV" IDEM="$IDEM" CLEANUP_REASON="$CLEANUP_REASON" node -e "require('fs').writeFileSync('/tmp/cancel.json',JSON.stringify({operationId:'order.cancel.v1',request:{orderId:process.env.ORDER_ID,expectedRevision:Number(process.env.REV),idempotencyKey:process.env.IDEM,reason:process.env.CLEANUP_REASON}}))"
-            HTTP="$(curl -sS -o /tmp/cancel.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/cancel.json "$SMT_ORIGIN/api/smt/runtime")"
+            HTTP="$(curl -sS -o /tmp/cancel.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/cancel.json "$SMM_ORIGIN/api/smm/runtime")"
             echo "$ORDER_ID http=$HTTP" >> evidence/cancel-results.txt
             if [[ "$HTTP" != 200 ]]; then
               cat /tmp/cancel.out.json >> evidence/cancel-results.txt
