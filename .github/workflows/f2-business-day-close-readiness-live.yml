@@ -1,0 +1,94 @@
+name: F2 Business Day Close Readiness Live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-business-day-close-readiness-live-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-business-day-close-readiness-live-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Read canonical close readiness inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){
+            NAME="$1"; SQL="$2";
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -sS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/$NAME.json"
+            NAME="$NAME" node -e "const x=require('./evidence/'+process.env.NAME+'.json');if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
+          }
+          query day "SELECT business_day_id,store_id,business_date,opened_at,revision FROM mfos_business_day WHERE lifecycle_status='OPEN' ORDER BY opened_at DESC LIMIT 1"
+          STORE_ID="$(node -e "const x=require('./evidence/day.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);process.stdout.write(r.store_id)")"
+          DAY_ID="$(node -e "const x=require('./evidence/day.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);process.stdout.write(r.business_day_id)")"
+          query open_orders "SELECT COUNT(*) AS count_value FROM mfos_order_state WHERE store_id='$STORE_ID' AND lifecycle_status NOT IN ('COMPLETED','CANCELLED')"
+          query pending_payments "SELECT COUNT(*) AS count_value FROM mfos_payment_state WHERE store_id='$STORE_ID' AND lifecycle_status<>'COMPLETED'"
+          query open_cash_shift "SELECT COUNT(*) AS count_value FROM mfos_cash_shift WHERE store_id='$STORE_ID' AND business_day_id='$DAY_ID' AND lifecycle_status='OPEN'"
+          query pending_sync "SELECT COUNT(*) AS count_value FROM mfos_outbox WHERE store_id='$STORE_ID' AND status='PENDING'"
+          query failed_sync "SELECT COUNT(*) AS count_value FROM mfos_outbox WHERE store_id='$STORE_ID' AND status='FAILED'"
+          query operator_attention "SELECT COUNT(*) AS count_value FROM mfos_print_job p WHERE p.state IN ('FAILED','AMBIGUOUS') AND EXISTS(SELECT 1 FROM mfos_order_state o WHERE o.order_id=p.order_id AND o.store_id='$STORE_ID')"
+          node - <<'NODE' | tee evidence/summary.txt
+          const fs=require('fs');
+          const one=n=>{const x=JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8'));return x.result?.[0]?.results?.[0]||null};
+          const day=one('day');
+          const count=n=>Number(one(n)?.count_value??-1);
+          const values={
+            openOrderCount:count('open_orders'),
+            pendingPaymentCount:count('pending_payments'),
+            openCashShiftCount:count('open_cash_shift'),
+            pendingSyncCount:count('pending_sync'),
+            failedSyncCount:count('failed_sync'),
+            operatorAttentionCount:count('operator_attention'),
+          };
+          if(Object.values(values).some(v=>!Number.isSafeInteger(v)||v<0))throw new Error('CLOSE_READINESS_COUNT_INVALID');
+          const blockers=[];
+          if(values.openOrderCount>0)blockers.push(['OPEN_ORDERS',values.openOrderCount]);
+          if(values.pendingPaymentCount>0)blockers.push(['PENDING_PAYMENTS',values.pendingPaymentCount]);
+          if(values.openCashShiftCount>0)blockers.push(['OPEN_CASH_SHIFT',values.openCashShiftCount]);
+          if(values.openOrderCount>0)blockers.push(['ACTIVE_FULFILLMENT',values.openOrderCount]);
+          if(values.pendingSyncCount>0)blockers.push(['PENDING_SYNC',values.pendingSyncCount]);
+          if(values.failedSyncCount>0)blockers.push(['FAILED_SYNC',values.failedSyncCount]);
+          console.log('business_day_id='+day.business_day_id);
+          console.log('business_date='+day.business_date);
+          console.log('opened_at='+day.opened_at);
+          console.log('revision='+day.revision);
+          for(const [k,v] of Object.entries(values))console.log(k+'='+v);
+          console.log('can_close='+String(blockers.length===0));
+          console.log('hard_blockers='+JSON.stringify(blockers));
+          console.log('first_blocker='+(blockers[0]?.[0]||'NONE'));
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-business-day-close-readiness-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
