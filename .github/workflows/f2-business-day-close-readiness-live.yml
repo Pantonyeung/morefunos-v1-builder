@@ -55,6 +55,7 @@ jobs:
           query operator_attention "SELECT COUNT(*) AS count_value FROM mfos_print_job p WHERE p.state IN ('FAILED','AMBIGUOUS') AND EXISTS(SELECT 1 FROM mfos_order_state o WHERE o.order_id=p.order_id AND o.store_id='$STORE_ID')"
           query open_order_groups "SELECT substr(created_at,1,10) AS created_date,lifecycle_status AS status,COUNT(*) AS count_value FROM mfos_order_state WHERE store_id='$STORE_ID' AND lifecycle_status NOT IN ('COMPLETED','CANCELLED') GROUP BY substr(created_at,1,10),lifecycle_status ORDER BY created_date DESC,status"
           query open_order_recent "SELECT order_id,lifecycle_status,created_at,order_snapshot_json FROM mfos_order_state WHERE store_id='$STORE_ID' AND lifecycle_status NOT IN ('COMPLETED','CANCELLED') ORDER BY created_at DESC LIMIT 20"
+          query open_order_forensics "SELECT o.order_id,o.lifecycle_status,o.created_at,o.updated_at,o.order_snapshot_json,d.source_order_key,d.display_code,d.business_date,(SELECT COUNT(*) FROM mfos_outbox x WHERE x.aggregate_id=o.order_id AND x.event_type='OrderCompleted') AS completed_event_count,(SELECT COUNT(*) FROM mfos_outbox x WHERE x.aggregate_id=o.order_id AND x.event_type='OrderCancelled') AS cancelled_event_count FROM mfos_order_state o LEFT JOIN mfos_order_display_code d ON d.order_id=o.order_id WHERE o.store_id='$STORE_ID' AND o.lifecycle_status NOT IN ('COMPLETED','CANCELLED') ORDER BY o.created_at ASC"
           query pending_outbox_groups "SELECT domain,event_type,substr(recorded_at,1,10) AS recorded_date,COUNT(*) AS count_value FROM mfos_outbox WHERE store_id='$STORE_ID' AND status='PENDING' GROUP BY domain,event_type,substr(recorded_at,1,10) ORDER BY recorded_date DESC,domain,event_type"
           node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
@@ -96,6 +97,24 @@ jobs:
             }catch{return {createdAt:row.created_at,status:row.lifecycle_status,sourceType:'PARSE_FAILED'};}
           };
           console.log('recent_open_orders='+JSON.stringify(recent.map(classify)));
+          const forensic=JSON.parse(fs.readFileSync('evidence/open_order_forensics.json','utf8')).result?.[0]?.results||[];
+          const mapped=forensic.map(row=>{
+            let s={};try{s=JSON.parse(row.order_snapshot_json||'{}')}catch{}
+            const i=s.canonicalIdentity||s.identity||{};
+            return {
+              orderId:row.order_id,createdAt:row.created_at,status:row.lifecycle_status,
+              displayCode:row.display_code||null,displayBusinessDate:row.business_date||null,
+              sourceOrderKey:row.source_order_key||null,
+              sourceType:i.sourceType||s.sourceType||null,
+              externalOrderId:i.externalOrderId||null,
+              totalMinor:s.totalMinor??s.total_minor??null,
+              completedEventCount:Number(row.completed_event_count||0),
+              cancelledEventCount:Number(row.cancelled_event_count||0),
+            };
+          });
+          console.log('open_order_forensics='+JSON.stringify(mapped));
+          console.log('open_orders_with_terminal_event='+mapped.filter(r=>r.completedEventCount>0||r.cancelledEventCount>0).length);
+          console.log('open_orders_without_terminal_event='+mapped.filter(r=>r.completedEventCount===0&&r.cancelledEventCount===0).length);
           const pendingGroups=JSON.parse(fs.readFileSync('evidence/pending_outbox_groups.json','utf8')).result?.[0]?.results||[];
           console.log('pending_outbox_groups='+JSON.stringify(pendingGroups));
           NODE
