@@ -1,0 +1,13 @@
+work_id=F2-WI-CHANNEL-PROJECTION-POSTWRITE-READBACK-20260910
+candidate_sha=aa4c9c41712a72ba849cd493e03eb477a7c6cf7f
+base_main_sha=3fabf9f04c469969dff1941b3101170ae4d3e757
+latest_main_sha=aa4c9c41712a72ba849cd493e03eb477a7c6cf7f
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34426117141
+conclusion=success
