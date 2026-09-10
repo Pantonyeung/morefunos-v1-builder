@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-10T18:16:59.854Z",
-  "sourceSha": "6b99315bddcae4f02ca7ad38d28cb3e28a8a5495",
-  "requestId": "ROUND019-D-PRODUCTION-REAL-TRACE-20260911",
+  "generatedAt": "2026-09-10T19:09:17.053Z",
+  "sourceSha": "a639de4e14cc486842d7e4d7e2bd14f89aa4b808",
+  "requestId": "ROUND019-E-BUSINESS-OPS-FINAL-READBACK-20260911",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 333,
+  "rowCount": 334,
   "traceCount": 32,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
@@ -295,8 +295,8 @@
     "BUSINESS_OPERATIONS_V1": {
       "traceCount": 5,
       "counts": {
-        "PASS": 0,
-        "PENDING": 5,
+        "PASS": 1,
+        "PENDING": 4,
         "FAIL": 0,
         "UNKNOWN": 0
       },
@@ -305,15 +305,15 @@
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
           "traceId": "0d2cda16-38f6-4fca-aff1-06d99fd26353",
           "journeyId": "BUSINESS_OPERATIONS_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-admin-business-ops-readback",
+          "status": "PASS",
+          "firstFailedEdgeId": null,
           "latencyMs": null,
-          "lastAt": "2026-09-10T05:33:04.663Z",
-          "eventCount": 7,
+          "lastAt": "2026-09-10T19:08:32.039Z",
+          "eventCount": 8,
           "edges": [
             {
               "edgeId": "d1-admin-business-ops-readback",
-              "status": "NOT_OBSERVED",
+              "status": "PASS",
               "latencyMs": null,
               "errorCode": null
             },
@@ -422,7 +422,30 @@
           ]
         }
       ],
-      "latestPass": null
+      "latestPass": {
+        "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+        "traceId": "0d2cda16-38f6-4fca-aff1-06d99fd26353",
+        "journeyId": "BUSINESS_OPERATIONS_V1",
+        "status": "PASS",
+        "firstFailedEdgeId": null,
+        "latencyMs": null,
+        "lastAt": "2026-09-10T19:08:32.039Z",
+        "eventCount": 8,
+        "edges": [
+          {
+            "edgeId": "d1-admin-business-ops-readback",
+            "status": "PASS",
+            "latencyMs": null,
+            "errorCode": null
+          },
+          {
+            "edgeId": "d1-owner-business-ops-readback",
+            "status": "PASS",
+            "latencyMs": null,
+            "errorCode": null
+          }
+        ]
+      }
     },
     "MANAGEMENT_REPORTING_V1": {
       "traceCount": 10,
