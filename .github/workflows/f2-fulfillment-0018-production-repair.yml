@@ -1,0 +1,135 @@
+name: F2 Fulfillment 0018 Production Repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-fulfillment-0018-production-repair-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      V2_REPO: Pantonyeung/Morefun-v2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-fulfillment-0018-production-repair-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch exact admitted migration 0018
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://raw.githubusercontent.com/$V2_REPO/${{ steps.req.outputs.source_sha }}/infra/cloudflare/d1/migrations/0018-fulfillment-runtime-authority.sql"
+          curl -fsSL "$URL" -o /tmp/0018.sql
+          test -s /tmp/0018.sql
+          grep -Fq 'CREATE TABLE IF NOT EXISTS mfos_fulfillment_state' /tmp/0018.sql
+          grep -Fq 'CREATE TABLE IF NOT EXISTS mfos_fulfillment_policy' /tmp/0018.sql
+          sha256sum /tmp/0018.sql | tee evidence/migration-sha256.txt
+
+      - name: Preflight production schema and migration ledger
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){
+            NAME="$1"; SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/pre-$NAME.json"
+          }
+          query schema "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+          query ledger "SELECT id,name,applied_at FROM d1_migrations ORDER BY id"
+          node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/pre-'+n+'.json','utf8')).result?.[0]?.results||[];
+          const schema=rows('schema'), ledger=rows('ledger');
+          const names=new Set(schema.map(r=>r.name));
+          const required=['mfos_fulfillment_policy','mfos_fulfillment_state','mfos_fulfillment_decision','mfos_fulfillment_queue','mfos_fulfillment_transition_audit','mfos_fulfillment_idempotency','mfos_fulfillment_release_audit'];
+          const present=required.filter(n=>names.has(n));
+          const recorded=ledger.some(r=>r.name==='0018-fulfillment-runtime-authority.sql');
+          console.log('required_present='+present.length+'/'+required.length);
+          console.log('migration_0018_recorded='+recorded);
+          console.log('ledger_tail='+JSON.stringify(ledger.slice(-10).map(r=>({id:r.id,name:r.name}))));
+          if(present.length!==0 && present.length!==required.length) throw new Error('PARTIAL_FULFILLMENT_SCHEMA_FAIL_CLOSED');
+          if(recorded && present.length!==required.length) throw new Error('LEDGER_SCHEMA_DIVERGENCE_FAIL_CLOSED');
+          if(!recorded && present.length===required.length) throw new Error('SCHEMA_EXISTS_WITHOUT_LEDGER_FAIL_CLOSED');
+          fs.writeFileSync('/tmp/repair-needed',(!recorded&&present.length===0)?'1':'0');
+          NODE
+          echo "repair_needed=$(cat /tmp/repair-needed)" >> "$GITHUB_OUTPUT"
+
+      - name: Apply only exact migration 0018
+        if: steps.preflight.outputs.repair_needed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="$(cat /tmp/0018.sql)"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/apply.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/apply.json > evidence/apply-0018.json
+          node -e "const x=require('./evidence/apply-0018.json');if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
+
+      - name: Record only migration 0018 in canonical ledger
+        if: steps.preflight.outputs.repair_needed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="INSERT INTO d1_migrations(name,applied_at) SELECT '0018-fulfillment-runtime-authority.sql',datetime('now') WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0018-fulfillment-runtime-authority.sql')"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/ledger.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/ledger.json > evidence/ledger-0018.json
+          node -e "const x=require('./evidence/ledger-0018.json');if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
+
+      - name: Verify exact postcondition
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){
+            NAME="$1"; SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/post-$NAME.json"
+          }
+          query schema "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'mfos_fulfillment_%' ORDER BY name"
+          query ledger "SELECT id,name,applied_at FROM d1_migrations WHERE name='0018-fulfillment-runtime-authority.sql'"
+          node - <<'NODE' | tee evidence/postcondition.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/post-'+n+'.json','utf8')).result?.[0]?.results||[];
+          const schema=rows('schema'), ledger=rows('ledger');
+          const required=['mfos_fulfillment_policy','mfos_fulfillment_state','mfos_fulfillment_decision','mfos_fulfillment_queue','mfos_fulfillment_transition_audit','mfos_fulfillment_idempotency','mfos_fulfillment_release_audit'];
+          const names=new Set(schema.map(r=>r.name));
+          const missing=required.filter(n=>!names.has(n));
+          console.log('fulfillment_tables='+schema.length);
+          console.log('missing='+JSON.stringify(missing));
+          console.log('migration_0018_rows='+ledger.length);
+          if(missing.length||ledger.length!==1) process.exit(1);
+          NODE
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-fulfillment-0018-production-repair-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
