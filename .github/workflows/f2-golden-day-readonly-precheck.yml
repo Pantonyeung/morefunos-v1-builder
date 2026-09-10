@@ -1,0 +1,86 @@
+name: F2 Golden Day Readonly Precheck
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-golden-day-readonly-precheck-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  precheck:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-golden-day-readonly-precheck-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Read canonical Golden Day state from production D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT 'business_day' AS section,business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3;
+          SQL="$SQL SELECT 'cash_shift' AS section,cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5;
+          SQL="$SQL SELECT 'order' AS section,order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10;
+          SQL="$SQL SELECT 'payment' AS section,payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10;
+          SQL="$SQL SELECT 'fulfillment' AS section,fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/raw.json
+          node - <<'NODE' | tee evidence/summary.txt
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
+          if(!x.success)throw new Error('GOLDEN_DAY_D1_READ_FAILED');
+          const groups=(x.result||[]).map(r=>r.results||[]);
+          const [days=[],shifts=[],orders=[],payments=[],fulfillments=[]]=groups;
+          const openDay=days.find(r=>r.status==='OPEN')||null;
+          const openShift=shifts.find(r=>r.status==='OPEN'&&(!openDay||r.detail===openDay.id))||null;
+          const recentOrder=orders[0]||null;
+          const completedPayment=payments.find(r=>r.status==='COMPLETED')||null;
+          const matchedFulfillment=completedPayment?fulfillments.find(r=>r.detail===completedPayment.detail)||null:null;
+          let firstMissing='NONE';
+          if(!openDay) firstMissing='BUSINESS_DAY_OPEN';
+          else if(!openShift) firstMissing='CASH_SHIFT_OPEN';
+          else if(!recentOrder) firstMissing='SALE_ACCEPTED';
+          else if(!completedPayment) firstMissing='PAYMENT_COMPLETED';
+          else if(!matchedFulfillment) firstMissing='FULFILLMENT_FOR_PAID_ORDER';
+          console.log('open_business_day='+String(Boolean(openDay)));
+          console.log('open_cash_shift='+String(Boolean(openShift)));
+          console.log('recent_order='+String(Boolean(recentOrder)));
+          console.log('completed_payment='+String(Boolean(completedPayment)));
+          console.log('fulfillment_for_completed_payment='+String(Boolean(matchedFulfillment)));
+          console.log('first_missing_edge='+firstMissing);
+          if(openDay) console.log('business_date='+openDay.detail);
+          if(recentOrder) console.log('recent_order_status='+recentOrder.status);
+          if(completedPayment) console.log('completed_payment_status='+completedPayment.status);
+          if(matchedFulfillment) console.log('matched_fulfillment_status='+matchedFulfillment.status);
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-golden-day-readonly-precheck-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
