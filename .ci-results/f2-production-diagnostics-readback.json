@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-10T05:35:40.201Z",
-  "sourceSha": "3795f2ea46d0d43bdf7a3cb229f5f089fed204bb",
-  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R9",
+  "generatedAt": "2026-09-10T18:16:59.854Z",
+  "sourceSha": "6b99315bddcae4f02ca7ad38d28cb3e28a8a5495",
+  "requestId": "ROUND019-D-PRODUCTION-REAL-TRACE-20260911",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 284,
-  "traceCount": 31,
+  "rowCount": 333,
+  "traceCount": 32,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
   ],
@@ -65,14 +65,38 @@
       "latestPass": null
     },
     "ORDER_SYNC_RECONCILIATION_V1": {
-      "traceCount": 8,
+      "traceCount": 9,
       "counts": {
         "PASS": 0,
-        "PENDING": 8,
+        "PENDING": 9,
         "FAIL": 0,
         "UNKNOWN": 0
       },
       "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:27",
+          "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-smm-order-sync-applied",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T09:13:40.987Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smt-order-sync-applied",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smm-order-sync-applied",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
           "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:26",
@@ -168,30 +192,6 @@
               "errorCode": null
             }
           ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:22",
-          "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-smm-order-sync-applied",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T02:48:58.719Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-smt-order-sync-applied",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-smm-order-sync-applied",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
         }
       ],
       "latestPass": null
@@ -212,8 +212,8 @@
           "status": "PENDING",
           "firstFailedEdgeId": "d1-admin-store-config-readback",
           "latencyMs": null,
-          "lastAt": "2026-09-10T05:35:16.447Z",
-          "eventCount": 248,
+          "lastAt": "2026-09-10T09:35:46.286Z",
+          "eventCount": 296,
           "edges": [
             {
               "edgeId": "d1-admin-store-config-readback",
