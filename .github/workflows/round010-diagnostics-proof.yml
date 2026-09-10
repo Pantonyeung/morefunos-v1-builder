@@ -1,0 +1,71 @@
+name: ROUND010 Diagnostics Proof
+
+on:
+  push:
+    paths:
+      - 'requests/round010-diagnostics-proof.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v7
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact V2 proof source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: 3cae7a552044be47aa6e40b6850dbec427d97ebe
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: v2
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install root dependencies
+        working-directory: v2
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Reproduce exact diagnostics proof with durable log
+        working-directory: v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../evidence
+          exec > >(tee ../evidence/round010-diagnostics-proof.log) 2>&1
+          echo 'PROOF_SOURCE_SHA=3cae7a552044be47aa6e40b6850dbec427d97ebe'
+          echo '=== NODE_DIAGNOSTICS_TESTS ==='
+          mapfile -t diagnostics_tests < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
+          echo "DIAGNOSTICS_TEST_COUNT=${#diagnostics_tests[@]}"
+          node --test --test-concurrency=1 "${diagnostics_tests[@]}"
+          echo '=== DIAGNOSTICS_WEB_INSTALL ==='
+          npm --prefix apps/diagnostics-web install --ignore-scripts --no-audit --no-fund
+          echo '=== DIAGNOSTICS_WEB_TYPECHECK ==='
+          npm --prefix apps/diagnostics-web run typecheck
+          echo '=== DIAGNOSTICS_WEB_BUILD ==='
+          npm --prefix apps/diagnostics-web run build
+          echo '=== DIAGNOSTICS_WORKER_TYPECHECK ==='
+          npm exec --yes --package=typescript@5.8.3 -- tsc --noEmit -p infra/cloudflare/diagnostics-web-worker/tsconfig.json
+
+      - name: Upload proof log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: round010-diagnostics-proof-log
+          path: evidence/round010-diagnostics-proof.log
+          if-no-files-found: error
+          retention-days: 30
