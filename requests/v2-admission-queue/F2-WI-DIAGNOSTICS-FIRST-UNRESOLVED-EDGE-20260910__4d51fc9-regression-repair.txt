@@ -1,0 +1,10 @@
+candidate_sha=4d51fc9f6352dc203adc92cacf53e0bad0c7a681
+base_main_sha=899bb8c8142fb2f6687f4722fa444d29d20f3585
+work_id=F2-WI-DIAGNOSTICS-FIRST-UNRESOLVED-EDGE-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=REGRESSION_REPAIR
+affected_ports=CORE
+supersedes_candidate_sha=b87c66ae2e84250a15ac928b978c7e58d463d192
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=4d51fc9f6352dc203adc92cacf53e0bad0c7a681
