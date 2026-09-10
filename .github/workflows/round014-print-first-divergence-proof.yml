@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
-          ref: 48d29dd57d22e4e68e795ee361aa172959b4793b
+          ref: fe94d21b73e08fd919cbe3627cc33167aeebdb13
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: v2
           persist-credentials: false
@@ -43,7 +43,7 @@ jobs:
           set -uo pipefail
           mkdir -p ../evidence
           exec > >(tee ../evidence/round014-print-first-divergence-proof.log) 2>&1
-          echo 'PROOF_SOURCE_SHA=48d29dd57d22e4e68e795ee361aa172959b4793b'
+          echo 'PROOF_SOURCE_SHA=fe94d21b73e08fd919cbe3627cc33167aeebdb13'
           node <<'NODE'
           const fs=require('fs');
           const read=p=>fs.readFileSync(p,'utf8');
