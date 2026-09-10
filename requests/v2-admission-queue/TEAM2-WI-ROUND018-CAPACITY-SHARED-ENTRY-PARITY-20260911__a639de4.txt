@@ -1,0 +1,10 @@
+candidate_sha=a639de4e14cc486842d7e4d7e2bd14f89aa4b808
+base_main_sha=2b87c1d04408cbebfcee5c28e23d7ea7f02a942f
+work_id=TEAM2-WI-ROUND018-CAPACITY-SHARED-ENTRY-PARITY-20260911
+capability_id=CAP-OPERATIONAL-CAPACITY-001
+capability_action=LINKUP
+affected_ports=SMT,CORE
+depends_on_specs=
+supersedes_candidate_sha=2b87c1d04408cbebfcee5c28e23d7ea7f02a942f
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
