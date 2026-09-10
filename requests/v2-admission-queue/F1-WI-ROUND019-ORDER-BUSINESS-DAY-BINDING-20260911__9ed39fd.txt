@@ -1,0 +1,10 @@
+candidate_sha=9ed39fdffd8b77ce420d06d14f14ec82d4b4aa26
+base_main_sha=87114233d8f6d7b236fa19009cbc0b7c837c95e2
+work_id=F1-WI-ROUND019-ORDER-BUSINESS-DAY-BINDING-20260911
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=LINKUP
+affected_ports=CORE,SMT,SMM,CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=2a2d9ed07bf9911766f5dd11a1fe89e3b55801ae
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
