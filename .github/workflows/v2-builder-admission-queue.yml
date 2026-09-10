@@ -571,7 +571,7 @@ jobs:
             npm --prefix apps/diagnostics-web install --ignore-scripts --no-audit --no-fund
             npm --prefix apps/diagnostics-web run typecheck
             npm --prefix apps/diagnostics-web run build
-            npx tsc --noEmit -p infra/cloudflare/diagnostics-web-worker/tsconfig.json
+            npm exec --yes --package=typescript@5.8.3 -- tsc --noEmit -p infra/cloudflare/diagnostics-web-worker/tsconfig.json
           fi
 
       - name: SMT integration proof
