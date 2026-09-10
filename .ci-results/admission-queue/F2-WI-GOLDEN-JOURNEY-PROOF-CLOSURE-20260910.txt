@@ -1,0 +1,13 @@
+work_id=F2-WI-GOLDEN-JOURNEY-PROOF-CLOSURE-20260910
+candidate_sha=3b546d23681d06b48459286cfac623885e59c2b6
+base_main_sha=67b0055cba97df2cddab8a70e71fe709c3f8982f
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34443035123
+conclusion=failure
