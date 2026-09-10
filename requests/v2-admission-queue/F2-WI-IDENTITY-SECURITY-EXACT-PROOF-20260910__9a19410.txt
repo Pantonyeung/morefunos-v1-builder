@@ -1,0 +1,11 @@
+candidate_sha=9a19410ede1d206f720986be507fa03bf88bf4f0
+base_main_sha=3fabf9f04c469969dff1941b3101170ae4d3e757
+work_id=F2-WI-IDENTITY-SECURITY-EXACT-PROOF-20260910
+capability_id=CAP-SECURITY-CONTEXT-001
+capability_action=LINKUP
+affected_ports=ADMIN,CUSTOMER,SMT,SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=8689a31577d4e5b26ed7b4d626d9ac3e8cc9f9fe
