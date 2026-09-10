@@ -1,0 +1,10 @@
+candidate_sha=21d0b2f2c335fa555f813b3fcbf95b11a8d11f12
+base_main_sha=67b0055cba97df2cddab8a70e71fe709c3f8982f
+work_id=F2-WI-GOLDEN-JOURNEY-PROOF-CLOSURE-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=CORE
+supersedes_candidate_sha=3b546d23681d06b48459286cfac623885e59c2b6
+required_core_tests=
+force_full_proof=true
+proof_source_sha=21d0b2f2c335fa555f813b3fcbf95b11a8d11f12
