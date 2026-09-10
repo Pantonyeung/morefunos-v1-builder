@@ -1,0 +1,11 @@
+candidate_sha=9cc7a05c71cca270cd317dc02a99131f7de1de73
+base_main_sha=1116d56b0942c5960513d8b2ff997c2067d73045
+work_id=F2-WI-OFFLINE-PRINT-CHECKPOINT-SINK-20260910
+capability_id=CAP-PRINT-OFFLINE-001
+capability_action=LINKUP
+affected_ports=SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=1116d56b0942c5960513d8b2ff997c2067d73045
+required_core_tests=PRINT,DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=9cc7a05c71cca270cd317dc02a99131f7de1de73
