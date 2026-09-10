@@ -1,0 +1,102 @@
+name: F2 Owner Reporting Shape Probe
+
+on:
+  push:
+    paths:
+      - 'requests/f2-owner-reporting-shape-probe-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: {fetch-depth: 0}
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-owner-reporting-shape-probe-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/f2-owner-reporting-shape-probe-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: '24'}
+      - name: SELECT only JSON shape metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          cat > /tmp/shape.sql <<'SQL'
+          SELECT 'accepted_top' AS scope, je.key AS json_key, je.type AS json_type, COUNT(*) AS occurrences
+          FROM mfos_order_state o, json_each(o.accepted_projection_json) je
+          WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
+          GROUP BY je.key,je.type
+          UNION ALL
+          SELECT 'snapshot_top' AS scope, je.key AS json_key, je.type AS json_type, COUNT(*) AS occurrences
+          FROM mfos_order_state o, json_each(o.order_snapshot_json) je
+          WHERE o.order_snapshot_json IS NOT NULL AND json_valid(o.order_snapshot_json)=1
+          GROUP BY je.key,je.type
+          UNION ALL
+          SELECT 'accepted_line_item' AS scope, li_key.key AS json_key, li_key.type AS json_type, COUNT(*) AS occurrences
+          FROM mfos_order_state o, json_each(o.accepted_projection_json,'$.lineItems') li, json_each(li.value) li_key
+          WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
+          GROUP BY li_key.key,li_key.type
+          ORDER BY scope,json_key,json_type;
+          SQL
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --file /tmp/shape.sql > evidence/raw.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
+          const batches=Array.isArray(raw)?raw:[raw];
+          const rows=batches.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
+          fs.writeFileSync('evidence/summary.json',JSON.stringify({mode:'REMOTE_D1_SELECT_ONLY_SHAPE_METADATA',rows},null,2)+'\n');
+          NODE
+          cat evidence/summary.json
+      - name: Seal result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then
+              cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/f2-owner-reporting-shape-probe.json
+            else
+              printf '{"sourceSha":"%s","requestId":"%s","runId":"%s","conclusion":"%s","error":"SHAPE_PROBE_FAILED"}\n' "$SOURCE_SHA" "$REQUEST_ID" "$RUN_ID" "$CONCLUSION" > .ci-results/f2-owner-reporting-shape-probe.json
+            fi
+            git add .ci-results/f2-owner-reporting-shape-probe.json
+            if ! git diff --cached --quiet; then git commit -m "diag(result): F2 Owner reporting shape probe $CONCLUSION"; fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
