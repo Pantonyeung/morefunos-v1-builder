@@ -62,23 +62,17 @@ jobs:
           }
           NODE
 
-      - name: Trigger post-commit drain through read-only SMT Catalog operation
+      - name: Trigger post-commit recovery without creating business data
         shell: bash
         run: |
           set -euo pipefail
-          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
-          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
-          test "$LOGIN_HTTP" = 200
-          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
-          [[ "$COOKIE" == mf_admin_session=* ]]
-          TOKEN="${COOKIE#mf_admin_session=}"
-          test -n "$TOKEN"
-          cat >/tmp/catalog.json <<'JSON'
-          {"operationId":"catalog.menu.active.read.v1","request":{}}
-          JSON
-          HTTP="$(curl -sS -o /tmp/catalog.out.json -w '%{http_code}' -H 'content-type: application/json' -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/catalog.json "$ADMIN_URL/api/smt/runtime")"
-          echo "smt_catalog_http=$HTTP" | tee evidence/trigger.txt
-          test "$HTTP" = 200
+          printf '{}' >/tmp/invalid-customer-order.json
+          HTTP="$(curl -sS -o /tmp/trigger.out.json -w '%{http_code}' -H 'content-type: application/json' --data-binary @/tmp/invalid-customer-order.json "$ADMIN_URL/api/customer/orders")"
+          echo "customer_invalid_post_http=$HTTP" | tee evidence/trigger.txt
+          cat /tmp/trigger.out.json | tee -a evidence/trigger.txt
+          # Invalid request must fail before Order creation. The top-level Worker still schedules
+          # only the existing post-commit recovery drains after handling any Customer POST.
+          [[ "$HTTP" =~ ^4[0-9][0-9]$ ]]
 
       - name: Prove canonical Fulfillment release after trigger
         shell: bash
