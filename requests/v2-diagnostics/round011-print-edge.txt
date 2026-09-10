@@ -1,0 +1,3 @@
+candidate_sha=f4d591220a5981b5a20c0813b26218b88b9acf28
+work_id=F1-WI-PRINT-RECEIPT-DURABLE-ADMISSION-20260910
+purpose=diagnostic-only
