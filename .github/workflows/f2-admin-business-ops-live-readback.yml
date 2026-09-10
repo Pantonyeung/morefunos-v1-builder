@@ -88,6 +88,21 @@ jobs:
           console.log('stage='+r.stage);
           NODE
 
+      - name: Read D1 migration history for duplicate-version audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT name FROM d1_migrations WHERE name LIKE '0054%' OR name LIKE '0004%' ORDER BY name;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/migration-query.json',JSON.stringify({sql:process.env.SQL}))"
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/migration-query.json > /tmp/migrations.json
+          node - <<'NODE' | tee evidence/migration-history.txt
+          const x=require('/tmp/migrations.json');
+          if(!x.success) throw new Error('D1_MIGRATION_HISTORY_READ_FAILED');
+          const names=(x.result?.[0]?.results||[]).map(r=>String(r.name));
+          for(const name of names) console.log('migration='+name);
+          NODE
+
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
