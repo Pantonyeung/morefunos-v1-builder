@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-10T04:02:34.761Z",
+  "generatedAt": "2026-09-10T04:04:22.778Z",
   "sourceSha": "16fb4b099e394d90e32a677b35510b2ee1d97369",
-  "requestId": "F2-OWNER-ORDER-SHAPE-READBACK-20260910-R1",
-  "mode": "REMOTE_D1_SELECT_ONLY_KEYS_AND_ATTRIBUTION_CLASSES",
-  "shapes": [
+  "requestId": "F2-OWNER-ORDER-SHAPE-READBACK-20260910-R2",
+  "mode": "REMOTE_D1_SELECT_ONLY_SANITIZED_SHAPES",
+  "topLevelKeys": [
     {
       "payload": "accepted_projection",
       "key": "acceptedAt",
@@ -243,6 +243,163 @@
       "payload": "order_snapshot",
       "key": "updatedAt",
       "type": "text"
+    }
+  ],
+  "variants": [
+    {
+      "itemShape": "lineItems",
+      "hasRevision": true,
+      "hasOrderRevision": false,
+      "rowCount": 12
+    },
+    {
+      "itemShape": "lineItems",
+      "hasRevision": true,
+      "hasOrderRevision": true,
+      "rowCount": 34
+    },
+    {
+      "itemShape": "lines",
+      "hasRevision": false,
+      "hasOrderRevision": true,
+      "rowCount": 14
+    }
+  ],
+  "itemKeys": [
+    {
+      "itemShape": "lineItems",
+      "key": "acceptedAdjustmentMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "acceptedFinalUnitPriceMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "acceptedLineTotalMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "acceptedProductName",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "acceptedUnitPriceMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "currency",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "finalUnitPriceMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "lineId",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "lineTotalMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "optionIds",
+      "type": "array"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "orderItemId",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "pricingProvenance",
+      "type": "array"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "pricingProvenance",
+      "type": "object"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "productId",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "productRevisionAtAcceptance",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "quantity",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "salesPriceContext",
+      "type": "text"
+    },
+    {
+      "itemShape": "lineItems",
+      "key": "selectedOptions",
+      "type": "array"
+    },
+    {
+      "itemShape": "lines",
+      "key": "acceptedProductName",
+      "type": "text"
+    },
+    {
+      "itemShape": "lines",
+      "key": "finalUnitPriceMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lines",
+      "key": "lineId",
+      "type": "text"
+    },
+    {
+      "itemShape": "lines",
+      "key": "lineTotalMinor",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lines",
+      "key": "optionIds",
+      "type": "array"
+    },
+    {
+      "itemShape": "lines",
+      "key": "pricingProvenance",
+      "type": "array"
+    },
+    {
+      "itemShape": "lines",
+      "key": "productId",
+      "type": "text"
+    },
+    {
+      "itemShape": "lines",
+      "key": "quantity",
+      "type": "integer"
+    },
+    {
+      "itemShape": "lines",
+      "key": "selectedOptions",
+      "type": "array"
     }
   ],
   "attribution": [
