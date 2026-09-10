@@ -40,12 +40,17 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
-          SQL="SELECT 'business_day' AS section,business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3;
-          SQL="$SQL SELECT 'cash_shift' AS section,cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5;
-          SQL="$SQL SELECT 'order' AS section,order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10;
-          SQL="$SQL SELECT 'payment' AS section,payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10;
-          SQL="$SQL SELECT 'fulfillment' AS section,fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10;"
-          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          node - <<'NODE'
+          const fs=require('fs');
+          const sql=[
+            "SELECT 'business_day' AS section,business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3",
+            "SELECT 'cash_shift' AS section,cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5",
+            "SELECT 'order' AS section,order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10",
+            "SELECT 'payment' AS section,payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10",
+            "SELECT 'fulfillment' AS section,fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10",
+          ].join('; ');
+          fs.writeFileSync('/tmp/query.json',JSON.stringify({sql}));
+          NODE
           curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/raw.json
           node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
