@@ -28,15 +28,30 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Require exact main
+      - name: Require source is current or unaffected by later SMT-only main movement
         env:
           SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
-          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          MAIN_SHA="$(curl -fsSL -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Pantonyeung/Morefun-v2/git/ref/heads/main | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
-          test "$MAIN_SHA" = "$SOURCE_SHA"
+          MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
+          if [[ "$MAIN_SHA" == "$SOURCE_SHA" ]]; then
+            echo "owner-diagnostic-source=PASS mode=EXACT_HEAD sha=$SOURCE_SHA"
+            exit 0
+          fi
+          gh api "repos/Pantonyeung/Morefun-v2/compare/${SOURCE_SHA}...${MAIN_SHA}" > /tmp/owner-diagnostic-compare.json
+          STATUS="$(jq -r '.status' /tmp/owner-diagnostic-compare.json)"
+          [[ "$STATUS" == "ahead" ]] || { echo "::error::OWNER_DIAGNOSTIC_SOURCE_NOT_ANCESTOR status=$STATUS"; exit 1; }
+          mapfile -t CHANGED < <(jq -r '.files[].filename' /tmp/owner-diagnostic-compare.json)
+          [[ "${#CHANGED[@]}" -gt 0 ]]
+          for file in "${CHANGED[@]}"; do
+            case "$file" in
+              apps/smt-clean/*) ;;
+              *) echo "::error::OWNER_DIAGNOSTIC_RELEVANT_MAIN_MOVED file=$file"; exit 1 ;;
+            esac
+          done
+          echo "owner-diagnostic-source=PASS mode=VERIFIED_ANCESTOR_WITH_SMT_ONLY_DELTA source=$SOURCE_SHA main=$MAIN_SHA"
 
       - uses: actions/setup-node@v7
         with:
