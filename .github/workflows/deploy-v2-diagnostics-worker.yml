@@ -115,27 +115,24 @@ jobs:
             printf '%s' "$code"
           }
 
-          INDEX_HTTP="$(fetch_status GET "$URL/" /tmp/diagnostics-index.html)"
+          INDEX_HTTP="$(fetch_status GET "$URL/" /tmp/diagnostics-index.json)"
           OVERVIEW_HTTP="$(fetch_status GET "$URL/api/diagnostics/overview" /tmp/diagnostics-overview.json)"
           RUN_HTTP="$(fetch_status POST "$URL/api/diagnostics/run" /tmp/diagnostics-run.json '{"journeyId":"ALL_CRITICAL"}')"
 
-          test "$INDEX_HTTP" = 200
-          test "$OVERVIEW_HTTP" = 200
-          test "$RUN_HTTP" = 501
+          test "$INDEX_HTTP" = 403
+          test "$OVERVIEW_HTTP" = 403
+          test "$RUN_HTTP" = 403
 
           node - <<'NODE'
           const fs=require('fs');
-          const overview=JSON.parse(fs.readFileSync('/tmp/diagnostics-overview.json','utf8'));
-          if(typeof overview?.checkedAt!=='string')process.exit(1);
-          if(!['PASS','DEGRADED','FAIL','UNKNOWN'].includes(overview?.health))process.exit(1);
-          if(!Array.isArray(overview?.nodes)||!Array.isArray(overview?.journeys)||!Array.isArray(overview?.recentTraces))process.exit(1);
-          const run=JSON.parse(fs.readFileSync('/tmp/diagnostics-run.json','utf8'));
-          if(run?.ok!==false||run?.code!=='DIAGNOSTICS_SYNTHETIC_RUNNER_NOT_ADMITTED')process.exit(1);
-          console.log('diagnostics_live_overview=PASS journeys='+overview.journeys.length+' recentTraces='+overview.recentTraces.length);
-          console.log('diagnostics_synthetic_fail_closed=PASS');
+          for(const path of ['/tmp/diagnostics-index.json','/tmp/diagnostics-overview.json','/tmp/diagnostics-run.json']){
+            const body=JSON.parse(fs.readFileSync(path,'utf8'));
+            if(body?.ok!==false||body?.code!=='DIAGNOSTICS_ACCESS_REQUIRED')process.exit(1);
+          }
+          console.log('diagnostics_anonymous_fail_closed=PASS');
           NODE
 
-          printf 'source_sha=%s\norigin=%s\nindex_http=%s\noverview_http=%s\nrun_http=%s\n'             "${{ steps.req.outputs.source_sha }}" "$URL" "$INDEX_HTTP" "$OVERVIEW_HTTP" "$RUN_HTTP" | tee evidence/smoke.txt
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\noverview_http=%s\nrun_http=%s\nactivation=ACCESS_CONFIGURATION_REQUIRED\n'             "${{ steps.req.outputs.source_sha }}" "$URL" "$INDEX_HTTP" "$OVERVIEW_HTTP" "$RUN_HTTP" | tee evidence/smoke.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
