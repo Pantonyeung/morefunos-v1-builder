@@ -1,0 +1,8 @@
+candidate_sha=0c5362ac963320e49fdc9defa63910aca41e04bf
+base_main_sha=899bb8c8142fb2f6687f4722fa444d29d20f3585
+work_id=F2-WI-DIAGNOSTICS-FIRST-UNRESOLVED-EDGE-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=BUGFIX
+affected_ports=CORE
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
