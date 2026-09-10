@@ -1,0 +1,274 @@
+{
+  "generatedAt": "2026-09-10T04:02:34.761Z",
+  "sourceSha": "16fb4b099e394d90e32a677b35510b2ee1d97369",
+  "requestId": "F2-OWNER-ORDER-SHAPE-READBACK-20260910-R1",
+  "mode": "REMOTE_D1_SELECT_ONLY_KEYS_AND_ATTRIBUTION_CLASSES",
+  "shapes": [
+    {
+      "payload": "accepted_projection",
+      "key": "acceptedAt",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "canonicalIdentity",
+      "type": "object"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "catalogRevision",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "createdAt",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "currency",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "customerId",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "lifecycleStatus",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "lineItems",
+      "type": "array"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "lines",
+      "type": "array"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "localDisplayOrderCode",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "orderId",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "orderRevision",
+      "type": "integer"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "providerCheckoutSnapshot",
+      "type": "object"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "providerCommercialSnapshot",
+      "type": "object"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "providerOrderAlias",
+      "type": "object"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "revision",
+      "type": "integer"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "salesPriceContext",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "sourceAttribution",
+      "type": "object"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "storeId",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "submissionId",
+      "type": "text"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "subtotalMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "totalDiscountMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "totalMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "accepted_projection",
+      "key": "updatedAt",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "acceptedAt",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "canonicalIdentity",
+      "type": "object"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "catalogRevision",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "createdAt",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "currency",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "customerId",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "lifecycleStatus",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "lineItems",
+      "type": "array"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "lines",
+      "type": "array"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "localDisplayOrderCode",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "orderId",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "orderRevision",
+      "type": "integer"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "providerCheckoutSnapshot",
+      "type": "object"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "providerCommercialSnapshot",
+      "type": "object"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "providerOrderAlias",
+      "type": "object"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "revision",
+      "type": "integer"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "salesPriceContext",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "sourceAttribution",
+      "type": "object"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "storeId",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "submissionId",
+      "type": "text"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "subtotalMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "totalDiscountMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "totalMinor",
+      "type": "integer"
+    },
+    {
+      "payload": "order_snapshot",
+      "key": "updatedAt",
+      "type": "text"
+    }
+  ],
+  "attribution": [
+    {
+      "source": "customer",
+      "channel": "customer-web",
+      "hasProviderRef": false,
+      "rowCount": 14
+    },
+    {
+      "source": "platform",
+      "channel": "delivery-platform",
+      "hasProviderRef": true,
+      "rowCount": 12
+    },
+    {
+      "source": "smm",
+      "channel": "store",
+      "hasProviderRef": false,
+      "rowCount": 13
+    },
+    {
+      "source": "smt",
+      "channel": "store",
+      "hasProviderRef": false,
+      "rowCount": 21
+    }
+  ]
+}
