@@ -1,7 +1,7 @@
-source_sha=fc128d69c39707399c82f39292692772f52b86ca
-request_id=F2-OWNER-DIAGNOSTICS-PRODUCTION-ALIGNMENT-20260910-R1
-run_id=34429635048
+source_sha=73af669a98e83f33dd398bcfe75fd2f864543e07
+request_id=F2-OWNER-REPORTING-CANONICAL-COMPAT-DEPLOY-20260910-R1
+run_id=34430404689
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-owner.pantonyeung.workers.dev
-worker_version=1dd842c5-7e17-4cf5-8967-5cd923639ffa
+worker_version=21ab2e0f-c4f6-4385-9798-2fe0f9ae4a24
