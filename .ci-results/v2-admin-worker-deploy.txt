@@ -1,7 +1,7 @@
-source_sha=66ef52538f8b72d82fe63b65d6c81c75173c67e9
-request_id=F2-OWNER-REPORTING-PRODUCTION-SHAPES-ADMIN-DEPLOY-20260910-R1
-run_id=34436426858
+source_sha=44bcb4719a6bd91b53112fb857c7cf40cece8072
+request_id=F2-OWNER-REPORTING-LEGACY-RECONSTRUCTION-ADMIN-DEPLOY-20260910-R2
+run_id=34441396611
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=955fdf19-da5a-40d6-91f7-d0dc939056f5
+worker_version=bb9c839d-5ea1-44cd-b5de-67508f95ccf0
