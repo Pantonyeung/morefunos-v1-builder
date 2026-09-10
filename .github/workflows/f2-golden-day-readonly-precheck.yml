@@ -40,24 +40,29 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
-          node - <<'NODE'
-          const fs=require('fs');
-          const sql=[
-            "SELECT 'business_day' AS section,business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3",
-            "SELECT 'cash_shift' AS section,cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5",
-            "SELECT 'order' AS section,order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10",
-            "SELECT 'payment' AS section,payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10",
-            "SELECT 'fulfillment' AS section,fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10",
-          ].join('; ');
-          fs.writeFileSync('/tmp/query.json',JSON.stringify({sql}));
-          NODE
-          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/raw.json
+          query(){
+            NAME="$1"
+            SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -sS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/$NAME.json"
+            NAME="$NAME" node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('evidence/'+process.env.NAME+'.json','utf8'));if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
+          }
+          query business_day "SELECT business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3"
+          query cash_shift "SELECT cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5"
+          query orders "SELECT order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10"
+          query payments "SELECT payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10"
+          query fulfillments "SELECT fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10"
           node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
-          const x=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
-          if(!x.success)throw new Error('GOLDEN_DAY_D1_READ_FAILED');
-          const groups=(x.result||[]).map(r=>r.results||[]);
-          const [days=[],shifts=[],orders=[],payments=[],fulfillments=[]]=groups;
+          const rows=name=>{
+            const x=JSON.parse(fs.readFileSync('evidence/'+name+'.json','utf8'));
+            return x.result?.[0]?.results||[];
+          };
+          const days=rows('business_day');
+          const shifts=rows('cash_shift');
+          const orders=rows('orders');
+          const payments=rows('payments');
+          const fulfillments=rows('fulfillments');
           const openDay=days.find(r=>r.status==='OPEN')||null;
           const openShift=shifts.find(r=>r.status==='OPEN'&&(!openDay||r.detail===openDay.id))||null;
           const recentOrder=orders[0]||null;
