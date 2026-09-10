@@ -58,37 +58,33 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('apps/smt-clean/src/runtime/network-production-runtime.ts')
           text = path.read_text()
 
-          counter = '    let idlePasses=0;\n'
-          if text.count(counter) != 1:
-              raise SystemExit(f'B0321_IDLE_COUNTER_MATCH_COUNT={text.count(counter)}')
+          old_head = """  const dispatchAcceptedOrderAutoPrint=async(orderId:string):Promise<void>=>{\n    const liveTraceStorage=store(source);\n    if(liveTraceStorage)appendSmtOrderToPrintLiveV2Checkpoint(liveTraceStorage,{\n      orderId,stage:'PRINT_PREPARE_STARTED',status:'PENDING',code:'ORDER_TO_PRINT_PRINT_PREPARE_STARTED',\n    });\n    const externalExecutor=source.__MORE_FUN_OS_SMT_CANONICAL_SOURCE__?.nativePrint?.executor;\n    // The canonical Worker admits PrintJobs in ctx.waitUntil after the order POST response.\n    // Poll briefly for that durable admission, then drain every pending AUTO_ORDER job for this order.\n    let idlePasses=0;\n    for(let attempt=0;attempt<32;attempt+=1){\n      const prepared=await invokeSupport<SmtOrderAutoPrintPrepareNextResult>(SMT_ORDER_AUTO_PRINT_PREPARE_NEXT_V1,{orderId}) as SmtOrderAutoPrintPrepareNextResult;\n      if(prepared?.kind==='IDLE'){\n        idlePasses+=1;\n        if(idlePasses>=12){\n          if(liveTraceStorage)appendSmtOrderToPrintLiveV2Checkpoint(liveTraceStorage,{\n            orderId,stage:'PRINT_PREPARE_STARTED',status:'FAIL',code:'ORDER_TO_PRINT_PRINT_JOB_NOT_READY',\n            detail:{idlePasses},\n          });\n          return;\n        }\n        await wait(250);\n        continue;\n      }\n      idlePasses=0;\n"""
+          new_head = """  const dispatchAcceptedOrderAutoPrint=async(\n    orderId:string,\n    options:Readonly<{idleRetryLimit?:number}>={},\n  ):Promise<void>=>{\n    const liveTraceStorage=store(source);\n    if(liveTraceStorage)appendSmtOrderToPrintLiveV2Checkpoint(liveTraceStorage,{\n      orderId,stage:'PRINT_PREPARE_STARTED',status:'PENDING',code:'ORDER_TO_PRINT_PRINT_PREPARE_STARTED',\n    });\n    const externalExecutor=source.__MORE_FUN_OS_SMT_CANONICAL_SOURCE__?.nativePrint?.executor;\n    // Order acceptance already durably admits the Receipt PrintJob before the response.\n    // Normal accepted-order dispatch therefore reads PREPARE_NEXT immediately with zero wait.\n    const idleRetryLimit=Math.max(0,Math.min(4,Math.trunc(options.idleRetryLimit??0)));\n    let recoveryIdleRetries=0;\n    for(let attempt=0;attempt<32;attempt+=1){\n      const prepared=await invokeSupport<SmtOrderAutoPrintPrepareNextResult>(SMT_ORDER_AUTO_PRINT_PREPARE_NEXT_V1,{orderId}) as SmtOrderAutoPrintPrepareNextResult;\n      if(prepared?.kind==='IDLE'){\n        if(recoveryIdleRetries>=idleRetryLimit)return;\n        recoveryIdleRetries+=1;\n        await wait(200);\n        continue;\n      }\n      recoveryIdleRetries=0;\n"""
+          if text.count(old_head) != 1:
+              raise SystemExit(f'B0321_OLD_HEAD_MATCH_COUNT={text.count(old_head)}')
+          text = text.replace(old_head, new_head, 1)
 
-          pattern = re.compile(
-              r"      if\(prepared\.kind==='IDLE'\)\{\n"
-              r".*?"
-              r"        continue;\n"
-              r"      \}\n",
-              re.S,
-          )
-          matches = list(pattern.finditer(text))
-          if len(matches) != 1:
-              raise SystemExit(f'B0321_IDLE_BLOCK_MATCH_COUNT={len(matches)}')
-          old = matches[0].group(0)
-          required = ('idlePasses', '250', 'waitUntil', 'ORDER_TO_PRINT_PRINT_JOB_NOT_READY')
-          missing = [token for token in required if token not in old]
-          if missing:
-              raise SystemExit('B0321_EXPECTED_STALE_MARKERS_MISSING=' + ','.join(missing))
+          sweep_old = "          await dispatchAcceptedOrderAutoPrint(orderId);"
+          sweep_new = "          await dispatchAcceptedOrderAutoPrint(orderId,{idleRetryLimit:3});"
+          if text.count(sweep_old) != 1:
+              raise SystemExit(f'B0321_SWEEP_CALL_MATCH_COUNT={text.count(sweep_old)}')
+          text = text.replace(sweep_old, sweep_new, 1)
 
-          text = text.replace(counter, '', 1)
-          matches = list(pattern.finditer(text))
-          if len(matches) != 1:
-              raise SystemExit(f'B0321_POST_COUNTER_IDLE_BLOCK_MATCH_COUNT={len(matches)}')
-          new = "      if(prepared.kind==='IDLE'){\n        return;\n      }\n"
-          text = text[:matches[0].start()] + new + text[matches[0].end():]
+          recovery_old = "        void dispatchAcceptedOrderAutoPrint(orderId).catch(error=>{"
+          recovery_new = "        void dispatchAcceptedOrderAutoPrint(orderId,{idleRetryLimit:3}).catch(error=>{"
+          if text.count(recovery_old) != 1:
+              raise SystemExit(f'B0321_RECOVERY_CALL_MATCH_COUNT={text.count(recovery_old)}')
+          text = text.replace(recovery_old, recovery_new, 1)
+
+          # The online accepted-order caller intentionally keeps the default zero-retry mode.
+          normal_call = "void dispatchAcceptedOrderAutoPrint(reconciled.orderId).catch(error=>{"
+          if text.count(normal_call) != 1:
+              raise SystemExit(f'B0321_NORMAL_CALL_MATCH_COUNT={text.count(normal_call)}')
+
           path.write_text(text)
           PY
 
@@ -96,12 +92,12 @@ jobs:
           test "$(git diff --name-only | wc -l | tr -d ' ')" = 1
           test "$(git diff --name-only)" = 'apps/smt-clean/src/runtime/network-production-runtime.ts'
           git diff -- apps/smt-clean/src/runtime/network-production-runtime.ts | tee /tmp/b0321.diff
-          grep -q "^-    let idlePasses=0;" /tmp/b0321.diff
-          grep -q "^+        return;" /tmp/b0321.diff
-          grep -q "^-.*wait(250)" /tmp/b0321.diff
-          grep -q "^-.*waitUntil" /tmp/b0321.diff
+          grep -q "options:Readonly<{idleRetryLimit?:number}>" /tmp/b0321.diff
+          grep -q "idleRetryLimit:3" /tmp/b0321.diff
+          grep -q "Normal accepted-order dispatch therefore reads PREPARE_NEXT immediately with zero wait" /tmp/b0321.diff
           ! grep -q '^+.*wait(250)' /tmp/b0321.diff
-          ! grep -q '^+.*waitUntil' /tmp/b0321.diff
+          ! grep -q '^+.*idlePasses>=12' /tmp/b0321.diff
+          ! grep -q '^+.*admits PrintJobs in ctx.waitUntil after the order POST response' /tmp/b0321.diff
 
       - name: Commit and push bounded mutation
         working-directory: source
@@ -111,6 +107,6 @@ jobs:
           git config user.name 'morefunos-builder-bot'
           git config user.email '107616897+Pantonyeung@users.noreply.github.com'
           git add apps/smt-clean/src/runtime/network-production-runtime.ts
-          git commit -m 'fix(print): stop waiting for durable print job visibility'
+          git commit -m 'fix(print): make normal durable readback zero-wait'
           git push origin HEAD:${{ steps.request.outputs.target_branch }}
           printf 'new_head=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
