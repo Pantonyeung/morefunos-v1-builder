@@ -1,0 +1,10 @@
+candidate_sha=7fb7649978c197f6b8edc1ca7e8c78aecc6c6f0f
+base_main_sha=c53637a238dc474f8d730635dd396609b88a8cab
+work_id=F2-WI-SMM-ORDER-SYNC-BUILDER-PROOF-20260910
+capability_id=CAP-FRONTLINE-BOOTSTRAP-001
+capability_action=REUSE
+affected_ports=SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=7fb7649978c197f6b8edc1ca7e8c78aecc6c6f0f
+required_core_tests=ORDER,DIAGNOSTICS
+force_full_proof=true
