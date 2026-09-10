@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-10T01:40:45.222Z",
-  "sourceSha": "012e105cee137fcb641c1cda85fb87765d20498d",
-  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R4",
+  "generatedAt": "2026-09-10T02:04:35.323Z",
+  "sourceSha": "7f5f0e3698f98b319ca06e70197eeaff47d81b66",
+  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R5",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 3,
+  "rowCount": 51,
   "traceCount": 2,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
@@ -116,8 +116,8 @@
           "status": "PENDING",
           "firstFailedEdgeId": null,
           "latencyMs": null,
-          "lastAt": "2026-09-10T01:40:16.849Z",
-          "eventCount": 2,
+          "lastAt": "2026-09-10T02:04:16.901Z",
+          "eventCount": 50,
           "edges": [
             {
               "edgeId": "d1-admin-store-config-readback",
