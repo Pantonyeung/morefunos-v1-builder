@@ -29,7 +29,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-      - name: Require source equals current V2 main HEAD
+      - name: Require source is current or unaffected by later SMT-only main movement
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
@@ -37,8 +37,33 @@ jobs:
         run: |
           set -euo pipefail
           MAIN_SHA="$(gh api repos/Pantonyeung/Morefun-v2/commits/main --jq .sha)"
-          test "$SOURCE_SHA" = "$MAIN_SHA" || { echo "::error::STALE_V2_SOURCE_REFUSED source=$SOURCE_SHA main=$MAIN_SHA"; exit 1; }
-          echo "v2-main-pin=PASS sha=$MAIN_SHA"
+          if [[ "$SOURCE_SHA" == "$MAIN_SHA" ]]; then
+            echo "v2-main-pin=PASS sha=$MAIN_SHA mode=EXACT_HEAD"
+            exit 0
+          fi
+
+          gh api "repos/Pantonyeung/Morefun-v2/compare/${SOURCE_SHA}...${MAIN_SHA}" > /tmp/owner-deploy-compare.json
+          STATUS="$(jq -r '.status' /tmp/owner-deploy-compare.json)"
+          [[ "$STATUS" == "ahead" ]] || {
+            echo "::error::STALE_V2_SOURCE_NOT_ANCESTOR source=$SOURCE_SHA main=$MAIN_SHA status=$STATUS"
+            exit 1
+          }
+
+          mapfile -t CHANGED < <(jq -r '.files[].filename' /tmp/owner-deploy-compare.json)
+          [[ "${#CHANGED[@]}" -gt 0 ]] || {
+            echo "::error::STALE_V2_SOURCE_COMPARE_EMPTY source=$SOURCE_SHA main=$MAIN_SHA"
+            exit 1
+          }
+          for file in "${CHANGED[@]}"; do
+            case "$file" in
+              apps/smt-clean/*) ;;
+              *)
+                echo "::error::STALE_V2_SOURCE_OWNER_RELEVANT_DELTA file=$file source=$SOURCE_SHA main=$MAIN_SHA"
+                exit 1
+                ;;
+            esac
+          done
+          printf 'v2-main-pin=PASS source=%s main=%s mode=VERIFIED_ANCESTOR_WITH_SMT_ONLY_DELTA\n' "$SOURCE_SHA" "$MAIN_SHA"
 
       - uses: actions/checkout@v7
         with:
