@@ -236,6 +236,7 @@ jobs:
           CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
           BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
           DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
+          FORCE_FULL_PROOF: ${{ steps.request.outputs.force_full_proof }}
           SOURCE_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
         run: |
           set -euo pipefail
@@ -312,7 +313,13 @@ jobs:
           fi
 
           rm -rf integration
-          cp -a latest integration
+          if [[ "$ALREADY_ADMITTED" == true && "$FORCE_FULL_PROOF" == true ]]; then
+            cp -a candidate integration
+            VERIFICATION_SOURCE=FROZEN_CANDIDATE
+          else
+            cp -a latest integration
+            VERIFICATION_SOURCE=LATEST_INTEGRATION
+          fi
           APPLY_STATUS=SKIPPED
           TRAIN_COUNT=0
 
@@ -467,6 +474,7 @@ jobs:
             echo "candidate_sha=$CANDIDATE_SHA"
             echo "latest_main_sha=$LATEST_SHA"
             echo "already_admitted=$ALREADY_ADMITTED"
+            echo "verification_source=$VERIFICATION_SOURCE"
             echo "collision=$COLLISION"
             echo "impact=$IMPACT"
             echo "reason=$REASON"
@@ -480,6 +488,7 @@ jobs:
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
           echo "apply_status=$APPLY_STATUS" >> "$GITHUB_OUTPUT"
           echo "already_admitted=$ALREADY_ADMITTED" >> "$GITHUB_OUTPUT"
+          echo "verification_source=$VERIFICATION_SOURCE" >> "$GITHUB_OUTPUT"
           if [[ "$APPLY_STATUS" == CONFLICT ]]; then exit 22; fi
 
       - name: Setup Node 24
