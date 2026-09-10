@@ -1,3 +1,3 @@
-source_sha=c7e00b6ddb7343c257c3adb1d6f6014d719806fe
-migration_file=0053-customer-rfm-projection.sql
-request_id=TEAM-C-B0118-RFM-D1-PRODUCTION-20260908
+source_sha=7e7d500da26483d60ea5d881d580166ad41e6a26
+migration_file=0054-system-diagnostics-trace.sql
+request_id=F2-SYSTEM-DIAGNOSTICS-D1-PRODUCTION-20260910
