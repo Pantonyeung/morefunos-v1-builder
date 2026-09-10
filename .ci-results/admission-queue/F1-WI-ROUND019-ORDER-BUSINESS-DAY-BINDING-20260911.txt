@@ -1,0 +1,13 @@
+work_id=F1-WI-ROUND019-ORDER-BUSINESS-DAY-BINDING-20260911
+candidate_sha=440d6e5e2b2a5e55c4503713756df15f65bb39ad
+base_main_sha=97591e9ed83ec513651ed5948420adbd387baed4
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34542901565
+conclusion=failure
