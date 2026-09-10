@@ -1,0 +1,13 @@
+work_id=F2-WI-PRINT-SNAPSHOT-REFERENCE-READ-20260910
+candidate_sha=e1d563d65456b1040e961e11934e585f840e2d25
+base_main_sha=3c5cc7b55bf7e060e7e3ebca44615cf004a54445
+latest_main_sha=e1d563d65456b1040e961e11934e585f840e2d25
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=PRINT,DIAGNOSTICS
+force_full_proof=true
+run_id=34423188935
+conclusion=success
