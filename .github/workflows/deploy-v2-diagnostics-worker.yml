@@ -1,0 +1,185 @@
+name: Deploy V2 Diagnostics Worker
+
+on:
+  push:
+    paths:
+      - 'requests/v2-diagnostics-worker-deploy-request.txt'
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-diagnostics-worker-deploy-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-diagnostics-worker-deploy-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Require admitted source with no newer Diagnostics relevant changes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          COMPARE="$(gh api "repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...main")"
+          STATUS="$(jq -r '.status' <<<"$COMPARE")"
+          [[ "$STATUS" == "identical" || "$STATUS" == "ahead" ]] || {
+            echo "::error::SOURCE_NOT_ADMITTED_ANCESTOR status=$STATUS source=$SOURCE_SHA"
+            exit 1
+          }
+          CHANGED="$(jq -r '.files[]?.filename' <<<"$COMPARE" | grep -E '^(apps/diagnostics-web/|infra/cloudflare/diagnostics-web-worker/|packages/system-diagnostics/|packages/smt-ui-integration/smt-canonical-store-authority\.ts$|packages/merchant-store/)' || true)"
+          test -z "$CHANGED" || {
+            printf '::error::DIAGNOSTICS_RELEVANT_MAIN_MOVED\n%s\n' "$CHANGED"
+            exit 1
+          }
+          echo "v2-admitted-source=PASS source=$SOURCE_SHA"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify exact Diagnostics source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund
+          mapfile -t DIAGNOSTICS_TESTS < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
+          test "${#DIAGNOSTICS_TESTS[@]}" -gt 0
+          node --test --test-concurrency=1 "${DIAGNOSTICS_TESTS[@]}"
+          npm --prefix apps/diagnostics-web install --ignore-scripts --no-audit --no-fund
+          npm --prefix apps/diagnostics-web run typecheck
+          npm --prefix apps/diagnostics-web run build
+          test -s apps/diagnostics-web/dist/index.html
+          npm exec --yes --package=typescript@5.8.3 -- tsc --noEmit -p infra/cloudflare/diagnostics-web-worker/tsconfig.json
+
+      - name: Deploy exact Diagnostics Worker
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          CONFIG='infra/cloudflare/diagnostics-web-worker/wrangler.jsonc'
+          test -s "$CONFIG"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config "$CONFIG" 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          printf '%s\n' "$URL" > "$GITHUB_WORKSPACE/evidence/url.txt"
+
+      - name: Live Diagnostics smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt)"
+          fetch_status() {
+            local method="$1" url="$2" out="$3" data="${4:-}" code=""
+            for i in {1..30}; do
+              if [ "$method" = POST ]; then
+                code="$(curl -sS -H 'content-type: application/json' --data-binary "$data" -o "$out" -w '%{http_code}' "$url" || true)"
+              else
+                code="$(curl -sS -o "$out" -w '%{http_code}' "$url" || true)"
+              fi
+              if [[ "$code" != 000 ]]; then break; fi
+              sleep 2
+            done
+            printf '%s' "$code"
+          }
+
+          INDEX_HTTP="$(fetch_status GET "$URL/" /tmp/diagnostics-index.html)"
+          OVERVIEW_HTTP="$(fetch_status GET "$URL/api/diagnostics/overview" /tmp/diagnostics-overview.json)"
+          RUN_HTTP="$(fetch_status POST "$URL/api/diagnostics/run" /tmp/diagnostics-run.json '{"journeyId":"ALL_CRITICAL"}')"
+
+          test "$INDEX_HTTP" = 200
+          test "$OVERVIEW_HTTP" = 200
+          test "$RUN_HTTP" = 501
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const overview=JSON.parse(fs.readFileSync('/tmp/diagnostics-overview.json','utf8'));
+          if(typeof overview?.checkedAt!=='string')process.exit(1);
+          if(!['PASS','DEGRADED','FAIL','UNKNOWN'].includes(overview?.health))process.exit(1);
+          if(!Array.isArray(overview?.nodes)||!Array.isArray(overview?.journeys)||!Array.isArray(overview?.recentTraces))process.exit(1);
+          const run=JSON.parse(fs.readFileSync('/tmp/diagnostics-run.json','utf8'));
+          if(run?.ok!==false||run?.code!=='DIAGNOSTICS_SYNTHETIC_RUNNER_NOT_ADMITTED')process.exit(1);
+          console.log('diagnostics_live_overview=PASS journeys='+overview.journeys.length+' recentTraces='+overview.recentTraces.length);
+          console.log('diagnostics_synthetic_fail_closed=PASS');
+          NODE
+
+          printf 'source_sha=%s\norigin=%s\nindex_http=%s\noverview_http=%s\nrun_http=%s\n'             "${{ steps.req.outputs.source_sha }}" "$URL" "$INDEX_HTTP" "$OVERVIEW_HTTP" "$RUN_HTTP" | tee evidence/smoke.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-diagnostics-worker-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Seal Diagnostics deploy result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(cat evidence/url.txt 2>/dev/null || true)"
+          VERSION="$(sed -n 's/.*Current Version ID: *//p' evidence/deploy.log 2>/dev/null | tail -n1 | tr -d '\r\n' || true)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
+              echo "request_id=${REQUEST_ID:-UNKNOWN}"
+              echo "run_id=$RUN_ID"
+              echo "run_attempt=$RUN_ATTEMPT"
+              echo "conclusion=$CONCLUSION"
+              echo "url=${URL:-UNKNOWN}"
+              echo "worker_version=${VERSION:-UNKNOWN}"
+            } > .ci-results/v2-diagnostics-worker-deploy.txt
+            git add .ci-results/v2-diagnostics-worker-deploy.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "deploy(result): V2 Diagnostics $CONCLUSION ${SOURCE_SHA:-UNKNOWN}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          echo "DIAGNOSTICS_DEPLOY_RESULT_SEAL_PUSH_FAILED" >&2
+          exit 1
