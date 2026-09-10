@@ -1,0 +1,74 @@
+name: V2 Proof Diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact frozen Morefun-v2 SHA to diagnose
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout V2 candidate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ inputs.candidate_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck 2>&1 | tee typecheck.log
+
+      - name: ORDER proof with durable log
+        id: order
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mapfile -t canonical_order_tests < <(find packages/order -maxdepth 1 -type f -name '*.test.ts' ! -name 'postgres-*.integration.test.ts' -print | sort)
+          node --test --test-concurrency=1 "${canonical_order_tests[@]}" 2>&1 | tee order-proof.log
+
+      - name: PRINT proof with durable log
+        id: print
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:print 2>&1 | tee print-proof.log
+
+      - name: Upload proof diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-proof-diagnostic-${{ inputs.candidate_sha }}
+          path: |
+            typecheck.log
+            order-proof.log
+            print-proof.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preserve failing conclusion
+        if: always()
+        shell: bash
+        run: |
+          echo "ORDER=${{ steps.order.outcome }}"
+          echo "PRINT=${{ steps.print.outcome }}"
+          [[ "${{ steps.order.outcome }}" == "success" && "${{ steps.print.outcome }}" == "success" ]]
