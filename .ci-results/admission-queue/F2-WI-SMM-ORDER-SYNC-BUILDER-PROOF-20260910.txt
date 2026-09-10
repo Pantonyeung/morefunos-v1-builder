@@ -1,7 +1,7 @@
 work_id=F2-WI-SMM-ORDER-SYNC-BUILDER-PROOF-20260910
 candidate_sha=7fb7649978c197f6b8edc1ca7e8c78aecc6c6f0f
 base_main_sha=c53637a238dc474f8d730635dd396609b88a8cab
-latest_main_sha=1cec2d23aa0e8f3d9c11005b8cbc89ceff74f568
+latest_main_sha=fef0c5841df118bf67546439469ba1459a20c837
 collision=C0
 impact=V0
 reason=ALREADY_ADMITTED_OR_NOOP
@@ -9,5 +9,5 @@ apply_status=SKIPPED
 depends_on_specs=
 required_core_tests=ORDER,DIAGNOSTICS
 force_full_proof=true
-run_id=34423582711
+run_id=34423823231
 conclusion=failure
