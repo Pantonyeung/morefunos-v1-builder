@@ -51,6 +51,12 @@ jobs:
           LOGIN_HTTP="$(curl -sS -D /tmp/owner-login.headers -o /tmp/owner-login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$OWNER_ORIGIN/api/owner/session")"
           echo "owner_login_http=$LOGIN_HTTP" | tee -a evidence/owner-rbac.txt
           test "$LOGIN_HTTP" = 200
+          OWNER_STAFF_ID="$(node -e "const x=require('/tmp/owner-login.json'); process.stdout.write(String(x.staffId||''))")"
+          OWNER_ACTOR_ID="$(node -e "const x=require('/tmp/owner-login.json'); process.stdout.write(String(x.actorId||''))")"
+          OWNER_PERMISSIONS="$(node -e "const x=require('/tmp/owner-login.json'); process.stdout.write(JSON.stringify(x.permissions||[]))")"
+          echo "owner_staff_id=$OWNER_STAFF_ID" | tee -a evidence/owner-rbac.txt
+          echo "owner_actor_id=$OWNER_ACTOR_ID" | tee -a evidence/owner-rbac.txt
+          echo "owner_session_permissions=$OWNER_PERMISSIONS" | tee -a evidence/owner-rbac.txt
           OWNER_STAFF_ID="$(node -e "const x=require('/tmp/owner-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.staffId))")"
           OWNER_SCOPE_REF="$(node -e "const x=require('/tmp/owner-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.scopeRef))")"
           echo "owner_staff_id=$OWNER_STAFF_ID" | tee -a evidence/owner-rbac.txt
@@ -109,6 +115,47 @@ jobs:
           if(process.env.RBAC_HTTP==='403'){
             console.log('owner_rbac_authority_gap='+(staff.lifecycleStatus==='ACTIVE'&&scoped.length>0?'AUTHORIZATION_LOGIC_MISMATCH':'D1_GRANT_MISSING'));
           }
+          NODE
+
+      - name: Diagnose canonical Owner RBAC grants on denied read
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAFF_ID="$(sed -n 's/^owner_staff_id=//p' evidence/owner-rbac.txt)"
+          STORE_ID="$(sed -n 's/^store_id=//p' evidence/owner-rbac.txt)"
+          echo "diagnostic_staff_id=$STAFF_ID" | tee evidence/rbac-grant-diagnostic.txt
+          echo "diagnostic_store_id=$STORE_ID" | tee -a evidence/rbac-grant-diagnostic.txt
+          if [[ -z "$STAFF_ID" ]]; then
+            echo "diagnostic_result=OWNER_SESSION_STAFF_ID_MISSING" | tee -a evidence/rbac-grant-diagnostic.txt
+            exit 0
+          fi
+          SQL="SELECT record_json FROM mfos_rbac_staff WHERE staff_id='$STAFF_ID' LIMIT 1;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/staff-query.json',JSON.stringify({sql:process.env.SQL}))"
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/staff-query.json > /tmp/staff-d1.json
+          node - <<'NODE' | tee -a evidence/rbac-grant-diagnostic.txt
+          const x=require('/tmp/staff-d1.json');
+          const raw=x.result?.[0]?.results?.[0]?.record_json;
+          if(!raw){console.log('diagnostic_result=OWNER_CANONICAL_STAFF_NOT_FOUND');process.exit(0)}
+          const staff=JSON.parse(raw);
+          console.log('staff_lifecycle='+String(staff.lifecycleStatus||''));
+          console.log('role_ids='+JSON.stringify(staff.roleIds||[]));
+          require('fs').writeFileSync('/tmp/role-ids.json',JSON.stringify(staff.roleIds||[]));
+          NODE
+          ROLE_IDS="$(cat /tmp/role-ids.json 2>/dev/null || echo '[]')"
+          ROLE_IDS="$ROLE_IDS" node -e "const ids=JSON.parse(process.env.ROLE_IDS); const qs=ids.map(()=>'?').join(','); require('fs').writeFileSync('/tmp/roles.sql',ids.length?'SELECT record_json FROM mfos_rbac_roles WHERE role_id IN ('+qs+');':'SELECT record_json FROM mfos_rbac_roles WHERE 1=0;'); require('fs').writeFileSync('/tmp/roles.params',JSON.stringify(ids))"
+          SQL="$(cat /tmp/roles.sql)"
+          PARAMS="$(cat /tmp/roles.params)"
+          SQL="$SQL" PARAMS="$PARAMS" node -e "require('fs').writeFileSync('/tmp/roles-query.json',JSON.stringify({sql:process.env.SQL,params:JSON.parse(process.env.PARAMS)}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/roles-query.json > /tmp/roles-d1.json
+          STORE_ID="$STORE_ID" node - <<'NODE' | tee -a evidence/rbac-grant-diagnostic.txt
+          const x=require('/tmp/roles-d1.json');
+          const roles=(x.result?.[0]?.results||[]).map(r=>JSON.parse(r.record_json));
+          for(const role of roles) console.log('role='+role.roleId+' permissions='+JSON.stringify(role.permissions||[]));
+          const ok=roles.some(role=>(role.permissions||[]).some(g=>g.permission==='staff.manage'&&(!g.scopeRef||g.scopeRef===process.env.STORE_ID)));
+          console.log('staff_manage_grant='+String(ok));
+          console.log('diagnostic_result='+(ok?'GRANT_PRESENT_AUTHZ_UNEXPECTED_DENY':'STAFF_MANAGE_GRANT_MISSING'));
           NODE
 
       - name: Read Owner RBAC checkpoint from production D1
