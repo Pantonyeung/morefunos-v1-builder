@@ -119,6 +119,10 @@ jobs:
           OVERVIEW_HTTP="$(fetch_status GET "$URL/api/diagnostics/overview" /tmp/diagnostics-overview.json)"
           RUN_HTTP="$(fetch_status POST "$URL/api/diagnostics/run" /tmp/diagnostics-run.json '{"journeyId":"ALL_CRITICAL"}')"
 
+          echo "index_http=$INDEX_HTTP body=$(cat /tmp/diagnostics-index.json)"
+          echo "overview_http=$OVERVIEW_HTTP body=$(cat /tmp/diagnostics-overview.json)"
+          echo "run_http=$RUN_HTTP body=$(cat /tmp/diagnostics-run.json)"
+
           test "$INDEX_HTTP" = 403
           test "$OVERVIEW_HTTP" = 403
           test "$RUN_HTTP" = 403
