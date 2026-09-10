@@ -1,0 +1,9 @@
+candidate_sha=38c311fa0a288b5574562846b5df4babda3bb05f
+base_main_sha=838daac46ab3d2d1ca0105d099adfd6a14f09cc4
+work_id=TEAM2-WI-ROUND010-GOLDEN-JOURNEY-REGISTRY-REPAIR-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=CORE
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=38c311fa0a288b5574562846b5df4babda3bb05f
