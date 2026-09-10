@@ -22,7 +22,7 @@ jobs:
           set -euo pipefail
           S="$(sed -n 's/^source_sha=//p' requests/f2-channel-projection-real-trace-request.txt | tr -d '[:space:]')"
           R="$(sed -n 's/^request_id=//p' requests/f2-channel-projection-real-trace-request.txt | tr -d '\r\n')"
-          [[ "$S" =~ ^[0-9a-f]{40}$ ]]; test -n "$R"; test -n "$ADMIN_SESSION_BOOTSTRAP_JSON"
+          [[ "$S" =~ ^[0-9a-f]{40}$ ]]; test -n "$R"
           echo "source_sha=$S" >> "$GITHUB_OUTPUT"; echo "request_id=$R" >> "$GITHUB_OUTPUT"
       - name: Guard runtime source
         env:
@@ -54,6 +54,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p evidence
+          if [ -z "${ADMIN_SESSION_BOOTSTRAP_JSON:-}" ]; then
+            printf '{"sourceSha":"%s","requestId":"%s","status":"BLOCKED_OPERATOR_AUTH","mutated":false,"firstFailedEdge":"BUILDER_TO_ADMIN_AUTHENTICATED_SESSION","reason":"ADMIN_SESSION_BOOTSTRAP_JSON_MISSING"}\n' "$SOURCE_SHA" "$REQUEST_ID" > evidence/summary.json
+            cat evidence/summary.json
+            exit 0
+          fi
           CFG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
           URL='https://morefun-v2-admin.pantonyeung.workers.dev'
           TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
