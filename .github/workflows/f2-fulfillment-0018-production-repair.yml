@@ -72,7 +72,7 @@ jobs:
             SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
             curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/pre-$NAME.json"
           }
-          query schema "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+          query schema "SELECT name,sql,type FROM sqlite_master WHERE (type='table' OR type='index') AND name LIKE 'mfos_fulfillment_%' ORDER BY type,name"
           query ledger "SELECT id,name,applied_at FROM d1_migrations ORDER BY id"
           node - <<'NODE' | tee evidence/preflight.txt
           const fs=require('fs');
@@ -82,18 +82,38 @@ jobs:
           const required=['mfos_fulfillment_policy','mfos_fulfillment_state','mfos_fulfillment_decision','mfos_fulfillment_queue','mfos_fulfillment_transition_audit','mfos_fulfillment_idempotency','mfos_fulfillment_release_audit'];
           const present=required.filter(n=>names.has(n));
           const recorded=ledger.some(r=>r.name==='0018-fulfillment-runtime-authority.sql');
+          const sqlByName=new Map(schema.map(r=>[r.name,String(r.sql||'').replace(/\s+/g,' ').trim()]));
+          const shapeChecks=[
+            ['mfos_fulfillment_policy',['store_id TEXT NOT NULL','intent TEXT NOT NULL','scope_key TEXT NOT NULL','PRIMARY KEY (store_id, intent, scope_key)']],
+            ['mfos_fulfillment_state',['fulfillment_id TEXT PRIMARY KEY','revision INTEGER NOT NULL','order_id TEXT NOT NULL','store_id TEXT NOT NULL','lifecycle_status TEXT NOT NULL','snapshot_json TEXT NOT NULL','updated_at TEXT NOT NULL']],
+            ['mfos_fulfillment_decision',['decision_id TEXT PRIMARY KEY','fulfillment_id TEXT NOT NULL','order_id TEXT NOT NULL','store_id TEXT NOT NULL','decision_json TEXT NOT NULL']],
+            ['mfos_fulfillment_queue',['queue_key TEXT PRIMARY KEY','fulfillment_id TEXT NOT NULL','order_id TEXT NOT NULL','canonical_revision INTEGER NOT NULL','projection_json TEXT NOT NULL']],
+            ['mfos_fulfillment_transition_audit',['transition_id TEXT PRIMARY KEY','fulfillment_id TEXT NOT NULL','from_status TEXT NOT NULL','to_status TEXT NOT NULL','resulting_revision INTEGER NOT NULL']],
+            ['mfos_fulfillment_idempotency',['idempotency_key TEXT PRIMARY KEY','request_fingerprint TEXT NOT NULL','result_json TEXT NOT NULL','completed_at TEXT NOT NULL']],
+            ['mfos_fulfillment_release_audit',['event_id TEXT PRIMARY KEY','fulfillment_id TEXT NOT NULL','order_id TEXT NOT NULL','store_id TEXT NOT NULL','event_json TEXT NOT NULL']],
+            ['mfos_fulfillment_state_order_idx',['CREATE UNIQUE INDEX','mfos_fulfillment_state(order_id)']],
+          ];
+          const shapeFailures=[];
+          for(const [name,needles] of shapeChecks){
+            const sql=sqlByName.get(name)||'';
+            for(const needle of needles) if(!sql.includes(needle)) shapeFailures.push(name+':'+needle);
+          }
           console.log('required_present='+present.length+'/'+required.length);
           console.log('migration_0018_recorded='+recorded);
+          console.log('shape_failures='+JSON.stringify(shapeFailures));
           console.log('ledger_tail='+JSON.stringify(ledger.slice(-10).map(r=>({id:r.id,name:r.name}))));
           if(present.length!==0 && present.length!==required.length) throw new Error('PARTIAL_FULFILLMENT_SCHEMA_FAIL_CLOSED');
           if(recorded && present.length!==required.length) throw new Error('LEDGER_SCHEMA_DIVERGENCE_FAIL_CLOSED');
-          if(!recorded && present.length===required.length) throw new Error('SCHEMA_EXISTS_WITHOUT_LEDGER_FAIL_CLOSED');
-          fs.writeFileSync('/tmp/repair-needed',(!recorded&&present.length===0)?'1':'0');
+          if(present.length===required.length && shapeFailures.length) throw new Error('FULFILLMENT_SCHEMA_SHAPE_MISMATCH_FAIL_CLOSED');
+          let mode='NONE';
+          if(!recorded&&present.length===0)mode='APPLY_AND_LEDGER';
+          else if(!recorded&&present.length===required.length)mode='LEDGER_ONLY';
+          fs.writeFileSync('/tmp/repair-mode',mode);
           NODE
-          echo "repair_needed=$(cat /tmp/repair-needed)" >> "$GITHUB_OUTPUT"
+          echo "repair_mode=$(cat /tmp/repair-mode)" >> "$GITHUB_OUTPUT"
 
       - name: Apply only exact migration 0018
-        if: steps.preflight.outputs.repair_needed == '1'
+        if: steps.preflight.outputs.repair_mode == 'APPLY_AND_LEDGER'
         shell: bash
         run: |
           set -euo pipefail
@@ -104,7 +124,7 @@ jobs:
           node -e "const x=require('./evidence/apply-0018.json');if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
 
       - name: Record only migration 0018 in canonical ledger
-        if: steps.preflight.outputs.repair_needed == '1'
+        if: steps.preflight.outputs.repair_mode == 'APPLY_AND_LEDGER' || steps.preflight.outputs.repair_mode == 'LEDGER_ONLY'
         shell: bash
         run: |
           set -euo pipefail
