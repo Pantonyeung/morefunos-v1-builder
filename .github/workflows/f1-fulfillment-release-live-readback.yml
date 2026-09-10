@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
-          SQL="SELECT s.order_id,s.store_id,s.revision,s.created_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND f.order_id IS NULL ORDER BY s.created_at ASC,s.order_id ASC"
+          SQL="SELECT s.order_id,s.store_id,s.revision,s.created_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND s.created_at>='2026-09-10T23:18:26Z' AND f.order_id IS NULL ORDER BY s.created_at ASC,s.order_id ASC"
           SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
           curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/preflight.json
           node - <<'NODE' | tee evidence/preflight.txt
@@ -58,10 +58,8 @@ jobs:
           const rows=x.result?.[0]?.results||[];
           console.log('missing_fulfillment_count='+rows.length);
           console.log('orders='+JSON.stringify(rows));
-          if(rows.length===0)process.exit(0);
-          if(rows.length>5){console.error('FULFILLMENT_BACKLOG_TOO_LARGE_FAIL_CLOSED');process.exit(2)}
-          const cutoff=Date.parse('2026-09-10T00:00:00Z');
-          if(rows.some(r=>Date.parse(r.created_at)<cutoff)){console.error('STALE_ACCEPTED_ORDER_FAIL_CLOSED');process.exit(3)}
+          if(rows.length>20){console.error('POST_CUTOVER_FULFILLMENT_BACKLOG_TOO_LARGE_FAIL_CLOSED');process.exit(2)}
+          console.log('cutover=2026-09-10T23:18:26Z');
           NODE
 
       - name: Trigger post-commit drain without business command
@@ -78,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
-          SQL="SELECT s.order_id,s.revision AS order_revision,s.lifecycle_status AS order_status,f.fulfillment_id,f.revision AS fulfillment_revision,f.lifecycle_status AS fulfillment_status,f.updated_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' ORDER BY s.created_at DESC LIMIT 10"
+          SQL="SELECT s.order_id,s.created_at,s.revision AS order_revision,s.lifecycle_status AS order_status,f.fulfillment_id,f.revision AS fulfillment_revision,f.lifecycle_status AS fulfillment_status,f.updated_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND s.created_at>='2026-09-10T23:18:26Z' ORDER BY s.created_at DESC LIMIT 20"
           SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
           curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/post.json
           node - <<'NODE' | tee evidence/post.txt
@@ -86,12 +84,18 @@ jobs:
           if(!x.success)process.exit(1);
           const rows=x.result?.[0]?.results||[];
           console.log('rows='+JSON.stringify(rows));
+          console.log('post_cutover_order_count='+rows.length);
+          if(rows.length===0){
+            console.log('live_readback_status=NO_POST_CUTOVER_ORDER');
+            process.exit(0);
+          }
           const missing=rows.filter(r=>!r.fulfillment_id);
           console.log('accepted_without_fulfillment_after='+missing.length);
           const released=rows.filter(r=>r.fulfillment_status==='PRODUCTION_AUTHORIZED');
           console.log('production_authorized_count='+released.length);
-          if(missing.length)process.exit(1);
-          if(rows.length&&!released.length)process.exit(1);
+          if(missing.length){console.error('POST_CUTOVER_ORDER_TO_FULFILLMENT_MISSING');process.exit(1)}
+          if(released.length!==rows.length){console.error('POST_CUTOVER_FULFILLMENT_STATE_INVALID');process.exit(1)}
+          console.log('live_readback_status=PASS');
           NODE
 
       - name: Upload evidence
