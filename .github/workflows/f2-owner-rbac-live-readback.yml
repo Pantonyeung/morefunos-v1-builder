@@ -120,7 +120,7 @@ jobs:
           STORE_ID="$(sed -n 's/^store_id=//p' evidence/owner-rbac.txt)"
           RBAC_HTTP="$(sed -n 's/^owner_rbac_http=//p' evidence/owner-rbac.txt)"
           if [[ "$RBAC_HTTP" != 200 ]]; then echo "owner_rbac_checkpoint=SKIPPED_CANONICAL_READ_DENIED" | tee evidence/diagnostic-readback.txt; exit 0; fi
-          SQL="SELECT trace_id,store_id,journey_id,edge_id,stage,target,occurred_at FROM mfos_system_diagnostic_trace_event WHERE store_id='$STORE_ID' AND journey_id='IDENTITY_SECURITY_V1' AND edge_id='d1-owner-rbac-readback' ORDER BY occurred_at DESC LIMIT 1;"
+          SQL="SELECT trace_id,store_id,journey_id,edge_id,stage,target_endpoint,occurred_at FROM mfos_system_diagnostic_trace_event WHERE store_id='$STORE_ID' AND journey_id='IDENTITY_SECURITY_V1' AND edge_id='d1-owner-rbac-readback' ORDER BY occurred_at DESC LIMIT 1;"
           SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
           curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > /tmp/d1.json
@@ -128,7 +128,7 @@ jobs:
           const x=require('/tmp/d1.json');
           const r=x.result?.[0]?.results?.[0];
           if(!x.success||!r) throw new Error('OWNER_RBAC_CHECKPOINT_NOT_OBSERVED');
-          if(r.journey_id!=='IDENTITY_SECURITY_V1'||r.edge_id!=='d1-owner-rbac-readback'||r.stage!=='APPLIED'||r.target!=='OWNER') throw new Error('OWNER_RBAC_CHECKPOINT_INVALID');
+          if(r.journey_id!=='IDENTITY_SECURITY_V1'||r.edge_id!=='d1-owner-rbac-readback'||r.stage!=='APPLIED'||r.target_endpoint!=='OWNER') throw new Error('OWNER_RBAC_CHECKPOINT_INVALID');
           if(Date.parse(r.occurred_at)<Date.parse(process.env.START_AT)) throw new Error('OWNER_RBAC_CHECKPOINT_STALE');
           console.log('owner_rbac_checkpoint=PASS');
           console.log('trace_id='+r.trace_id);
