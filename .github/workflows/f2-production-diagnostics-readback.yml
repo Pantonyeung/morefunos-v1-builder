@@ -1,0 +1,176 @@
+name: F2 Production Diagnostics Readback
+
+on:
+  push:
+    paths:
+      - 'requests/f2-production-diagnostics-readback-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-production-diagnostics-readback-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/f2-production-diagnostics-readback-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Read production diagnostics D1 SELECT only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          SQL="SELECT store_id,trace_id,journey_id,edge_id,source_endpoint,target_endpoint,stage,occurred_at,expected_version,observed_version,expected_fingerprint,observed_fingerprint,error_code,ingested_at FROM mfos_system_diagnostic_trace_event ORDER BY occurred_at DESC LIMIT 5000;"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json
+
+      - name: Evaluate traces with V2 canonical journey specs
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/evaluate.mjs <<'NODE'
+          import fs from 'node:fs';
+          import {SYSTEM_DIAGNOSTIC_JOURNEYS,evaluateSystemDiagnosticJourney} from process.cwd()+'/source/packages/system-diagnostics/system-link-diagnostics.ts';
+
+          const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
+          const batches=Array.isArray(raw)?raw:[raw];
+          const rows=batches.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
+          const groups=new Map();
+          for(const row of rows){
+            const key=String(row.store_id)+'\u0000'+String(row.trace_id);
+            const list=groups.get(key)??[];
+            list.push({
+              traceId:String(row.trace_id),
+              journeyId:String(row.journey_id),
+              edgeId:String(row.edge_id),
+              source:String(row.source_endpoint),
+              target:String(row.target_endpoint),
+              stage:String(row.stage),
+              occurredAt:String(row.occurred_at),
+              ...(row.expected_version?{expectedVersion:String(row.expected_version)}:{}),
+              ...(row.observed_version?{observedVersion:String(row.observed_version)}:{}),
+              ...(row.expected_fingerprint?{expectedFingerprint:String(row.expected_fingerprint)}:{}),
+              ...(row.observed_fingerprint?{observedFingerprint:String(row.observed_fingerprint)}:{}),
+              ...(row.error_code?{errorCode:String(row.error_code)}:{}),
+            });
+            groups.set(key,list);
+          }
+
+          const traces=[];
+          for(const [key,events] of groups){
+            events.sort((a,b)=>Date.parse(a.occurredAt)-Date.parse(b.occurredAt));
+            const [storeId]=key.split('\u0000');
+            const journeyId=events[0]?.journeyId;
+            const spec=SYSTEM_DIAGNOSTIC_JOURNEYS.find(x=>x.journeyId===journeyId);
+            const lastAt=events.at(-1)?.occurredAt;
+            if(!spec){
+              traces.push({storeId,traceId:events[0]?.traceId,journeyId,status:'UNKNOWN',lastAt,eventCount:events.length});
+              continue;
+            }
+            const report=evaluateSystemDiagnosticJourney(spec,events[0].traceId,events);
+            const edgeLatencies=report.edges.flatMap(edge=>edge.latencyMs===undefined?[]:[edge.latencyMs]);
+            traces.push({
+              storeId,
+              traceId:events[0].traceId,
+              journeyId,
+              status:report.status,
+              firstFailedEdgeId:report.firstFailedEdgeId??null,
+              latencyMs:edgeLatencies.length?Math.max(...edgeLatencies):null,
+              lastAt,
+              eventCount:events.length,
+              edges:report.edges.map(e=>({edgeId:e.edgeId,status:e.status,latencyMs:e.latencyMs??null,errorCode:e.errorCode??null})),
+            });
+          }
+          traces.sort((a,b)=>Date.parse(b.lastAt||0)-Date.parse(a.lastAt||0));
+
+          const byJourney={};
+          for(const spec of SYSTEM_DIAGNOSTIC_JOURNEYS){
+            const all=traces.filter(t=>t.journeyId===spec.journeyId);
+            const counts={PASS:0,PENDING:0,FAIL:0,UNKNOWN:0};
+            for(const t of all) counts[t.status]=(counts[t.status]??0)+1;
+            byJourney[spec.journeyId]={
+              traceCount:all.length,
+              counts,
+              latest:all.slice(0,5),
+              latestPass:all.find(t=>t.status==='PASS')??null,
+            };
+          }
+          const summary={
+            generatedAt:new Date().toISOString(),
+            sourceSha:process.env.SOURCE_SHA,
+            requestId:process.env.REQUEST_ID,
+            mode:'REMOTE_D1_SELECT_ONLY',
+            rowCount:rows.length,
+            traceCount:traces.length,
+            stores:[...new Set(traces.map(t=>t.storeId))],
+            byJourney,
+          };
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2)+'\n');
+          NODE
+          node --experimental-strip-types /tmp/evaluate.mjs
+          cat evidence/summary.json
+
+      - name: Seal durable readback
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then
+              cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/f2-production-diagnostics-readback.json
+            else
+              printf '{"sourceSha":"%s","requestId":"%s","runId":"%s","conclusion":"%s","error":"READBACK_FAILED"}\n' "$SOURCE_SHA" "$REQUEST_ID" "$RUN_ID" "$CONCLUSION" > .ci-results/f2-production-diagnostics-readback.json
+            fi
+            git add .ci-results/f2-production-diagnostics-readback.json
+            if ! git diff --cached --quiet; then git commit -m "diag(result): F2 production trace readback $CONCLUSION"; fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
