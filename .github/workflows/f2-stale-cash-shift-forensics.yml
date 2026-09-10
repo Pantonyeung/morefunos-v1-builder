@@ -41,8 +41,8 @@ jobs:
           SHIFT_ID="$(node -e "const x=require('./evidence/shift.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);process.stdout.write(r.cash_shift_id)")"
           STORE_ID="$(node -e "const x=require('./evidence/shift.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);process.stdout.write(r.store_id)")"
           query movements "SELECT cash_movement_id,occurred_at,record_json FROM mfos_cash_movement WHERE cash_shift_id='$SHIFT_ID' ORDER BY occurred_at"
-          query payments "SELECT payment_id,lifecycle_status,record_json,updated_at FROM mfos_payment_state WHERE store_id='$STORE_ID' ORDER BY updated_at"
-          query refunds "SELECT refund_id,lifecycle_status,record_json,updated_at FROM mfos_refund_state WHERE store_id='$STORE_ID' ORDER BY updated_at"
+          query payments "SELECT payment_id,lifecycle_status,payment_json,updated_at FROM mfos_payment_state WHERE store_id='$STORE_ID' ORDER BY updated_at"
+          query refunds "SELECT refund_id,status,refund_json,created_at FROM mfos_refund_state WHERE store_id='$STORE_ID' ORDER BY created_at"
           query close_policy "SELECT * FROM mfos_business_day_close_variance_policy WHERE store_id='$STORE_ID' LIMIT 5"
           SHIFT_ID="$SHIFT_ID" node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
@@ -52,8 +52,8 @@ jobs:
           const row=shifts[0];
           const shift=JSON.parse(row.record_json);
           const movements=rows('movements').map(r=>{let x={};try{x=JSON.parse(r.record_json)}catch{};return x});
-          const payments=rows('payments').map(r=>{let x={};try{x=JSON.parse(r.record_json)}catch{};return x});
-          const refunds=rows('refunds').map(r=>{let x={};try{x=JSON.parse(r.record_json)}catch{};return x});
+          const payments=rows('payments').map(r=>{let x={};try{x=JSON.parse(r.payment_json)}catch{};return x});
+          const refunds=rows('refunds').map(r=>{let x={};try{x=JSON.parse(r.refund_json)}catch{};return x});
           const inWindow=t=>Date.parse(t)>=Date.parse(shift.openedAt||row.created_at);
           const cashPayments=payments.filter(p=>p.lifecycleStatus==='COMPLETED'&&p.tenderMethod==='CASH'&&inWindow(p.completedAt||p.updatedAt||p.createdAt||''));
           const cashRefunds=refunds.filter(r=>r.status==='COMPLETED'&&inWindow(r.completedAt||r.createdAt||''));
