@@ -568,6 +568,10 @@ jobs:
             mapfile -t diagnostics_tests < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
             [[ "${#diagnostics_tests[@]}" -gt 0 ]] || { echo "DIAGNOSTICS_TEST_SET_EMPTY" >&2; exit 29; }
             node --test --test-concurrency=1 "${diagnostics_tests[@]}"
+            npm --prefix apps/diagnostics-web install --ignore-scripts --no-audit --no-fund
+            npm --prefix apps/diagnostics-web run typecheck
+            npm --prefix apps/diagnostics-web run build
+            npx tsc --noEmit -p infra/cloudflare/diagnostics-web-worker/tsconfig.json
           fi
 
       - name: SMT integration proof
