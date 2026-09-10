@@ -1,7 +1,7 @@
-source_sha=5197e75a21db5b20cba5f54b613283ffef27c3c1
-request_id=F2-ADMIN-DEPLOY-REGRESSION-ALIGN-20260910-R2
-run_id=34426183831
+source_sha=b2689a9f318c543359538352a496e2cb71e4ec09
+request_id=F2-ADMIN-DEPLOY-REGRESSION-ALIGN-20260910-R3
+run_id=34426272597
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=fa767bf1-87c7-4603-97f2-e43c3e0b2d55
