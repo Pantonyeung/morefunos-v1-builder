@@ -1,0 +1,83 @@
+name: F1 Fulfillment Cutover Safety Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f1-fulfillment-cutover-safety-audit-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      CUTOVER: 2026-09-10T23:18:26Z
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f1-fulfillment-cutover-safety-audit-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          ACTUAL="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]')"
+          test "$ACTUAL" = "$SOURCE_SHA"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Read production cutover safety state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){
+            NAME="$1"; SQL="$2"
+            SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > "evidence/$NAME.json"
+            NAME="$NAME" node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('evidence/'+process.env.NAME+'.json','utf8'));if(!x.success)process.exit(1)"
+          }
+          query historical "SELECT s.order_id,s.created_at,f.fulfillment_id,f.lifecycle_status AS fulfillment_status FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND s.created_at<'$CUTOVER' ORDER BY s.created_at"
+          query eligible "SELECT s.order_id,s.created_at,f.fulfillment_id,f.lifecycle_status AS fulfillment_status FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND s.created_at>='$CUTOVER' ORDER BY s.created_at"
+          node - <<'NODE' | tee evidence/summary.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
+          const historical=rows('historical');
+          const eligible=rows('eligible');
+          const historicalReleased=historical.filter(r=>r.fulfillment_id);
+          const eligibleReleased=eligible.filter(r=>r.fulfillment_id);
+          const eligibleMissing=eligible.filter(r=>!r.fulfillment_id);
+          console.log('historical_accepted_count='+historical.length);
+          console.log('historical_with_fulfillment='+historicalReleased.length);
+          console.log('eligible_accepted_count='+eligible.length);
+          console.log('eligible_with_fulfillment='+eligibleReleased.length);
+          console.log('eligible_missing_fulfillment='+eligibleMissing.length);
+          console.log('eligible_rows='+JSON.stringify(eligible));
+          if(historicalReleased.length){
+            console.error('HISTORICAL_BACKFILL_DETECTED');
+            process.exit(2);
+          }
+          if(eligibleMissing.length){
+            console.error('ELIGIBLE_RELEASE_PENDING_OR_FAILED');
+            process.exit(3);
+          }
+          NODE
+
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f1-fulfillment-cutover-safety-audit-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
