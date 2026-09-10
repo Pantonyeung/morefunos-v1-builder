@@ -1,11 +1,13 @@
 {
-  "generatedAt": "2026-09-10T01:25:25.816Z",
-  "sourceSha": "729282bca86b953fa7d5ecd9adb49feb4cd030ce",
-  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R3",
+  "generatedAt": "2026-09-10T01:40:45.222Z",
+  "sourceSha": "012e105cee137fcb641c1cda85fb87765d20498d",
+  "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R4",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 0,
-  "traceCount": 0,
-  "stores": [],
+  "rowCount": 3,
+  "traceCount": 2,
+  "stores": [
+    "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
+  ],
   "byJourney": {
     "LARGE_ORDER_B2B_V1": {
       "traceCount": 0,
@@ -63,25 +65,81 @@
       "latestPass": null
     },
     "ORDER_SYNC_RECONCILIATION_V1": {
-      "traceCount": 0,
+      "traceCount": 1,
       "counts": {
         "PASS": 0,
-        "PENDING": 0,
+        "PENDING": 1,
         "FAIL": 0,
         "UNKNOWN": 0
       },
-      "latest": [],
+      "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:19",
+          "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": null,
+          "latencyMs": null,
+          "lastAt": "2026-09-10T01:40:02.819Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smt-order-sync-applied",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smm-order-sync-applied",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        }
+      ],
       "latestPass": null
     },
     "STORE_CONFIGURATION_FANOUT_V1": {
-      "traceCount": 0,
+      "traceCount": 1,
       "counts": {
         "PASS": 0,
-        "PENDING": 0,
+        "PENDING": 1,
         "FAIL": 0,
         "UNKNOWN": 0
       },
-      "latest": [],
+      "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "smt-printer-device-list:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:4",
+          "journeyId": "STORE_CONFIGURATION_FANOUT_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": null,
+          "latencyMs": null,
+          "lastAt": "2026-09-10T01:40:16.849Z",
+          "eventCount": 2,
+          "edges": [
+            {
+              "edgeId": "d1-admin-store-config-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smt-store-config-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-provider-store-config-applied",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        }
+      ],
       "latestPass": null
     },
     "IDENTITY_SECURITY_V1": {
