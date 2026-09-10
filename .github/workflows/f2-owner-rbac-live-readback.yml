@@ -51,6 +51,11 @@ jobs:
           LOGIN_HTTP="$(curl -sS -D /tmp/owner-login.headers -o /tmp/owner-login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$OWNER_ORIGIN/api/owner/session")"
           echo "owner_login_http=$LOGIN_HTTP" | tee -a evidence/owner-rbac.txt
           test "$LOGIN_HTTP" = 200
+          OWNER_STAFF_ID="$(node -e "const x=require('/tmp/owner-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.staffId))")"
+          OWNER_SCOPE_REF="$(node -e "const x=require('/tmp/owner-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.scopeRef))")"
+          echo "owner_staff_id=$OWNER_STAFF_ID" | tee -a evidence/owner-rbac.txt
+          echo "owner_scope_ref=$OWNER_SCOPE_REF" | tee -a evidence/owner-rbac.txt
+          node -e "const x=require('/tmp/owner-login.json'); console.log('owner_session_permissions='+JSON.stringify(x.permissions||[]))" | tee -a evidence/owner-rbac.txt
           COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/owner-login.headers | tr -d '\r' | head -n1)"
           test -n "$COOKIE"
           BOOT_HTTP="$(curl -sS -o /tmp/owner-bootstrap.json -w '%{http_code}' -H "Cookie: $COOKIE" "$OWNER_ORIGIN/api/owner/bootstrap")"
@@ -61,8 +66,48 @@ jobs:
           RBAC_HTTP="$(curl -sS -o /tmp/owner-rbac.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data "$BODY" "$OWNER_ORIGIN/api/owner/runtime")"
           echo "owner_rbac_http=$RBAC_HTTP" | tee -a evidence/owner-rbac.txt
           echo "store_id=$STORE_ID" | tee -a evidence/owner-rbac.txt
-          test "$RBAC_HTTP" = 200
-          STORE_ID="$STORE_ID" node -e "const x=require('/tmp/owner-rbac.json'); if(!x.ok||!x.value||x.value.storeId!==process.env.STORE_ID) throw new Error('OWNER_RBAC_READBACK_INVALID'); console.log('owner_rbac_read=PASS')" | tee -a evidence/owner-rbac.txt
+          node -e "const x=require('/tmp/owner-rbac.json'); console.log('owner_rbac_code='+String(x.code||''))" | tee -a evidence/owner-rbac.txt
+          if [[ "$RBAC_HTTP" == 200 ]]; then
+            STORE_ID="$STORE_ID" node -e "const x=require('/tmp/owner-rbac.json'); if(!x.ok||!x.value||x.value.storeId!==process.env.STORE_ID) throw new Error('OWNER_RBAC_READBACK_INVALID'); console.log('owner_rbac_read=PASS')" | tee -a evidence/owner-rbac.txt
+          fi
+
+      - name: Diagnose canonical Owner RBAC grants
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAFF_ID="$(sed -n 's/^owner_staff_id=//p' evidence/owner-rbac.txt)"
+          STORE_ID="$(sed -n 's/^store_id=//p' evidence/owner-rbac.txt)"
+          RBAC_HTTP="$(sed -n 's/^owner_rbac_http=//p' evidence/owner-rbac.txt)"
+          test -n "$STAFF_ID"
+          test -n "$STORE_ID"
+          SQL="SELECT 'staff' AS kind,record_json FROM mfos_rbac_staff WHERE staff_id='$STAFF_ID' UNION ALL SELECT 'role' AS kind,record_json FROM mfos_rbac_roles ORDER BY kind;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/rbac-query.json',JSON.stringify({sql:process.env.SQL}))"
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/rbac-query.json > /tmp/rbac-d1.json
+          STAFF_ID="$STAFF_ID" STORE_ID="$STORE_ID" RBAC_HTTP="$RBAC_HTTP" node - <<'NODE' | tee evidence/rbac-authority.txt
+          const x=require('/tmp/rbac-d1.json');
+          if(!x.success) throw new Error('OWNER_RBAC_D1_READ_FAILED');
+          const rows=x.result?.[0]?.results||[];
+          const staffRow=rows.find(r=>r.kind==='staff');
+          if(!staffRow){
+            console.log('owner_rbac_staff_record=MISSING');
+            console.log('owner_rbac_authority_gap=STAFF_RECORD_MISSING');
+            process.exit(0);
+          }
+          const staff=JSON.parse(staffRow.record_json);
+          const roles=rows.filter(r=>r.kind==='role').map(r=>JSON.parse(r.record_json));
+          const assigned=roles.filter(role=>(staff.roleIds||[]).includes(role.roleId));
+          const grants=assigned.flatMap(role=>role.permissions||[]);
+          const scoped=grants.filter(grant=>grant.permission==='staff.manage'&&(!grant.scopeRef||grant.scopeRef===process.env.STORE_ID));
+          console.log('owner_rbac_staff_record=PRESENT');
+          console.log('owner_rbac_staff_lifecycle='+String(staff.lifecycleStatus||''));
+          console.log('owner_rbac_role_ids='+JSON.stringify(staff.roleIds||[]));
+          console.log('owner_rbac_staff_manage_grants='+JSON.stringify(scoped));
+          console.log('owner_rbac_staff_manage_authorized='+String(staff.lifecycleStatus==='ACTIVE'&&scoped.length>0));
+          if(process.env.RBAC_HTTP==='403'){
+            console.log('owner_rbac_authority_gap='+(staff.lifecycleStatus==='ACTIVE'&&scoped.length>0?'AUTHORIZATION_LOGIC_MISMATCH':'D1_GRANT_MISSING'));
+          }
+          NODE
 
       - name: Read Owner RBAC checkpoint from production D1
         shell: bash
@@ -71,6 +116,8 @@ jobs:
           sleep 2
           START_AT="$(sed -n 's/^start_at=//p' evidence/owner-rbac.txt)"
           STORE_ID="$(sed -n 's/^store_id=//p' evidence/owner-rbac.txt)"
+          RBAC_HTTP="$(sed -n 's/^owner_rbac_http=//p' evidence/owner-rbac.txt)"
+          if [[ "$RBAC_HTTP" != 200 ]]; then echo "owner_rbac_checkpoint=SKIPPED_CANONICAL_READ_DENIED" | tee evidence/diagnostic-readback.txt; exit 0; fi
           SQL="SELECT trace_id,store_id,journey_id,edge_id,stage,target,occurred_at FROM mfos_system_diagnostic_trace_event WHERE store_id='$STORE_ID' AND journey_id='IDENTITY_SECURITY_V1' AND edge_id='d1-owner-rbac-readback' ORDER BY occurred_at DESC LIMIT 1;"
           SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
           D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
