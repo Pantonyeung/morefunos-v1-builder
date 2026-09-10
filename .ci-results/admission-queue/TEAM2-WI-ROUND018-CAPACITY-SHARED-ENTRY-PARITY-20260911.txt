@@ -1,5 +1,5 @@
 work_id=TEAM2-WI-ROUND018-CAPACITY-SHARED-ENTRY-PARITY-20260911
-candidate_sha=48720d07c7b857f5773ca9de232ed1b031052b48
+candidate_sha=364066b45c23e21849503421881efaea869137c8
 base_main_sha=6b99315bddcae4f02ca7ad38d28cb3e28a8a5495
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=DIAGNOSTICS
 force_full_proof=true
-run_id=34513331805
+run_id=34513468401
 conclusion=failure
