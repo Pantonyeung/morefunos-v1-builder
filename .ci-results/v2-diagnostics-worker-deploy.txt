@@ -1,7 +1,7 @@
-source_sha=178b364d69067aa2595197af9941b7adf670d77a
-request_id=diagnostics-http-control-plane-20260910-r1
-run_id=34420092549
+source_sha=bbf9baafc4ab1547d7762340fbc527fb8f18eef4
+request_id=diagnostics-http-control-plane-20260910-r2-accessjwt
+run_id=34420544335
 run_attempt=1
 conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+url=https://morefun-v2-diagnostics.pantonyeung.workers.dev
+worker_version=d8a67c4b-2229-437b-889e-0bad9f78c1e1
