@@ -18,6 +18,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      FULFILLMENT_RELEASE_ROLLOUT_CUTOVER: 2026-09-10T23:18:26Z
     steps:
       - uses: actions/checkout@v7
         with:
@@ -85,14 +86,19 @@ jobs:
           if(activeConfig?.payload){try{paymentMethodRefs=JSON.parse(activeConfig.payload).paymentMethodRefs||[]}catch{}}
           const openDay=days.find(r=>r.status==='OPEN')||null;
           const openShift=shifts.find(r=>r.status==='OPEN'&&(!openDay||r.detail===openDay.id))||null;
-          const recentOrder=orders[0]||null;
+          const todayHk=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Hong_Kong',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('/','-');
+          const businessDayStale=Boolean(openDay&&openDay.detail!==todayHk);
+          const cutover=Date.parse(process.env.FULFILLMENT_RELEASE_ROLLOUT_CUTOVER||'');
+          const postCutoverOrders=orders.filter(r=>Date.parse(r.at)>=cutover);
+          const recentOrder=postCutoverOrders[0]||null;
           const completedPayment=payments.find(r=>r.status==='COMPLETED')||null;
           const fulfillmentForRecentOrder=recentOrder?fulfillments.find(r=>r.detail===recentOrder.id)||null:null;
           let firstMissing='NONE';
           if(!hasFulfillmentTable) firstMissing='FULFILLMENT_D1_MIGRATION_0018';
           else if(!openDay) firstMissing='BUSINESS_DAY_OPEN';
+          else if(businessDayStale) firstMissing='BUSINESS_DAY_STALE';
           else if(!openShift) firstMissing='CASH_SHIFT_OPEN';
-          else if(!recentOrder) firstMissing='SALE_ACCEPTED';
+          else if(!recentOrder) firstMissing='POST_CUTOVER_SALE_ACCEPTED';
           else if(!fulfillmentForRecentOrder) firstMissing='FULFILLMENT_PRODUCTION_RELEASE';
           else if(!completedPayment) firstMissing='PAYMENT_COMPLETED';
           console.log('active_store_config='+String(Boolean(activeConfig)));
@@ -112,6 +118,10 @@ jobs:
           console.log('fulfillment_migration_recorded='+String(Boolean(fulfillmentMigration)));
           console.log('latest_migrations='+JSON.stringify(migrations.slice(-12).map(r=>({id:r.id,name:r.name}))));
           if(fulfillmentMigration) console.log('fulfillment_migration_id='+String(fulfillmentMigration.id));
+          console.log('today_hk='+todayHk);
+          console.log('business_day_stale='+String(businessDayStale));
+          console.log('fulfillment_rollout_cutover='+String(process.env.FULFILLMENT_RELEASE_ROLLOUT_CUTOVER||''));
+          console.log('post_cutover_order_count='+postCutoverOrders.length);
           console.log('open_business_day='+String(Boolean(openDay)));
           console.log('open_cash_shift='+String(Boolean(openShift)));
           console.log('recent_order='+String(Boolean(recentOrder)));
