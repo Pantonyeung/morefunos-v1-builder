@@ -1,0 +1,10 @@
+candidate_sha=fe3a507845de00ef90a324c7e7345d439cf63fb3
+base_main_sha=a2178045d74369064e4a1594908a531b0dee99c7
+work_id=F1-WI-ROUND019-ORDER-TO-FULFILLMENT-RELEASE-20260911
+capability_id=CAP-FULFILLMENT-001
+capability_action=LINKUP
+affected_ports=CORE,SMT,SMM,CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=a2178045d74369064e4a1594908a531b0dee99c7
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
