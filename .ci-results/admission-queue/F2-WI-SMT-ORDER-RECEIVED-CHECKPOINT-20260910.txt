@@ -1,7 +1,7 @@
 work_id=F2-WI-SMT-ORDER-RECEIVED-CHECKPOINT-20260910
-candidate_sha=8d09ee5e3120595125dddcdd9c2db70d54da7141
-base_main_sha=f831938035b824e22c21adb039a8f9e6dcc1e102
-latest_main_sha=8d09ee5e3120595125dddcdd9c2db70d54da7141
+candidate_sha=bf6a1d955fbd272796164c1b14e63832199325e9
+base_main_sha=8d09ee5e3120595125dddcdd9c2db70d54da7141
+latest_main_sha=4baffa8b655f5fd4d338b5ac30d9019853670c37
 collision=C0
 impact=V0
 reason=ALREADY_ADMITTED_OR_NOOP
@@ -9,5 +9,5 @@ apply_status=SKIPPED
 depends_on_specs=
 required_core_tests=DIAGNOSTICS
 force_full_proof=true
-run_id=34422301496
+run_id=34422775672
 conclusion=success
