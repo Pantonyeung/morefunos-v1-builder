@@ -1,0 +1,10 @@
+candidate_sha=be8fdff02e8e96ccc9f599dd4497dafe8323d032
+base_main_sha=8318b9fd24cf1dfd81c8d124730f2f00c57c1911
+work_id=F2-WI-SMM-CAPACITY-READBACK-SINK-20260910
+capability_id=CAP-OPERATIONAL-CAPACITY-001
+capability_action=LINKUP
+affected_ports=SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
