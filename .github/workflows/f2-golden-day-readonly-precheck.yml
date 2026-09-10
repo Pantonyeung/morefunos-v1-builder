@@ -52,6 +52,8 @@ jobs:
           query orders "SELECT order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at,order_snapshot_json AS snapshot FROM mfos_order_state ORDER BY created_at DESC LIMIT 10"
           query payments "SELECT payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10"
           query store_config "SELECT v.configuration_version_id AS id,v.payload_json AS payload,p.revision AS revision FROM mfos_store_configuration_active_pointer p JOIN mfos_store_configuration_published_version v ON v.configuration_version_id=p.active_configuration_version_id AND v.store_id=p.store_id ORDER BY p.changed_at DESC LIMIT 1"
+          query store_config_versions "SELECT configuration_version_id AS id,store_id,version_number,payload_json AS payload,published_at FROM mfos_store_configuration_published_version ORDER BY published_at DESC LIMIT 5"
+          query store_config_drafts "SELECT draft_id AS id,store_id,payload_json AS payload,updated_at FROM mfos_store_configuration_draft ORDER BY updated_at DESC LIMIT 5"
           query migration_state "SELECT id,name,applied_at FROM d1_migrations ORDER BY id"
           query schema_inventory "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
           HAS_FULFILLMENT="$(node -e "const x=require('./evidence/schema_inventory.json');const rows=x.result?.[0]?.results||[];process.stdout.write(rows.some(r=>r.name==='mfos_fulfillment_state')?'1':'0')")"
@@ -72,6 +74,8 @@ jobs:
           const payments=rows('payments');
           const fulfillments=rows('fulfillments');
           const configRows=rows('store_config');
+          const configVersions=rows('store_config_versions');
+          const configDrafts=rows('store_config_drafts');
           const migrations=rows('migration_state');
           const schema=rows('schema_inventory');
           const hasFulfillmentTable=schema.some(r=>r.name==='mfos_fulfillment_state');
@@ -93,6 +97,17 @@ jobs:
           else if(!matchedFulfillment) firstMissing='FULFILLMENT_FOR_PAID_ORDER';
           console.log('active_store_config='+String(Boolean(activeConfig)));
           console.log('payment_method_refs='+JSON.stringify(paymentMethodRefs));
+          console.log('published_store_config_count='+String(configVersions.length));
+          console.log('draft_store_config_count='+String(configDrafts.length));
+          if(configVersions[0]){
+            console.log('latest_published_config_id='+String(configVersions[0].id));
+            console.log('latest_published_config_version='+String(configVersions[0].version_number));
+            try{console.log('latest_published_payment_method_refs='+JSON.stringify(JSON.parse(configVersions[0].payload||'{}').paymentMethodRefs||[]))}catch{}
+          }
+          if(configDrafts[0]){
+            console.log('latest_draft_config_id='+String(configDrafts[0].id));
+            try{console.log('latest_draft_payment_method_refs='+JSON.stringify(JSON.parse(configDrafts[0].payload||'{}').paymentMethodRefs||[]))}catch{}
+          }
           console.log('fulfillment_table_present='+String(hasFulfillmentTable));
           console.log('fulfillment_migration_recorded='+String(Boolean(fulfillmentMigration)));
           console.log('latest_migrations='+JSON.stringify(migrations.slice(-12).map(r=>({id:r.id,name:r.name}))));
