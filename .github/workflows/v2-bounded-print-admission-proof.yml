@@ -66,6 +66,7 @@ jobs:
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
       - name: Root typecheck
+        id: edge_typecheck
         working-directory: candidate
         run: npm run typecheck
 
@@ -101,22 +102,33 @@ jobs:
         if: always()
         shell: bash
         env:
+          TYPECHECK_OUTCOME: ${{ steps.edge_typecheck.outcome }}
+          ORDER_OUTCOME: ${{ steps.edge_order.outcome }}
+          PRINT_OUTCOME: ${{ steps.edge_print.outcome }}
           SMT_OUTCOME: ${{ steps.smt_smoke.outcome }}
           SMM_OUTCOME: ${{ steps.smm_smoke.outcome }}
         run: |
           set -euo pipefail
+          EDGE_VERDICT=RED
+          if [[ "$TYPECHECK_OUTCOME" == 'success' && "$ORDER_OUTCOME" == 'success' && "$PRINT_OUTCOME" == 'success' ]]; then
+            EDGE_VERDICT=GREEN
+          fi
           {
             echo '## ROUND011 B0320 bounded PRINT admission proof'
             echo
             echo "work_id=${{ steps.request.outputs.work_id }}"
             echo "candidate_sha=${{ steps.request.outputs.candidate_sha }}"
-            echo 'edge_verdict=GREEN'
+            echo "edge_verdict=$EDGE_VERDICT"
+            echo "root_typecheck=$TYPECHECK_OUTCOME"
+            echo "order_same_transaction=$ORDER_OUTCOME"
+            echo "durable_print_admission_recovery=$PRINT_OUTCOME"
             echo "smt_downstream_smoke=${SMT_OUTCOME:-not_run}"
             echo "smm_downstream_smoke=${SMM_OUTCOME:-not_run}"
             echo
             echo 'Scope: E1 CLEAN_PRINT_EXECUTION_CREATED -> E2 DURABLE_PRINT_JOB_CREATED only.'
             echo 'Downstream smoke is evidence only and cannot invalidate this bounded edge. Global PRINT baseline and port build debt remain independently tracked; nothing is waived or mutated here.'
           } | tee round011-b0320-bounded-proof.txt >> "$GITHUB_STEP_SUMMARY"
+          [[ "$EDGE_VERDICT" == 'GREEN' ]]
 
       - name: Upload bounded proof evidence
         if: always()
