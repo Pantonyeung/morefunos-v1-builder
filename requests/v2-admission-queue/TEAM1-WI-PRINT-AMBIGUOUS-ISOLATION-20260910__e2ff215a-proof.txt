@@ -1,0 +1,9 @@
+candidate_sha=e2ff215a6297343948af742496f870a9a4d70a07
+base_main_sha=9f7c89caf4c04aa68689acb1ebf83e852f0a3ee3
+work_id=TEAM1-WI-PRINT-AMBIGUOUS-ISOLATION-20260910
+capability_id=CAP-PRINT-CORE-001
+capability_action=EXTEND
+affected_ports=SMT
+required_core_tests=PRINT
+force_full_proof=true
+proof_source_sha=e2ff215a6297343948af742496f870a9a4d70a07
