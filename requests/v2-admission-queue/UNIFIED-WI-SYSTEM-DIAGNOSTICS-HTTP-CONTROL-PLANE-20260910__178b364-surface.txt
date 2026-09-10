@@ -1,0 +1,10 @@
+candidate_sha=178b364d69067aa2595197af9941b7adf670d77a
+base_main_sha=f538038950537c73e3515fde340013d230f0b763
+work_id=UNIFIED-WI-SYSTEM-DIAGNOSTICS-HTTP-CONTROL-PLANE-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=LINKUP
+affected_ports=CORE
+depends_on_specs=
+supersedes_candidate_sha=f538038950537c73e3515fde340013d230f0b763
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
