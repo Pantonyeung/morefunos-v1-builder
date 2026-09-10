@@ -1,0 +1,9 @@
+candidate_sha=4d8ef85804b7122e9c12019961f4ff5f6ee0bebe
+base_main_sha=3b2ce473b78d14a84131b56bc8e7d5f45f9fc0ff
+work_id=F2-WI-PRINT-PHYSICAL-CHAIN-PROOF-CLOSURE-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=CORE
+required_core_tests=PRINT
+force_full_proof=true
+proof_source_sha=4d8ef85804b7122e9c12019961f4ff5f6ee0bebe
