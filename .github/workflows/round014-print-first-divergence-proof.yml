@@ -1,0 +1,99 @@
+name: ROUND014 Print First Divergence Proof
+
+on:
+  push:
+    paths:
+      - 'requests/round014-print-first-divergence-proof.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v7
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout exact V2 proof source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: b2ff98d03e02feaece62a7b0626923ff34fb0d60
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: v2
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Evaluate first divergence and reusable tail
+        working-directory: v2
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p ../evidence
+          exec > >(tee ../evidence/round014-print-first-divergence-proof.log) 2>&1
+          echo 'PROOF_SOURCE_SHA=b2ff98d03e02feaece62a7b0626923ff34fb0d60'
+          node <<'NODE'
+          const fs=require('fs');
+          const read=p=>fs.readFileSync(p,'utf8');
+          const checks=[];
+          const check=(id,ok,detail)=>{checks.push({id,ok,detail});console.log(`${ok?'PASS':'FAIL'} ${id} :: ${detail}`)};
+
+          const order=read('packages/order/d1-staff-direct-order-bindings.ts');
+          const runtime=read('apps/smt-clean/src/runtime/network-production-runtime.ts');
+          const agent=read('packages/smt-ui-integration/smt-print-agent.ts');
+          const encoder=read('packages/smt-ui-integration/escpos-rendered-document-encoder.ts');
+          const native=read('packages/smt-ui-integration/android-native-print-executor.ts');
+          const trusted=read('packages/smt-ui-integration/trusted-worker-runtime.ts');
+
+          check('B0320_RECEIPT_PRE_RESPONSE_DURABILITY',
+            order.includes('prepareD1ReceiptHotpathAdmission') && order.includes('atomicStatements'),
+            'Receipt hot-path admission is composed into Order acceptance statements');
+
+          const noFixed250=!runtime.includes('await wait(250)');
+          const noIdle12=!runtime.includes('idlePasses>=12');
+          const noStaleWaitUntil=!runtime.includes('admits PrintJobs in ctx.waitUntil after the order POST response');
+          check('E2_TO_PREPARE_NEXT_ZERO_WAIT_NORMAL_PATH',
+            noFixed250 && noIdle12 && noStaleWaitUntil,
+            `noFixed250=${noFixed250} noIdle12=${noIdle12} noStaleWaitUntil=${noStaleWaitUntil}`);
+
+          check('TAIL_NO_REDUNDANT_TCP_PREFLIGHT',
+            agent.includes('SMT_PRINT_AGENT_TCP_CHECK_DEFERRED_TO_DISPATCH') && !agent.includes('await input.nativePort.probeLanEndpoint'),
+            'actual dispatch owns authoritative TCP connect');
+          check('TAIL_CJK_RASTER_RECEIPT',
+            encoder.includes('documentNeedsRaster') && encoder.includes('rasterReceipt') && encoder.includes('encodeMonochromeRasterAsEscPos'),
+            'non-ASCII receipt path rasterizes to ESC/POS bitmap');
+          check('TAIL_LEGACY_NATIVE_COMPLETION_CORRELATION',
+            native.includes("incomingEvidence==='native-print:'+request.dispatchAttemptId"),
+            'legacy carrier evidenceId remains accepted');
+          check('TAIL_AMBIGUOUS_ISOLATION',
+            trusted.includes("const active=all.find(job=>job.state==='PRINTING')") && !trusted.includes("job.state==='PRINTING'||job.state==='AMBIGUOUS'"),
+            'AMBIGUOUS sibling does not block independent pending output');
+
+          const failed=checks.filter(x=>!x.ok);
+          console.log(`SUMMARY total=${checks.length} pass=${checks.length-failed.length} fail=${failed.length}`);
+          if(failed.length){
+            console.log('EXPECTED_RED_FIRST_DIVERGENCE='+failed.map(x=>x.id).join(','));
+            process.exitCode=1;
+          }
+          NODE
+
+      - name: Upload proof log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: round014-print-first-divergence-proof-log
+          path: evidence/round014-print-first-divergence-proof.log
+          if-no-files-found: error
+          retention-days: 30
