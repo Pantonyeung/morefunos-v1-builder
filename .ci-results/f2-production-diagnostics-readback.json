@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-10T02:25:19.743Z",
-  "sourceSha": "0768405387dd19964c0ac86795e942747ab9c9ad",
+  "generatedAt": "2026-09-10T02:44:37.700Z",
+  "sourceSha": "5e2fd4c3657375eac5eba6adf6e06168aacf3987",
   "requestId": "F2-PRODUCTION-DIAGNOSTICS-READBACK-20260910-R7",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 96,
-  "traceCount": 4,
+  "rowCount": 120,
+  "traceCount": 9,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
   ],
@@ -140,8 +140,8 @@
           "status": "PENDING",
           "firstFailedEdgeId": "d1-admin-store-config-readback",
           "latencyMs": null,
-          "lastAt": "2026-09-10T02:25:16.229Z",
-          "eventCount": 93,
+          "lastAt": "2026-09-10T02:44:16.182Z",
+          "eventCount": 111,
           "edges": [
             {
               "edgeId": "d1-admin-store-config-readback",
@@ -221,25 +221,147 @@
       "latestPass": null
     },
     "BUSINESS_OPERATIONS_V1": {
-      "traceCount": 0,
+      "traceCount": 3,
       "counts": {
         "PASS": 0,
-        "PENDING": 0,
+        "PENDING": 3,
         "FAIL": 0,
         "UNKNOWN": 0
       },
-      "latest": [],
+      "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "710b620e-673b-4def-b7c7-09f26c2c0a0f",
+          "journeyId": "BUSINESS_OPERATIONS_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-business-ops-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T02:42:31.535Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-business-ops-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-business-ops-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "0d2cda16-38f6-4fca-aff1-06d99fd26353",
+          "journeyId": "BUSINESS_OPERATIONS_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-business-ops-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T02:42:26.004Z",
+          "eventCount": 2,
+          "edges": [
+            {
+              "edgeId": "d1-admin-business-ops-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-business-ops-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "0d9181aa-3e56-462a-ba61-4e212c1fd3b5",
+          "journeyId": "BUSINESS_OPERATIONS_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-business-ops-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T02:31:04.483Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-business-ops-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-business-ops-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        }
+      ],
       "latestPass": null
     },
     "MANAGEMENT_REPORTING_V1": {
-      "traceCount": 0,
+      "traceCount": 2,
       "counts": {
         "PASS": 0,
-        "PENDING": 0,
+        "PENDING": 2,
         "FAIL": 0,
         "UNKNOWN": 0
       },
-      "latest": [],
+      "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "2211d150-bdfd-457e-b75e-51dcaa3239f3",
+          "journeyId": "MANAGEMENT_REPORTING_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-report-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T02:42:26.862Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-report-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-report-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "80146afd-1b27-464c-a242-13f720396f68",
+          "journeyId": "MANAGEMENT_REPORTING_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-report-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T02:31:01.822Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-report-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-report-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        }
+      ],
       "latestPass": null
     },
     "PRODUCTION_OPERATIONS_SMT_READBACK_V1": {
