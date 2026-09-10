@@ -1,0 +1,108 @@
+name: V2 B0321 Zero-Wait Mutation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/b0321-zero-wait-mutation.request'
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout builder request
+        uses: actions/checkout@v7
+        with:
+          path: builder
+          persist-credentials: false
+
+      - name: Read bounded request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          source builder/.ci-requests/b0321-zero-wait-mutation.request
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$TARGET_BRANCH" = 'work/PRT/B0321-smt-durable-print-readback-no-poll'
+          echo "expected_head=$EXPECTED_HEAD" >> "$GITHUB_OUTPUT"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact B0321 work branch
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.target_branch }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 2
+          persist-credentials: true
+
+      - name: Guard exact branch head
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ steps.request.outputs.expected_head }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git -C source rev-parse HEAD)"
+          printf 'expected_head=%s\nactual_head=%s\n' "$EXPECTED_HEAD" "$ACTUAL" >> "$GITHUB_STEP_SUMMARY"
+          test "$ACTUAL" = "$EXPECTED_HEAD"
+
+      - name: Apply bounded zero-wait adapter
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('apps/smt-clean/src/runtime/network-production-runtime.ts')
+          text = path.read_text()
+
+          needle = '    let idlePasses=0;\n'
+          if text.count(needle) != 1:
+              raise SystemExit(f'B0321_IDLE_COUNTER_MATCH_COUNT={text.count(needle)}')
+          text = text.replace(needle, '', 1)
+
+          pattern = re.compile(
+              r"      if\(prepared\.kind==='IDLE'\)\{\n"
+              r"(?:        .*\n)+?"
+              r"        continue;\n"
+              r"      \}\n"
+          )
+          matches = list(pattern.finditer(text))
+          if len(matches) != 1:
+              raise SystemExit(f'B0321_IDLE_BLOCK_MATCH_COUNT={len(matches)}')
+          old = matches[0].group(0)
+          required = ('idlePasses', '250', 'waitUntil', 'ORDER_TO_PRINT_PRINT_JOB_NOT_READY')
+          missing = [token for token in required if token not in old]
+          if missing:
+              raise SystemExit('B0321_EXPECTED_STALE_MARKERS_MISSING=' + ','.join(missing))
+          new = "      if(prepared.kind==='IDLE'){\n        return;\n      }\n"
+          text = text[:matches[0].start()] + new + text[matches[0].end():]
+          path.write_text(text)
+          PY
+
+          git diff --check
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = 1
+          test "$(git diff --name-only)" = 'apps/smt-clean/src/runtime/network-production-runtime.ts'
+          git diff -- apps/smt-clean/src/runtime/network-production-runtime.ts | tee /tmp/b0321.diff
+          grep -q "^-    let idlePasses=0;" /tmp/b0321.diff
+          grep -q "^+        return;" /tmp/b0321.diff
+          ! grep -q '^+.*wait(250)' /tmp/b0321.diff
+
+      - name: Commit and push bounded mutation
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'morefunos-builder-bot'
+          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git add apps/smt-clean/src/runtime/network-production-runtime.ts
+          git commit -m 'fix(print): stop waiting for durable print job visibility'
+          git push origin HEAD:${{ steps.request.outputs.target_branch }}
+          printf 'new_head=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
