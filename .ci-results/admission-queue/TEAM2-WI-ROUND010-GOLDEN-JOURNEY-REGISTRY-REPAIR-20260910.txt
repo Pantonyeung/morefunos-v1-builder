@@ -1,0 +1,13 @@
+work_id=TEAM2-WI-ROUND010-GOLDEN-JOURNEY-REGISTRY-REPAIR-20260910
+candidate_sha=38c311fa0a288b5574562846b5df4babda3bb05f
+base_main_sha=838daac46ab3d2d1ca0105d099adfd6a14f09cc4
+latest_main_sha=38c311fa0a288b5574562846b5df4babda3bb05f
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34465024378
+conclusion=failure
