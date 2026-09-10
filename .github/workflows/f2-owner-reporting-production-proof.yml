@@ -1,0 +1,76 @@
+name: F2 Owner Reporting Production Proof
+
+on:
+  push:
+    paths:
+      - 'requests/f2-owner-reporting-production-proof-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      OWNER_ORIGIN: https://morefun-v2-owner.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Bind exact deployed Owner source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-owner-reporting-production-proof-request.txt | tr -d '[:space:]')"
+          DEPLOYED_SHA="$(sed -n 's/^source_sha=//p' .ci-results/v2-owner-worker-deploy.txt | tr -d '[:space:]')"
+          DEPLOY_CONCLUSION="$(sed -n 's/^conclusion=//p' .ci-results/v2-owner-worker-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DEPLOY_CONCLUSION" == "success" ]]
+          [[ "$SOURCE_SHA" == "$DEPLOYED_SHA" ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Probe required production Owner reporting operations
+        env:
+          ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ADMIN_LOGIN_SECRET"
+          mkdir -p evidence
+          cat > /tmp/probe.mjs <<'NODE'
+          import fs from 'node:fs';
+          const origin=process.env.OWNER_ORIGIN;
+          const login=await fetch(origin+'/api/owner/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET,loginId:'owner'})});
+          const loginBody=await login.json();
+          if(login.status!==200||loginBody?.authenticated!==true)throw new Error('OWNER_LOGIN_FAILED');
+          const cookie=(login.headers.get('set-cookie')||'').split(';',1)[0];
+          if(!cookie)throw new Error('OWNER_SESSION_COOKIE_MISSING');
+          const call=async(path,init={})=>{const r=await fetch(origin+path,{...init,headers:{...(init.headers||{}),cookie,accept:'application/json'}});let b=null;try{b=await r.json()}catch{}return{r,b}};
+          const boot=await call('/api/owner/bootstrap');
+          if(boot.r.status!==200||boot.b?.ok!==true)throw new Error('OWNER_BOOTSTRAP_FAILED');
+          const b=boot.b, common={storeId:b.storeId,currency:b.currency};
+          const ops=[
+            ['product_performance','reporting.product-performance.read.v1',{...common,currentPeriod:b.periods.currentPeriod,previousPeriod:b.periods.previousPeriod}],
+            ['member_activity','reporting.member-purchasing-activity.read.v1',{...common,currentPeriod:b.periods.currentPeriod,activityPeriod:b.periods.activityPeriod}],
+            ['channel_performance','reporting.channel-performance.read.v1',{...common,period:b.periods.currentPeriod}],
+          ];
+          const summary={sourceSha:process.env.SOURCE_SHA,ops:{}};
+          for(const [label,operationId,request] of ops){const x=await call('/api/owner/runtime',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operationId,request})});summary.ops[label]={http:x.r.status,ok:x.b?.ok===true,code:x.b?.code||null};console.log(label+'_http='+x.r.status+' ok='+(x.b?.ok===true)+' code='+(x.b?.code||''));}
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2)+'\n');
+          const failed=ops.map(x=>x[0]).filter(k=>summary.ops[k].http!==200||summary.ops[k].ok!==true);
+          if(failed.length)throw new Error('OWNER_REPORTING_REQUIRED_PROBE_FAILED:'+failed.join(','));
+          NODE
+          node /tmp/probe.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: f2-owner-reporting-production-proof-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 7
