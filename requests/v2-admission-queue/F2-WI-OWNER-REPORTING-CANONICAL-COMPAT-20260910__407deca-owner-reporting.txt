@@ -1,0 +1,9 @@
+candidate_sha=407deca06840f0a827e575daab4096d4a0576de2
+base_main_sha=1a9e76c7bf7ae9042577b64e94206821385bd361
+work_id=F2-WI-OWNER-REPORTING-CANONICAL-COMPAT-20260910
+capability_id=CAP-OWNER-EXTENDED-READ-001
+capability_action=REGRESSION_REPAIR
+affected_ports=OWNER
+required_core_tests=
+force_full_proof=true
+proof_source_sha=407deca06840f0a827e575daab4096d4a0576de2
