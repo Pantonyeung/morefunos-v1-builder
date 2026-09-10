@@ -47,10 +47,12 @@ jobs:
           mkdir -p evidence
           LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
           LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$LOGIN_HTTP" | tee evidence/http-status.txt
           test "$LOGIN_HTTP" = 200
           COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
           test -n "$COOKIE"
           HTTP="$(curl -sS -o /tmp/business-day.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day")"
+          echo "business_day_http=$HTTP" | tee -a evidence/http-status.txt
           test "$HTTP" = 200
           node - <<'NODE' | tee evidence/admin-business-day.txt
           const x=require('/tmp/business-day.json');
