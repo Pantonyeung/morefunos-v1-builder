@@ -1,0 +1,13 @@
+work_id=F1-WI-ROUND019-ORDER-SYNC-STALE-TEST-20260911
+candidate_sha=87114233d8f6d7b236fa19009cbc0b7c837c95e2
+base_main_sha=6d8ce7336e8cfb60a46587e3e345d918d0cdeb04
+latest_main_sha=6d8ce7336e8cfb60a46587e3e345d918d0cdeb04
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER
+force_full_proof=true
+run_id=34543271600
+conclusion=success
