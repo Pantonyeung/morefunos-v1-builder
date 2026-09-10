@@ -45,6 +45,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Mirror admission root dependency setup
+        working-directory: candidate
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
       - name: ORDER canonical proof with durable log
         id: order
         continue-on-error: true
