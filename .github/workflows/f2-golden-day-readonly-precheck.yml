@@ -88,6 +88,7 @@ jobs:
           else if(!matchedFulfillment) firstMissing='FULFILLMENT_FOR_PAID_ORDER';
           console.log('fulfillment_table_present='+String(hasFulfillmentTable));
           console.log('fulfillment_migration_recorded='+String(Boolean(fulfillmentMigration)));
+          console.log('latest_migrations='+JSON.stringify(migrations.slice(-12).map(r=>({id:r.id,name:r.name}))));
           if(fulfillmentMigration) console.log('fulfillment_migration_id='+String(fulfillmentMigration.id));
           console.log('open_business_day='+String(Boolean(openDay)));
           console.log('open_cash_shift='+String(Boolean(openShift)));
