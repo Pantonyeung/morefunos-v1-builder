@@ -1,3 +1,3 @@
-source_sha=c74ee1d0f4ee6deffed3ef2fadaee3e3bd0abc40
+source_sha=f3e7d5d45b5a8a3f9f85d3b8456a569d8288ed7c
 channel=candidate
-request_id=ROUND019-C-CAPACITY-LIVE-READBACK-RUNTIME-20260911
+request_id=ROUND019-E-SMT-PAYMENT-CHECKOUT-LINKUP-20260911
