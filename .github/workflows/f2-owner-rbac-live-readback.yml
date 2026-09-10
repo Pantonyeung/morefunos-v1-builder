@@ -102,6 +102,8 @@ jobs:
           console.log('owner_rbac_staff_record=PRESENT');
           console.log('owner_rbac_staff_lifecycle='+String(staff.lifecycleStatus||''));
           console.log('owner_rbac_role_ids='+JSON.stringify(staff.roleIds||[]));
+          console.log('owner_rbac_all_role_ids='+JSON.stringify(roles.map(role=>role.roleId).sort()));
+          console.log('owner_rbac_bootstrap_role_present='+String(roles.some(role=>role.roleId==='runtime-owner-bootstrap')));
           console.log('owner_rbac_staff_manage_grants='+JSON.stringify(scoped));
           console.log('owner_rbac_staff_manage_authorized='+String(staff.lifecycleStatus==='ACTIVE'&&scoped.length>0));
           if(process.env.RBAC_HTTP==='403'){
