@@ -46,21 +46,40 @@ jobs:
           mkdir -p evidence
           CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
           read -r -d '' SQL <<'SQL' || true
-          SELECT 'accepted_top' AS scope, je.key AS json_key, je.type AS json_type, COUNT(*) AS occurrences
-          FROM mfos_order_state o, json_each(o.accepted_projection_json) je
-          WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
-          GROUP BY je.key,je.type
-          UNION ALL
-          SELECT 'snapshot_top' AS scope, je.key AS json_key, je.type AS json_type, COUNT(*) AS occurrences
-          FROM mfos_order_state o, json_each(o.order_snapshot_json) je
-          WHERE o.order_snapshot_json IS NOT NULL AND json_valid(o.order_snapshot_json)=1
-          GROUP BY je.key,je.type
-          UNION ALL
-          SELECT 'accepted_line_item' AS scope, li_key.key AS json_key, li_key.type AS json_type, COUNT(*) AS occurrences
-          FROM mfos_order_state o, json_each(o.accepted_projection_json,'$.lineItems') li, json_each(li.value) li_key
-          WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
-          GROUP BY li_key.key,li_key.type
-          ORDER BY scope,json_key,json_type;
+          WITH order_shapes AS (
+            SELECT o.order_id,
+                   o.accepted_projection_json AS j,
+                   json_extract(o.accepted_projection_json,'$.totalMinor') AS total_minor,
+                   json_extract(o.accepted_projection_json,'$.subtotalMinor') AS subtotal_minor,
+                   json_extract(o.accepted_projection_json,'$.totalDiscountMinor') AS discount_minor,
+                   CASE WHEN json_type(o.accepted_projection_json,'$.lineItems')='array' THEN '$.lineItems' ELSE '$.lines' END AS item_path
+            FROM mfos_order_state o
+            WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
+          ), item_rows AS (
+            SELECT s.order_id,s.j,s.total_minor,s.subtotal_minor,s.discount_minor,s.item_path,li.value AS item
+            FROM order_shapes s, json_each(s.j,s.item_path) li
+          ), order_math AS (
+            SELECT order_id,total_minor,subtotal_minor,discount_minor,item_path,
+                   SUM(CASE WHEN json_type(item,'$.acceptedLineTotalMinor')='integer' THEN json_extract(item,'$.acceptedLineTotalMinor')
+                            WHEN json_type(item,'$.lineTotalMinor')='integer' THEN json_extract(item,'$.lineTotalMinor') ELSE NULL END) AS line_sum,
+                   SUM(CASE WHEN json_type(item,'$.acceptedProductName')='text' AND trim(json_extract(item,'$.acceptedProductName'))<>'' THEN 0 ELSE 1 END) AS missing_names,
+                   COUNT(*) AS item_count
+            FROM item_rows GROUP BY order_id,total_minor,subtotal_minor,discount_minor,item_path
+          )
+          SELECT 'aggregate' AS scope,'orders_total' AS json_key,'count' AS json_type,COUNT(*) AS occurrences FROM order_math
+          UNION ALL SELECT 'aggregate','orders_missing_subtotal','count',COUNT(*) FROM order_math WHERE subtotal_minor IS NULL
+          UNION ALL SELECT 'aggregate','orders_missing_discount','count',COUNT(*) FROM order_math WHERE discount_minor IS NULL
+          UNION ALL SELECT 'aggregate','orders_line_sum_available','count',COUNT(*) FROM order_math WHERE line_sum IS NOT NULL
+          UNION ALL SELECT 'aggregate','orders_line_sum_eq_total','count',COUNT(*) FROM order_math WHERE line_sum=total_minor
+          UNION ALL SELECT 'aggregate','orders_line_sum_gt_total','count',COUNT(*) FROM order_math WHERE line_sum>total_minor
+          UNION ALL SELECT 'aggregate','orders_line_sum_lt_total','count',COUNT(*) FROM order_math WHERE line_sum<total_minor
+          UNION ALL SELECT 'aggregate','orders_missing_name','count',COUNT(*) FROM order_math WHERE missing_names>0
+          UNION ALL SELECT 'aggregate','items_missing_name','count',COALESCE(SUM(missing_names),0) FROM order_math
+          UNION ALL SELECT 'aggregate','legacy_orders_missing_name','count',COUNT(*) FROM order_math WHERE item_path='$.lines' AND missing_names>0
+          UNION ALL SELECT 'aggregate','current_orders_missing_name','count',COUNT(*) FROM order_math WHERE item_path='$.lineItems' AND missing_names>0
+          UNION ALL SELECT 'aggregate','legacy_sum_ge_total_missing_subtotal','count',COUNT(*) FROM order_math WHERE item_path='$.lines' AND subtotal_minor IS NULL AND line_sum>=total_minor
+          UNION ALL SELECT 'aggregate','legacy_sum_lt_total_missing_subtotal','count',COUNT(*) FROM order_math WHERE item_path='$.lines' AND subtotal_minor IS NULL AND line_sum<total_minor
+          ORDER BY json_key;
           SQL
           npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json
           node - <<'NODE'
@@ -68,7 +87,7 @@ jobs:
           const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
           const batches=Array.isArray(raw)?raw:[raw];
           const rows=batches.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
-          fs.writeFileSync('evidence/summary.json',JSON.stringify({mode:'REMOTE_D1_SELECT_ONLY_SHAPE_METADATA',rows},null,2)+'\n');
+          fs.writeFileSync('evidence/summary.json',JSON.stringify({mode:'REMOTE_D1_SELECT_ONLY_AGGREGATE_REPORTING_COMPAT',rows},null,2)+'\n');
           NODE
           cat evidence/summary.json
       - name: Seal result
@@ -82,8 +101,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           for attempt in 1 2 3 4 5; do
             git fetch origin main
