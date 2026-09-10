@@ -44,6 +44,8 @@ jobs:
           query payments "SELECT payment_id,lifecycle_status,payment_json,updated_at FROM mfos_payment_state WHERE store_id='$STORE_ID' ORDER BY updated_at"
           query refunds "SELECT refund_id,status,refund_json,created_at FROM mfos_refund_state WHERE store_id='$STORE_ID' ORDER BY created_at"
           query close_policy "SELECT * FROM mfos_business_day_close_variance_policy WHERE store_id='$STORE_ID' LIMIT 5"
+          query shift_open_event "SELECT event_id,metadata_json,payload_json,status,recorded_at FROM mfos_outbox WHERE aggregate_id='$SHIFT_ID' AND event_type='CASH_SHIFT_OPENED' ORDER BY recorded_at LIMIT 5"
+          query actor_staff "SELECT staff_id,record_json FROM mfos_rbac_staff WHERE staff_id=(SELECT json_extract(record_json,'$.openedByActorId') FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID') LIMIT 1"
           SHIFT_ID="$SHIFT_ID" node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
           const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
@@ -71,6 +73,8 @@ jobs:
           console.log('cash_payments='+JSON.stringify(cashPayments));
           console.log('completed_refund_count='+cashRefunds.length);
           console.log('close_policy_rows='+JSON.stringify(rows('close_policy')));
+          console.log('shift_open_events='+JSON.stringify(rows('shift_open_event')));
+          console.log('actor_staff_rows='+JSON.stringify(rows('actor_staff')));
           NODE
       - name: Upload evidence
         if: always()
