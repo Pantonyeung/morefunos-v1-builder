@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: Pantonyeung/Morefun-v2
-          ref: 38c311fa0a288b5574562846b5df4babda3bb05f
+          ref: 0c14ddb86fabb65f721e3d4b9740b0745fcf789a
           token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
           path: v2
           persist-credentials: false
@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           mkdir -p ../evidence
           exec > >(tee ../evidence/round010-diagnostics-proof.log) 2>&1
-          echo 'PROOF_SOURCE_SHA=38c311fa0a288b5574562846b5df4babda3bb05f'
+          echo 'PROOF_SOURCE_SHA=0c14ddb86fabb65f721e3d4b9740b0745fcf789a'
           echo '=== NODE_DIAGNOSTICS_TESTS ==='
           mapfile -t diagnostics_tests < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
           echo "DIAGNOSTICS_TEST_COUNT=${#diagnostics_tests[@]}"
