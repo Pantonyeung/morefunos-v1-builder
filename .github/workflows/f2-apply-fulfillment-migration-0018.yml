@@ -1,0 +1,119 @@
+name: F2 Apply Fulfillment Migration 0018
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-apply-fulfillment-migration-0018-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-apply-fulfillment-migration-0018-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source and migration safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          FILE=source/infra/cloudflare/d1/migrations/0018-fulfillment-runtime-authority.sql
+          test -f "$FILE"
+          FILE="$FILE" node - <<'NODE'
+          const fs=require('fs');
+          const text=fs.readFileSync(process.env.FILE,'utf8');
+          const statements=text.split(';').map(x=>x.trim()).filter(Boolean);
+          if(statements.length!==8) throw new Error('FULFILLMENT_0018_STATEMENT_COUNT_UNEXPECTED:'+statements.length);
+          for(const s of statements){
+            if(!/^(CREATE TABLE IF NOT EXISTS|CREATE UNIQUE INDEX IF NOT EXISTS)\b/i.test(s)) throw new Error('FULFILLMENT_0018_UNSAFE_SQL:'+s.slice(0,80));
+            if(/\b(DROP|ALTER|INSERT|UPDATE|DELETE|REPLACE|TRIGGER|PRAGMA)\b/i.test(s)) throw new Error('FULFILLMENT_0018_MUTATION_VERB_FORBIDDEN');
+          }
+          fs.writeFileSync('/tmp/fulfillment-statements.json',JSON.stringify(statements));
+          console.log('statement_count='+statements.length);
+          NODE
+
+      - name: Preflight production schema
+        id: pre
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT name FROM sqlite_master WHERE type IN ('table','index') AND name LIKE 'mfos_fulfillment_%' ORDER BY name"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/preflight.json
+          node - <<'NODE' | tee evidence/preflight.txt
+          const x=require('./evidence/preflight.json');
+          const rows=x.result?.[0]?.results||[];
+          console.log('existing='+rows.map(r=>r.name).join(','));
+          console.log('state_present='+String(rows.some(r=>r.name==='mfos_fulfillment_state')));
+          NODE
+
+      - name: Apply exact migration 0018 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          node -e "const a=require('/tmp/fulfillment-statements.json');a.forEach((sql,i)=>require('fs').writeFileSync('/tmp/stmt-'+i+'.json',JSON.stringify({sql})))"
+          COUNT="$(node -p "require('/tmp/fulfillment-statements.json').length")"
+          for ((i=0;i<COUNT;i++)); do
+            curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/stmt-$i.json > /tmp/result-$i.json
+            I="$i" node -e "const x=require('/tmp/result-'+process.env.I+'.json');if(!x.success){console.error(JSON.stringify(x));process.exit(1)}"
+          done
+          echo "applied_statement_count=$COUNT" | tee evidence/apply.txt
+
+      - name: Verify Fulfillment schema exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_fulfillment_policy','mfos_fulfillment_state','mfos_fulfillment_decision','mfos_fulfillment_queue','mfos_fulfillment_transition_audit','mfos_fulfillment_idempotency','mfos_fulfillment_release_audit') ORDER BY name"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/post.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/post.json > evidence/postflight.json
+          node - <<'NODE' | tee evidence/postflight.txt
+          const x=require('./evidence/postflight.json');
+          const names=(x.result?.[0]?.results||[]).map(r=>r.name);
+          const expected=['mfos_fulfillment_decision','mfos_fulfillment_idempotency','mfos_fulfillment_policy','mfos_fulfillment_queue','mfos_fulfillment_release_audit','mfos_fulfillment_state','mfos_fulfillment_transition_audit'];
+          if(JSON.stringify(names)!==JSON.stringify(expected)) throw new Error('FULFILLMENT_SCHEMA_POSTCHECK_FAILED:'+JSON.stringify(names));
+          console.log('fulfillment_schema=PASS');
+          console.log('tables='+names.join(','));
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-fulfillment-migration-0018-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
