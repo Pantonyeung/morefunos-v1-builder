@@ -63,16 +63,16 @@ jobs:
           path = Path('apps/smt-clean/src/runtime/network-production-runtime.ts')
           text = path.read_text()
 
-          needle = '    let idlePasses=0;\n'
-          if text.count(needle) != 1:
-              raise SystemExit(f'B0321_IDLE_COUNTER_MATCH_COUNT={text.count(needle)}')
-          text = text.replace(needle, '', 1)
+          counter = '    let idlePasses=0;\n'
+          if text.count(counter) != 1:
+              raise SystemExit(f'B0321_IDLE_COUNTER_MATCH_COUNT={text.count(counter)}')
 
           pattern = re.compile(
               r"      if\(prepared\.kind==='IDLE'\)\{\n"
-              r"(?:        .*\n)+?"
+              r".*?"
               r"        continue;\n"
-              r"      \}\n"
+              r"      \}\n",
+              re.S,
           )
           matches = list(pattern.finditer(text))
           if len(matches) != 1:
@@ -82,6 +82,11 @@ jobs:
           missing = [token for token in required if token not in old]
           if missing:
               raise SystemExit('B0321_EXPECTED_STALE_MARKERS_MISSING=' + ','.join(missing))
+
+          text = text.replace(counter, '', 1)
+          matches = list(pattern.finditer(text))
+          if len(matches) != 1:
+              raise SystemExit(f'B0321_POST_COUNTER_IDLE_BLOCK_MATCH_COUNT={len(matches)}')
           new = "      if(prepared.kind==='IDLE'){\n        return;\n      }\n"
           text = text[:matches[0].start()] + new + text[matches[0].end():]
           path.write_text(text)
@@ -93,7 +98,10 @@ jobs:
           git diff -- apps/smt-clean/src/runtime/network-production-runtime.ts | tee /tmp/b0321.diff
           grep -q "^-    let idlePasses=0;" /tmp/b0321.diff
           grep -q "^+        return;" /tmp/b0321.diff
+          grep -q "^-.*wait(250)" /tmp/b0321.diff
+          grep -q "^-.*waitUntil" /tmp/b0321.diff
           ! grep -q '^+.*wait(250)' /tmp/b0321.diff
+          ! grep -q '^+.*waitUntil' /tmp/b0321.diff
 
       - name: Commit and push bounded mutation
         working-directory: source
