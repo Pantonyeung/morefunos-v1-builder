@@ -1,6 +1,8 @@
 candidate_sha=f4d591220a5981b5a20c0813b26218b88b9acf28
 base_main_sha=84179320115800c6aa679a36f7c5b844141527bf
 work_id=F1-WI-PRINT-RECEIPT-DURABLE-ADMISSION-20260910
+capability_id=CAP-PRINT-AUTO-001
+capability_action=REGRESSION_REPAIR
 affected_ports=SMT,SMM,CORE
 depends_on_specs=
 required_core_tests=ORDER,PRINT
