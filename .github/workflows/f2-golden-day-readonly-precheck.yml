@@ -105,9 +105,14 @@ jobs:
             console.log('recent_order_created_at='+recentOrder.at);
             try{
               const snapshot=JSON.parse(recentOrder.snapshot||'{}');
-              const source=snapshot.sourceProvider||snapshot.sourceType||snapshot.source||snapshot.channel||snapshot.orderSource||'UNKNOWN';
+              const identity=snapshot.canonicalIdentity||snapshot.identity||{};
+              const sourceType=identity.sourceType||snapshot.sourceType||'UNKNOWN';
+              const sourceProvider=identity.sourceProvider??snapshot.sourceProvider??'';
+              const sourceChannel=identity.sourceChannel||snapshot.sourceChannel||'';
               const businessDate=snapshot.businessDate||snapshot.business_date||'';
-              console.log('recent_order_source='+String(source));
+              console.log('recent_order_source_type='+String(sourceType));
+              console.log('recent_order_source_provider='+String(sourceProvider));
+              console.log('recent_order_source_channel='+String(sourceChannel));
               console.log('recent_order_business_date='+String(businessDate));
               console.log('recent_order_total_minor='+String(snapshot.totalMinor??snapshot.total_minor??''));
             }catch{console.log('recent_order_snapshot_parse=FAILED')}
