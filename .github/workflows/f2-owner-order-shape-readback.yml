@@ -62,6 +62,26 @@ jobs:
               FROM mfos_order_state o, json_each(o.order_snapshot_json) j
              WHERE o.order_snapshot_json IS NOT NULL AND json_valid(o.order_snapshot_json)=1
           ) ORDER BY payload,key,type;
+          SELECT
+            CASE
+              WHEN json_type(COALESCE(accepted_projection_json,order_snapshot_json),'$.lineItems')='array' THEN 'lineItems'
+              WHEN json_type(COALESCE(accepted_projection_json,order_snapshot_json),'$.lines')='array' THEN 'lines'
+              ELSE 'neither'
+            END AS item_shape,
+            CASE WHEN json_type(COALESCE(accepted_projection_json,order_snapshot_json),'$.revision')='integer' THEN 1 ELSE 0 END AS has_revision,
+            CASE WHEN json_type(COALESCE(accepted_projection_json,order_snapshot_json),'$.orderRevision')='integer' THEN 1 ELSE 0 END AS has_order_revision,
+            COUNT(*) AS row_count
+          FROM mfos_order_state
+          GROUP BY item_shape,has_revision,has_order_revision
+          ORDER BY item_shape,has_revision,has_order_revision;
+          SELECT 'lineItems' AS item_shape,j.key AS key,j.type AS type
+            FROM mfos_order_state o, json_each(COALESCE(o.accepted_projection_json,o.order_snapshot_json),'$.lineItems') li, json_each(li.value) j
+           WHERE json_type(COALESCE(o.accepted_projection_json,o.order_snapshot_json),'$.lineItems')='array'
+          UNION
+          SELECT 'lines' AS item_shape,j.key AS key,j.type AS type
+            FROM mfos_order_state o, json_each(COALESCE(o.accepted_projection_json,o.order_snapshot_json),'$.lines') li, json_each(li.value) j
+           WHERE json_type(COALESCE(o.accepted_projection_json,o.order_snapshot_json),'$.lines')='array'
+          ORDER BY item_shape,key,type;
           SELECT source,channel,CASE WHEN provider_ref IS NULL THEN 0 ELSE 1 END AS has_provider_ref,COUNT(*) AS row_count
             FROM mfos_order_state
            GROUP BY source,channel,has_provider_ref
@@ -80,20 +100,15 @@ jobs:
           const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
           const batches=Array.isArray(raw)?raw:[raw];
           const resultSets=batches.flatMap(x=>Array.isArray(x?.results)?[x.results]:[]);
-          const shapes=(resultSets[0]??[]).map(x=>({payload:String(x.payload),key:String(x.key),type:String(x.type)}));
-          const attribution=(resultSets[1]??[]).map(x=>({
-            source:x.source===null?null:String(x.source),
-            channel:x.channel===null?null:String(x.channel),
-            hasProviderRef:Number(x.has_provider_ref)===1,
-            rowCount:Number(x.row_count)
-          }));
           const out={
             generatedAt:new Date().toISOString(),
             sourceSha:process.env.SOURCE_SHA,
             requestId:process.env.REQUEST_ID,
-            mode:'REMOTE_D1_SELECT_ONLY_KEYS_AND_ATTRIBUTION_CLASSES',
-            shapes,
-            attribution
+            mode:'REMOTE_D1_SELECT_ONLY_SANITIZED_SHAPES',
+            topLevelKeys:(resultSets[0]??[]).map(x=>({payload:String(x.payload),key:String(x.key),type:String(x.type)})),
+            variants:(resultSets[1]??[]).map(x=>({itemShape:String(x.item_shape),hasRevision:Number(x.has_revision)===1,hasOrderRevision:Number(x.has_order_revision)===1,rowCount:Number(x.row_count)})),
+            itemKeys:(resultSets[2]??[]).map(x=>({itemShape:String(x.item_shape),key:String(x.key),type:String(x.type)})),
+            attribution:(resultSets[3]??[]).map(x=>({source:x.source===null?null:String(x.source),channel:x.channel===null?null:String(x.channel),hasProviderRef:Number(x.has_provider_ref)===1,rowCount:Number(x.row_count)}))
           };
           fs.writeFileSync('evidence/summary.json',JSON.stringify(out,null,2)+'\n');
           console.log(JSON.stringify(out,null,2));
