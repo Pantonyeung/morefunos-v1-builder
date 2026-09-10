@@ -1,0 +1,65 @@
+name: F2 Business Day Close API Live Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-business-day-close-api-live-read-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-business-day-close-api-live-read-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Read production Admin close readiness route
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$LOGIN_HTTP" | tee evidence/summary.txt
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          HTTP="$(curl -sS -o /tmp/close.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day/close")"
+          echo "close_readiness_http=$HTTP" | tee -a evidence/summary.txt
+          cat /tmp/close.json | tee evidence/body.json
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('/tmp/close.json');
+          console.log('ok='+String(Boolean(x.ok)));
+          console.log('code='+String(x.code||''));
+          if(x.value){
+            console.log('can_close='+String(x.value.canClose));
+            console.log('blockers='+JSON.stringify(x.value.blockers||[]));
+            console.log('pending_sync='+String(x.value.pendingSyncCount??''));
+          }
+          NODE
+          # Read-only diagnostic: preserve non-200 as evidence instead of masking it.
+          test "$HTTP" = 200 || exit 42
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-business-day-close-api-live-read-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
