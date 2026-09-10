@@ -1,0 +1,10 @@
+candidate_sha=f3e7d5d45b5a8a3f9f85d3b8456a569d8288ed7c
+base_main_sha=0b95322549d50eb2470ab44bdb340605eed53970
+work_id=F1-WI-ROUND019-SMT-PAYMENT-CHECKOUT-LINKUP-20260911
+capability_id=CAP-PAYMENT-REFUND-001
+capability_action=LINKUP
+affected_ports=SMT,CORE
+depends_on_specs=
+supersedes_candidate_sha=624b03a7336bbd07d524fce1bb01f7aa290c517f
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
