@@ -1,0 +1,161 @@
+name: F2 Owner RBAC Half Bootstrap Repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-owner-rbac-half-bootstrap-repair-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      OWNER_ORIGIN: https://morefun-v2-owner.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve repair request and deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-owner-rbac-half-bootstrap-repair-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          WORK_ID="$(sed -n 's/^work_id=//p' requests/f2-owner-rbac-half-bootstrap-repair-request.txt | tr -d '\r\n')"
+          DEPLOYED_SHA="$(sed -n 's/^source_sha=//p' .ci-results/v2-owner-worker-deploy.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$WORK_ID"
+          [[ "$SOURCE_SHA" == "$DEPLOYED_SHA" ]] || { echo "::error::OWNER_REPAIR_SOURCE_NOT_DEPLOYED requested=$SOURCE_SHA deployed=$DEPLOYED_SHA"; exit 1; }
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Read and guard canonical half-bootstrap state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/admin-login.headers -o /tmp/admin-login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_ORIGIN/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/admin-login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          STAFF_ID="$(node -e "const x=require('/tmp/admin-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.staffId))")"
+          STORE_ID="$(node -e "const x=require('/tmp/admin-login.json'); if(!x.staffId||!x.scopeRef)process.exit(2); process.stdout.write(String(x.scopeRef))")"
+          STAFF_HTTP="$(curl -sS -o /tmp/admin-staff.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_ORIGIN/api/admin/staff")"
+          test "$STAFF_HTTP" = 200
+          STAFF_ID="$STAFF_ID" STORE_ID="$STORE_ID" node - <<'NODE' | tee evidence/precondition.txt
+          const x=require('/tmp/admin-staff.json');
+          if(!x.ok||!x.value)throw new Error('ADMIN_STAFF_SNAPSHOT_INVALID');
+          const roles=x.value.roles||[];
+          const member=(x.value.staff||[]).find(s=>s.staffId===process.env.STAFF_ID);
+          if(!member)throw new Error('OWNER_STAFF_RECORD_MISSING');
+          if(member.lifecycleStatus!=='ACTIVE')throw new Error('OWNER_STAFF_NOT_ACTIVE');
+          if((member.roleIds||[]).length!==0)throw new Error('OWNER_STAFF_ROLES_NOT_EMPTY_ABORT');
+          if(roles.some(r=>r.roleId==='runtime-owner-bootstrap'))throw new Error('OWNER_BOOTSTRAP_ROLE_ALREADY_EXISTS_ABORT');
+          console.log('precondition=HALF_BOOTSTRAP_CONFIRMED');
+          console.log('staff_id='+member.staffId);
+          console.log('staff_display_name='+member.displayName);
+          console.log('staff_revision='+member.revision);
+          console.log('store_id='+process.env.STORE_ID);
+          NODE
+          printf '%s' "$COOKIE" > /tmp/admin-cookie
+
+      - name: Create canonical Owner bootstrap role
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/admin-cookie)"
+          STORE_ID="$(sed -n 's/^store_id=//p' evidence/precondition.txt)"
+          STORE_ID="$STORE_ID" node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/create-role.json',JSON.stringify({
+            action:'CREATE_ROLE',
+            idempotencyKey:'round019-owner-bootstrap-role-v1',
+            roleId:'runtime-owner-bootstrap',
+            displayName:'MoreFun Runtime Owner',
+            permissions:[
+              {permission:'admin.direct_authority.bootstrap.v1',scopeRef:process.env.STORE_ID},
+              {permission:'admin.merchant_store.initialize.v1',scopeRef:process.env.STORE_ID},
+              {permission:'staff.manage',scopeRef:process.env.STORE_ID}
+            ]
+          }));
+          NODE
+          HTTP="$(curl -sS -o /tmp/create-role-response.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/create-role.json "$ADMIN_ORIGIN/api/admin/staff")"
+          echo "create_role_http=$HTTP" | tee evidence/repair.txt
+          test "$HTTP" = 200
+          node -e "const x=require('/tmp/create-role-response.json'); if(!x.ok||!(x.value.roles||[]).some(r=>r.roleId==='runtime-owner-bootstrap')) throw new Error('OWNER_ROLE_CREATE_READBACK_FAILED'); console.log('create_role=PASS')" | tee -a evidence/repair.txt
+
+      - name: Bind existing Owner staff to canonical role
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/admin-cookie)"
+          STAFF_ID="$(sed -n 's/^staff_id=//p' evidence/precondition.txt)"
+          STAFF_NAME="$(sed -n 's/^staff_display_name=//p' evidence/precondition.txt)"
+          STAFF_REV="$(sed -n 's/^staff_revision=//p' evidence/precondition.txt)"
+          STAFF_ID="$STAFF_ID" STAFF_NAME="$STAFF_NAME" STAFF_REV="$STAFF_REV" node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/update-staff.json',JSON.stringify({
+            action:'UPDATE_STAFF',
+            idempotencyKey:'round019-owner-bootstrap-staff-bind-v1',
+            staffId:process.env.STAFF_ID,
+            displayName:process.env.STAFF_NAME,
+            roleIds:['runtime-owner-bootstrap'],
+            expectedRevision:Number(process.env.STAFF_REV)
+          }));
+          NODE
+          HTTP="$(curl -sS -o /tmp/update-staff-response.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/update-staff.json "$ADMIN_ORIGIN/api/admin/staff")"
+          echo "bind_staff_http=$HTTP" | tee -a evidence/repair.txt
+          test "$HTTP" = 200
+          STAFF_ID="$STAFF_ID" node -e "const x=require('/tmp/update-staff-response.json'); const s=(x.value?.staff||[]).find(v=>v.staffId===process.env.STAFF_ID); if(!x.ok||!s||(s.roleIds||[]).length!==1||s.roleIds[0]!=='runtime-owner-bootstrap') throw new Error('OWNER_STAFF_ROLE_BIND_READBACK_FAILED'); console.log('bind_staff=PASS revision='+s.revision)" | tee -a evidence/repair.txt
+
+      - name: Prove Owner RBAC canonical read after repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET,loginId:"owner"}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/owner-login.headers -o /tmp/owner-login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$OWNER_ORIGIN/api/owner/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/owner-login.headers | tr -d '\r' | head -n1)"
+          BOOT_HTTP="$(curl -sS -o /tmp/owner-bootstrap.json -w '%{http_code}' -H "Cookie: $COOKIE" "$OWNER_ORIGIN/api/owner/bootstrap")"
+          test "$BOOT_HTTP" = 200
+          STORE_ID="$(node -e "const x=require('/tmp/owner-bootstrap.json'); if(!x.storeId)process.exit(2); process.stdout.write(String(x.storeId))")"
+          BODY="$(STORE_ID="$STORE_ID" node -e 'process.stdout.write(JSON.stringify({operationId:"management.staff-rbac.read.v1",request:{storeId:process.env.STORE_ID}}))')"
+          HTTP="$(curl -sS -o /tmp/owner-rbac.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data "$BODY" "$OWNER_ORIGIN/api/owner/runtime")"
+          echo "owner_rbac_http=$HTTP" | tee evidence/post-repair.txt
+          test "$HTTP" = 200
+          STORE_ID="$STORE_ID" node -e "const x=require('/tmp/owner-rbac.json'); if(!x.ok||x.value?.storeId!==process.env.STORE_ID)throw new Error('OWNER_RBAC_POST_REPAIR_INVALID'); console.log('owner_rbac_read=PASS roles='+(x.value.roles||[]).length+' staff='+(x.value.staff||[]).length)" | tee -a evidence/post-repair.txt
+
+      - name: Prove Owner RBAC diagnostic checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 2
+          STAFF_ID="$(sed -n 's/^staff_id=//p' evidence/precondition.txt)"
+          STORE_ID="$(sed -n 's/^store_id=//p' evidence/precondition.txt)"
+          SQL="SELECT trace_id,journey_id,edge_id,stage,target,occurred_at FROM mfos_system_diagnostic_trace_event WHERE store_id='$STORE_ID' AND journey_id='IDENTITY_SECURITY_V1' AND edge_id='d1-owner-rbac-readback' ORDER BY occurred_at DESC LIMIT 1;"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          curl -fsS -X POST "$URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > /tmp/d1.json
+          node -e "const x=require('/tmp/d1.json'); const r=x.result?.[0]?.results?.[0]; if(!x.success||!r||r.edge_id!=='d1-owner-rbac-readback'||r.stage!=='APPLIED'||r.target!=='OWNER')throw new Error('OWNER_RBAC_CHECKPOINT_MISSING'); console.log('owner_rbac_checkpoint=PASS trace_id='+r.trace_id)" | tee evidence/checkpoint.txt
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-owner-rbac-half-bootstrap-repair-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
