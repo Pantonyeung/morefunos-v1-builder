@@ -1,0 +1,2 @@
+candidate_sha=f66fee507db474d642e3a7af6f0b5c48bb95b7db
+purpose=ROUND011 first-failed-edge diagnostic only
