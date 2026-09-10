@@ -49,23 +49,27 @@ jobs:
         working-directory: candidate
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
-      - name: ORDER canonical proof with durable log
+      - name: ORDER canonical admission proof with durable log
         id: order
         continue-on-error: true
         shell: bash
         working-directory: candidate
         run: |
-          set -o pipefail
-          npm run test:core-order 2>&1 | tee "$RUNNER_TEMP/round011-order.log"
+          set -euo pipefail
+          mapfile -t canonical_order_tests < <(
+            find packages/order -maxdepth 1 -type f -name '*.test.ts' ! -name 'postgres-*.integration.test.ts' -print | sort
+          )
+          [[ "${#canonical_order_tests[@]}" -gt 0 ]] || { echo 'ORDER_CANONICAL_TEST_SET_EMPTY' >&2; exit 29; }
+          node --test --test-concurrency=1 "${canonical_order_tests[@]}" 2>&1 | tee "$RUNNER_TEMP/round011-order.log"
 
-      - name: PRINT canonical proof with durable log
+      - name: PRINT canonical admission proof with durable log
         id: print
         if: always()
         continue-on-error: true
         shell: bash
         working-directory: candidate
         run: |
-          set -o pipefail
+          set -euo pipefail
           npm run test:print 2>&1 | tee "$RUNNER_TEMP/round011-print.log"
 
       - name: Upload ROUND011 diagnostic logs
