@@ -1,7 +1,7 @@
 work_id=F1-WI-PRINT-RECEIPT-DURABLE-ADMISSION-20260910
-candidate_sha=f66fee507db474d642e3a7af6f0b5c48bb95b7db
-base_main_sha=bc067b452686c78ed751878ccf67d1d741515992
-latest_main_sha=8d62dc0aaabb28f0c3efeb6d66c54430c2a18431
+candidate_sha=f4d591220a5981b5a20c0813b26218b88b9acf28
+base_main_sha=84179320115800c6aa679a36f7c5b844141527bf
+latest_main_sha=7ddaa493c462261da9c8863997fa13e515b755ce
 collision=C0
 impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=ORDER,PRINT
 force_full_proof=true
-run_id=34467624345
+run_id=34470583011
 conclusion=failure
