@@ -1,0 +1,269 @@
+name: V2 Scope-Aware Admission Queue
+
+on:
+  push:
+    paths:
+      - 'requests/v2-scope-admission/*.txt'
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Frozen Morefun-v2 candidate SHA
+        required: true
+        type: string
+      base_main_sha:
+        description: Main SHA candidate was based on
+        required: true
+        type: string
+      work_id:
+        description: Work ID
+        required: true
+        type: string
+      capability_id:
+        description: Capability ID
+        required: true
+        type: string
+      capability_action:
+        description: Capability action
+        required: true
+        type: string
+      affected_ports:
+        description: Comma-separated SMT,SMM,ADMIN,OWNER,CUSTOMER,CORE
+        required: false
+        default: ''
+        type: string
+      required_core_tests:
+        description: Comma-separated ORDER,PAYMENT,PRINT,PRICING,AVAILABILITY,BUSINESS_DAY,CATALOG,DIAGNOSTICS
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morefun-v2-scope-admission
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve request
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          INPUT_BASE_MAIN_SHA: ${{ inputs.base_main_sha }}
+          INPUT_WORK_ID: ${{ inputs.work_id }}
+          INPUT_CAPABILITY_ID: ${{ inputs.capability_id }}
+          INPUT_CAPABILITY_ACTION: ${{ inputs.capability_action }}
+          INPUT_AFFECTED_PORTS: ${{ inputs.affected_ports }}
+          INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
+        run: |
+          set -euo pipefail
+          read_request() { sed -n "s/^$1=//p" "$2" | tail -n1 | tr -d '\r\n'; }
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            CANDIDATE_SHA="$INPUT_CANDIDATE_SHA"
+            BASE_MAIN_SHA="$INPUT_BASE_MAIN_SHA"
+            WORK_ID="$INPUT_WORK_ID"
+            CAPABILITY_ID="$INPUT_CAPABILITY_ID"
+            CAPABILITY_ACTION="$INPUT_CAPABILITY_ACTION"
+            AFFECTED_PORTS="$INPUT_AFFECTED_PORTS"
+            REQUIRED_CORE_TESTS="$INPUT_REQUIRED_CORE_TESTS"
+            REQUEST_FILE=WORKFLOW_DISPATCH
+          else
+            mapfile -t files < <(git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- 'requests/v2-scope-admission/*.txt' | sort -u)
+            [[ "${#files[@]}" -eq 1 ]] || { echo "SCOPE_QUEUE_REQUEST_COUNT_INVALID:${#files[@]}" >&2; exit 24; }
+            REQUEST_FILE="${files[0]}"
+            CANDIDATE_SHA="$(read_request candidate_sha "$REQUEST_FILE")"
+            BASE_MAIN_SHA="$(read_request base_main_sha "$REQUEST_FILE")"
+            WORK_ID="$(read_request work_id "$REQUEST_FILE")"
+            CAPABILITY_ID="$(read_request capability_id "$REQUEST_FILE")"
+            CAPABILITY_ACTION="$(read_request capability_action "$REQUEST_FILE")"
+            AFFECTED_PORTS="$(read_request affected_ports "$REQUEST_FILE")"
+            REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE")"
+          fi
+          CANDIDATE_SHA="$(printf '%s' "$CANDIDATE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          BASE_MAIN_SHA="$(printf '%s' "$BASE_MAIN_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          CAPABILITY_ID="$(printf '%s' "$CAPABILITY_ID" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          CAPABILITY_ACTION="$(printf '%s' "$CAPABILITY_ACTION" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          AFFECTED_PORTS="$(printf '%s' "$AFFECTED_PORTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          REQUIRED_CORE_TESTS="$(printf '%s' "$REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CAPABILITY_ID" =~ ^CAP-[A-Z0-9][A-Z0-9-]*$ ]]
+          test -n "$WORK_ID"
+          {
+            echo "candidate_sha=$CANDIDATE_SHA"
+            echo "base_main_sha=$BASE_MAIN_SHA"
+            echo "work_id=$WORK_ID"
+            echo "capability_id=$CAPABILITY_ID"
+            echo "capability_action=$CAPABILITY_ACTION"
+            echo "affected_ports=$AFFECTED_PORTS"
+            echo "required_core_tests=$REQUIRED_CORE_TESTS"
+            echo "request_file=$REQUEST_FILE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout frozen candidate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.candidate_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout current Morefun-v2 main
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: main
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: latest
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scope classification
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.request.outputs.base_main_sha }}
+          CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C candidate rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git -C candidate cat-file -e "${BASE_SHA}^{commit}"
+          git -C candidate diff --name-only "$BASE_SHA" "$CANDIDATE_SHA" | sort -u | tee evidence/candidate-files.txt
+          GLOBAL=false
+          if grep -qE '^(AUTHORITY\.md|AI-INDEX\.yaml|GOVERNANCE-RULES\.yaml|WORK-POLICY\.yaml|INTEGRATION-POLICY\.yaml|docs/recovery/(READ-FIREWALL\.yaml|CURRENT-CYCLE\.yaml)|docs/recovery/commander/(CAPABILITY-CATALOG\.yaml|CAPABILITY-MASTER-REGISTRY\.md|CAPABILITY-IDENTITY-RECONCILIATION-.*\.yaml)|docs/workflows/(WORK-STATE-MACHINE\.yaml|WORKFLOW-REGISTRY\.yaml)|infra/cloudflare/d1/migrations/)' evidence/candidate-files.txt; then
+            GLOBAL=true
+          fi
+          echo "global_touched=$GLOBAL" >> "$GITHUB_OUTPUT"
+          echo "GLOBAL_GOVERNANCE_TOUCHED=$GLOBAL" | tee evidence/scope-summary.txt
+
+      - name: Run scoped V2 Guard
+        id: guard
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/verify-v2-memory-guard.mjs candidate "${{ steps.request.outputs.capability_id }}" "${{ steps.request.outputs.capability_action }}" "${{ steps.request.outputs.work_id }}" 2>&1 | tee evidence/guard.txt
+
+      - name: Setup Node 24
+        if: always()
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install candidate dependencies
+        id: install
+        if: always()
+        continue-on-error: true
+        working-directory: candidate
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Root typecheck
+        id: typecheck
+        if: always() && steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: candidate
+        run: npm run typecheck
+
+      - name: Print proof
+        id: print_proof
+        if: always() && steps.install.outcome == 'success' && contains(steps.request.outputs.required_core_tests, 'PRINT')
+        continue-on-error: true
+        working-directory: candidate
+        run: npm run test:print
+
+      - name: Diagnostics proof
+        id: diagnostics_proof
+        if: always() && steps.install.outcome == 'success' && contains(steps.request.outputs.required_core_tests, 'DIAGNOSTICS')
+        continue-on-error: true
+        working-directory: candidate
+        shell: bash
+        run: |
+          mapfile -t tests < <(find packages/system-diagnostics -maxdepth 1 -type f -name '*.test.ts' -print | sort)
+          [[ "${#tests[@]}" -gt 0 ]]
+          node --test --test-concurrency=1 "${tests[@]}"
+
+      - name: SMT integration proof
+        id: smt_proof
+        if: always() && steps.install.outcome == 'success' && contains(steps.request.outputs.affected_ports, 'SMT')
+        continue-on-error: true
+        working-directory: candidate/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: Evidence summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          {
+            echo "candidate_sha=${{ steps.request.outputs.candidate_sha }}"
+            echo "base_main_sha=${{ steps.request.outputs.base_main_sha }}"
+            echo "work_id=${{ steps.request.outputs.work_id }}"
+            echo "capability_id=${{ steps.request.outputs.capability_id }}"
+            echo "capability_action=${{ steps.request.outputs.capability_action }}"
+            echo "global_governance_touched=${{ steps.scope.outputs.global_touched }}"
+            echo "guard=${{ steps.guard.outcome }}"
+            echo "install=${{ steps.install.outcome }}"
+            echo "typecheck=${{ steps.typecheck.outcome }}"
+            echo "print_proof=${{ steps.print_proof.outcome }}"
+            echo "diagnostics_proof=${{ steps.diagnostics_proof.outcome }}"
+            echo "smt_proof=${{ steps.smt_proof.outcome }}"
+          } | tee evidence/result.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-scope-admission-${{ steps.request.outputs.work_id }}-${{ steps.request.outputs.candidate_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Final admission decision
+        if: always()
+        shell: bash
+        env:
+          GUARD: ${{ steps.guard.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          PRINT_PROOF: ${{ steps.print_proof.outcome }}
+          DIAGNOSTICS_PROOF: ${{ steps.diagnostics_proof.outcome }}
+          SMT_PROOF: ${{ steps.smt_proof.outcome }}
+          TESTS: ${{ steps.request.outputs.required_core_tests }}
+          PORTS: ${{ steps.request.outputs.affected_ports }}
+        run: |
+          set -euo pipefail
+          fail=false
+          [[ "$GUARD" == success ]] || { echo "ADMISSION_BLOCKER=GOVERNANCE"; fail=true; }
+          [[ "$INSTALL" == success ]] || { echo "ADMISSION_BLOCKER=INSTALL"; fail=true; }
+          [[ "$TYPECHECK" == success ]] || { echo "ADMISSION_BLOCKER=TYPECHECK"; fail=true; }
+          if [[ ",$TESTS," == *,PRINT,* && "$PRINT_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=PRINT_PROOF"; fail=true; fi
+          if [[ ",$TESTS," == *,DIAGNOSTICS,* && "$DIAGNOSTICS_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=DIAGNOSTICS_PROOF"; fail=true; fi
+          if [[ ",$PORTS," == *,SMT,* && "$SMT_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=SMT_PROOF"; fail=true; fi
+          if [[ "$fail" == true ]]; then
+            echo "ADMISSION=BLOCKED"
+            exit 1
+          fi
+          echo "ADMISSION=PASS"
