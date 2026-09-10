@@ -1,0 +1,47 @@
+name: F2 Owner Reporting Aggregate Proof
+
+on:
+  push:
+    paths:
+      - 'requests/f2-owner-reporting-aggregate-proof-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-owner-reporting-aggregate-proof-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Read anonymous reporting aggregates only
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          SQL="WITH s AS (SELECT accepted_projection_json j, CASE WHEN json_type(accepted_projection_json,'$.lineItems')='array' THEN '$.lineItems' ELSE '$.lines' END p FROM mfos_order_state WHERE accepted_projection_json IS NOT NULL AND json_valid(accepted_projection_json)=1), m AS (SELECT s.j,s.p,json_extract(s.j,'$.totalMinor') total_minor,json_extract(s.j,'$.subtotalMinor') subtotal_minor,json_extract(s.j,'$.totalDiscountMinor') discount_minor,SUM(CASE WHEN json_type(li.value,'$.acceptedLineTotalMinor')='integer' THEN json_extract(li.value,'$.acceptedLineTotalMinor') WHEN json_type(li.value,'$.lineTotalMinor')='integer' THEN json_extract(li.value,'$.lineTotalMinor') END) line_sum,SUM(CASE WHEN json_type(li.value,'$.acceptedProductName')='text' AND trim(json_extract(li.value,'$.acceptedProductName'))<>'' THEN 0 ELSE 1 END) missing_names FROM s,json_each(s.j,s.p) li GROUP BY s.j,s.p) SELECT COUNT(*) orders_total,SUM(subtotal_minor IS NULL) orders_missing_subtotal,SUM(discount_minor IS NULL) orders_missing_discount,SUM(line_sum IS NOT NULL) line_sum_available,SUM(line_sum=total_minor) line_sum_eq_total,SUM(line_sum>total_minor) line_sum_gt_total,SUM(line_sum<total_minor) line_sum_lt_total,SUM(missing_names>0) orders_missing_name,SUM(missing_names) items_missing_name,SUM(p='$.lines' AND subtotal_minor IS NULL AND line_sum>=total_minor) legacy_reconstructable,SUM(p='$.lines' AND subtotal_minor IS NULL AND line_sum<total_minor) legacy_invalid_math FROM m;"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL"
