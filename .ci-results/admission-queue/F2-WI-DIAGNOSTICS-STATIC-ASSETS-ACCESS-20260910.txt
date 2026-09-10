@@ -1,0 +1,13 @@
+work_id=F2-WI-DIAGNOSTICS-STATIC-ASSETS-ACCESS-20260910
+candidate_sha=f831938035b824e22c21adb039a8f9e6dcc1e102
+base_main_sha=430477fdba8b4c14c5400fb052cf88a70c3aee53
+latest_main_sha=f831938035b824e22c21adb039a8f9e6dcc1e102
+collision=C0
+impact=V0
+reason=ALREADY_ADMITTED_OR_NOOP
+apply_status=SKIPPED
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34422103283
+conclusion=success
