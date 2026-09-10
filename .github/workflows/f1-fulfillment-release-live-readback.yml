@@ -1,0 +1,104 @@
+name: F1 Fulfillment Release Live Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f1-fulfillment-release-live-readback-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      WORKER_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f1-fulfillment-release-live-readback-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]')"
+          test "$ACTUAL" = "${{ steps.req.outputs.source_sha }}"
+
+      - name: Read missing Fulfillment backlog
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT s.order_id,s.store_id,s.revision,s.created_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND f.order_id IS NULL ORDER BY s.created_at ASC,s.order_id ASC"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/preflight.json
+          node - <<'NODE' | tee evidence/preflight.txt
+          const x=require('./evidence/preflight.json');
+          if(!x.success)process.exit(1);
+          const rows=x.result?.[0]?.results||[];
+          console.log('missing_fulfillment_count='+rows.length);
+          console.log('orders='+JSON.stringify(rows));
+          if(rows.length===0)process.exit(0);
+          if(rows.length>5){console.error('FULFILLMENT_BACKLOG_TOO_LARGE_FAIL_CLOSED');process.exit(2)}
+          const cutoff=Date.parse('2026-09-10T00:00:00Z');
+          if(rows.some(r=>Date.parse(r.created_at)<cutoff)){console.error('STALE_ACCEPTED_ORDER_FAIL_CLOSED');process.exit(3)}
+          NODE
+
+      - name: Trigger post-commit drain without business command
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o evidence/trigger-response.json -w '%{http_code}' -X POST "$WORKER_URL/api/smt/runtime" -H 'content-type: application/json' --data '{"operationId":"diagnostic.noop","request":{}}')"
+          echo "trigger_http=$CODE" | tee evidence/trigger.txt
+          test "$CODE" = 401 -o "$CODE" = 403 -o "$CODE" = 400
+          sleep 2
+
+      - name: Verify Fulfillment production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT s.order_id,s.revision AS order_revision,s.lifecycle_status AS order_status,f.fulfillment_id,f.revision AS fulfillment_revision,f.lifecycle_status AS fulfillment_status,f.updated_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' ORDER BY s.created_at DESC LIMIT 10"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/query.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/query.json > evidence/post.json
+          node - <<'NODE' | tee evidence/post.txt
+          const x=require('./evidence/post.json');
+          if(!x.success)process.exit(1);
+          const rows=x.result?.[0]?.results||[];
+          console.log('rows='+JSON.stringify(rows));
+          const missing=rows.filter(r=>!r.fulfillment_id);
+          console.log('accepted_without_fulfillment_after='+missing.length);
+          const released=rows.filter(r=>r.fulfillment_status==='PRODUCTION_AUTHORIZED');
+          console.log('production_authorized_count='+released.length);
+          if(missing.length)process.exit(1);
+          if(rows.length&&!released.length)process.exit(1);
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f1-fulfillment-release-live-readback-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
