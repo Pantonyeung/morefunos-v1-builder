@@ -1,0 +1,9 @@
+candidate_sha=3cae7a552044be47aa6e40b6850dbec427d97ebe
+base_main_sha=f8eb4c6ce3833d6c8e263396032f822493db1c56
+work_id=TEAM2-WI-ROUND010-PRINT-REVERSE-TRUTH-20260910
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=CORE
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+supersedes_candidate_sha=3cae7a552044be47aa6e40b6850dbec427d97ebe
