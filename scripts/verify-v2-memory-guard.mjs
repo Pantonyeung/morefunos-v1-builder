@@ -725,6 +725,7 @@ const decisionAllowlist = [
   'docs/recovery/decisions/CONTINUOUS-LINKUP-DIAGNOSTICS-ACCEPTANCE-RULE-2026-09-09.md',
   'docs/recovery/decisions/SYSTEM-LINK-DIAGNOSTICS-UNIVERSAL-COVERAGE-RULE-2026-09-09.md',
   'docs/recovery/decisions/OWNER-ABC-FULL-SYSTEM-CONSOLIDATION-2026-09-09.md',
+  'docs/recovery/decisions/TWO-FUNCTIONAL-LANE-PARALLEL-CLOSURE-2026-09-10.md',
 ];
 
 for (const filePath of decisionAllowlist) {
