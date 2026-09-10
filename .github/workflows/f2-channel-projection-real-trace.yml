@@ -1,0 +1,115 @@
+name: F2 Channel Projection Real Trace
+on:
+  push:
+    paths: ['requests/f2-channel-projection-real-trace-request.txt']
+permissions:
+  contents: write
+jobs:
+  prove:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_SESSION_BOOTSTRAP_JSON: ${{ secrets.ADMIN_SESSION_BOOTSTRAP_JSON }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          S="$(sed -n 's/^source_sha=//p' requests/f2-channel-projection-real-trace-request.txt | tr -d '[:space:]')"
+          R="$(sed -n 's/^request_id=//p' requests/f2-channel-projection-real-trace-request.txt | tr -d '\r\n')"
+          [[ "$S" =~ ^[0-9a-f]{40}$ ]]; test -n "$R"; test -n "$ADMIN_SESSION_BOOTSTRAP_JSON"
+          echo "source_sha=$S" >> "$GITHUB_OUTPUT"; echo "request_id=$R" >> "$GITHUB_OUTPUT"
+      - name: Guard runtime source
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          C="$(gh api "repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...main")"
+          ST="$(jq -r '.status' <<<"$C")"
+          [[ "$ST" == "identical" || "$ST" == "ahead" ]]
+          CH="$(jq -r '.files[]?.filename' <<<"$C" | grep -E '^(infra/cloudflare/admin-web-worker/|packages/admin-ui-integration/d1-admin-channel-product-projection\.ts$)' || true)"
+          test -z "$CH" || { printf '%s\n' "$CH"; exit 1; }
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Real production proof
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CFG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          URL='https://morefun-v2-admin.pantonyeung.workers.dev'
+          TOKEN="$(node -e "const x=JSON.parse(process.env.ADMIN_SESSION_BOOTSTRAP_JSON);if(!Array.isArray(x)||!x[0]?.sessionToken)process.exit(1);process.stdout.write(x[0].sessionToken)")"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CFG" --command "SELECT store_id,product_id FROM mfos_channel_product_projection WHERE channel_context='KEETA' ORDER BY updated_at DESC LIMIT 1;" > evidence/candidate.json
+          STORE="$(jq -r '.[0].results[0].store_id // empty' evidence/candidate.json)"
+          PRODUCT="$(jq -r '.[0].results[0].product_id // empty' evidence/candidate.json)"
+          test -n "$STORE"; test -n "$PRODUCT"
+          EP="$(node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "$PRODUCT")"
+          HTTP="$(curl -sS -o evidence/before.json -w '%{http_code}' -H "Cookie: mf_admin_session=$TOKEN" "$URL/api/admin/catalog/channel-product-projection?channel=KEETA&productId=$EP")"
+          test "$HTTP" = 200
+          node - <<'NODE'
+          const fs=require('fs'); const v=JSON.parse(fs.readFileSync('evidence/before.json','utf8')).value;
+          if(!v) process.exit(1);
+          const b={channel:'KEETA',productId:v.productId,expectedRevision:v.revision,visible:v.visible,optionVisibility:v.optionVisibility,sortPosition:v.sortPosition,fixedPriceMinor:v.fixedPriceMinor,priceExpectedRevision:v.priceRevision};
+          for(const k of ['displayName','imageRef','channelMenuRef','channelCategoryRef']) if(typeof v[k]==='string'&&v[k].trim()) b[k]=v[k];
+          fs.writeFileSync('evidence/body.json',JSON.stringify(b));
+          NODE
+          HTTP="$(curl -sS -o evidence/after.json -w '%{http_code}' -X PUT -H "Cookie: mf_admin_session=$TOKEN" -H 'content-type: application/json' --data-binary @evidence/body.json "$URL/api/admin/catalog/channel-product-projection")"
+          test "$HTTP" = 200
+          BEFORE="$(jq -r '.value.revision' evidence/before.json)"; AFTER="$(jq -r '.value.projectionRevision' evidence/after.json)"
+          BPRICE="$(jq -r '.value.priceRevision' evidence/before.json)"; APRICE="$(jq -r '.value.priceRevision' evidence/after.json)"
+          test "$AFTER" -eq "$((BEFORE+1))"; test "$APRICE" -eq "$((BPRICE+1))"
+          FP="CHANNEL_PROJECTION_REVISION:$AFTER"
+          FOUND=0
+          for i in {1..20}; do
+            npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CFG" --command "SELECT trace_id,journey_id,edge_id,stage,expected_fingerprint,observed_fingerprint,occurred_at FROM mfos_system_diagnostic_trace_event WHERE store_id='$STORE' AND journey_id='STORE_CONFIGURATION_FANOUT_V1' AND edge_id='d1-admin-store-config-readback' AND observed_fingerprint='$FP' ORDER BY occurred_at DESC LIMIT 1;" > evidence/trace.json
+            [ "$(jq '.[0].results|length' evidence/trace.json)" -ge 1 ] && { FOUND=1; break; }
+            sleep 1
+          done
+          test "$FOUND" = 1
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('evidence/before.json','utf8')).value;
+          const a=JSON.parse(fs.readFileSync('evidence/after.json','utf8')).value;
+          const t=JSON.parse(fs.readFileSync('evidence/trace.json','utf8'))[0].results[0];
+          for(const k of ['displayName','imageRef','visible','channelMenuRef','channelCategoryRef','optionVisibility','sortPosition','fixedPriceMinor']) if(JSON.stringify(b[k])!==JSON.stringify(a[k])) throw new Error('SEMANTIC_VALUE_CHANGED:'+k);
+          const out={sourceSha:process.env.SOURCE_SHA,requestId:process.env.REQUEST_ID,mode:'REAL_PRODUCTION_SEMANTIC_NOCHANGE_WRITE',channel:'KEETA',productId:b.productId,beforeRevision:b.revision,afterProjectionRevision:a.projectionRevision,beforePriceRevision:b.priceRevision,afterPriceRevision:a.priceRevision,semanticValuesUnchanged:true,traceId:t.trace_id,journeyId:t.journey_id,edgeId:t.edge_id,stage:t.stage,expectedFingerprint:t.expected_fingerprint,observedFingerprint:t.observed_fingerprint,occurredAt:t.occurred_at};
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(out,null,2)+'\n'); console.log(JSON.stringify(out,null,2));
+          NODE
+      - name: Seal proof
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for n in 1 2 3 4 5; do
+            git fetch origin main; git reset --hard origin/main; mkdir -p .ci-results
+            if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/f2-channel-projection-real-trace.json; else printf '{"runId":"%s","conclusion":"%s","error":"REAL_TRACE_FAILED"}\n' "$RUN_ID" "$CONCLUSION" > .ci-results/f2-channel-projection-real-trace.json; fi
+            git add .ci-results/f2-channel-projection-real-trace.json
+            git diff --cached --quiet || git commit -m "diag(result): F2 channel projection real trace $CONCLUSION"
+            git push origin HEAD:main && exit 0
+            sleep "$n"
+          done
+          exit 1
