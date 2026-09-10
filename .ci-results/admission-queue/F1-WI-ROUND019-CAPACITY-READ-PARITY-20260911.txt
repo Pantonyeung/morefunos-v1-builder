@@ -1,0 +1,13 @@
+work_id=F1-WI-ROUND019-CAPACITY-READ-PARITY-20260911
+candidate_sha=3f8ca0ecd13a34449bb0e79cd9ae7cca4c77a7eb
+base_main_sha=41234db5fbc18decbf06678dad3acd1c5d30fc32
+latest_main_sha=561f0bf9223cb8ce637bffd47819cda1115b90d0
+collision=C4
+impact=V4
+reason=DESTRUCTIVE_OR_GLOBAL_FILE_COLLISION
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34517601728
+conclusion=failure
