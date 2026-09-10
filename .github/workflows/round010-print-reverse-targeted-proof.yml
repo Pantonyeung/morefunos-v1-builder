@@ -1,0 +1,57 @@
+name: ROUND010 Print Reverse Targeted Proof
+
+on:
+  push:
+    paths:
+      - 'requests/round010-print-reverse-targeted-proof.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+      - name: Checkout exact V2 proof source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: 3cae7a552044be47aa6e40b6850dbec427d97ebe
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: v2
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install
+        working-directory: v2
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+      - name: Root typecheck
+        working-directory: v2
+        run: npm run typecheck
+      - name: ROUND010 exact targeted proof
+        working-directory: v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../evidence
+          exec > >(tee ../evidence/round010-print-reverse-targeted-proof.log) 2>&1
+          echo 'WORK_ID=TEAM2-WI-ROUND010-PRINT-REVERSE-TRUTH-20260910'
+          echo 'CAPABILITY_ID=CAP-SYSTEM-LINK-DIAGNOSTICS-001'
+          echo 'PROOF_SOURCE_SHA=3cae7a552044be47aa6e40b6850dbec427d97ebe'
+          node --test --test-concurrency=1 packages/system-diagnostics/print-reverse-truth.test.ts
+      - name: Upload proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: round010-print-reverse-targeted-proof
+          path: evidence/round010-print-reverse-targeted-proof.log
+          if-no-files-found: error
+          retention-days: 30
