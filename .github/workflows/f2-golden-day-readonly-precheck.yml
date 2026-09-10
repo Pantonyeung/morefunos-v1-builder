@@ -96,8 +96,11 @@ jobs:
           console.log('completed_payment='+String(Boolean(completedPayment)));
           console.log('fulfillment_for_completed_payment='+String(Boolean(matchedFulfillment)));
           console.log('first_missing_edge='+firstMissing);
-          if(openDay) console.log('business_date='+openDay.detail);
-          if(recentOrder) console.log('recent_order_status='+recentOrder.status);
+          if(openDay){console.log('business_date='+openDay.detail);console.log('business_day_opened_at='+openDay.at);}
+          if(openShift) console.log('cash_shift_updated_at='+openShift.at);
+          console.log('payment_row_count='+payments.length);
+          console.log('fulfillment_row_count='+fulfillments.length);
+          if(recentOrder){console.log('recent_order_status='+recentOrder.status);console.log('recent_order_created_at='+recentOrder.at);}
           if(completedPayment) console.log('completed_payment_status='+completedPayment.status);
           if(matchedFulfillment) console.log('matched_fulfillment_status='+matchedFulfillment.status);
           NODE
