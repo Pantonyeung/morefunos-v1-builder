@@ -1,5 +1,5 @@
 work_id=F1-WI-ROUND019-ORDER-TO-FULFILLMENT-RELEASE-20260911
-candidate_sha=a2178045d74369064e4a1594908a531b0dee99c7
+candidate_sha=26dbdc3f94e0751e343da68d9ae2c17b7b775c3b
 base_main_sha=f3e7d5d45b5a8a3f9f85d3b8456a569d8288ed7c
 latest_main_sha=f3e7d5d45b5a8a3f9f85d3b8456a569d8288ed7c
 collision=C0
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=DIAGNOSTICS
 force_full_proof=true
-run_id=34541304161
+run_id=34541348060
 conclusion=success
