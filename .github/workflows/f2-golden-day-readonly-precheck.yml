@@ -51,7 +51,14 @@ jobs:
           query cash_shift "SELECT cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5"
           query orders "SELECT order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10"
           query payments "SELECT payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10"
-          query fulfillments "SELECT fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10"
+          query migration_state "SELECT id,name,applied_at FROM d1_migrations ORDER BY id"
+          query schema_inventory "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+          HAS_FULFILLMENT="$(node -e "const x=require('./evidence/schema_inventory.json');const rows=x.result?.[0]?.results||[];process.stdout.write(rows.some(r=>r.name==='mfos_fulfillment_state')?'1':'0')")"
+          if [[ "$HAS_FULFILLMENT" = 1 ]]; then
+            query fulfillments "SELECT fulfillment_id AS id,lifecycle_status AS status,order_id AS detail,revision AS at FROM mfos_fulfillment_state ORDER BY revision DESC LIMIT 10"
+          else
+            node -e "require('fs').writeFileSync('evidence/fulfillments.json',JSON.stringify({success:true,result:[{results:[]}]}))"
+          fi
           node - <<'NODE' | tee evidence/summary.txt
           const fs=require('fs');
           const rows=name=>{
@@ -63,17 +70,25 @@ jobs:
           const orders=rows('orders');
           const payments=rows('payments');
           const fulfillments=rows('fulfillments');
+          const migrations=rows('migration_state');
+          const schema=rows('schema_inventory');
+          const hasFulfillmentTable=schema.some(r=>r.name==='mfos_fulfillment_state');
+          const fulfillmentMigration=migrations.find(r=>String(r.name||'').includes('0018-fulfillment-runtime-authority.sql'))||null;
           const openDay=days.find(r=>r.status==='OPEN')||null;
           const openShift=shifts.find(r=>r.status==='OPEN'&&(!openDay||r.detail===openDay.id))||null;
           const recentOrder=orders[0]||null;
           const completedPayment=payments.find(r=>r.status==='COMPLETED')||null;
           const matchedFulfillment=completedPayment?fulfillments.find(r=>r.detail===completedPayment.detail)||null:null;
           let firstMissing='NONE';
-          if(!openDay) firstMissing='BUSINESS_DAY_OPEN';
+          if(!hasFulfillmentTable) firstMissing='FULFILLMENT_D1_MIGRATION_0018';
+          else if(!openDay) firstMissing='BUSINESS_DAY_OPEN';
           else if(!openShift) firstMissing='CASH_SHIFT_OPEN';
           else if(!recentOrder) firstMissing='SALE_ACCEPTED';
           else if(!completedPayment) firstMissing='PAYMENT_COMPLETED';
           else if(!matchedFulfillment) firstMissing='FULFILLMENT_FOR_PAID_ORDER';
+          console.log('fulfillment_table_present='+String(hasFulfillmentTable));
+          console.log('fulfillment_migration_recorded='+String(Boolean(fulfillmentMigration)));
+          if(fulfillmentMigration) console.log('fulfillment_migration_id='+String(fulfillmentMigration.id));
           console.log('open_business_day='+String(Boolean(openDay)));
           console.log('open_cash_shift='+String(Boolean(openShift)));
           console.log('recent_order='+String(Boolean(recentOrder)));
