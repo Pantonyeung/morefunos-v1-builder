@@ -263,6 +263,11 @@ for (const file of walkFiles(workItemRoot)) {
 if (workItemMatches.length === 0) throw new Error('MEMORY_GUARD_WORK_ITEM_NOT_FOUND:' + requestedWorkId);
 if (workItemMatches.length !== 1) throw new Error('MEMORY_GUARD_WORK_ITEM_NOT_UNIQUE:' + requestedWorkId + ':' + workItemMatches.length);
 
+function normalizeCapabilityAction(value) {
+  const normalized = String(value ?? '').trim().toUpperCase();
+  return normalized === 'REGRESSION' ? 'REGRESSION_REPAIR' : normalized;
+}
+
 const workItem = workItemMatches[0];
 const unifiedPool = scalarField(workItem.text, 'execution_model').toUpperCase() === 'SINGLE_FULL_SYSTEM_CONSOLIDATION_POOL';
 let planText = '';
@@ -277,7 +282,7 @@ if (unifiedPool) {
     const planWorkId = scalarField(text, 'work_id');
     const planParentWorkId = scalarField(text, 'parent_work_id');
     const planCapabilityId = scalarField(text, 'capability_id').toUpperCase();
-    const planCapabilityAction = scalarField(text, 'capability_action').toUpperCase();
+    const planCapabilityAction = normalizeCapabilityAction(scalarField(text, 'capability_action'));
     const planStatus = scalarField(text, 'status').toUpperCase();
     if ((planWorkId === requestedWorkId || planParentWorkId === requestedWorkId) &&
         planCapabilityId === requestedCapabilityId &&
@@ -295,7 +300,7 @@ if (unifiedPool) {
   planText = unifiedPlanMatches[0].text;
 } else {
   const wiCapabilityId = scalarField(workItem.text, 'capability_id').toUpperCase();
-  const wiCapabilityAction = scalarField(workItem.text, 'capability_action').toUpperCase();
+  const wiCapabilityAction = normalizeCapabilityAction(scalarField(workItem.text, 'capability_action'));
   if (wiCapabilityId !== requestedCapabilityId) {
     throw new Error('MEMORY_GUARD_WORK_ITEM_CAPABILITY_ID_MISMATCH:' + requestedWorkId + ':' + wiCapabilityId + ':' + requestedCapabilityId);
   }
@@ -310,7 +315,7 @@ if (unifiedPool) {
 }
 
 const planCapabilityId = scalarField(planText, 'capability_id').toUpperCase();
-const planCapabilityAction = scalarField(planText, 'capability_action').toUpperCase();
+const planCapabilityAction = normalizeCapabilityAction(scalarField(planText, 'capability_action'));
 if (planCapabilityId !== requestedCapabilityId) {
   throw new Error('MEMORY_GUARD_PLAN_CAPABILITY_ID_MISMATCH:' + requestedWorkId + ':' + planCapabilityId + ':' + requestedCapabilityId);
 }
