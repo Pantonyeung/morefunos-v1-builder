@@ -1,5 +1,5 @@
-source_sha=5cff2c7864411de61f04fbee1e5767968a61fb50
+source_sha=7eacbbdfd7efa999812b093ef5811e40f55019b0
 base_sha=
 branch_name=main
 verification_phase=CANDIDATE
-request_id=F2-SMT-NATIVE-GATEWAY-TRANSPORT-CORE-R3-20260910
+request_id=F1-BYPASS-F2-SMT-NATIVE-GATEWAY-CORE-R5-20260910
