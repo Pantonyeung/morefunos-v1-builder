@@ -1,7 +1,7 @@
 work_id=F2-WI-OWNER-REPORTING-CANONICAL-COMPAT-20260910
-candidate_sha=66ef52538f8b72d82fe63b65d6c81c75173c67e9
-base_main_sha=fbb619c49cbfa0b55e4458842422bc915a491678
-latest_main_sha=4775a746d20e04f1804ff027237c9120af0b4dfc
+candidate_sha=44bcb4719a6bd91b53112fb857c7cf40cece8072
+base_main_sha=68bf0ecc5332fe81e3757dd9a98559f328deb36b
+latest_main_sha=44bcb4719a6bd91b53112fb857c7cf40cece8072
 collision=C0
 impact=V0
 reason=ALREADY_ADMITTED_OR_NOOP
@@ -9,5 +9,5 @@ apply_status=SKIPPED
 depends_on_specs=
 required_core_tests=
 force_full_proof=true
-run_id=34436000854
+run_id=34441072452
 conclusion=success
