@@ -583,7 +583,21 @@ jobs:
           fi
           if grep -qx PRICING <<<"$auths" || [[ ",$tests," == *,PRICING,* ]]; then npm run test:core-pricing; fi
           if grep -qx AVAILABILITY <<<"$auths" || [[ ",$tests," == *,AVAILABILITY,* ]]; then npm run test:core-availability; fi
-          if grep -qx BUSINESS_DAY <<<"$auths" || [[ ",$tests," == *,BUSINESS_DAY,* ]]; then npm run test:core-business-day-cash; fi
+          if grep -qx BUSINESS_DAY <<<"$auths" || [[ ",$tests," == *,BUSINESS_DAY,* ]]; then
+            mapfile -t legacy_postgres_business_day_tests < <(find packages/business-day-cash -maxdepth 1 -type f -name 'postgres-*.integration.test.ts' -printf '%f\n' | sort)
+            expected_legacy_postgres_business_day_tests=(
+              postgres-business-day.integration.test.ts
+              postgres-cash-shift.integration.test.ts
+            )
+            [[ "${legacy_postgres_business_day_tests[*]}" == "${expected_legacy_postgres_business_day_tests[*]}" ]] || {
+              echo "BUSINESS_DAY_LEGACY_POSTGRES_TEST_SET_DRIFT" >&2
+              printf 'observed=%s\n' "${legacy_postgres_business_day_tests[*]}" >&2
+              exit 30
+            }
+            mapfile -t canonical_business_day_tests < <(find packages/business-day-cash -maxdepth 1 -type f -name '*.test.ts' ! -name 'postgres-*.integration.test.ts' -print | sort)
+            [[ "${#canonical_business_day_tests[@]}" -gt 0 ]] || { echo "BUSINESS_DAY_CANONICAL_TEST_SET_EMPTY" >&2; exit 31; }
+            node --test --test-concurrency=1 "${canonical_business_day_tests[@]}"
+          fi
           if [[ ",$tests," == *,PAYMENT_ADMISSION,* ]]; then
             node --test \
               packages/payment/b0267-payment-refund-consumer-port.test.ts \
