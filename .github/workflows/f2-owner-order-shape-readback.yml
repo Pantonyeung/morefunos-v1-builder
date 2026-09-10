@@ -1,0 +1,130 @@
+name: F2 Owner Order Shape Readback
+
+on:
+  push:
+    paths:
+      - 'requests/f2-owner-order-shape-readback-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve exact source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-owner-order-shape-readback-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/f2-owner-order-shape-readback-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Read production order JSON shapes only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          SQL="SELECT payload,key,type FROM (
+            SELECT 'accepted_projection' AS payload,j.key AS key,j.type AS type
+              FROM mfos_order_state o, json_each(o.accepted_projection_json) j
+             WHERE o.accepted_projection_json IS NOT NULL AND json_valid(o.accepted_projection_json)=1
+            UNION
+            SELECT 'order_snapshot' AS payload,j.key AS key,j.type AS type
+              FROM mfos_order_state o, json_each(o.order_snapshot_json) j
+             WHERE o.order_snapshot_json IS NOT NULL AND json_valid(o.order_snapshot_json)=1
+          ) ORDER BY payload,key,type;
+          SELECT source,channel,CASE WHEN provider_ref IS NULL THEN 0 ELSE 1 END AS has_provider_ref,COUNT(*) AS row_count
+            FROM mfos_order_state
+           GROUP BY source,channel,has_provider_ref
+           ORDER BY source,channel,has_provider_ref;"
+          npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$SQL" > evidence/raw.json
+
+      - name: Seal sanitized shape summary
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync('evidence/raw.json','utf8'));
+          const batches=Array.isArray(raw)?raw:[raw];
+          const resultSets=batches.flatMap(x=>Array.isArray(x?.results)?[x.results]:[]);
+          const shapes=(resultSets[0]??[]).map(x=>({payload:String(x.payload),key:String(x.key),type:String(x.type)}));
+          const attribution=(resultSets[1]??[]).map(x=>({
+            source:x.source===null?null:String(x.source),
+            channel:x.channel===null?null:String(x.channel),
+            hasProviderRef:Number(x.has_provider_ref)===1,
+            rowCount:Number(x.row_count)
+          }));
+          const out={
+            generatedAt:new Date().toISOString(),
+            sourceSha:process.env.SOURCE_SHA,
+            requestId:process.env.REQUEST_ID,
+            mode:'REMOTE_D1_SELECT_ONLY_KEYS_AND_ATTRIBUTION_CLASSES',
+            shapes,
+            attribution
+          };
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(out,null,2)+'\n');
+          console.log(JSON.stringify(out,null,2));
+          NODE
+
+      - name: Seal durable readback
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then
+              cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/f2-owner-order-shape-readback.json
+            else
+              printf '{"sourceSha":"%s","requestId":"%s","runId":"%s","conclusion":"%s","error":"SHAPE_READBACK_FAILED"}\n' "$SOURCE_SHA" "$REQUEST_ID" "$RUN_ID" "$CONCLUSION" > .ci-results/f2-owner-order-shape-readback.json
+            fi
+            git add .ci-results/f2-owner-order-shape-readback.json
+            if ! git diff --cached --quiet; then git commit -m "diag(result): F2 Owner order shape readback $CONCLUSION"; fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
