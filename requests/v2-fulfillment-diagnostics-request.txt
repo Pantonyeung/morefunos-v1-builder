@@ -1,2 +1,2 @@
-source_sha=e6f13aa93a1ed54ed862eb01f6eeb763dc615a13
-reason=stable-fulfillment-trace-and-admin-readback
+source_sha=02770a11f95dd2df689b31016d5a06a752fc1f3d
+request_id=ROUND019-D-ORDER-TO-FULFILLMENT-RELEASE-20260911
