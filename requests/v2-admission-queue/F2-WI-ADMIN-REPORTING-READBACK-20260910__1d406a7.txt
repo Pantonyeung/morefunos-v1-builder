@@ -1,0 +1,11 @@
+candidate_sha=1d406a7dc0e786becd56198b543f928be1494903
+base_main_sha=e028cf4e08e6e8116dad5187853ea06af9c1b3cd
+work_id=F2-WI-ADMIN-REPORTING-READBACK-20260910
+capability_id=CAP-REPORTING-001
+capability_action=LINKUP
+affected_ports=ADMIN,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=1d406a7dc0e786becd56198b543f928be1494903
