@@ -1,0 +1,10 @@
+candidate_sha=42d9388795f0e9e78f54d44c23048389b988173f
+base_main_sha=a2178045d74369064e4a1594908a531b0dee99c7
+work_id=F1-WI-ROUND019-FULFILLMENT-ROLLOUT-CUTOVER-20260911
+capability_id=CAP-FULFILLMENT-001
+capability_action=REGRESSION_REPAIR
+affected_ports=CORE,SMT,SMM,CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
