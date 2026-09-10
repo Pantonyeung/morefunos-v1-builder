@@ -1,0 +1,13 @@
+work_id=F1-WI-SMM-ORDER-SYNC-CURSOR-INTEGRITY-20260910
+candidate_sha=c53637a238dc474f8d730635dd396609b88a8cab
+base_main_sha=4baffa8b655f5fd4d338b5ac30d9019853670c37
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=ORDER,DIAGNOSTICS
+force_full_proof=true
+run_id=34423414207
+conclusion=failure
