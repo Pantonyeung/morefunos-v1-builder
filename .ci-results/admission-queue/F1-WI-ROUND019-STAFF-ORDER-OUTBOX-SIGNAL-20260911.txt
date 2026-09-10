@@ -1,5 +1,5 @@
 work_id=F1-WI-ROUND019-STAFF-ORDER-OUTBOX-SIGNAL-20260911
-candidate_sha=94a4e639829cf97cf6a41ea242d1b4705bfcc9cc
+candidate_sha=456d05a5abacc35562bfcb20d1a9293025b71388
 base_main_sha=0b95322549d50eb2470ab44bdb340605eed53970
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=DIAGNOSTICS
 force_full_proof=true
-run_id=34540854723
+run_id=34540928900
 conclusion=failure
