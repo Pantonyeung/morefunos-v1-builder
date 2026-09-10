@@ -49,7 +49,7 @@ jobs:
           }
           query business_day "SELECT business_day_id AS id,lifecycle_status AS status,business_date AS detail,opened_at AS at FROM mfos_business_day ORDER BY opened_at DESC LIMIT 3"
           query cash_shift "SELECT cash_shift_id AS id,lifecycle_status AS status,business_day_id AS detail,updated_at AS at FROM mfos_cash_shift ORDER BY updated_at DESC LIMIT 5"
-          query orders "SELECT order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at FROM mfos_order_state ORDER BY created_at DESC LIMIT 10"
+          query orders "SELECT order_id AS id,lifecycle_status AS status,store_id AS detail,created_at AS at,order_snapshot_json AS snapshot FROM mfos_order_state ORDER BY created_at DESC LIMIT 10"
           query payments "SELECT payment_id AS id,lifecycle_status AS status,order_id AS detail,updated_at AS at FROM mfos_payment_state ORDER BY updated_at DESC LIMIT 10"
           query migration_state "SELECT id,name,applied_at FROM d1_migrations ORDER BY id"
           query schema_inventory "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -100,7 +100,18 @@ jobs:
           if(openShift) console.log('cash_shift_updated_at='+openShift.at);
           console.log('payment_row_count='+payments.length);
           console.log('fulfillment_row_count='+fulfillments.length);
-          if(recentOrder){console.log('recent_order_status='+recentOrder.status);console.log('recent_order_created_at='+recentOrder.at);}
+          if(recentOrder){
+            console.log('recent_order_status='+recentOrder.status);
+            console.log('recent_order_created_at='+recentOrder.at);
+            try{
+              const snapshot=JSON.parse(recentOrder.snapshot||'{}');
+              const source=snapshot.sourceProvider||snapshot.sourceType||snapshot.source||snapshot.channel||snapshot.orderSource||'UNKNOWN';
+              const businessDate=snapshot.businessDate||snapshot.business_date||'';
+              console.log('recent_order_source='+String(source));
+              console.log('recent_order_business_date='+String(businessDate));
+              console.log('recent_order_total_minor='+String(snapshot.totalMinor??snapshot.total_minor??''));
+            }catch{console.log('recent_order_snapshot_parse=FAILED')}
+          }
           if(completedPayment) console.log('completed_payment_status='+completedPayment.status);
           if(matchedFulfillment) console.log('matched_fulfillment_status='+matchedFulfillment.status);
           NODE
