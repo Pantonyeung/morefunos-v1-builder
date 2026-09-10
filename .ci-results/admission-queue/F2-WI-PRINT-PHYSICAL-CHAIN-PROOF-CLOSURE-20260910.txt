@@ -1,0 +1,13 @@
+work_id=F2-WI-PRINT-PHYSICAL-CHAIN-PROOF-CLOSURE-20260910
+candidate_sha=4d8ef85804b7122e9c12019961f4ff5f6ee0bebe
+base_main_sha=3b2ce473b78d14a84131b56bc8e7d5f45f9fc0ff
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34453199741
+conclusion=failure
