@@ -1,0 +1,8 @@
+candidate_sha=3a47f48b6ab9fa1961032b8c5ad6608f88475576
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-16
+capability_id=CAP-CATALOG-MENU-001
+capability_action=REGRESSION_REPAIR
+affected_ports=ADMIN,OWNER
+force_full_proof=true
+proof_source_sha=3a47f48b6ab9fa1961032b8c5ad6608f88475576
