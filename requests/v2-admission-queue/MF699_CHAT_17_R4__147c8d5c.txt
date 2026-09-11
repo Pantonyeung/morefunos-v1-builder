@@ -1,0 +1,10 @@
+candidate_sha=147c8d5c8dd7db8dd52fdf4d4da6792826c266b4
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-17
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=LINKUP
+affected_ports=CUS,SMM,KEETA
+supersedes_candidate_sha=999e63cc6b5bb3ccc2f52cb672b261afa1efdeff
+required_core_tests=CATALOG,PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=147c8d5c8dd7db8dd52fdf4d4da6792826c266b4
