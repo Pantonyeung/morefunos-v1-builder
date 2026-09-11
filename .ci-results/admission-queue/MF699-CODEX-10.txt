@@ -1,0 +1,13 @@
+work_id=MF699-CODEX-10
+candidate_sha=0b4c1be653eb20ea15f43e57a5daa1ab87ad3e10
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+collision=C1
+impact=V2
+reason=C1_ADMISSION_TRAIN_COMPOSED
+apply_status=TRAIN_THREE_WAY_OR_OVERLAY
+depends_on_specs=9d1b57d26807f3ba9acb231e722bdf5c7193b7ae@934bccc717f891d20538a6b74f4434ff412a1dc1
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34613414783
+conclusion=success
