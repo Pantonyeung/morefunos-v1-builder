@@ -1,7 +1,7 @@
-source_sha=ada9d3c3e84b4b4d3acbcb45d2bd85e553f239d6
-request_id=ROUND029-LOCAL-PRINT-SPOOL-ADMIN-DEPLOY-20260911-01
-run_id=34566902008
+source_sha=81964d5ad9d302a910d93443810144d822a52e54
+request_id=ROUND030-INLINE-MANIFEST-ENDPOINT-CACHE-ADMIN-DEPLOY-20260911-01
+run_id=34569462774
 run_attempt=1
-conclusion=success
-url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=82f27ec9-f3d7-4762-b08a-c8284814b878
+conclusion=failure
+url=UNKNOWN
+worker_version=UNKNOWN
