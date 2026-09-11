@@ -1,6 +1,6 @@
 source_sha=860bf0c410a6bc5577d2451500945e1c52ec32ab
 branch_name=main
-request_id=ROUND030-LATEST-PROJECTION-FREE-INLINE-PRINT-20260911-06
-run_id=34569553460
+request_id=ROUND030-LATEST-INLINE-MANIFEST-PRINT-20260911-06
+run_id=34569599704
 run_attempt=1
 conclusion=success
