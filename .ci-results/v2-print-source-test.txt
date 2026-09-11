@@ -1,6 +1,6 @@
-source_sha=5f118646f174e534e3d04ec4b1056b4ae95828e1
+source_sha=b9446b021eb434eaa9c5c26f282bd9ae803e15a7
 branch_name=main
-request_id=ROUND026-BATCH-PREPARE-TRUE-TIMING-PRINT-20260911-02
-run_id=34562750466
+request_id=ROUND027-CARRIER-LANES-PRINT-REGRESSION-20260911-03
+run_id=34563171321
 run_attempt=1
 conclusion=success
