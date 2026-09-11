@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-11T03:26:17.514Z",
+  "generatedAt": "2026-09-11T03:27:33.650Z",
   "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
-  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-02",
+  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-03",
   "activeConfig": {
     "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
     "configVersionId": "print-config:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:585a4855-7f7c-4665-8415-99c555b45956",
@@ -1169,9 +1169,166 @@
   "drainLeases": [
     {
       "store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-      "lease_token": "2815d661-d5b0-4b84-a04a-f33bac1aff69",
-      "lease_until": "2026-09-11T03:26:16.864Z",
-      "updated_at": "2026-09-11T03:25:46.864Z"
+      "lease_token": "651fd486-1f35-433e-9287-5f4ddd8fe9ad",
+      "lease_until": "2026-09-11T03:27:47.613Z",
+      "updated_at": "2026-09-11T03:27:17.613Z"
+    }
+  ],
+  "pendingBacklog": {
+    "pending_count": 70,
+    "oldest_pending_at": "2026-09-03T15:39:43.990Z",
+    "newest_pending_at": "2026-09-11T03:20:20.419Z"
+  },
+  "oldestPendingOrders": [
+    {
+      "event_id": "order:094b2412-df92-4897-b0c2-3d67bcf85ef6:accepted:1",
+      "order_id": "094b2412-df92-4897-b0c2-3d67bcf85ef6",
+      "recorded_at": "2026-09-03T15:39:43.990Z"
+    },
+    {
+      "event_id": "order:3bd70cff-96f0-4709-aab1-5a445e98d3f2:accepted:1",
+      "order_id": "3bd70cff-96f0-4709-aab1-5a445e98d3f2",
+      "recorded_at": "2026-09-03T15:42:30.120Z"
+    },
+    {
+      "event_id": "order:fa3d4c63-9b81-433c-93c7-8858a2b5e398:accepted:1",
+      "order_id": "fa3d4c63-9b81-433c-93c7-8858a2b5e398",
+      "recorded_at": "2026-09-03T15:44:11.222Z"
+    },
+    {
+      "event_id": "order:6e95b49b-c529-4bdd-8f8a-99582f5eef05:accepted:1",
+      "order_id": "6e95b49b-c529-4bdd-8f8a-99582f5eef05",
+      "recorded_at": "2026-09-04T10:48:42.400Z"
+    },
+    {
+      "event_id": "order:64d3ae45-c8e2-471c-8279-8c396c4b3c05:accepted:1",
+      "order_id": "64d3ae45-c8e2-471c-8279-8c396c4b3c05",
+      "recorded_at": "2026-09-04T16:13:44.815Z"
+    },
+    {
+      "event_id": "order:a0f6e98a-2442-4f1d-bc49-a54e4f2b2f9f:accepted:1",
+      "order_id": "a0f6e98a-2442-4f1d-bc49-a54e4f2b2f9f",
+      "recorded_at": "2026-09-04T16:13:55.161Z"
+    },
+    {
+      "event_id": "order:3860ebc2-d6bf-400c-9907-4910dfe69fa1:accepted:1",
+      "order_id": "3860ebc2-d6bf-400c-9907-4910dfe69fa1",
+      "recorded_at": "2026-09-04T16:15:05.822Z"
+    },
+    {
+      "event_id": "order:e5f16737-0251-43bb-99d9-ed1cf5149a41:accepted:1",
+      "order_id": "e5f16737-0251-43bb-99d9-ed1cf5149a41",
+      "recorded_at": "2026-09-04T16:15:41.205Z"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:9011ca2e-dd04-5198-b8d5-d96249564a15:1",
+      "order_id": "9011ca2e-dd04-5198-b8d5-d96249564a15",
+      "recorded_at": "2026-09-05T06:08:29.000Z"
+    },
+    {
+      "event_id": "order:308bdb7a-150f-4349-9e60-8a6af6f87c1e:accepted:1",
+      "order_id": "308bdb7a-150f-4349-9e60-8a6af6f87c1e",
+      "recorded_at": "2026-09-05T10:18:19.296Z"
+    },
+    {
+      "event_id": "order:852f9f18-98f6-43ef-901f-9a2b03e3db14:accepted:1",
+      "order_id": "852f9f18-98f6-43ef-901f-9a2b03e3db14",
+      "recorded_at": "2026-09-05T10:22:40.037Z"
+    },
+    {
+      "event_id": "order:f6d246ce-5562-4b02-bb7e-fbb8cc5d5f61:accepted:1",
+      "order_id": "f6d246ce-5562-4b02-bb7e-fbb8cc5d5f61",
+      "recorded_at": "2026-09-05T11:05:55.436Z"
+    },
+    {
+      "event_id": "order:dad6cc96-8f07-404e-b7eb-af14353557c3:accepted:1",
+      "order_id": "dad6cc96-8f07-404e-b7eb-af14353557c3",
+      "recorded_at": "2026-09-05T11:13:20.423Z"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:530e6af7-7288-57a4-9d88-e2de9d0a97fe:1",
+      "order_id": "530e6af7-7288-57a4-9d88-e2de9d0a97fe",
+      "recorded_at": "2026-09-05T14:51:02.000Z"
+    },
+    {
+      "event_id": "order:46cba1a5-0f4d-4098-b466-61fb532cdd43:accepted:1",
+      "order_id": "46cba1a5-0f4d-4098-b466-61fb532cdd43",
+      "recorded_at": "2026-09-05T16:23:18.801Z"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:4ed92686-9bfe-5879-89e8-ba0e7d336f46:1",
+      "order_id": "4ed92686-9bfe-5879-89e8-ba0e7d336f46",
+      "recorded_at": "2026-09-05T23:10:39.000Z"
+    },
+    {
+      "event_id": "order:44aed963-1410-4b7f-a4f4-fc49ac43fb5c:accepted:1",
+      "order_id": "44aed963-1410-4b7f-a4f4-fc49ac43fb5c",
+      "recorded_at": "2026-09-06T01:20:32.105Z"
+    },
+    {
+      "event_id": "order:e4b37cc4-5984-4ac6-b1fd-5182c1035c23:accepted:1",
+      "order_id": "e4b37cc4-5984-4ac6-b1fd-5182c1035c23",
+      "recorded_at": "2026-09-06T01:21:28.996Z"
+    },
+    {
+      "event_id": "order:58f123c2-6e2d-4664-8059-d405c18c7d66:accepted:1",
+      "order_id": "58f123c2-6e2d-4664-8059-d405c18c7d66",
+      "recorded_at": "2026-09-06T04:42:04.358Z"
+    },
+    {
+      "event_id": "order:1cff5665-94df-4452-a547-b40fdc51ea63:accepted:1",
+      "order_id": "1cff5665-94df-4452-a547-b40fdc51ea63",
+      "recorded_at": "2026-09-06T04:46:03.201Z"
+    },
+    {
+      "event_id": "order:c7a57d7b-7273-4f8b-a77b-3d7984a9d7ba:accepted:1",
+      "order_id": "c7a57d7b-7273-4f8b-a77b-3d7984a9d7ba",
+      "recorded_at": "2026-09-06T04:56:35.359Z"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:1959309a-7313-5730-a5d9-2b1fad5e7579:1",
+      "order_id": "1959309a-7313-5730-a5d9-2b1fad5e7579",
+      "recorded_at": "2026-09-06T06:10:29.000Z"
+    },
+    {
+      "event_id": "order:19ad5929-35ad-48ba-99ba-ffe3e550407a:accepted:1",
+      "order_id": "19ad5929-35ad-48ba-99ba-ffe3e550407a",
+      "recorded_at": "2026-09-06T06:40:12.341Z"
+    },
+    {
+      "event_id": "order:3cd5abdd-29a5-4b3b-a3fb-2adc95c3ab01:accepted:1",
+      "order_id": "3cd5abdd-29a5-4b3b-a3fb-2adc95c3ab01",
+      "recorded_at": "2026-09-06T06:46:14.941Z"
+    },
+    {
+      "event_id": "order:18fc3f72-a529-4941-bc12-c9a0c435b83c:accepted:1",
+      "order_id": "18fc3f72-a529-4941-bc12-c9a0c435b83c",
+      "recorded_at": "2026-09-06T06:54:07.992Z"
+    },
+    {
+      "event_id": "order:37634ac8-954c-4290-8433-85300ba023f9:accepted:1",
+      "order_id": "37634ac8-954c-4290-8433-85300ba023f9",
+      "recorded_at": "2026-09-06T07:59:50.909Z"
+    },
+    {
+      "event_id": "order:0ff05646-2992-4880-b02f-5fdb5bef01c9:accepted:1",
+      "order_id": "0ff05646-2992-4880-b02f-5fdb5bef01c9",
+      "recorded_at": "2026-09-06T13:55:02.409Z"
+    },
+    {
+      "event_id": "order:31d408a6-36fe-452f-bb4b-badd4d854485:accepted:1",
+      "order_id": "31d408a6-36fe-452f-bb4b-badd4d854485",
+      "recorded_at": "2026-09-06T15:03:32.744Z"
+    },
+    {
+      "event_id": "order:845c3252-1e43-4c8b-9b85-51b995c274a3:accepted:1",
+      "order_id": "845c3252-1e43-4c8b-9b85-51b995c274a3",
+      "recorded_at": "2026-09-06T15:05:02.076Z"
+    },
+    {
+      "event_id": "order:c3a45c91-bb11-4f24-9a4a-1622384107a9:accepted:1",
+      "order_id": "c3a45c91-bb11-4f24-9a4a-1622384107a9",
+      "recorded_at": "2026-09-06T16:16:14.666Z"
     }
   ],
   "printerDevices": [
