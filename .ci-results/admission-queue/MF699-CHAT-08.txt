@@ -1,0 +1,13 @@
+work_id=MF699-CHAT-08
+candidate_sha=689dc7e03a9d38536135a5a332e962fa8f795727
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=ORDER
+force_full_proof=true
+run_id=34608184539
+conclusion=success
