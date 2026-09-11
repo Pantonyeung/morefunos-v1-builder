@@ -1,5 +1,5 @@
-source_sha=625b01d13b48c99949b94b84df1da89155f734ba
-request_id=P0-ROLLBACK-ROUND029-ALIGNED-SMT-20260911-02
-run_id=34571426243
+source_sha=5a778ef51c30384937829cd76fca406640556f74
+request_id=ROUND032-SMT-OPERABILITY-SMT-20260911-01
+run_id=34573545289
 run_attempt=1
-conclusion=success
+conclusion=failure
