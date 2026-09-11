@@ -1,0 +1,13 @@
+work_id=MF699-CHAT-17
+candidate_sha=410888edcae6fbe7beec87ff44e1c839440e22bd
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=CATALOG,PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
+run_id=34626558039
+conclusion=failure
