@@ -58,6 +58,7 @@ jobs:
           query latest_print_jobs "SELECT print_job_id,order_id,state,revision,created_at,updated_at,json_extract(record_json,'$.routeKey') AS route_key,json_extract(record_json,'$.assignedPrinterId') AS printer_id,json_extract(record_json,'$.renderedDocument.outputType') AS output_type,json_extract(record_json,'$.failureCode') AS failure_code,json_extract(record_json,'$.uncertaintyCode') AS uncertainty_code FROM mfos_print_job ORDER BY created_at DESC LIMIT 80;"
           query latest_snapshots "SELECT print_output_snapshot_id,order_id,order_revision,output_type,captured_at FROM mfos_print_output_snapshot ORDER BY captured_at DESC LIMIT 80;"
           query print_retry "SELECT event_id,failure_count,next_attempt_at,last_attempt_at,last_error_code FROM mfos_print_auto_order_retry ORDER BY last_attempt_at DESC LIMIT 30;"
+          query drain_lease "SELECT store_id,lease_token,lease_until,updated_at FROM mfos_print_auto_order_drain_lease ORDER BY updated_at DESC;"
           query pending_order_outbox "SELECT event_id,aggregate_id AS order_id,event_type,status,recorded_at FROM mfos_outbox WHERE domain='ORDER' AND event_type='OrderAccepted' ORDER BY recorded_at DESC LIMIT 30;"
           query printer_devices "SELECT store_id,printer_id,display_name,enabled,transport_kind,capability_json,role_json,revision,updated_at FROM mfos_printer_device ORDER BY updated_at DESC;"
 
@@ -69,6 +70,7 @@ jobs:
           const jobs=read('latest_print_jobs');
           const snaps=read('latest_snapshots');
           const retries=read('print_retry');
+          const leases=read('drain_lease');
           const outbox=read('pending_order_outbox');
           const devices=read('printer_devices');
           const active=configs[0]??null;
@@ -95,6 +97,7 @@ jobs:
             latestSnapshots,
             latestOrderOutbox:orderId?outbox.find(x=>x.order_id===orderId)??null:null,
             latestOrderRetry:latestOrder?retries.find(x=>String(x.event_id).includes(orderId))??null:null,
+            drainLeases:leases,
             printerDevices:devices.map(d=>({printerId:d.printer_id,displayName:d.display_name,enabled:d.enabled,transportKind:d.transport_kind,capability:d.capability_json,roles:d.role_json,revision:d.revision,updatedAt:d.updated_at})),
           };
           fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2)+'\n');
