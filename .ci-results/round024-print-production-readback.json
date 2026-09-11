@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-11T03:28:13.527Z",
+  "generatedAt": "2026-09-11T03:29:47.469Z",
   "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
-  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-04",
+  "requestId": "ROUND024-ELIGIBLE-RETRY-DIAG-20260911-04",
   "activeConfig": {
     "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
     "configVersionId": "print-config:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:585a4855-7f7c-4665-8415-99c555b45956",
@@ -1169,9 +1169,9 @@
   "drainLeases": [
     {
       "store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-      "lease_token": "651fd486-1f35-433e-9287-5f4ddd8fe9ad",
-      "lease_until": "2026-09-11T03:27:47.613Z",
-      "updated_at": "2026-09-11T03:27:17.613Z"
+      "lease_token": "7f36ca2c-71f2-4835-ba7d-ad6ef8117195",
+      "lease_until": "2026-09-11T03:30:01.111Z",
+      "updated_at": "2026-09-11T03:29:31.111Z"
     }
   ],
   "pendingBacklog": {
@@ -1184,6 +1184,321 @@
     "eligible_oldest_at": "2026-09-10T03:32:40.567Z",
     "eligible_newest_at": "2026-09-11T03:20:20.419Z"
   },
+  "eligiblePendingOrders": [
+    {
+      "event_id": "order:617ac465-9f23-482a-87cf-c2970795fba0:accepted:1",
+      "order_id": "617ac465-9f23-482a-87cf-c2970795fba0",
+      "recorded_at": "2026-09-10T03:32:40.567Z",
+      "failure_count": 216,
+      "next_attempt_at": "2026-09-11T01:53:54.355Z",
+      "last_attempt_at": "2026-09-11T01:48:54.355Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:aca5b08a-c4c4-4800-9d0d-fd3d16d153b7:accepted:1",
+      "order_id": "aca5b08a-c4c4-4800-9d0d-fd3d16d153b7",
+      "recorded_at": "2026-09-10T03:46:48.087Z",
+      "failure_count": 213,
+      "next_attempt_at": "2026-09-11T01:53:54.981Z",
+      "last_attempt_at": "2026-09-11T01:48:54.981Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:571f025a-7885-40cb-8b5d-9802dacc76cb:accepted:1",
+      "order_id": "571f025a-7885-40cb-8b5d-9802dacc76cb",
+      "recorded_at": "2026-09-10T04:30:56.020Z",
+      "failure_count": 204,
+      "next_attempt_at": "2026-09-11T01:53:55.615Z",
+      "last_attempt_at": "2026-09-11T01:48:55.615Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:b74e02c3-411a-4537-86db-4e51adfa8742:accepted:1",
+      "order_id": "b74e02c3-411a-4537-86db-4e51adfa8742",
+      "recorded_at": "2026-09-10T09:12:47.231Z",
+      "failure_count": 152,
+      "next_attempt_at": "2026-09-11T01:53:56.253Z",
+      "last_attempt_at": "2026-09-11T01:48:56.253Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:a1ee6009-f183-4d8f-a3f6-81e01e2af986:accepted:1",
+      "order_id": "a1ee6009-f183-4d8f-a3f6-81e01e2af986",
+      "recorded_at": "2026-09-11T01:18:25.182Z",
+      "failure_count": 7,
+      "next_attempt_at": "2026-09-11T01:53:36.250Z",
+      "last_attempt_at": "2026-09-11T01:48:36.250Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:14c90bee-9418-59cc-a9b2-b8d4b3e03239:1",
+      "order_id": "14c90bee-9418-59cc-a9b2-b8d4b3e03239",
+      "recorded_at": "2026-09-11T01:49:34.000Z",
+      "failure_count": 1,
+      "next_attempt_at": "2026-09-11T01:54:40.049Z",
+      "last_attempt_at": "2026-09-11T01:49:40.049Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:80ac9b08-964c-45ac-b69b-3b2d7a7fd89a:accepted:1",
+      "order_id": "80ac9b08-964c-45ac-b69b-3b2d7a7fd89a",
+      "recorded_at": "2026-09-11T01:53:01.035Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    },
+    {
+      "event_id": "order:3383abb7-5397-4584-93ca-9771bad20caa:accepted:1",
+      "order_id": "3383abb7-5397-4584-93ca-9771bad20caa",
+      "recorded_at": "2026-09-11T01:53:08.507Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    },
+    {
+      "event_id": "order:c537320e-6125-4fb0-bd19-d42e11fad107:accepted:1",
+      "order_id": "c537320e-6125-4fb0-bd19-d42e11fad107",
+      "recorded_at": "2026-09-11T02:10:29.666Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    },
+    {
+      "event_id": "order:02bbe987-49ea-474b-b2d1-d1994e4894e9:accepted:1",
+      "order_id": "02bbe987-49ea-474b-b2d1-d1994e4894e9",
+      "recorded_at": "2026-09-11T02:58:21.813Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    },
+    {
+      "event_id": "order:98cfc7ab-ce82-4a11-ba9f-8b7419784bf5:accepted:1",
+      "order_id": "98cfc7ab-ce82-4a11-ba9f-8b7419784bf5",
+      "recorded_at": "2026-09-11T02:58:26.087Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    },
+    {
+      "event_id": "order:7912cbc5-789e-4eb5-a4d5-81df4928b9ba:accepted:1",
+      "order_id": "7912cbc5-789e-4eb5-a4d5-81df4928b9ba",
+      "recorded_at": "2026-09-11T03:20:20.419Z",
+      "failure_count": null,
+      "next_attempt_at": null,
+      "last_attempt_at": null,
+      "last_error_code": null
+    }
+  ],
+  "allPrintRetries": [
+    {
+      "event_id": "ORDER_ACCEPTED:14c90bee-9418-59cc-a9b2-b8d4b3e03239:1",
+      "failure_count": 1,
+      "next_attempt_at": "2026-09-11T01:54:40.049Z",
+      "last_attempt_at": "2026-09-11T01:49:40.049Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:b74e02c3-411a-4537-86db-4e51adfa8742:accepted:1",
+      "failure_count": 152,
+      "next_attempt_at": "2026-09-11T01:53:56.253Z",
+      "last_attempt_at": "2026-09-11T01:48:56.253Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:571f025a-7885-40cb-8b5d-9802dacc76cb:accepted:1",
+      "failure_count": 204,
+      "next_attempt_at": "2026-09-11T01:53:55.615Z",
+      "last_attempt_at": "2026-09-11T01:48:55.615Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:aca5b08a-c4c4-4800-9d0d-fd3d16d153b7:accepted:1",
+      "failure_count": 213,
+      "next_attempt_at": "2026-09-11T01:53:54.981Z",
+      "last_attempt_at": "2026-09-11T01:48:54.981Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:617ac465-9f23-482a-87cf-c2970795fba0:accepted:1",
+      "failure_count": 216,
+      "next_attempt_at": "2026-09-11T01:53:54.355Z",
+      "last_attempt_at": "2026-09-11T01:48:54.355Z",
+      "last_error_code": "PRINT_ACCEPTED_ORDER_PROJECTION_IDENTITY_MISMATCH"
+    },
+    {
+      "event_id": "order:a1ee6009-f183-4d8f-a3f6-81e01e2af986:accepted:1",
+      "failure_count": 7,
+      "next_attempt_at": "2026-09-11T01:53:36.250Z",
+      "last_attempt_at": "2026-09-11T01:48:36.250Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:597552c0-485d-4e2d-ba0e-abd332db9a46:accepted:1",
+      "failure_count": 9,
+      "next_attempt_at": "2026-09-10T03:36:58.904Z",
+      "last_attempt_at": "2026-09-10T03:31:58.904Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:5b968958-a958-43d8-a8f0-cf8ee563c8e7:accepted:1",
+      "failure_count": 23,
+      "next_attempt_at": "2026-09-10T03:36:57.115Z",
+      "last_attempt_at": "2026-09-10T03:31:57.115Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:eb52499a-6c03-4679-8d47-15affa439269:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:56.474Z",
+      "last_attempt_at": "2026-09-10T03:31:56.474Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:a8394c2b-a33a-4175-9e22-985a210f61cc:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:55.850Z",
+      "last_attempt_at": "2026-09-10T03:31:55.850Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:d0f5bae1-3eee-4394-a418-f5613a5193fb:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:55.219Z",
+      "last_attempt_at": "2026-09-10T03:31:55.219Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:95cc89c1-87d7-4c9b-8790-9b9617d1ac79:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:54.587Z",
+      "last_attempt_at": "2026-09-10T03:31:54.587Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:bfd00bc9-8cae-4a39-bd0d-abb57acd76bb:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:53.931Z",
+      "last_attempt_at": "2026-09-10T03:31:53.931Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:d5d9be24-427b-4aee-9bce-84868a08c038:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:53.309Z",
+      "last_attempt_at": "2026-09-10T03:31:53.309Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:f9e297e1-6da6-4181-9062-dde058bdfda5:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:52.696Z",
+      "last_attempt_at": "2026-09-10T03:31:52.696Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:529922d3-56da-4bb8-b532-7025bba3cc29:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:52.085Z",
+      "last_attempt_at": "2026-09-10T03:31:52.085Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:eb274e80-4192-48bd-a43e-27a0929ba2e9:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:36:51.463Z",
+      "last_attempt_at": "2026-09-10T03:31:51.463Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:9fee2acf-a7b4-42f4-8a95-eecc2243b2e5:accepted:1",
+      "failure_count": 15,
+      "next_attempt_at": "2026-09-10T03:35:53.641Z",
+      "last_attempt_at": "2026-09-10T03:30:53.641Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:12653059-967d-463b-901a-e331bc29f7f9:accepted:1",
+      "failure_count": 205,
+      "next_attempt_at": "2026-09-10T03:35:53.014Z",
+      "last_attempt_at": "2026-09-10T03:30:53.014Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:d9eab046-cd09-4f03-b7ba-a28deac35047:accepted:1",
+      "failure_count": 206,
+      "next_attempt_at": "2026-09-10T03:35:52.400Z",
+      "last_attempt_at": "2026-09-10T03:30:52.400Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:7a5bf0de-e002-50ba-b826-0d9e40e9271f:1",
+      "failure_count": 237,
+      "next_attempt_at": "2026-09-10T03:35:51.766Z",
+      "last_attempt_at": "2026-09-10T03:30:51.766Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:6147a02c-2544-5580-bc4b-b2fa468d17ad:1",
+      "failure_count": 238,
+      "next_attempt_at": "2026-09-10T03:35:51.154Z",
+      "last_attempt_at": "2026-09-10T03:30:51.154Z",
+      "last_error_code": "PRINT_AUTO_ORDER_LAYOUT_REPAIR_SNAPSHOT_CONFLICT"
+    },
+    {
+      "event_id": "order:1d8e819e-1081-4cac-80b7-f173b79c002e:accepted:1",
+      "failure_count": 6,
+      "next_attempt_at": "2026-09-10T03:33:51.208Z",
+      "last_attempt_at": "2026-09-10T03:28:51.208Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "order:f25ae64b-0fa6-4138-a192-c7076474ee77:accepted:1",
+      "failure_count": 9,
+      "next_attempt_at": "2026-09-10T03:32:51.152Z",
+      "last_attempt_at": "2026-09-10T03:27:51.152Z",
+      "last_error_code": "D1_ERROR: CHECK constraint failed: status IN ('PENDING', 'DELIVERED', 'FAILED'): SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_CHECK)"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:0644fbc4-7a8b-598e-88c4-0ce6ce044d78:1",
+      "failure_count": 58,
+      "next_attempt_at": "2026-09-09T03:40:53.159Z",
+      "last_attempt_at": "2026-09-09T03:35:53.159Z",
+      "last_error_code": "PRINT_AUTO_ORDER_SNAPSHOT_IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:55dcbde9-8431-513e-a805-2ceb150b3af0:1",
+      "failure_count": 58,
+      "next_attempt_at": "2026-09-09T03:40:52.255Z",
+      "last_attempt_at": "2026-09-09T03:35:52.255Z",
+      "last_error_code": "PRINT_AUTO_ORDER_SNAPSHOT_IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "event_id": "order:7dcb4f25-5da5-4587-bed6-c5e2ff9e7a91:accepted:1",
+      "failure_count": 105,
+      "next_attempt_at": "2026-09-09T03:40:51.373Z",
+      "last_attempt_at": "2026-09-09T03:35:51.373Z",
+      "last_error_code": "PRINT_AUTO_ORDER_SNAPSHOT_IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:4a9b517e-1858-5399-8c39-edcb6491e2b9:1",
+      "failure_count": 105,
+      "next_attempt_at": "2026-09-09T03:40:50.536Z",
+      "last_attempt_at": "2026-09-09T03:35:50.536Z",
+      "last_error_code": "PRINT_AUTO_ORDER_SNAPSHOT_IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "event_id": "ORDER_ACCEPTED:59b84949-59be-5576-b416-cdd61547a08a:1",
+      "failure_count": 105,
+      "next_attempt_at": "2026-09-09T03:40:49.666Z",
+      "last_attempt_at": "2026-09-09T03:35:49.666Z",
+      "last_error_code": "PRINT_AUTO_ORDER_SNAPSHOT_IDEMPOTENCY_CONFLICT"
+    }
+  ],
   "oldestPendingOrders": [
     {
       "event_id": "order:094b2412-df92-4897-b0c2-3d67bcf85ef6:accepted:1",
