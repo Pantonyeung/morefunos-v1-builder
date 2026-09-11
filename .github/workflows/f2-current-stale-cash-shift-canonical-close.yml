@@ -1,0 +1,146 @@
+name: F2 Current Stale Cash Shift Canonical Close
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-current-stale-cash-shift-canonical-close-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  close:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      EXPECTED_STALE_BUSINESS_DATE: '2026-09-03'
+      EXPECTED_OPENING_CASH_MINOR: '100000'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request and deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-current-stale-cash-shift-canonical-close-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          DEPLOYED="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" == "$DEPLOYED" ]] || { echo "::error::SHIFT_CLOSE_SOURCE_NOT_DEPLOYED requested=$SOURCE_SHA deployed=$DEPLOYED"; exit 1; }
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Fail-closed canonical preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){ NAME="$1"; SQL="$2"; SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"; curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/$NAME.json"; NAME="$NAME" node -e "const x=require('./evidence/'+process.env.NAME+'.json');if(!x.success)process.exit(1)"; }
+          query day "SELECT business_day_id,store_id,business_date,lifecycle_status,revision FROM mfos_business_day WHERE lifecycle_status='OPEN' ORDER BY opened_at DESC LIMIT 2"
+          query shift "SELECT cash_shift_id,business_day_id,store_id,lifecycle_status,revision,record_json,created_at,updated_at FROM mfos_cash_shift WHERE lifecycle_status='OPEN' ORDER BY updated_at DESC LIMIT 2"
+          node - <<'NODE'
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
+          const days=rows('day'), shifts=rows('shift');
+          if(days.length!==1)throw new Error('OPEN_BUSINESS_DAY_COUNT_INVALID:'+days.length);
+          if(shifts.length!==1)throw new Error('OPEN_CASH_SHIFT_COUNT_INVALID:'+shifts.length);
+          const d=days[0], r=shifts[0], s=JSON.parse(r.record_json);
+          if(d.business_date!==process.env.EXPECTED_STALE_BUSINESS_DATE)throw new Error('BUSINESS_DATE_CHANGED_FAIL_CLOSED');
+          if(r.business_day_id!==d.business_day_id||r.store_id!==d.store_id)throw new Error('SHIFT_DAY_MISMATCH_FAIL_CLOSED');
+          if(Number(r.revision)!==1||Number(s.openingCashMinor)!==Number(process.env.EXPECTED_OPENING_CASH_MINOR))throw new Error('SHIFT_BASELINE_CHANGED_FAIL_CLOSED');
+          fs.writeFileSync('/tmp/shift.json',JSON.stringify({shiftId:r.cash_shift_id,dayId:d.business_day_id,storeId:d.store_id,openedAt:s.openedAt||r.created_at,revision:Number(r.revision),openingCashMinor:Number(s.openingCashMinor)}));
+          NODE
+          SHIFT_ID="$(node -e "process.stdout.write(require('/tmp/shift.json').shiftId)")"
+          STORE_ID="$(node -e "process.stdout.write(require('/tmp/shift.json').storeId)")"
+          OPENED_AT="$(node -e "process.stdout.write(require('/tmp/shift.json').openedAt)")"
+          query movements "SELECT record_json FROM mfos_cash_movement WHERE cash_shift_id='$SHIFT_ID' ORDER BY occurred_at"
+          query payments "SELECT payment_json FROM mfos_payment_state WHERE store_id='$STORE_ID' AND updated_at>='$OPENED_AT' ORDER BY updated_at"
+          query refunds "SELECT refund_json FROM mfos_refund_state WHERE store_id='$STORE_ID' AND created_at>='$OPENED_AT' ORDER BY created_at"
+          query policy "SELECT basis,configured_value FROM mfos_business_day_close_variance_policy WHERE store_id='$STORE_ID' LIMIT 1"
+          query actor "SELECT staff_id FROM mfos_rbac_staff WHERE staff_id=(SELECT json_extract(record_json,'$.openedByActorId') FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID') LIMIT 1"
+          node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
+          const x=require('/tmp/shift.json');
+          const movements=rows('movements').map(r=>{try{return JSON.parse(r.record_json)}catch{return{}}}).filter(m=>m.movementPhase==='OPERATING');
+          const payments=rows('payments').map(r=>{try{return JSON.parse(r.payment_json)}catch{return{}}}).filter(p=>p.lifecycleStatus==='COMPLETED'&&p.tenderMethod==='CASH');
+          const refunds=rows('refunds').map(r=>{try{return JSON.parse(r.refund_json)}catch{return{}}}).filter(r=>r.status==='COMPLETED');
+          const policy=rows('policy')[0], actor=rows('actor')[0];
+          console.log('cash_shift_id='+x.shiftId);
+          console.log('business_day_id='+x.dayId);
+          console.log('shift_revision='+x.revision);
+          console.log('opening_cash_minor='+x.openingCashMinor);
+          console.log('operating_movement_count='+movements.length);
+          console.log('cash_payment_count='+payments.length);
+          console.log('refund_count='+refunds.length);
+          console.log('actor_staff_id='+(actor?.staff_id||'NONE'));
+          if(movements.length||payments.length||refunds.length)throw new Error('CURRENT_SHIFT_HAS_OPERATING_ACTIVITY_FAIL_CLOSED');
+          if(!policy||policy.basis!=='ABSOLUTE_MINOR'||Number(policy.configured_value)!==0)throw new Error('STRICT_ZERO_CLOSE_POLICY_REQUIRED');
+          if(!actor?.staff_id)throw new Error('SHIFT_ACTOR_NOT_CANONICAL_STAFF');
+          console.log('cleanup_safe=PASS');
+          NODE
+
+      - name: Login Admin canonical authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$HTTP" | tee evidence/login.txt
+          test "$HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          printf '%s' "$COOKIE" >/tmp/cookie
+
+      - name: Preview seal and handover current stale shift
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          CASH="$(node -e "process.stdout.write(String(require('/tmp/shift.json').openingCashMinor))")"
+          SHIFT="$(node -e "process.stdout.write(require('/tmp/shift.json').shiftId)")"
+          node -e "require('fs').writeFileSync('/tmp/preview.json',JSON.stringify({action:'PREVIEW_CLOSE',idempotencyKey:'round020-current-shift-preview:'+process.env.SHIFT,payload:{actualClosingCashMinor:Number(process.env.CASH)}}))" SHIFT="$SHIFT" CASH="$CASH"
+          PHTTP="$(curl -sS -o evidence/preview.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/preview.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "preview_http=$PHTTP" | tee evidence/close-summary.txt
+          test "$PHTTP" = 200
+          node -e "const x=require('./evidence/preview.json');if(!x.ok||Number(x.value?.overShortMinor)!==0)process.exit(1)"
+          SHIFT="$SHIFT" CASH="$CASH" node -e "require('fs').writeFileSync('/tmp/seal.json',JSON.stringify({action:'SEAL',idempotencyKey:'round020-current-shift-seal:'+process.env.SHIFT,payload:{expectedRevision:1,actualClosingCashMinor:Number(process.env.CASH)}}))"
+          SHTTP="$(curl -sS -o evidence/seal.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/seal.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "seal_http=$SHTTP" | tee -a evidence/close-summary.txt
+          test "$SHTTP" = 200
+          node -e "const x=require('./evidence/seal.json');if(!x.ok||Number(x.value?.shift?.revision)!==2)process.exit(1)"
+          SHIFT="$SHIFT" node -e "require('fs').writeFileSync('/tmp/handover.json',JSON.stringify({action:'HANDOVER',idempotencyKey:'round020-current-shift-handover:'+process.env.SHIFT,payload:{expectedRevision:2,withdrawalMinor:0}}))"
+          HHTTP="$(curl -sS -o evidence/handover.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/handover.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "handover_http=$HHTTP" | tee -a evidence/close-summary.txt
+          test "$HHTTP" = 200
+          node -e "const x=require('./evidence/handover.json');if(!x.ok||x.value?.closedShift?.lifecycleStatus!=='CLOSED'||Number(x.value?.closedShift?.revision)!==3)process.exit(1)"
+
+      - name: Verify canonical postcondition
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SHIFT_ID="$(node -e "process.stdout.write(require('/tmp/shift.json').shiftId)")"
+          SQL="SELECT lifecycle_status,revision FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID' LIMIT 1"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/post.json
+          node -e "const x=require('./evidence/post.json');const r=x.result?.[0]?.results?.[0];console.log('shift_status='+r?.lifecycle_status);console.log('shift_revision='+r?.revision);if(r?.lifecycle_status!=='CLOSED'||Number(r.revision)!==3)process.exit(1)" | tee evidence/post.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-current-stale-cash-shift-canonical-close-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
