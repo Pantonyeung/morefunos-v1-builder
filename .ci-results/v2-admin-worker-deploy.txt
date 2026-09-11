@@ -1,7 +1,7 @@
-source_sha=a2eab055142b5a1e2c1d9471162547885b33ffdb
-request_id=ROUND020-DAY-END-PLATFORM-SETTLEMENT-DEPLOY-20260911
-run_id=34546667578
+source_sha=ff730aa5b9ffdd8369a904f15a9740efbf9e1a6b
+request_id=ROUND024-PRINT-OUTBOX-DELIVERED-DEPLOY-20260911
+run_id=34558901085
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=fb97affd-1592-4220-99ad-4972559bf24d
+worker_version=2e342629-ad24-4def-8c65-4013342ca7c6
