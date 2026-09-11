@@ -1,5 +1,5 @@
-source_sha=9cd63eb56c410cc5cd05d21406c36738a7b5e6d3
-request_id=ROUND029-ONE-MANIFEST-SMT-20260911-03
-run_id=34567349021
+source_sha=069009b4471bd8eac49def48487ef69bf16abfa1
+request_id=ROUND029-ONE-MANIFEST-SMT-20260911-04
+run_id=34567447552
 run_attempt=1
-conclusion=failure
+conclusion=success
