@@ -102,13 +102,13 @@ jobs:
         run: |
           set -euo pipefail
           COOKIE="$(cat /tmp/cookie)"
-          node -e "require('fs').writeFileSync('/tmp/preview.json',JSON.stringify({action:'PREVIEW_CLOSE',idempotencyKey:'pre-go-live-shift-preview-v1',payload:{actualClosingCashMinor:Number(process.env.EXPECTED_CASH_MINOR)}}))"
+          node -e "require('fs').writeFileSync('/tmp/preview.json',JSON.stringify({action:'PREVIEW_CLOSE',idempotencyKey:'round020-shift-preview:'+process.env.SHIFT_ID,payload:{actualClosingCashMinor:Number(process.env.EXPECTED_CASH_MINOR)}}))"
           PHTTP="$(curl -sS -o /tmp/preview.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/preview.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
           echo "preview_http=$PHTTP" | tee evidence/close.txt
           cat /tmp/preview.out.json | tee -a evidence/close.txt
           test "$PHTTP" = 200
           node -e "const x=require('/tmp/preview.out.json');const v=x.value;if(!x.ok||Number(v.expectedClosingCashMinor)!==Number(process.env.EXPECTED_CASH_MINOR)||Number(v.actualClosingCashMinor)!==Number(process.env.EXPECTED_CASH_MINOR)||Number(v.overShortMinor)!==0)process.exit(1)"
-          node -e "require('fs').writeFileSync('/tmp/seal.json',JSON.stringify({action:'SEAL',idempotencyKey:'pre-go-live-shift-seal-v1',payload:{expectedRevision:1,actualClosingCashMinor:Number(process.env.EXPECTED_CASH_MINOR)}}))"
+          node -e "require('fs').writeFileSync('/tmp/seal.json',JSON.stringify({action:'SEAL',idempotencyKey:'round020-shift-seal:'+process.env.SHIFT_ID+':1',payload:{expectedRevision:1,actualClosingCashMinor:Number(process.env.EXPECTED_CASH_MINOR)}}))"
           SHTTP="$(curl -sS -o /tmp/seal.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/seal.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
           echo "seal_http=$SHTTP" | tee -a evidence/close.txt
           cat /tmp/seal.out.json | tee -a evidence/close.txt
@@ -120,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           COOKIE="$(cat /tmp/cookie)"
-          node -e "require('fs').writeFileSync('/tmp/handover.json',JSON.stringify({action:'HANDOVER',idempotencyKey:'pre-go-live-shift-handover-v1',payload:{expectedRevision:2,withdrawalMinor:0}}))"
+          node -e "require('fs').writeFileSync('/tmp/handover.json',JSON.stringify({action:'HANDOVER',idempotencyKey:'round020-shift-handover:'+process.env.SHIFT_ID+':2',payload:{expectedRevision:2,withdrawalMinor:0}}))"
           HTTP="$(curl -sS -o /tmp/handover.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/handover.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
           echo "handover_http=$HTTP" | tee evidence/handover.txt
           cat /tmp/handover.out.json | tee -a evidence/handover.txt
