@@ -1,0 +1,13 @@
+work_id=F2-WI-ROUND020-BUSINESS-DAY-ACTOR-IDENTITY-20260911
+candidate_sha=b2290f4efff863c0fa2f301737f2b66a8b13f800
+base_main_sha=c60317844d83a22f75ceea0d5cfb8fb158a67ea7
+latest_main_sha=4178bafdf490d873caeb130ea591075af030de43
+collision=C3
+impact=V3
+reason=SAME_CANONICAL_AUTHORITY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34545810004
+conclusion=failure
