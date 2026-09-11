@@ -1,7 +1,7 @@
 work_id=F2-WI-ROUND020-DAY-END-ORDER-CLEANUP-20260911
-candidate_sha=a2eab055142b5a1e2c1d9471162547885b33ffdb
-base_main_sha=c080e9fec38e6c0eacdd331a2b119cd4fa1d3fc3
-latest_main_sha=c080e9fec38e6c0eacdd331a2b119cd4fa1d3fc3
+candidate_sha=1ca086f5a297d7775b3b1900e17efbeee65d01a4
+base_main_sha=22ef54bc34e9bb58c6f1c8210c148c623f27b76f
+latest_main_sha=22ef54bc34e9bb58c6f1c8210c148c623f27b76f
 collision=C0
 impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=DIAGNOSTICS
 force_full_proof=true
-run_id=34546518439
+run_id=34547211298
 conclusion=success
