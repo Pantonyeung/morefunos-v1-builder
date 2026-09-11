@@ -1,0 +1,11 @@
+candidate_sha=5bc838eeeb2281273588fd65d7017ced0e03f8f5
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-04
+capability_id=CAP-OWNER-PREFERENCE-001
+capability_action=REGRESSION_REPAIR
+affected_ports=OWNER
+depends_on_specs=4a3d9daab0a8dc40217d78dd7a147dfdf884bfb5@934bccc717f891d20538a6b74f4434ff412a1dc1
+supersedes_candidate_sha=5bc838eeeb2281273588fd65d7017ced0e03f8f5
+required_core_tests=
+force_full_proof=true
+proof_source_sha=
