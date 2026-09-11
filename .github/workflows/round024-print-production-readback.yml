@@ -1,0 +1,127 @@
+name: ROUND024 Print Production Readback
+
+on:
+  push:
+    paths:
+      - 'requests/round024-print-production-readback.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/round024-print-production-readback.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/round024-print-production-readback.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Read Print production state SELECT only
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${DATABASE_ID}/query"
+          query(){
+            local name="$1"; local sql="$2"
+            SQL="$sql" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+            curl -sS -X POST "$URL" -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' --data-binary @/tmp/q.json > "/tmp/${name}.json"
+            NAME="$name" node -e "const fs=require('fs');const x=require('/tmp/'+process.env.NAME+'.json');if(!x.success||!x.result?.[0]?.success){console.error(JSON.stringify(x.errors||x.result||x));process.exit(1)};fs.writeFileSync('evidence/'+process.env.NAME+'.json',JSON.stringify(x.result[0].results||[],null,2)+'\n')"
+          }
+
+          query active_config "SELECT a.store_id,a.config_version_id,a.pointer_revision,a.activated_at,v.revision AS config_revision,v.created_at,v.created_by,v.config_json FROM mfos_print_planning_config_active a JOIN mfos_print_planning_config_version v ON v.config_version_id=a.config_version_id ORDER BY a.activated_at DESC;"
+          query latest_orders "SELECT order_id,store_id,lifecycle_status,revision,created_at,updated_at,json_extract(accepted_projection_json,'$.totalMinor') AS total_minor,json_extract(accepted_projection_json,'$.canonicalIdentity.displayOrderCode') AS display_code FROM mfos_order_state ORDER BY created_at DESC LIMIT 10;"
+          query latest_print_jobs "SELECT print_job_id,order_id,state,revision,created_at,updated_at,json_extract(record_json,'$.routeKey') AS route_key,json_extract(record_json,'$.assignedPrinterId') AS printer_id,json_extract(record_json,'$.renderedDocument.outputType') AS output_type,json_extract(record_json,'$.failureCode') AS failure_code,json_extract(record_json,'$.uncertaintyCode') AS uncertainty_code FROM mfos_print_job ORDER BY created_at DESC LIMIT 80;"
+          query latest_snapshots "SELECT print_output_snapshot_id,order_id,order_revision,output_type,captured_at FROM mfos_print_output_snapshot ORDER BY captured_at DESC LIMIT 80;"
+          query print_retry "SELECT event_id,failure_count,next_attempt_at,last_attempt_at,last_error_code FROM mfos_print_auto_order_retry ORDER BY last_attempt_at DESC LIMIT 30;"
+          query pending_order_outbox "SELECT event_id,aggregate_id AS order_id,event_type,status,recorded_at FROM mfos_outbox WHERE domain='ORDER' AND event_type='OrderAccepted' ORDER BY recorded_at DESC LIMIT 30;"
+          query printer_devices "SELECT store_id,printer_id,display_name,enabled,transport_kind,capability_json,role_json,revision,updated_at FROM mfos_printer_device ORDER BY updated_at DESC;"
+
+          node <<'NODE'
+          const fs=require('fs');
+          const read=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8'));
+          const configs=read('active_config');
+          const orders=read('latest_orders');
+          const jobs=read('latest_print_jobs');
+          const snaps=read('latest_snapshots');
+          const retries=read('print_retry');
+          const outbox=read('pending_order_outbox');
+          const devices=read('printer_devices');
+          const active=configs[0]??null;
+          let parsedConfig=null;
+          try{parsedConfig=active?.config_json?JSON.parse(active.config_json):null}catch{}
+          const latestOrder=orders[0]??null;
+          const orderId=latestOrder?.order_id??null;
+          const latestJobs=orderId?jobs.filter(x=>x.order_id===orderId):[];
+          const latestSnapshots=orderId?snaps.filter(x=>x.order_id===orderId):[];
+          const summary={
+            generatedAt:new Date().toISOString(),
+            sourceSha:process.env.SOURCE_SHA,
+            requestId:process.env.REQUEST_ID,
+            activeConfig:active?{
+              storeId:active.store_id,configVersionId:active.config_version_id,pointerRevision:active.pointer_revision,
+              activatedAt:active.activated_at,configRevision:active.config_revision,
+              templatePolicies:(parsedConfig?.templatePolicies??[]).map(p=>({outputType:p.outputType,enabled:p.enabled,routeKeys:p.routeKeys,productIds:p.productIds??null,templateId:p.templateId??p.templateRevisionId??null,copyCount:p.copyCount})),
+              productionTaskDefinitions:(parsedConfig?.productionTaskDefinitions??[]).map(d=>({id:d.productionTaskDefinitionId,routeKeys:d.routeKeys,enabled:d.enabled??true})),
+              productionMappingRules:(parsedConfig?.productionMappingRules??[]).length,
+              printerRoutes:(parsedConfig?.printerRoutes??[]).map(r=>({routeKey:r.routeKey,printerId:r.printerId??r.primaryPrinterId??null,backupPrinterIds:r.backupPrinterIds??[]})),
+            }:null,
+            latestOrder,
+            latestJobs,
+            latestSnapshots,
+            latestOrderOutbox:orderId?outbox.find(x=>x.order_id===orderId)??null:null,
+            latestOrderRetry:latestOrder?retries.find(x=>String(x.event_id).includes(orderId))??null:null,
+            printerDevices:devices.map(d=>({printerId:d.printer_id,displayName:d.display_name,enabled:d.enabled,transportKind:d.transport_kind,capability:d.capability_json,roles:d.role_json,revision:d.revision,updatedAt:d.updated_at})),
+          };
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2)+'\n');
+          console.log(JSON.stringify(summary,null,2));
+          NODE
+
+      - name: Seal result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p .ci-results
+          cp evidence/summary.json .ci-results/round024-print-production-readback.json
+          git add .ci-results/round024-print-production-readback.json
+          git commit -m "diag(result): ROUND024 print production readback" || true
+          git push origin HEAD:main
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: round024-print-production-readback-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
