@@ -1,0 +1,10 @@
+candidate_sha=47f16c12e9324d851fe6022186dddbf2f84d6bc7
+base_main_sha=c60317844d83a22f75ceea0d5cfb8fb158a67ea7
+work_id=F2-WI-ROUND020-DAY-END-MONEY-PROMPT-AFTER-CLEANUP-20260911
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=REGRESSION_REPAIR
+affected_ports=ADMIN
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
