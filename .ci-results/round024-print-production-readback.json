@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-11T03:27:33.650Z",
+  "generatedAt": "2026-09-11T03:28:13.527Z",
   "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
-  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-03",
+  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-04",
   "activeConfig": {
     "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
     "configVersionId": "print-config:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:585a4855-7f7c-4665-8415-99c555b45956",
@@ -1178,6 +1178,11 @@
     "pending_count": 70,
     "oldest_pending_at": "2026-09-03T15:39:43.990Z",
     "newest_pending_at": "2026-09-11T03:20:20.419Z"
+  },
+  "eligiblePrintBacklog": {
+    "eligible_pending_count": 12,
+    "eligible_oldest_at": "2026-09-10T03:32:40.567Z",
+    "eligible_newest_at": "2026-09-11T03:20:20.419Z"
   },
   "oldestPendingOrders": [
     {
