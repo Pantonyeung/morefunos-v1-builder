@@ -1,5 +1,5 @@
-source_sha=a7d16f19d1d973077fb5a222c3d7b7308564875c
-request_id=ROUND031-TRUSTED-STAFF-VERSION-GATE-SMT-20260911-02
-run_id=34568802702
+source_sha=e8b498b7ea14e0f0f47778d4984ab9abd767ad33
+request_id=ROUND030-INLINE-MANIFEST-SMT-20260911-01
+run_id=34568929840
 run_attempt=1
-conclusion=success
+conclusion=failure
