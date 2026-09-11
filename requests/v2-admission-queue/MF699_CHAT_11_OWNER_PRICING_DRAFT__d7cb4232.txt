@@ -1,0 +1,11 @@
+candidate_sha=d7cb4232cf2d5ed8ec044e8f24baae0e1d28ca47
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-11
+capability_id=CAP-PRICING-001
+capability_action=REGRESSION_REPAIR
+affected_ports=OWNER
+depends_on_specs=
+supersedes_candidate_sha=d212d979d880e6ee46c3100614b36f6772221869
+required_core_tests=
+force_full_proof=true
+proof_source_sha=
