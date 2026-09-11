@@ -1,6 +1,6 @@
-source_sha=cf3ee06a7ce911cb873cb00b34c41f0fff8d391a
+source_sha=ab86ac981ffa597921e538310f4935becaa14ac3
 branch_name=main
-request_id=ROUND027-PRINT-REGRESSION-20260911-04
-run_id=34563302660
+request_id=ROUND028-CANONICAL-SUBMIT-LATENCY-PRINT-20260911-01
+run_id=34564735713
 run_attempt=1
 conclusion=success
