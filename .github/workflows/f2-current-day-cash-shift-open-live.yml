@@ -1,0 +1,151 @@
+name: F2 Current Day Cash Shift Open Live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-current-day-cash-shift-open-live-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  open:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve and verify deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-current-day-cash-shift-open-live-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          DEPLOYED="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" == "$DEPLOYED" ]] || { echo "::error::CASH_SHIFT_OPEN_SOURCE_NOT_DEPLOYED requested=$SOURCE_SHA deployed=$DEPLOYED"; exit 1; }
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Login and preflight current Business Day
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$LOGIN_HTTP" | tee evidence/summary.txt
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          printf '%s' "$COOKIE" > /tmp/cookie
+          HTTP="$(curl -sS -o evidence/business-day.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day")"
+          echo "business_day_http=$HTTP" | tee -a evidence/summary.txt
+          test "$HTTP" = 200
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('./evidence/business-day.json');
+          const v=x.value||{};
+          const d=v.businessDay;
+          if(!x.ok||!d||d.lifecycleStatus!=='OPEN')throw new Error('CURRENT_BUSINESS_DAY_OPEN_REQUIRED');
+          if(d.businessDate!=='2026-09-11')throw new Error('CURRENT_BUSINESS_DATE_MISMATCH:'+d.businessDate);
+          if(v.cashShift)throw new Error('CURRENT_CASH_SHIFT_ALREADY_OPEN');
+          if(v.currency!=='HKD')throw new Error('CURRENT_CURRENCY_INVALID:'+String(v.currency));
+          console.log('business_day_id='+d.businessDayId);
+          console.log('business_date='+d.businessDate);
+          console.log('business_day_revision='+d.revision);
+          console.log('currency='+v.currency);
+          require('fs').writeFileSync('/tmp/day-id',d.businessDayId);
+          require('fs').writeFileSync('/tmp/currency',v.currency);
+          NODE
+
+      - name: Resolve previous retained cash provenance from canonical D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT d.cash_close_disposition_id,d.disposition_json,s.cash_shift_id,s.updated_at FROM mfos_cash_close_disposition d JOIN mfos_cash_shift s ON s.cash_shift_id=d.cash_shift_id WHERE s.lifecycle_status='CLOSED' ORDER BY d.occurred_at DESC LIMIT 1"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/retention.json
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('./evidence/retention.json');
+          if(!x.success)throw new Error('RETENTION_READ_FAILED');
+          const r=x.result?.[0]?.results?.[0];
+          if(!r)throw new Error('PREVIOUS_CASH_DISPOSITION_REQUIRED');
+          const d=JSON.parse(r.disposition_json);
+          if(Number(d.retainedCashMinor)!==100000||Number(d.withdrawalMinor)!==0||d.cashCloseDispositionId!==r.cash_close_disposition_id){
+            throw new Error('PREVIOUS_RETENTION_NOT_CONFIRMED');
+          }
+          console.log('source_disposition_id='+r.cash_close_disposition_id);
+          console.log('retained_cash_minor='+d.retainedCashMinor);
+          console.log('withdrawal_minor='+d.withdrawalMinor);
+          require('fs').writeFileSync('/tmp/source-disposition-id',r.cash_close_disposition_id);
+          require('fs').writeFileSync('/tmp/opening-cash-minor',String(d.retainedCashMinor));
+          NODE
+
+      - name: Open current Cash Shift through canonical Admin API
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          DAY_ID="$(cat /tmp/day-id)"
+          CURRENCY="$(cat /tmp/currency)"
+          SOURCE_DISPOSITION_ID="$(cat /tmp/source-disposition-id)"
+          OPENING_CASH_MINOR="$(cat /tmp/opening-cash-minor)"
+          DAY_ID="$DAY_ID" CURRENCY="$CURRENCY" SOURCE_DISPOSITION_ID="$SOURCE_DISPOSITION_ID" OPENING_CASH_MINOR="$OPENING_CASH_MINOR" node - <<'NODE'
+          const fs=require('fs');
+          fs.writeFileSync('/tmp/open.json',JSON.stringify({
+            action:'OPEN',
+            idempotencyKey:'round020-current-day-cash-open:'+process.env.DAY_ID,
+            payload:{
+              businessDayId:process.env.DAY_ID,
+              currency:process.env.CURRENCY,
+              openingCashMinor:Number(process.env.OPENING_CASH_MINOR),
+              openingCashProvenance:'PREVIOUS_RETENTION_CONFIRMED',
+              openingCashSourceDispositionId:process.env.SOURCE_DISPOSITION_ID,
+              openingCashSuggestedMinor:Number(process.env.OPENING_CASH_MINOR),
+            },
+          }));
+          NODE
+          HTTP="$(curl -sS -o evidence/open-result.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/open.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "cash_shift_open_http=$HTTP" | tee -a evidence/summary.txt
+          cat evidence/open-result.json | tee -a evidence/summary.txt
+          test "$HTTP" = 200
+          node -e "const x=require('./evidence/open-result.json');const v=x.value;if(!x.ok||v.lifecycleStatus!=='OPEN'||v.businessDayId!==require('fs').readFileSync('/tmp/day-id','utf8')||v.openingCashProvenance!=='PREVIOUS_RETENTION_CONFIRMED'||Number(v.openingCashMinor)!==100000)process.exit(1)"
+
+      - name: Verify canonical readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          HTTP="$(curl -sS -o evidence/after.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day")"
+          echo "readback_http=$HTTP" | tee -a evidence/summary.txt
+          test "$HTTP" = 200
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('./evidence/after.json');
+          const d=x.value?.businessDay,c=x.value?.cashShift;
+          if(!x.ok||!d||d.businessDate!=='2026-09-11'||!c||c.lifecycleStatus!=='OPEN'||c.businessDayId!==d.businessDayId)throw new Error('CURRENT_CASH_SHIFT_READBACK_INVALID');
+          console.log('cash_shift_id='+c.cashShiftId);
+          console.log('cash_shift_revision='+c.revision);
+          console.log('cash_shift_opening_minor='+c.openingCashMinor);
+          console.log('cash_shift_provenance='+c.openingCashProvenance);
+          console.log('current_day_cash_shift_readback=PASS');
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-current-day-cash-shift-open-live-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
