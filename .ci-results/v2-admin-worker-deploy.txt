@@ -1,7 +1,7 @@
-source_sha=11b800f63a5b0189ab6b737d27e749563cae21a3
-request_id=ROUND028-FINAL-CANONICAL-HOTPATH-ADMIN-DEPLOY-20260911-02
-run_id=34565160312
+source_sha=83f13f5db79470175e0244260f16beeb34841d02
+request_id=ROUND028-CANONICAL-SUBMIT-HOTPATH-DEPLOY-20260911-03
+run_id=34565832042
 run_attempt=1
-conclusion=failure
-url=UNKNOWN
-worker_version=UNKNOWN
+conclusion=success
+url=https://morefun-v2-admin.pantonyeung.workers.dev
+worker_version=d1ea9a52-9fb7-4254-90f4-1809d3b857f9
