@@ -1,0 +1,77 @@
+name: ROUND022 Label Focused Proof
+
+on:
+  push:
+    paths:
+      - 'requests/round022-label-focused/*.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: round022-label-focused
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Builder
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'requests/round022-label-focused/*.txt' | sort -u)
+          [[ "${#files[@]}" -eq 1 ]]
+          file="${files[0]}"
+          read_field() { sed -n "s/^$1=//p" "$file" | tail -n1 | tr -d '\r\n'; }
+          candidate_sha="$(read_field candidate_sha)"
+          work_id="$(read_field work_id)"
+          [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$work_id"
+          echo "candidate_sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "work_id=$work_id" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: test -n "$TOKEN"
+
+      - name: Checkout frozen Morefun-v2 candidate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.candidate_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install candidate dependencies
+        working-directory: candidate
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Root typecheck
+        working-directory: candidate
+        run: npm run typecheck
+
+      - name: Focused Label encoder proof
+        working-directory: candidate
+        run: node --test packages/smt-ui-integration/generic-tspl-rendered-document-encoder.test.ts
+
+      - name: SMT app typecheck and build
+        working-directory: candidate/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
