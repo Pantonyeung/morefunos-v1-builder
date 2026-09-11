@@ -80,6 +80,13 @@ jobs:
         working-directory: candidate
         run: node --test packages/smt-ui-integration/generic-tspl-rendered-document-encoder.test.ts
 
+      - name: SMT UI integration proof
+        id: smt_ui
+        if: always() && steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: candidate
+        run: npm run test:smt-ui-integration
+
       - name: SMT app typecheck and build
         id: smt
         if: always() && steps.install.outcome == 'success'
@@ -96,13 +103,14 @@ jobs:
           INSTALL: ${{ steps.install.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           LABEL: ${{ steps.label.outcome }}
+          SMT_UI: ${{ steps.smt_ui.outcome }}
           SMT: ${{ steps.smt.outcome }}
           RUN_ID: ${{ github.run_id }}
         shell: bash
         run: |
           set -euo pipefail
           conclusion=success
-          for value in "$INSTALL" "$TYPECHECK" "$LABEL" "$SMT"; do
+          for value in "$INSTALL" "$TYPECHECK" "$LABEL" "$SMT_UI" "$SMT"; do
             [[ "$value" == success ]] || conclusion=failure
           done
           safe_work_id="$(printf '%s' "$WORK_ID" | tr -c 'A-Za-z0-9._-' '_')"
@@ -119,6 +127,7 @@ jobs:
               echo "install=$INSTALL"
               echo "typecheck=$TYPECHECK"
               echo "label=$LABEL"
+              echo "smt_ui=$SMT_UI"
               echo "smt=$SMT"
               echo "run_id=$RUN_ID"
               echo "conclusion=$conclusion"
