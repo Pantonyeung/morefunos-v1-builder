@@ -1,5 +1,5 @@
 work_id=MF699-CHAT-16
-candidate_sha=db45057dda6808e6ebe0768e554614a69e82fa37
+candidate_sha=3bb49ddf081561ff2d04c91a973714dc9a96863c
 base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
 latest_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
 collision=C0
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=CATALOG,PRICING,AVAILABILITY,BUSINESS_DAY
 force_full_proof=true
-run_id=34623496537
-conclusion=failure
+run_id=34623626415
+conclusion=success
