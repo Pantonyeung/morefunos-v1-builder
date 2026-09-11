@@ -1,5 +1,5 @@
-source_sha=faeb4d8f0b0ec9eca80f10745941cb2655eaf2b1
-request_id=ROUND028-LATEST-HOTPATH-SMT-20260911-06
-run_id=34565388278
+source_sha=e557be9319fbbc87e232fbd9978c4a9407a481f0
+request_id=ROUND028-PRICING-READ-ELISION-SMT-20260911-07
+run_id=34565520519
 run_attempt=1
 conclusion=success
