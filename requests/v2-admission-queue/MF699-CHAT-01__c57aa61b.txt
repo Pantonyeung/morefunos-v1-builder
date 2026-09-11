@@ -1,0 +1,8 @@
+candidate_sha=c57aa61b8ffaa87cd87657abf8cda1a0ee11e99e
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-01
+capability_id=CAP-OWNER-PREFERENCE-001
+capability_action=EXTEND
+affected_ports=OWNER
+required_core_tests=PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
