@@ -1,7 +1,7 @@
 source_sha=860bf0c410a6bc5577d2451500945e1c52ec32ab
-request_id=ROUND030-PROJECTION-FREE-INLINE-ADMIN-DEPLOY-20260911-02
-run_id=34569646012
+request_id=ROUND030-INLINE-MANIFEST-HOTPATH-ADMIN-DEPLOY-20260911-01
+run_id=34569667186
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=7c7a7635-cd21-4d40-8151-af332fd829ec
+worker_version=54927947-0f4b-498b-b12e-c59d68817b8b
