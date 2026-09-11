@@ -1,6 +1,6 @@
-source_sha=a7d16f19d1d973077fb5a222c3d7b7308564875c
+source_sha=e8b498b7ea14e0f0f47778d4984ab9abd767ad33
 branch_name=main
-request_id=ROUND031-TRUSTED-STAFF-VERSION-GATE-PRINT-20260911-02
-run_id=34568808775
+request_id=ROUND030-INLINE-MANIFEST-PRINT-20260911-01
+run_id=34568933272
 run_attempt=1
 conclusion=success
