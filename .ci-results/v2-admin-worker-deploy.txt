@@ -1,7 +1,7 @@
-source_sha=83f13f5db79470175e0244260f16beeb34841d02
-request_id=ROUND028-CANONICAL-SUBMIT-HOTPATH-DEPLOY-20260911-03
-run_id=34565832042
+source_sha=ada9d3c3e84b4b4d3acbcb45d2bd85e553f239d6
+request_id=ROUND029-LOCAL-PRINT-SPOOL-ADMIN-DEPLOY-20260911-01
+run_id=34566902008
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=d1ea9a52-9fb7-4254-90f4-1809d3b857f9
+worker_version=82f27ec9-f3d7-4762-b08a-c8284814b878
