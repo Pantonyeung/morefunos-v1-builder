@@ -1,0 +1,13 @@
+work_id=F2-WI-ROUND020-DAY-END-ORDER-CLEANUP-20260911
+candidate_sha=8527453082aabbf5dc4db58acbb2d0b84a016a4d
+base_main_sha=a905f13452175b18cc7276a8e6d8122a291133e2
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
+run_id=34544717204
+conclusion=failure
