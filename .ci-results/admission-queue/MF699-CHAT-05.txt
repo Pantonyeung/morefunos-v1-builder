@@ -1,5 +1,5 @@
 work_id=MF699-CHAT-05
-candidate_sha=d85ef32d1c8a3d1b4f121a4e79b23a72f27517b3
+candidate_sha=c350901db4d894d40ebfb64a47c1b975f2ffd107
 base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
 latest_main_sha=UNKNOWN
 collision=UNKNOWN
@@ -9,5 +9,5 @@ apply_status=UNKNOWN
 depends_on_specs=
 required_core_tests=ORDER
 force_full_proof=true
-run_id=34597279663
+run_id=34598248459
 conclusion=failure
