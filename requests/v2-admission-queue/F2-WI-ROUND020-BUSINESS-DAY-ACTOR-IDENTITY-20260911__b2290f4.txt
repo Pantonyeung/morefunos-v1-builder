@@ -1,0 +1,8 @@
+candidate_sha=b2290f4efff863c0fa2f301737f2b66a8b13f800
+base_main_sha=c60317844d83a22f75ceea0d5cfb8fb158a67ea7
+work_id=F2-WI-ROUND020-BUSINESS-DAY-ACTOR-IDENTITY-20260911
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=REGRESSION_REPAIR
+affected_ports=CORE,ADMIN
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
