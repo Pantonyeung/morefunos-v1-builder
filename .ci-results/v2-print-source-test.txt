@@ -1,6 +1,6 @@
-source_sha=e8b498b7ea14e0f0f47778d4984ab9abd767ad33
+source_sha=9ef68d0e22c4ef6cb0998f4da2a842c22e43ab00
 branch_name=main
-request_id=ROUND030-INLINE-MANIFEST-PRINT-20260911-01
-run_id=34568933272
+request_id=ROUND030-INLINE-MANIFEST-ENDPOINT-CACHE-PRINT-20260911-02
+run_id=34569101025
 run_attempt=1
 conclusion=success
