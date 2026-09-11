@@ -1,0 +1,7 @@
+candidate_sha=b82b1725a52857282df39aebb5d37ceef0dd1e3f
+base_main_sha=96add5765c4a9f355c890ed0456f56d0db93fbfa
+work_id=ROUND022-PRINT-LATENCY-EVIDENCE-20260911
+capability_id=CAP-PRINT-PHYSICAL-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT
+required_core_tests=SMT_UI
