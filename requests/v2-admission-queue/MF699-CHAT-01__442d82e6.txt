@@ -1,0 +1,9 @@
+candidate_sha=442d82e623142ef974d0cf6638b0ea66e6d64186
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-01
+capability_id=CAP-OWNER-PREFERENCE-001
+capability_action=SUPERSEDE
+affected_ports=OWNER
+supersedes_candidate_sha=b381fc7c3a75caf036d23f2f3212b4e42e4265e0
+required_core_tests=PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
