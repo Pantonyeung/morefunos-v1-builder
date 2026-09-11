@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-10T22:48:55.872Z",
-  "sourceSha": "c74ee1d0f4ee6deffed3ef2fadaee3e3bd0abc40",
-  "requestId": "ROUND019-C-E-LIVE-POST-OTA-READBACK-20260911",
+  "generatedAt": "2026-09-11T03:23:46.065Z",
+  "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
+  "requestId": "ROUND024-FRESH-SMT-PRINT-PRODUCTION-DIAG-20260911-01",
   "mode": "REMOTE_D1_SELECT_ONLY",
-  "rowCount": 347,
-  "traceCount": 36,
+  "rowCount": 749,
+  "traceCount": 49,
   "stores": [
     "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8"
   ],
@@ -65,22 +65,46 @@
       "latestPass": null
     },
     "ORDER_SYNC_RECONCILIATION_V1": {
-      "traceCount": 9,
+      "traceCount": 15,
       "counts": {
         "PASS": 0,
-        "PENDING": 9,
+        "PENDING": 15,
         "FAIL": 0,
         "UNKNOWN": 0
       },
       "latest": [
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:27",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:80",
           "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
           "status": "PENDING",
           "firstFailedEdgeId": "d1-smm-order-sync-applied",
           "latencyMs": null,
-          "lastAt": "2026-09-10T09:13:40.987Z",
+          "lastAt": "2026-09-11T03:20:32.004Z",
+          "eventCount": 2,
+          "edges": [
+            {
+              "edgeId": "d1-smt-order-sync-applied",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smm-order-sync-applied",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:79",
+          "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-smm-order-sync-applied",
+          "latencyMs": null,
+          "lastAt": "2026-09-11T02:58:41.749Z",
           "eventCount": 1,
           "edges": [
             {
@@ -99,12 +123,12 @@
         },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:26",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:77",
           "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
           "status": "PENDING",
           "firstFailedEdgeId": "d1-smm-order-sync-applied",
           "latencyMs": null,
-          "lastAt": "2026-09-10T04:31:04.675Z",
+          "lastAt": "2026-09-11T02:10:38.051Z",
           "eventCount": 1,
           "edges": [
             {
@@ -123,12 +147,12 @@
         },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:25",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:76",
           "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
           "status": "PENDING",
           "firstFailedEdgeId": "d1-smm-order-sync-applied",
           "latencyMs": null,
-          "lastAt": "2026-09-10T03:47:00.683Z",
+          "lastAt": "2026-09-11T01:53:28.253Z",
           "eventCount": 1,
           "edges": [
             {
@@ -147,36 +171,12 @@
         },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:24",
+          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:74",
           "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
           "status": "PENDING",
           "firstFailedEdgeId": "d1-smm-order-sync-applied",
           "latencyMs": null,
-          "lastAt": "2026-09-10T03:32:52.093Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-smt-order-sync-applied",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-smm-order-sync-applied",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "order-sync:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:23",
-          "journeyId": "ORDER_SYNC_RECONCILIATION_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-smm-order-sync-applied",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T03:00:19.218Z",
+          "lastAt": "2026-09-11T01:49:46.370Z",
           "eventCount": 1,
           "edges": [
             {
@@ -212,8 +212,8 @@
           "status": "PENDING",
           "firstFailedEdgeId": "d1-admin-store-config-readback",
           "latencyMs": null,
-          "lastAt": "2026-09-10T09:35:46.286Z",
-          "eventCount": 296,
+          "lastAt": "2026-09-11T03:23:38.227Z",
+          "eventCount": 674,
           "edges": [
             {
               "edgeId": "d1-admin-store-config-readback",
@@ -239,14 +239,98 @@
       "latestPass": null
     },
     "IDENTITY_SECURITY_V1": {
-      "traceCount": 5,
+      "traceCount": 7,
       "counts": {
         "PASS": 0,
-        "PENDING": 5,
+        "PENDING": 7,
         "FAIL": 0,
         "UNKNOWN": 0
       },
       "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "893177c9-611f-4e35-9d27-517d4014daa4",
+          "journeyId": "IDENTITY_SECURITY_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-session-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T23:23:03.316Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-session-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-rbac-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-frontline-device-trust-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-admin-security-context-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-customer-auth-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "83da9b58-22ee-4b4b-8885-f7553a3c5c3c",
+          "journeyId": "IDENTITY_SECURITY_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-admin-session-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-10T23:21:23.858Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-admin-session-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-rbac-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-frontline-device-trust-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-admin-security-context-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-customer-auth-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
           "traceId": "fa174acf-6dec-43a2-be7c-f8fe7b35827a",
@@ -372,103 +456,43 @@
               "errorCode": null
             }
           ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "962366c3-6777-49ec-8a29-41682dfb461c",
-          "journeyId": "IDENTITY_SECURITY_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-admin-session-readback",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T22:36:21.970Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-admin-session-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-owner-rbac-readback",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-frontline-device-trust-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-admin-security-context-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-customer-auth-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "admin-session:a5d0ffbeb864f72c24185573a2b1753c4c8cb2467062fe8171f2322d31015ee6",
-          "journeyId": "IDENTITY_SECURITY_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-owner-rbac-readback",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T02:24:10.430Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-admin-session-readback",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-owner-rbac-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-frontline-device-trust-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-admin-security-context-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-customer-auth-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
         }
       ],
       "latestPass": null
     },
     "BUSINESS_OPERATIONS_V1": {
-      "traceCount": 5,
+      "traceCount": 6,
       "counts": {
         "PASS": 1,
-        "PENDING": 4,
+        "PENDING": 5,
         "FAIL": 0,
         "UNKNOWN": 0
       },
       "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "5cbd0c54-72d3-4640-bc5d-23c2d5e126fc",
+          "journeyId": "BUSINESS_OPERATIONS_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-owner-business-ops-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-11T00:43:47.175Z",
+          "eventCount": 4,
+          "edges": [
+            {
+              "edgeId": "d1-admin-business-ops-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-owner-business-ops-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
           "traceId": "0d2cda16-38f6-4fca-aff1-06d99fd26353",
@@ -476,8 +500,8 @@
           "status": "PASS",
           "firstFailedEdgeId": null,
           "latencyMs": null,
-          "lastAt": "2026-09-10T22:40:54.239Z",
-          "eventCount": 17,
+          "lastAt": "2026-09-11T00:41:19.482Z",
+          "eventCount": 24,
           "edges": [
             {
               "edgeId": "d1-admin-business-ops-readback",
@@ -564,30 +588,6 @@
               "errorCode": null
             }
           ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "0d9181aa-3e56-462a-ba61-4e212c1fd3b5",
-          "journeyId": "BUSINESS_OPERATIONS_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-admin-business-ops-readback",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T02:31:04.483Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-admin-business-ops-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-owner-business-ops-readback",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
         }
       ],
       "latestPass": {
@@ -597,8 +597,8 @@
         "status": "PASS",
         "firstFailedEdgeId": null,
         "latencyMs": null,
-        "lastAt": "2026-09-10T22:40:54.239Z",
-        "eventCount": 17,
+        "lastAt": "2026-09-11T00:41:19.482Z",
+        "eventCount": 24,
         "edges": [
           {
             "edgeId": "d1-admin-business-ops-readback",
@@ -748,15 +748,69 @@
       "latestPass": null
     },
     "PRODUCTION_OPERATIONS_SMT_READBACK_V1": {
-      "traceCount": 0,
+      "traceCount": 2,
       "counts": {
-        "PASS": 0,
+        "PASS": 2,
         "PENDING": 0,
         "FAIL": 0,
         "UNKNOWN": 0
       },
-      "latest": [],
-      "latestPass": null
+      "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "production:NO_CONFIG:MISSING|NO_CONFIG|1|0|1|1",
+          "journeyId": "PRODUCTION_OPERATIONS_SMT_READBACK_V1",
+          "status": "PASS",
+          "firstFailedEdgeId": null,
+          "latencyMs": null,
+          "lastAt": "2026-09-11T01:37:54.941Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smt-production-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "production:NO_CONFIG:MISSING|NO_CONFIG|0|0|0|0",
+          "journeyId": "PRODUCTION_OPERATIONS_SMT_READBACK_V1",
+          "status": "PASS",
+          "firstFailedEdgeId": null,
+          "latencyMs": null,
+          "lastAt": "2026-09-11T00:21:45.178Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smt-production-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        }
+      ],
+      "latestPass": {
+        "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+        "traceId": "production:NO_CONFIG:MISSING|NO_CONFIG|1|0|1|1",
+        "journeyId": "PRODUCTION_OPERATIONS_SMT_READBACK_V1",
+        "status": "PASS",
+        "firstFailedEdgeId": null,
+        "latencyMs": null,
+        "lastAt": "2026-09-11T01:37:54.941Z",
+        "eventCount": 1,
+        "edges": [
+          {
+            "edgeId": "d1-smt-production-readback",
+            "status": "PASS",
+            "latencyMs": null,
+            "errorCode": null
+          }
+        ]
+      }
     },
     "CATALOG_PUBLICATION_FANOUT_V1": {
       "traceCount": 0,
@@ -924,14 +978,62 @@
       "latestPass": null
     },
     "PRINT_RUNTIME_READBACK_V1": {
-      "traceCount": 6,
+      "traceCount": 8,
       "counts": {
         "PASS": 0,
-        "PENDING": 6,
+        "PENDING": 8,
         "FAIL": 0,
         "UNKNOWN": 0
       },
       "latest": [
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "3ea98c56-6e0d-4324-a6c0-5df5cbb0d643",
+          "journeyId": "PRINT_RUNTIME_READBACK_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-smm-print-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-11T02:58:44.838Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smm-print-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smt-print-config-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
+        {
+          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+          "traceId": "58c35335-6a8c-4c66-ad61-b907753f7b3f",
+          "journeyId": "PRINT_RUNTIME_READBACK_V1",
+          "status": "PENDING",
+          "firstFailedEdgeId": "d1-smm-print-readback",
+          "latencyMs": null,
+          "lastAt": "2026-09-11T02:13:35.420Z",
+          "eventCount": 1,
+          "edges": [
+            {
+              "edgeId": "d1-smm-print-readback",
+              "status": "NOT_OBSERVED",
+              "latencyMs": null,
+              "errorCode": null
+            },
+            {
+              "edgeId": "d1-smt-print-config-readback",
+              "status": "PASS",
+              "latencyMs": null,
+              "errorCode": null
+            }
+          ]
+        },
         {
           "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
           "traceId": "ae567442-2419-43a2-9cb6-02785bf4589e",
@@ -988,54 +1090,6 @@
           "firstFailedEdgeId": "d1-smm-print-readback",
           "latencyMs": null,
           "lastAt": "2026-09-10T03:00:42.829Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-smm-print-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-smt-print-config-readback",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "16f82124-429f-4ef1-80a3-6672d888b905",
-          "journeyId": "PRINT_RUNTIME_READBACK_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-smm-print-readback",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T02:49:34.307Z",
-          "eventCount": 1,
-          "edges": [
-            {
-              "edgeId": "d1-smm-print-readback",
-              "status": "NOT_OBSERVED",
-              "latencyMs": null,
-              "errorCode": null
-            },
-            {
-              "edgeId": "d1-smt-print-config-readback",
-              "status": "PASS",
-              "latencyMs": null,
-              "errorCode": null
-            }
-          ]
-        },
-        {
-          "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-          "traceId": "2ed9e0fb-cede-4c78-806c-8ff4f8c687b1",
-          "journeyId": "PRINT_RUNTIME_READBACK_V1",
-          "status": "PENDING",
-          "firstFailedEdgeId": "d1-smm-print-readback",
-          "latencyMs": null,
-          "lastAt": "2026-09-10T02:48:14.487Z",
           "eventCount": 1,
           "edges": [
             {
