@@ -1,5 +1,5 @@
-source_sha=ff730aa5b9ffdd8369a904f15a9740efbf9e1a6b
-request_id=ROUND024-MAIN-OUTBOX-DELIVERED-VERIFY-20260911-01
-run_id=34558825369
+source_sha=20d022ff1b842a030ffdb616c48e71662b3503ef
+request_id=ROUND024-ROUTE-FAILURE-QUARANTINE-20260911-01
+run_id=34559365815
 run_attempt=1
 conclusion=success
