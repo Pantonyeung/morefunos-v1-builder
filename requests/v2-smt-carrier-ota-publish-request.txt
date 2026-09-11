@@ -1,6 +1,6 @@
-source_sha=914f78a67e3e5a057212b9470555bf5b3ada0a1e
-apk_source_sha=914f78a67e3e5a057212b9470555bf5b3ada0a1e
-signed_release_run_id=34422371625
-expected_version_name=1.0.3
-expected_version_code=103
-request_id=F2-SMT-CARRIER-1.0.3-INSTALLER-REPAIR-OTA-PUBLISH-20260910
+source_sha=e2a655453697868ed0823eb56ba947c107732843
+apk_source_sha=e2a655453697868ed0823eb56ba947c107732843
+signed_release_run_id=34563812907
+expected_version_name=1.0.4
+expected_version_code=104
+request_id=ROUND027-SMT-CARRIER-1.0.4-PER-PRINTER-LANES-OTA-PUBLISH-20260911-01
