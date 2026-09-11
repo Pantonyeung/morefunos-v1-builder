@@ -1,0 +1,13 @@
+work_id=MF699-CHAT-05
+candidate_sha=d85ef32d1c8a3d1b4f121a4e79b23a72f27517b3
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=ORDER
+force_full_proof=true
+run_id=34597279663
+conclusion=failure
