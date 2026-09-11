@@ -1,0 +1,13 @@
+work_id=F2-WI-ROUND020-BUSINESS-DAY-OPEN-SEAM-20260911
+candidate_sha=4178bafdf490d873caeb130ea591075af030de43
+base_main_sha=c60317844d83a22f75ceea0d5cfb8fb158a67ea7
+latest_main_sha=c60317844d83a22f75ceea0d5cfb8fb158a67ea7
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=
+force_full_proof=true
+run_id=34545349866
+conclusion=success
