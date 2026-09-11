@@ -1,5 +1,5 @@
-source_sha=da11b198ff7d65dc83e9e08ccdbdee73ac21f8dd
-request_id=ROUND024-ONE-ROUTE-ONE-PRINTER-CORE-20260911-01
-run_id=34556080102
+source_sha=4b77b92ea1c3d457b1cf948e218b8d092bb0ada1
+request_id=ROUND025-DISPLAY-SOURCE-IDEMPOTENCY-CORE-20260911-01
+run_id=34557115059
 run_attempt=1
 conclusion=failure
