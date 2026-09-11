@@ -20,7 +20,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
-      SHIFT_ID: bf0af93c-6d10-4696-be57-d9accf32e2cb
+      SHIFT_ID: 595a9027-e880-4580-9b9c-65aab942c70b
       DAY_ID: 0d2cda16-38f6-4fca-aff1-06d99fd26353
       EXPECTED_CASH_MINOR: '100000'
     steps:
@@ -47,8 +47,8 @@ jobs:
           query(){ NAME="$1"; SQL="$2"; SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"; curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/$NAME.json"; }
           query shift "SELECT cash_shift_id,business_day_id,lifecycle_status,revision,record_json FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID' LIMIT 1"
           query movements "SELECT COUNT(*) AS count_value FROM mfos_cash_movement WHERE cash_shift_id='$SHIFT_ID'"
-          query cash_payments "SELECT COUNT(*) AS count_value FROM mfos_payment_state WHERE lifecycle_status='COMPLETED' AND json_extract(payment_json,'$.tenderMethod')='CASH' AND updated_at>='2026-09-07T00:13:27.697Z'"
-          query refunds "SELECT COUNT(*) AS count_value FROM mfos_refund_state WHERE status='COMPLETED' AND created_at>='2026-09-07T00:13:27.697Z'"
+          query cash_payments "SELECT COUNT(*) AS count_value FROM mfos_payment_state WHERE lifecycle_status='COMPLETED' AND json_extract(payment_json,'$.tenderMethod')='CASH' AND updated_at>='2026-09-11T00:15:57.460Z'"
+          query refunds "SELECT COUNT(*) AS count_value FROM mfos_refund_state WHERE status='COMPLETED' AND created_at>='2026-09-11T00:15:57.460Z'"
           node - <<'NODE' | tee evidence/preflight.txt
           const fs=require('fs');
           const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
