@@ -1,0 +1,7 @@
+candidate_sha=a632805ddaed9ef4d1c5bc71d9f82cdad28e2edc
+base_main_sha=8ba3793ffb411a34c0f355b3719031119cb042b3
+work_id=ROUND022-LABEL-CJK-BITMAP-LATENCY-20260911
+capability_id=CAP-PRINT-PHYSICAL-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT
+required_core_tests=SMT_UI
