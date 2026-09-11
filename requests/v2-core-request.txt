@@ -1,5 +1,5 @@
-source_sha=da11b198ff7d65dc83e9e08ccdbdee73ac21f8dd
-base_sha=577a93218b4a2df72a8101f2b41a6371b2f48f4f
-branch_name=hotfix/PRT/ROUND024-one-route-one-printer
+source_sha=4b77b92ea1c3d457b1cf948e218b8d092bb0ada1
+base_sha=466dc2bd38b85d76fee1c1a925f1a45e4b24b4e4
+branch_name=hotfix/ORDER/ROUND025-display-source-idempotency
 verification_phase=CANDIDATE
-request_id=ROUND024-ONE-ROUTE-ONE-PRINTER-CORE-20260911-01
+request_id=ROUND025-DISPLAY-SOURCE-IDEMPOTENCY-CORE-20260911-01
