@@ -1,5 +1,5 @@
-source_sha=e8b498b7ea14e0f0f47778d4984ab9abd767ad33
-request_id=ROUND030-INLINE-MANIFEST-SMT-20260911-01
-run_id=34568929840
+source_sha=9ef68d0e22c4ef6cb0998f4da2a842c22e43ab00
+request_id=ROUND030-INLINE-MANIFEST-ENDPOINT-CACHE-SMT-20260911-02
+run_id=34569097765
 run_attempt=1
 conclusion=failure
