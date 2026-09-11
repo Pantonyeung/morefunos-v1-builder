@@ -1,5 +1,5 @@
-source_sha=9579bd977acf9f5a2d9f4c4386dfb122e10a94b0
-base_sha=
-branch_name=main
+source_sha=da11b198ff7d65dc83e9e08ccdbdee73ac21f8dd
+base_sha=577a93218b4a2df72a8101f2b41a6371b2f48f4f
+branch_name=hotfix/PRT/ROUND024-one-route-one-printer
 verification_phase=CANDIDATE
-request_id=F1-BYPASS-F2-SMT-NATIVE-EXECUTOR-BRIDGE-CORE-20260910
+request_id=ROUND024-ONE-ROUTE-ONE-PRINTER-CORE-20260911-01
