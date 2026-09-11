@@ -1,5 +1,5 @@
-source_sha=96add5765c4a9f355c890ed0456f56d0db93fbfa
-request_id=ROUND022-LABEL-CJK-BITMAP-LATENCY-20260911-01
-run_id=34552056226
+source_sha=b82b1725a52857282df39aebb5d37ceef0dd1e3f
+request_id=ROUND022-PRINT-LATENCY-EVIDENCE-20260911-01
+run_id=34552170267
 run_attempt=1
 conclusion=success
