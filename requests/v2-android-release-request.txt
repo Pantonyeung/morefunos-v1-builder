@@ -1,4 +1,4 @@
-source_sha=914f78a67e3e5a057212b9470555bf5b3ada0a1e
-expected_version_name=1.0.3
-expected_version_code=103
-request_id=F2-SMT-CARRIER-1.0.3-SIGNED-INSTALLER-REPAIR-R2-20260910
+source_sha=e6d6ce1550de5a645bb97127748163a1efeef3a3
+expected_version_name=1.0.4
+expected_version_code=104
+request_id=ROUND027-SMT-CARRIER-1.0.4-SIGNED-RELEASE-20260911-01
