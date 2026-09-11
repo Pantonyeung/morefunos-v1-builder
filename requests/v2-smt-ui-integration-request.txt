@@ -1,2 +1,2 @@
-source_sha=7acfc62d7fc0458d59a50aebf7b1165cc4098338
-request_id=ROUND035-CHECKOUT-LABEL-SMT-02
+source_sha=bf7eb5b90d6569adbe5c5326644e888eb53c7f64
+request_id=ROUND035-CHECKOUT-LABEL-SMT-03
