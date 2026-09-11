@@ -1,4 +1,4 @@
-source_sha=e6d6ce1550de5a645bb97127748163a1efeef3a3
+source_sha=e2a655453697868ed0823eb56ba947c107732843
 expected_version_name=1.0.4
 expected_version_code=104
-request_id=ROUND027-SMT-CARRIER-1.0.4-SIGNED-RELEASE-20260911-01
+request_id=ROUND027-SMT-CARRIER-1.0.4-SIGNED-RELEASE-20260911-02
