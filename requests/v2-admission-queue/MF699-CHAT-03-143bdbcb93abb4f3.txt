@@ -1,0 +1,11 @@
+candidate_sha=143bdbcb93abb4f3a4980d5c64fb0b654d47e380
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-03
+capability_id=CAP-FRONTLINE-MENU-001
+capability_action=LINKUP
+affected_ports=SMM
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=ORDER,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=
