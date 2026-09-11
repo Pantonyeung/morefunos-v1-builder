@@ -1,0 +1,10 @@
+candidate_sha=e172b7083a49797c7d5350858f9b256e6e5dd43b
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-16
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=LINKUP
+affected_ports=ADMIN,OWNER
+supersedes_candidate_sha=3bb49ddf081561ff2d04c91a973714dc9a96863c
+required_core_tests=CATALOG,PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=e172b7083a49797c7d5350858f9b256e6e5dd43b
