@@ -1,6 +1,6 @@
-source_sha=c302f19f0f35be625daececfb0586dfd2176c413
+source_sha=1970ffd2c3d568b66672af7293e22cb229aa4001
 branch_name=main
-request_id=team-c-pricing-smt-print-regression-20260909
-run_id=34360121862
+request_id=ROUND024-ONE-ROUTE-ONE-PRINTER-20260911-01
+run_id=34556161562
 run_attempt=1
-conclusion=success
+conclusion=failure
