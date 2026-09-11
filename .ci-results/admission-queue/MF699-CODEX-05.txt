@@ -1,5 +1,5 @@
 work_id=MF699-CODEX-05
-candidate_sha=6f4e1417dfa6793cdbdef6a4a9ee81f61741099b
+candidate_sha=5d0144779304685e1415888cb73630633ae3f9e8
 base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
 latest_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
 collision=C0
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=
 force_full_proof=true
-run_id=34602411994
+run_id=34602710366
 conclusion=success
