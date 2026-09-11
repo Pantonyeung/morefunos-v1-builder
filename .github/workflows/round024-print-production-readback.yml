@@ -62,6 +62,7 @@ jobs:
           query pending_order_outbox "SELECT event_id,aggregate_id AS order_id,event_type,status,recorded_at FROM mfos_outbox WHERE domain='ORDER' AND event_type='OrderAccepted' ORDER BY recorded_at DESC LIMIT 30;"
           query pending_order_backlog "SELECT COUNT(*) AS pending_count, MIN(recorded_at) AS oldest_pending_at, MAX(recorded_at) AS newest_pending_at FROM mfos_outbox WHERE domain='ORDER' AND event_type='OrderAccepted' AND status='PENDING';"
           query eligible_print_backlog "SELECT COUNT(*) AS eligible_pending_count, MIN(o.recorded_at) AS eligible_oldest_at, MAX(o.recorded_at) AS eligible_newest_at FROM mfos_outbox o JOIN mfos_print_planning_config_active a ON a.store_id=o.store_id WHERE o.domain='ORDER' AND o.event_type='OrderAccepted' AND o.status='PENDING' AND o.recorded_at>=a.activated_at;"
+          query eligible_pending_orders "SELECT o.event_id,o.aggregate_id AS order_id,o.recorded_at,r.failure_count,r.next_attempt_at,r.last_attempt_at,r.last_error_code FROM mfos_outbox o JOIN mfos_print_planning_config_active a ON a.store_id=o.store_id LEFT JOIN mfos_print_auto_order_retry r ON r.event_id=o.event_id WHERE o.domain='ORDER' AND o.event_type='OrderAccepted' AND o.status='PENDING' AND o.recorded_at>=a.activated_at ORDER BY o.recorded_at ASC LIMIT 50;"
           query oldest_pending_orders "SELECT event_id,aggregate_id AS order_id,recorded_at FROM mfos_outbox WHERE domain='ORDER' AND event_type='OrderAccepted' AND status='PENDING' ORDER BY recorded_at ASC LIMIT 30;"
           query printer_devices "SELECT store_id,printer_id,display_name,enabled,transport_kind,capability_json,role_json,revision,updated_at FROM mfos_printer_device ORDER BY updated_at DESC;"
 
@@ -77,6 +78,7 @@ jobs:
           const outbox=read('pending_order_outbox');
           const backlog=read('pending_order_backlog');
           const eligibleBacklog=read('eligible_print_backlog');
+          const eligiblePending=read('eligible_pending_orders');
           const oldestPending=read('oldest_pending_orders');
           const devices=read('printer_devices');
           const active=configs[0]??null;
@@ -106,6 +108,8 @@ jobs:
             drainLeases:leases,
             pendingBacklog:backlog[0]??null,
             eligiblePrintBacklog:eligibleBacklog[0]??null,
+            eligiblePendingOrders:eligiblePending,
+            allPrintRetries:retries,
             oldestPendingOrders:oldestPending,
             printerDevices:devices.map(d=>({printerId:d.printer_id,displayName:d.display_name,enabled:d.enabled,transportKind:d.transport_kind,capability:d.capability_json,roles:d.role_json,revision:d.revision,updatedAt:d.updated_at})),
           };
