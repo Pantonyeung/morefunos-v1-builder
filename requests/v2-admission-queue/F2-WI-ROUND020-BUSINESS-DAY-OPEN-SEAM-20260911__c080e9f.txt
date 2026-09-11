@@ -1,0 +1,10 @@
+candidate_sha=c080e9fec38e6c0eacdd331a2b119cd4fa1d3fc3
+base_main_sha=4178bafdf490d873caeb130ea591075af030de43
+work_id=F2-WI-ROUND020-BUSINESS-DAY-OPEN-SEAM-20260911
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=LINKUP
+affected_ports=ADMIN,CORE
+depends_on_specs=
+supersedes_candidate_sha=4178bafdf490d873caeb130ea591075af030de43
+required_core_tests=
+force_full_proof=true
