@@ -1,0 +1,13 @@
+work_id=MF699-CODEX-08
+candidate_sha=e6efbee1a88d1b5c242f5d1c58722e15ba9349c5
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=e6f04c570bfc220d8824f15f62bd12a798e31699@934bccc717f891d20538a6b74f4434ff412a1dc1
+required_core_tests=ORDER,PAYMENT
+force_full_proof=true
+run_id=34607985222
+conclusion=failure
