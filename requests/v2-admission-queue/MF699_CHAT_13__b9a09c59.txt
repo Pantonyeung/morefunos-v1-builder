@@ -1,0 +1,11 @@
+candidate_sha=b9a09c5937d863bf8d529143ff78572799f8543f
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-13
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=REGRESSION_REPAIR
+affected_ports=OWNER
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=
+force_full_proof=true
+proof_source_sha=
