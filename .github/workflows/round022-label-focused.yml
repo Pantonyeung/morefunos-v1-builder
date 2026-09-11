@@ -6,7 +6,7 @@ on:
       - 'requests/round022-label-focused/*.txt'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: round022-label-focused
@@ -61,17 +61,72 @@ jobs:
           node-version: '24'
 
       - name: Install candidate dependencies
+        id: install
+        continue-on-error: true
         working-directory: candidate
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
       - name: Root typecheck
+        id: typecheck
+        if: always() && steps.install.outcome == 'success'
+        continue-on-error: true
         working-directory: candidate
         run: npm run typecheck
 
       - name: Focused Label encoder proof
+        id: label
+        if: always() && steps.install.outcome == 'success'
+        continue-on-error: true
         working-directory: candidate
         run: node --test packages/smt-ui-integration/generic-tspl-rendered-document-encoder.test.ts
 
       - name: SMT app typecheck and build
+        id: smt
+        if: always() && steps.install.outcome == 'success'
+        continue-on-error: true
         working-directory: candidate/apps/smt-clean
         run: npm install --ignore-scripts --no-audit --no-fund && npm run typecheck && npm run build
+
+      - name: Seal durable result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORK_ID: ${{ steps.request.outputs.work_id }}
+          CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
+          INSTALL: ${{ steps.install.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          LABEL: ${{ steps.label.outcome }}
+          SMT: ${{ steps.smt.outcome }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          conclusion=success
+          for value in "$INSTALL" "$TYPECHECK" "$LABEL" "$SMT"; do
+            [[ "$value" == success ]] || conclusion=failure
+          done
+          safe_work_id="$(printf '%s' "$WORK_ID" | tr -c 'A-Za-z0-9._-' '_')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results/round022-label-focused
+            {
+              echo "work_id=$WORK_ID"
+              echo "candidate_sha=$CANDIDATE_SHA"
+              echo "install=$INSTALL"
+              echo "typecheck=$TYPECHECK"
+              echo "label=$LABEL"
+              echo "smt=$SMT"
+              echo "run_id=$RUN_ID"
+              echo "conclusion=$conclusion"
+            } > ".ci-results/round022-label-focused/${safe_work_id}.txt"
+            git add ".ci-results/round022-label-focused/${safe_work_id}.txt"
+            if git diff --cached --quiet; then break; fi
+            git commit -m "ci(round022): ${WORK_ID} ${conclusion} ${CANDIDATE_SHA}"
+            if git push origin HEAD:main; then break; fi
+            sleep "$attempt"
+          done
+          [[ "$conclusion" == success ]]
