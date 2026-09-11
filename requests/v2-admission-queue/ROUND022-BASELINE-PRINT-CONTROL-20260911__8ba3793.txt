@@ -1,0 +1,10 @@
+candidate_sha=8ba3793ffb411a34c0f355b3719031119cb042b3
+base_main_sha=8ba3793ffb411a34c0f355b3719031119cb042b3
+work_id=ROUND022-BASELINE-PRINT-CONTROL-20260911
+capability_id=CAP-PRINT-PHYSICAL-001
+capability_action=READ_ONLY_AUDIT
+affected_ports=SMT,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=PRINT
+force_full_proof=true
