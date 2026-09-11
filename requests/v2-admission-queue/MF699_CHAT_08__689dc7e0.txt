@@ -1,0 +1,11 @@
+candidate_sha=689dc7e03a9d38536135a5a332e962fa8f795727
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-08
+capability_id=CAP-ORDER-SYNC-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMM
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=ORDER
+force_full_proof=true
+proof_source_sha=
