@@ -1,0 +1,8 @@
+work_id=ROUND022-LABEL-CJK-BITMAP-LATEST-MAIN-20260911
+candidate_sha=eebdf3f0bdbb06ddbe637684c230a52696f2d81c
+install=success
+typecheck=success
+label=success
+smt=success
+run_id=34551995045
+conclusion=success
