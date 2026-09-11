@@ -1,5 +1,5 @@
-source_sha=268c5bf191ec770a2f54fcf42c8c16c3aa6e5d05
-request_id=ROUND028-CANONICAL-SUBMIT-LATENCY-SMT-20260911-02
-run_id=34564806631
+source_sha=53c9cc1342c3b29befc14557b64204c4a6da5ae5
+request_id=ROUND028-EARLY-IDEMPOTENCY-SMT-20260911-03
+run_id=34564991496
 run_attempt=1
 conclusion=success
