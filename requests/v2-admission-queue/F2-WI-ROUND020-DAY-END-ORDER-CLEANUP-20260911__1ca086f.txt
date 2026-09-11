@@ -1,0 +1,10 @@
+candidate_sha=1ca086f5a297d7775b3b1900e17efbeee65d01a4
+base_main_sha=22ef54bc34e9bb58c6f1c8210c148c623f27b76f
+work_id=F2-WI-ROUND020-DAY-END-ORDER-CLEANUP-20260911
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=LINKUP
+affected_ports=CORE,ADMIN
+depends_on_specs=
+supersedes_candidate_sha=a2eab055142b5a1e2c1d9471162547885b33ffdb
+required_core_tests=DIAGNOSTICS
+force_full_proof=true
