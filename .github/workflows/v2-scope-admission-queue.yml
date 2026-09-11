@@ -32,7 +32,7 @@ on:
         default: ''
         type: string
       required_core_tests:
-        description: Comma-separated ORDER,PAYMENT,PRINT,PRICING,AVAILABILITY,BUSINESS_DAY,CATALOG,DIAGNOSTICS
+        description: Comma-separated ORDER,PAYMENT,PRINT,PRICING,AVAILABILITY,BUSINESS_DAY,CATALOG,DIAGNOSTICS,SMT_UI
         required: false
         default: ''
         type: string
@@ -194,6 +194,13 @@ jobs:
         working-directory: candidate
         run: npm run test:print
 
+      - name: SMT UI integration proof
+        id: smt_ui_proof
+        if: always() && steps.install.outcome == 'success' && contains(steps.request.outputs.required_core_tests, 'SMT_UI')
+        continue-on-error: true
+        working-directory: candidate
+        run: npm run test:smt-ui-integration
+
       - name: Diagnostics proof
         id: diagnostics_proof
         if: always() && steps.install.outcome == 'success' && contains(steps.request.outputs.required_core_tests, 'DIAGNOSTICS')
@@ -228,6 +235,7 @@ jobs:
             echo "install=${{ steps.install.outcome }}"
             echo "typecheck=${{ steps.typecheck.outcome }}"
             echo "print_proof=${{ steps.print_proof.outcome }}"
+            echo "smt_ui_proof=${{ steps.smt_ui_proof.outcome }}"
             echo "diagnostics_proof=${{ steps.diagnostics_proof.outcome }}"
             echo "smt_proof=${{ steps.smt_proof.outcome }}"
           } | tee evidence/result.txt
@@ -249,6 +257,7 @@ jobs:
           INSTALL: ${{ steps.install.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           PRINT_PROOF: ${{ steps.print_proof.outcome }}
+          SMT_UI_PROOF: ${{ steps.smt_ui_proof.outcome }}
           DIAGNOSTICS_PROOF: ${{ steps.diagnostics_proof.outcome }}
           SMT_PROOF: ${{ steps.smt_proof.outcome }}
           TESTS: ${{ steps.request.outputs.required_core_tests }}
@@ -260,6 +269,7 @@ jobs:
           [[ "$INSTALL" == success ]] || { echo "ADMISSION_BLOCKER=INSTALL"; fail=true; }
           [[ "$TYPECHECK" == success ]] || { echo "ADMISSION_BLOCKER=TYPECHECK"; fail=true; }
           if [[ ",$TESTS," == *,PRINT,* && "$PRINT_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=PRINT_PROOF"; fail=true; fi
+          if [[ ",$TESTS," == *,SMT_UI,* && "$SMT_UI_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=SMT_UI_PROOF"; fail=true; fi
           if [[ ",$TESTS," == *,DIAGNOSTICS,* && "$DIAGNOSTICS_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=DIAGNOSTICS_PROOF"; fail=true; fi
           if [[ ",$PORTS," == *,SMT,* && "$SMT_PROOF" != success ]]; then echo "ADMISSION_BLOCKER=SMT_PROOF"; fail=true; fi
           if [[ "$fail" == true ]]; then
