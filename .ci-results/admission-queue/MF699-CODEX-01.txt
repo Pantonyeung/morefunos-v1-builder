@@ -1,0 +1,13 @@
+work_id=MF699-CODEX-01
+candidate_sha=741515527be64d9f95680a8338e18fcdf733b60e
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+latest_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=PAYMENT
+force_full_proof=true
+run_id=34594148980
+conclusion=failure
