@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-11T03:29:47.469Z",
-  "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
-  "requestId": "ROUND024-ELIGIBLE-RETRY-DIAG-20260911-04",
+  "generatedAt": "2026-09-11T03:35:51.196Z",
+  "sourceSha": "ff730aa5b9ffdd8369a904f15a9740efbf9e1a6b",
+  "requestId": "ROUND024-POST-DEPLOY-BACKLOG-READBACK-20260911-05",
   "activeConfig": {
     "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
     "configVersionId": "print-config:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:585a4855-7f7c-4665-8415-99c555b45956",
@@ -1169,9 +1169,9 @@
   "drainLeases": [
     {
       "store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
-      "lease_token": "7f36ca2c-71f2-4835-ba7d-ad6ef8117195",
-      "lease_until": "2026-09-11T03:30:01.111Z",
-      "updated_at": "2026-09-11T03:29:31.111Z"
+      "lease_token": "d67488d4-0812-4bc1-93b2-8bc35cb0e3b3",
+      "lease_until": "2026-09-11T03:36:06.884Z",
+      "updated_at": "2026-09-11T03:35:36.884Z"
     }
   ],
   "pendingBacklog": {
