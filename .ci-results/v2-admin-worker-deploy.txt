@@ -1,7 +1,7 @@
-source_sha=ff730aa5b9ffdd8369a904f15a9740efbf9e1a6b
-request_id=ROUND024-PRINT-OUTBOX-DELIVERED-DEPLOY-20260911
-run_id=34558901085
+source_sha=46dc03d0a918087342ee9445fd9a3d4febd15d61
+request_id=ROUND025-MULTI-JOB-FANOUT-ADMIN-DEPLOY-20260911
+run_id=34560296222
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=2e342629-ad24-4def-8c65-4013342ca7c6
+worker_version=9d63982d-82a0-4abe-98a3-274246a593f0
