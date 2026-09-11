@@ -1,6 +1,6 @@
-source_sha=268c5bf191ec770a2f54fcf42c8c16c3aa6e5d05
+source_sha=53c9cc1342c3b29befc14557b64204c4a6da5ae5
 branch_name=main
-request_id=ROUND028-CANONICAL-SUBMIT-LATENCY-PRINT-20260911-02
-run_id=34564810927
+request_id=ROUND028-EARLY-IDEMPOTENCY-PRINT-20260911-03
+run_id=34564995075
 run_attempt=1
 conclusion=success
