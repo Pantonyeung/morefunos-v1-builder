@@ -43,6 +43,11 @@ jobs:
           LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
           echo "login_http=$LOGIN_HTTP" | tee evidence/summary.txt
           test "$LOGIN_HTTP" = 200
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('/tmp/login.json');
+          console.log('session_actor_id='+String(x.actorId||''));
+          console.log('session_staff_id='+String(x.staffId||''));
+          NODE
           COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
           test -n "$COOKIE"
           printf '%s' "$COOKIE" > /tmp/cookie
