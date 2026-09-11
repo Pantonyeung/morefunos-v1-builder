@@ -1,0 +1,13 @@
+work_id=ROUND022-LABEL-CJK-BITMAP-LATENCY-20260911
+candidate_sha=a632805ddaed9ef4d1c5bc71d9f82cdad28e2edc
+base_main_sha=8ba3793ffb411a34c0f355b3719031119cb042b3
+latest_main_sha=8ba3793ffb411a34c0f355b3719031119cb042b3
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34551543066
+conclusion=failure
