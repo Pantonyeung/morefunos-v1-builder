@@ -1,5 +1,5 @@
-source_sha=fcba19ef03fe99e7045b26bae0e682ea3fc0a6db
-request_id=ROUND028-CATALOG-BATCH-SMT-20260911-09
-run_id=34565721062
+source_sha=83f13f5db79470175e0244260f16beeb34841d02
+request_id=ROUND028-CATALOG-BATCH-TYPED-SMT-20260911-08
+run_id=34565754373
 run_attempt=1
 conclusion=success
