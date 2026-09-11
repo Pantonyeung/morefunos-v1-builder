@@ -1,0 +1,107 @@
+name: F2 Stale Business Day Canonical Close
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-stale-business-day-canonical-close-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  close:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      EXPECTED_STALE_BUSINESS_DATE: '2026-09-03'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/f2-stale-business-day-canonical-close-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Login and fail-closed preflight
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          printf '%s' "$COOKIE" > /tmp/cookie
+          curl -fsS -H "Cookie: $COOKIE" -H 'accept: application/json' "$ADMIN_URL/api/admin/business-day" > evidence/before.json
+          curl -fsS -H "Cookie: $COOKIE" -H 'accept: application/json' "$ADMIN_URL/api/admin/business-day/close" > evidence/readiness.json
+          node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const before=require('./evidence/before.json');
+          const readiness=require('./evidence/readiness.json');
+          if(!before.ok||!before.value?.businessDay)throw new Error('OPEN_BUSINESS_DAY_REQUIRED');
+          if(!readiness.ok||!readiness.value)throw new Error('CLOSE_READINESS_REQUIRED');
+          const day=before.value.businessDay;
+          const r=readiness.value;
+          console.log('business_day_id='+day.businessDayId);
+          console.log('business_date='+day.businessDate);
+          console.log('revision='+day.revision);
+          console.log('can_close='+r.canClose);
+          console.log('hard_blockers='+JSON.stringify(r.hardBlockers||[]));
+          console.log('warnings='+JSON.stringify(r.warnings||[]));
+          if(day.businessDate!==process.env.EXPECTED_STALE_BUSINESS_DATE)throw new Error('BUSINESS_DATE_CHANGED_FAIL_CLOSED');
+          if(r.businessDayId!==day.businessDayId)throw new Error('READINESS_DAY_MISMATCH_FAIL_CLOSED');
+          if(r.canClose!==true||(r.hardBlockers||[]).length!==0)throw new Error('BUSINESS_DAY_NOT_READY_FAIL_CLOSED');
+          fs.writeFileSync('/tmp/revision',String(day.revision));
+          fs.writeFileSync('/tmp/day-id',day.businessDayId);
+          NODE
+
+      - name: Close exact stale Business Day through canonical Admin API
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          REVISION="$(cat /tmp/revision)"
+          DAY_ID="$(cat /tmp/day-id)"
+          IDEM="admin-business-day-close:round020-stale-${DAY_ID}-${REVISION}"
+          REVISION="$REVISION" IDEM="$IDEM" node -e "require('fs').writeFileSync('/tmp/close.json',JSON.stringify({expectedRevision:Number(process.env.REVISION),idempotencyKey:process.env.IDEM}))"
+          HTTP="$(curl -sS -o evidence/close-result.json -w '%{http_code}' -X POST -H "Cookie: $COOKIE" -H 'accept: application/json' -H 'content-type: application/json' --data-binary @/tmp/close.json "$ADMIN_URL/api/admin/business-day/close")"
+          echo "close_http=$HTTP" | tee evidence/close-summary.txt
+          cat evidence/close-result.json
+          test "$HTTP" = 200
+          node -e "const x=require('./evidence/close-result.json');if(!x.ok)process.exit(1)"
+
+      - name: Verify canonical postcondition
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          curl -fsS -H "Cookie: $COOKIE" -H 'accept: application/json' "$ADMIN_URL/api/admin/business-day" > evidence/after.json
+          node - <<'NODE' | tee evidence/postcondition.txt
+          const after=require('./evidence/after.json');
+          if(!after.ok)throw new Error('BUSINESS_DAY_READBACK_FAILED');
+          const open=after.value?.businessDay??null;
+          console.log('open_business_day_after='+String(Boolean(open)));
+          if(open&&open.businessDate===process.env.EXPECTED_STALE_BUSINESS_DATE)throw new Error('STALE_BUSINESS_DAY_STILL_OPEN');
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-stale-business-day-canonical-close-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
