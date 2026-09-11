@@ -1,0 +1,11 @@
+candidate_sha=831d0a1567d990545b271f7a5d50ae10a9d23007
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-05
+capability_id=CAP-ORDER-SYNC-001
+capability_action=LINKUP
+affected_ports=SMM
+depends_on_specs=
+supersedes_candidate_sha=372f4c4c8f08470e8620f6a9e4f177c0094eacfd
+required_core_tests=ORDER
+force_full_proof=true
+proof_source_sha=
