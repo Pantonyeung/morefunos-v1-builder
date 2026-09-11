@@ -1,7 +1,7 @@
-source_sha=46dc03d0a918087342ee9445fd9a3d4febd15d61
-request_id=ROUND025-MULTI-JOB-FANOUT-ADMIN-DEPLOY-20260911-01
-run_id=34560299650
+source_sha=fa08c1b991f38c132aa0e419080910c67efac5ad
+request_id=ROUND025-FANOUT-ROUTE-HOLD-ADMIN-DEPLOY-20260911-02
+run_id=34560734731
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=7a83b91f-d261-4c23-94e3-51d871b08289
+worker_version=0697f7d8-07c1-4f37-af40-cc69dee73285
