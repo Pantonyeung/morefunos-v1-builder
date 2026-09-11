@@ -1,0 +1,9 @@
+work_id=ROUND022-PRINT-LATENCY-LATEST-20260911
+candidate_sha=b82b1725a52857282df39aebb5d37ceef0dd1e3f
+install=success
+typecheck=success
+label=success
+smt_ui=failure
+smt=success
+run_id=34552118823
+conclusion=failure
