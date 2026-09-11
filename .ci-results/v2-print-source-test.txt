@@ -1,6 +1,6 @@
-source_sha=340c4f7206a08973b13a8db1509beef4071dd8f3
+source_sha=b60ba41bc86f6dcd2f9b39c81dfdc1014bd76dad
 branch_name=main
-request_id=ROUND032-SMT-OPERABILITY-PRINT-20260911-02
-run_id=34573697393
+request_id=ROUND034-TODAY-CUTOVER-PRINT-01
+run_id=34575723468
 run_attempt=1
 conclusion=success
