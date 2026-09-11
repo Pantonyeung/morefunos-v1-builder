@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-11T03:25:07.484Z",
+  "generatedAt": "2026-09-11T03:26:17.514Z",
   "sourceSha": "829cb276d9a92485187327538c2aec9720be6a23",
-  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-01",
+  "requestId": "ROUND024-FRESH-ONLY-RECEIPT-READBACK-20260911-02",
   "activeConfig": {
     "storeId": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
     "configVersionId": "print-config:d2d882b4-5c7b-40f9-ad59-91f8faabb8e8:585a4855-7f7c-4665-8415-99c555b45956",
@@ -1166,6 +1166,14 @@
     "recorded_at": "2026-09-11T03:20:20.419Z"
   },
   "latestOrderRetry": null,
+  "drainLeases": [
+    {
+      "store_id": "d2d882b4-5c7b-40f9-ad59-91f8faabb8e8",
+      "lease_token": "2815d661-d5b0-4b84-a04a-f33bac1aff69",
+      "lease_until": "2026-09-11T03:26:16.864Z",
+      "updated_at": "2026-09-11T03:25:46.864Z"
+    }
+  ],
   "printerDevices": [
     {
       "printerId": "7cd7b054-7f59-453d-9c9c-e8dc2558beb7",
