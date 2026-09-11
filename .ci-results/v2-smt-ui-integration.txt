@@ -1,5 +1,5 @@
-source_sha=4b77b92ea1c3d457b1cf948e218b8d092bb0ada1
-request_id=ROUND025-DISPLAY-SOURCE-IDEMPOTENCY-SMT-20260911-01
-run_id=34557117161
+source_sha=829cb276d9a92485187327538c2aec9720be6a23
+request_id=ROUND024-ORDER-IDEMPOTENCY-PREFLIGHT-20260911-01
+run_id=34557220362
 run_attempt=1
-conclusion=failure
+conclusion=success
