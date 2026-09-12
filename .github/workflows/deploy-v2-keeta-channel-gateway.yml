@@ -1,0 +1,173 @@
+name: Deploy V2 Keeta Channel Gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-keeta-channel-gateway-deploy-request.txt'
+      - '.github/workflows/deploy-v2-keeta-channel-gateway.yml'
+
+permissions:
+  contents: write
+  statuses: write
+
+concurrency:
+  group: v2-keeta-channel-gateway-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact admitted source
+        id: req
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-keeta-channel-gateway-deploy-request.txt | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-keeta-channel-gateway-deploy-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          COMPARE="$(gh api "repos/Pantonyeung/Morefun-v2/compare/$SOURCE_SHA...main")"
+          STATUS="$(jq -r '.status' <<<"$COMPARE")"
+          [[ "$STATUS" == "identical" || "$STATUS" == "ahead" ]] || { echo "::error::SOURCE_NOT_ADMITTED_ANCESTOR status=$STATUS source=$SOURCE_SHA"; exit 1; }
+          CHANGED="$(jq -r '.files[]?.filename' <<<"$COMPARE" | grep -E '^(workers/keeta-channel-gateway/|packages/integration/keeta-channel-operational-projection\.ts|infra/cloudflare/admin-web-worker/)' || true)"
+          test -z "$CHANGED" || { printf '::error::KEETA_CHANNEL_RELEVANT_MAIN_MOVED\n%s\n' "$CHANGED"; exit 1; }
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Wrangler and source dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+          npm --prefix source install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify exact Gateway source
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -f workers/keeta-channel-gateway/wrangler.jsonc
+          test -f workers/keeta-channel-gateway/src/index.ts
+          test -f packages/integration/keeta-channel-operational-projection.ts
+          npm run typecheck
+          node --test packages/integration/keeta-channel-operational-projection.test.ts packages/smm-ui-integration/keeta-channel-gateway-closure.test.ts
+
+      - name: Verify authoritative Keeta ingress D1 identity
+        working-directory: source/workers/keeta-channel-gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 list --json > "$RUNNER_TEMP/d1-list.json"
+          node - "$RUNNER_TEMP/d1-list.json" wrangler.jsonc <<'NODE'
+          const fs=require('fs');
+          const rows=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const config=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
+          const expected=config.d1_databases.find(row=>row.binding==='KEETA_INGRESS_DB');
+          if(!expected)throw new Error('KEETA_CHANNEL_D1_BINDING_CONFIG_MISSING');
+          const live=rows.find(row=>row.name===expected.database_name);
+          if(!live)throw new Error('KEETA_CHANNEL_D1_DATABASE_NOT_VISIBLE');
+          if(live.uuid!==expected.database_id)throw new Error('KEETA_CHANNEL_D1_DATABASE_ID_MISMATCH');
+          console.log('keeta_channel_d1_identity=PASS name='+live.name+' id='+live.uuid);
+          NODE
+
+      - name: Verify required read tables
+        working-directory: source/workers/keeta-channel-gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('mfos_keeta_durable_delivery','mfos_keeta_webhook_event_journal') ORDER BY name;" \
+            > "$RUNNER_TEMP/gateway-schema.json"
+          node - "$RUNNER_TEMP/gateway-schema.json" <<'NODE'
+          const fs=require('fs');
+          const payload=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const rows=Array.isArray(payload)?payload.flatMap(entry=>entry?.results??[]):[];
+          const names=new Set(rows.map(row=>row.name));
+          for(const required of ['mfos_keeta_durable_delivery','mfos_keeta_webhook_event_journal'])if(!names.has(required))throw new Error('KEETA_CHANNEL_REQUIRED_TABLE_MISSING '+required);
+          console.log('keeta_channel_schema=PASS');
+          NODE
+
+      - name: Deploy exact private Gateway Worker
+        working-directory: source/workers/keeta-channel-gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          wrangler deploy --config wrangler.jsonc 2>&1 | tee "$GITHUB_WORKSPACE/evidence/deploy.log"
+          grep -F 'morefun-v2-keeta-channel-gateway' "$GITHUB_WORKSPACE/evidence/deploy.log" >/dev/null
+          VERSION="$(sed -n 's/.*Current Version ID: *//p' "$GITHUB_WORKSPACE/evidence/deploy.log" | tail -n1 | tr -d '\r\n' || true)"
+          test -n "$VERSION"
+          printf 'source_sha=%s\nworker=morefun-v2-keeta-channel-gateway\nversion_id=%s\n' "${{ steps.req.outputs.source_sha }}" "$VERSION" | tee "$GITHUB_WORKSPACE/evidence/runtime.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-keeta-channel-gateway-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Seal Gateway deploy result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.req.outputs.request_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            {
+              echo "request_id=$REQUEST_ID"
+              echo "source_sha=$SOURCE_SHA"
+              echo "run_id=$RUN_ID"
+              echo "worker=morefun-v2-keeta-channel-gateway"
+              echo "conclusion=$CONCLUSION"
+            } > .ci-results/v2-keeta-channel-gateway-deploy.txt
+            git add .ci-results/v2-keeta-channel-gateway-deploy.txt
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "ci(result): Keeta channel gateway deploy ${CONCLUSION} ${SOURCE_SHA}"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
