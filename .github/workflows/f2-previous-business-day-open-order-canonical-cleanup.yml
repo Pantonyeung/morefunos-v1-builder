@@ -1,0 +1,159 @@
+name: F2 Previous Business Day Open Order Canonical Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/f2-previous-business-day-open-order-canonical-cleanup-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SMM_ORIGIN: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve bounded request and deployed source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=requests/f2-previous-business-day-open-order-canonical-cleanup-request.txt
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$F" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          DAY_ID="$(sed -n 's/^business_day_id=//p' "$F" | tr -d '[:space:]')"
+          BUSINESS_DATE="$(sed -n 's/^business_date=//p' "$F" | tr -d '[:space:]')"
+          EXPECTED_COUNT="$(sed -n 's/^expected_order_count=//p' "$F" | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DAY_ID" =~ ^[0-9a-f-]{36}$ ]]
+          [[ "$BUSINESS_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+          [[ "$EXPECTED_COUNT" =~ ^[1-9][0-9]*$ ]]
+          DEPLOYED="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" == "$DEPLOYED" ]] || { echo "::error::CLEANUP_SOURCE_NOT_DEPLOYED requested=$SOURCE_SHA deployed=$DEPLOYED"; exit 1; }
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "day_id=$DAY_ID" >> "$GITHUB_OUTPUT"
+          echo "business_date=$BUSINESS_DATE" >> "$GITHUB_OUTPUT"
+          echo "expected_count=$EXPECTED_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight exact previous-day order set
+        shell: bash
+        env:
+          DAY_ID: ${{ steps.req.outputs.day_id }}
+          BUSINESS_DATE: ${{ steps.req.outputs.business_date }}
+          EXPECTED_COUNT: ${{ steps.req.outputs.expected_count }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT o.order_id,o.store_id,o.revision,o.lifecycle_status,o.created_at,o.business_day_id,o.business_date,
+                      (SELECT COUNT(*) FROM mfos_payment_state p WHERE p.order_id=o.order_id) AS payment_count,
+                      (SELECT COUNT(*) FROM mfos_outbox x WHERE x.aggregate_id=o.order_id AND x.event_type IN ('OrderCompleted','OrderCancelled')) AS terminal_event_count
+                 FROM mfos_order_state o
+                WHERE o.business_day_id='$DAY_ID' AND o.business_date='$BUSINESS_DATE' AND o.lifecycle_status='ACCEPTED'
+                ORDER BY o.created_at ASC,o.order_id ASC"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/preflight.json
+          DAY_ID="$DAY_ID" BUSINESS_DATE="$BUSINESS_DATE" EXPECTED_COUNT="$EXPECTED_COUNT" node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const x=require('./evidence/preflight.json');
+          const rows=x.result?.[0]?.results||[];
+          if(!x.success)throw new Error('PREVIOUS_DAY_CLEANUP_D1_FAILED');
+          const expected=Number(process.env.EXPECTED_COUNT);
+          const unsafe=rows.filter(r=>r.business_day_id!==process.env.DAY_ID||r.business_date!==process.env.BUSINESS_DATE||r.lifecycle_status!=='ACCEPTED'||Number(r.payment_count)!==0||Number(r.terminal_event_count)!==0);
+          console.log('bounded_day_id='+process.env.DAY_ID);
+          console.log('bounded_business_date='+process.env.BUSINESS_DATE);
+          console.log('accepted_count='+rows.length);
+          console.log('unsafe_count='+unsafe.length);
+          if(rows.length!==expected)throw new Error('PREVIOUS_DAY_CLEANUP_SET_CHANGED_FAIL_CLOSED:'+rows.length);
+          if(unsafe.length)throw new Error('PREVIOUS_DAY_CLEANUP_UNSAFE_ROWS_FAIL_CLOSED:'+unsafe.length);
+          fs.writeFileSync('/tmp/orders.json',JSON.stringify(rows));
+          console.log('preflight=PASS');
+          NODE
+
+      - name: Acquire trusted SMM Owner Test session
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          PAIR_HTTP="$(curl -sS -o /tmp/pair.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$SMM_ORIGIN/api/smm/session")"
+          echo "pair_http=$PAIR_HTTP" | tee evidence/session.txt
+          test "$PAIR_HTTP" = 200
+          PAIR_TOKEN="$(node -p "require('/tmp/pair.json').sessionToken||''")"
+          test -n "$PAIR_TOKEN"
+          OWNER_HTTP="$(curl -sS -o /tmp/owner-test.json -w '%{http_code}' -H "authorization: Bearer $PAIR_TOKEN" -H 'content-type: application/json' --data "$BODY" "$SMM_ORIGIN/api/smm/owner-test-session")"
+          echo "owner_test_http=$OWNER_HTTP" | tee -a evidence/session.txt
+          test "$OWNER_HTTP" = 200
+          TOKEN="$(node -p "require('/tmp/owner-test.json').sessionToken||''")"
+          MODE="$(node -p "require('/tmp/owner-test.json').mode||''")"
+          test -n "$TOKEN"
+          test "$MODE" = "OWNER_TEST"
+          node -e "const x=require('/tmp/owner-test.json');if(!(x.mountedOperationIds||[]).includes('order.cancel.v1'))process.exit(1)"
+          echo "$TOKEN" >/tmp/token
+
+      - name: Canonically cancel bounded stale orders
+        shell: bash
+        env:
+          BUSINESS_DATE: ${{ steps.req.outputs.business_date }}
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/token)"
+          REASON="STALE_BUSINESS_DAY_ROLLOVER_${BUSINESS_DATE}"
+          node - <<'NODE' >/tmp/cancel-lines.jsonl
+          const rows=require('/tmp/orders.json');
+          for(const r of rows) process.stdout.write(JSON.stringify({orderId:r.order_id,expectedRevision:Number(r.revision),idempotencyKey:'stale-business-day-cleanup:'+r.business_day_id+':'+r.order_id+':'+r.revision})+'\n');
+          NODE
+          : > evidence/cancel-results.txt
+          while IFS= read -r line; do
+            ORDER_ID="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(x.orderId)")"
+            REV="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(String(x.expectedRevision))")"
+            IDEM="$(LINE="$line" node -e "const x=JSON.parse(process.env.LINE);process.stdout.write(x.idempotencyKey)")"
+            ORDER_ID="$ORDER_ID" REV="$REV" IDEM="$IDEM" REASON="$REASON" node -e "require('fs').writeFileSync('/tmp/cancel.json',JSON.stringify({operationId:'order.cancel.v1',request:{orderId:process.env.ORDER_ID,expectedRevision:Number(process.env.REV),idempotencyKey:process.env.IDEM,reason:process.env.REASON}}))"
+            HTTP="$(curl -sS -o /tmp/cancel.out.json -w '%{http_code}' -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data-binary @/tmp/cancel.json "$SMM_ORIGIN/api/smm/runtime")"
+            echo "$ORDER_ID http=$HTTP" >> evidence/cancel-results.txt
+            if [[ "$HTTP" != 200 ]]; then cat /tmp/cancel.out.json >> evidence/cancel-results.txt; exit 1; fi
+            ORDER_ID="$ORDER_ID" REV="$REV" node -e "const x=require('/tmp/cancel.out.json');const v=x.value??x;if(v.orderId!==process.env.ORDER_ID||v.lifecycleStatus!=='CANCELLED'||Number(v.revision)!==Number(process.env.REV)+1){console.error(JSON.stringify(x));process.exit(1)}"
+          done < /tmp/cancel-lines.jsonl
+
+      - name: Verify bounded canonical cleanup postcondition
+        shell: bash
+        env:
+          DAY_ID: ${{ steps.req.outputs.day_id }}
+          BUSINESS_DATE: ${{ steps.req.outputs.business_date }}
+          EXPECTED_COUNT: ${{ steps.req.outputs.expected_count }}
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){ NAME="$1"; SQL="$2"; SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"; curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/post-$NAME.json"; }
+          query open "SELECT COUNT(*) AS count_value FROM mfos_order_state WHERE business_day_id='$DAY_ID' AND business_date='$BUSINESS_DATE' AND lifecycle_status='ACCEPTED'"
+          query audit "SELECT COUNT(*) AS count_value FROM mfos_order_lifecycle_audit WHERE command_kind='CANCEL' AND idempotency_key LIKE 'stale-business-day-cleanup:$DAY_ID:%'"
+          query events "SELECT COUNT(*) AS count_value FROM mfos_outbox WHERE event_type='OrderCancelled' AND payload_json LIKE '%STALE_BUSINESS_DAY_ROLLOVER_$BUSINESS_DATE%'"
+          EXPECTED_COUNT="$EXPECTED_COUNT" node - <<'NODE' | tee evidence/postcondition.txt
+          const fs=require('fs');
+          const count=n=>Number(JSON.parse(fs.readFileSync('evidence/post-'+n+'.json','utf8')).result?.[0]?.results?.[0]?.count_value??-1);
+          const open=count('open'),audit=count('audit'),events=count('events'),expected=Number(process.env.EXPECTED_COUNT);
+          console.log('accepted_remaining='+open);
+          console.log('cleanup_audit_rows='+audit);
+          console.log('cleanup_cancel_events='+events);
+          if(open!==0||audit!==expected||events!==expected)process.exit(1);
+          console.log('canonical_cleanup=PASS');
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f2-previous-business-day-open-order-canonical-cleanup-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
