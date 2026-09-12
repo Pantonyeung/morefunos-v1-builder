@@ -1,0 +1,11 @@
+candidate_sha=936ff86a382c20a7c2ef24f7850e7b3d66c61abc
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+work_id=MF699-CHAT-19
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=RUNTIME_PROOF
+affected_ports=CUSTOMER,SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=ORDER,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=
