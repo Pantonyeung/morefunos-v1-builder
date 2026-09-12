@@ -38,9 +38,14 @@ jobs:
           const loginSecret=process.env.ADMIN_LOGIN_SECRET;
           (async()=>{
             const pair=await fetch(origin+'/api/smm/session',{method:'POST',headers:{'content-type':'application/json',accept:'application/json'},body:JSON.stringify({loginSecret})});
-            const session=await pair.json();
-            if(pair.status!==200||!session.sessionToken)throw new Error('SMM_PAIR_FAILED_'+pair.status);
-            const r=await fetch(origin+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+session.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}})});
+            const pairing=await pair.json();
+            if(pair.status!==200||!pairing.sessionToken)throw new Error('SMM_PAIR_FAILED_'+pair.status);
+
+            const ownerSessionResponse=await fetch(origin+'/api/smm/owner-test-session',{method:'POST',headers:{authorization:'Bearer '+pairing.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({loginSecret})});
+            const ownerSession=await ownerSessionResponse.json();
+            if(ownerSessionResponse.status!==200||!ownerSession.sessionToken)throw new Error('SMM_OWNER_TEST_SESSION_FAILED_'+ownerSessionResponse.status);
+
+            const r=await fetch(origin+'/api/smm/runtime',{method:'POST',headers:{authorization:'Bearer '+ownerSession.sessionToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({operationId:'order.open-list.read.v1',request:{limit:50}})});
             const body=await r.json();
             if(r.status!==200||!Array.isArray(body.orders))throw new Error('SMM_OPEN_LIST_FAILED_'+r.status);
             const match=body.orders.find(o=>String(o?.providerOrderAlias?.providerOrderCode||'')===code);
