@@ -1,0 +1,13 @@
+work_id=MF699_CHAT_18R1_RED_PROOF_R2
+candidate_sha=b5cc0e9646d0a123d35ac77c57764ff6060b98a5
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=docs/recovery/decisions/continuous-linkup-diagnostics-acceptance-rule-2026-09-09.md
+required_core_tests=BUSINESS_DAY
+force_full_proof=true
+run_id=34671829554
+conclusion=failure
