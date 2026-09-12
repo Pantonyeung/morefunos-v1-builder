@@ -1,0 +1,5 @@
+source_sha=b00d29dd1aab5dd10fa0f74a17fdadf385acb88b
+business_day_id=5cbd0c54-72d3-4640-bc5d-23c2d5e126fc
+business_date=2026-09-11
+expected_order_count=18
+request_id=MF699-CHAT-17-STALE-ORDER-CLEANUP-7205-R1
