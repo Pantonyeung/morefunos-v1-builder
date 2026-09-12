@@ -1,2 +1,2 @@
-source_sha=c7efb00c262e2eb5cd2a9f869f90f170da5ecc3e
-request_id=MF699-CHAT-17-KEETA-CHANNEL-GATEWAY-R1
+source_sha=b00d29dd1aab5dd10fa0f74a17fdadf385acb88b
+request_id=MF699-CHAT-17-KEETA-CHANNEL-GATEWAY-R2
