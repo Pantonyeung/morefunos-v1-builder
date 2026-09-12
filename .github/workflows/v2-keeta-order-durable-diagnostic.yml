@@ -72,6 +72,15 @@ jobs:
           console.log('KEETA_EVENT_JOURNAL '+JSON.stringify(journal));
           NODE
 
+      - name: Read canonical business-day state
+        working-directory: source/infra/cloudflare/admin-web-worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          STORE_ID='d2d882b4-5c7b-40f9-ad59-91f8faabb8e8'
+          SQL="SELECT business_day_id,store_id,business_date,timezone,boundary_local_time,lifecycle_status,opened_at,closed_at FROM mfos_business_day WHERE store_id='${STORE_ID}' ORDER BY opened_at DESC LIMIT 5;"
+          wrangler d1 execute DB --remote --config wrangler.jsonc --json --command "$SQL" | tee "$GITHUB_WORKSPACE/evidence/business-day.json"
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
