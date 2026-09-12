@@ -1,0 +1,81 @@
+name: V2 Keeta Order Durable Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-keeta-order-durable-diagnostic.txt'
+      - '.github/workflows/v2-keeta-order-durable-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      WRANGLER_VERSION: '4.125.0'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve diagnostic input
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORDER_ID="$(sed -n 's/^provider_order_id=//p' requests/v2-keeta-order-durable-diagnostic.txt | tr -d '[:space:]')"
+          [[ "$ORDER_ID" =~ ^[0-9]{10,32}$ ]]
+          echo "order_id=$ORDER_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: main
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install pinned Wrangler
+        shell: bash
+        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+
+      - name: Read authoritative Keeta durable evidence
+        working-directory: source/workers/keeta
+        env:
+          ORDER_ID: ${{ steps.req.outputs.order_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          RECEIPT_SQL="SELECT dedup_key,status,attempts,updated_at,last_error,canonical_order_id,canonical_revision,json_extract(record_json,'$.canonicalStoreId') AS canonical_store_id,json_extract(record_json,'$.merchantDecision') AS merchant_decision,json_extract(record_json,'$.providerAction') AS provider_action,json_extract(record_json,'$.providerActionStatus') AS provider_action_status,json_extract(record_json,'$.providerActionLastError') AS provider_action_last_error,json_extract(record_json,'$.signalStatus') AS signal_status,json_extract(record_json,'$.signalLastError') AS signal_last_error FROM mfos_keeta_durable_delivery WHERE instr(json_extract(record_json,'$.evidence.message'),'${ORDER_ID}') > 0 ORDER BY updated_at DESC LIMIT 5;"
+          JOURNAL_SQL="SELECT event_id,message_id,order_view_id,status,logistics_status,op_time_ms,provider_pushed_at FROM mfos_keeta_webhook_event_journal WHERE order_view_id='${ORDER_ID}' ORDER BY op_time_ms ASC,provider_pushed_at ASC,event_id ASC;"
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "$RECEIPT_SQL" | tee "$GITHUB_WORKSPACE/evidence/receipt.json"
+          wrangler d1 execute KEETA_INGRESS_DB --remote --config wrangler.jsonc --json --command "$JOURNAL_SQL" | tee "$GITHUB_WORKSPACE/evidence/journal.json"
+          node - "$GITHUB_WORKSPACE/evidence/receipt.json" "$GITHUB_WORKSPACE/evidence/journal.json" <<'NODE'
+          const fs=require('fs');
+          const rows=p=>{const x=JSON.parse(fs.readFileSync(p,'utf8'));return Array.isArray(x)?x.flatMap(e=>e?.results??[]):[]};
+          const receipts=rows(process.argv[2]);
+          const journal=rows(process.argv[3]);
+          if(receipts.length===0)throw new Error('KEETA_DURABLE_RECEIPT_NOT_FOUND');
+          console.log('KEETA_DURABLE_RECEIPT '+JSON.stringify(receipts));
+          console.log('KEETA_EVENT_JOURNAL '+JSON.stringify(journal));
+          NODE
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: v2-keeta-durable-diagnostic-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 14
