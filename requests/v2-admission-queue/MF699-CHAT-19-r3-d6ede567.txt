@@ -1,0 +1,11 @@
+candidate_sha=d6ede5675a838abc86aed8c08c1cb86e028430fc
+base_main_sha=936ff86a382c20a7c2ef24f7850e7b3d66c61abc
+work_id=MF699-CHAT-19
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=REUSE
+affected_ports=CUSTOMER,SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=8ca38306938000b4acb66b29949a01f9a76dd339
+required_core_tests=ORDER,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=
