@@ -1,0 +1,51 @@
+name: V2 Keeta Cron Live Read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-keeta-cron-live-read.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SCRIPT_NAME: morefun-v2-keeta-sit
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Read deployed Cron Triggers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/schedules"
+          HTTP="$(curl -sS -o evidence/schedules.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$URL")"
+          echo "http=$HTTP" | tee evidence/summary.txt
+          test "$HTTP" = 200
+          node - <<'NODE' | tee -a evidence/summary.txt
+          const x=require('./evidence/schedules.json');
+          if(!x.success) throw new Error('KEETA_CRON_READ_FAILED:'+JSON.stringify(x.errors||[]));
+          const schedules=x.result?.schedules ?? x.result ?? [];
+          console.log('schedules='+JSON.stringify(schedules));
+          const crons=Array.isArray(schedules)?schedules.map(s=>s.cron):[];
+          console.log('crons='+JSON.stringify(crons));
+          if(!crons.includes('* * * * *')) throw new Error('KEETA_CANONICAL_RECOVERY_CRON_NOT_REGISTERED');
+          console.log('cron_registered=PASS');
+          NODE
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-keeta-cron-live-read-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
