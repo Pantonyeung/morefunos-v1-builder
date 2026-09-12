@@ -1,0 +1,13 @@
+work_id=MF699_CHAT_18R1_COMBO_DIAGNOSTICS_RECONCILE
+candidate_sha=d0496814c1f0bc33870c3e5162d4034de8148666
+base_main_sha=3175da728fb595f39e4e94daffee834fba004014
+latest_main_sha=81832a7f8834ac20ab9d9b7d08e8b9fbb1d68d0f
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=BUSINESS_DAY,DIAGNOSTICS
+force_full_proof=true
+run_id=34677334241
+conclusion=failure
