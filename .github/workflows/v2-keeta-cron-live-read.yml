@@ -14,12 +14,13 @@ jobs:
   read:
     if: github.actor == 'Pantonyeung'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 6
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SCRIPT_NAME: morefun-v2-keeta-sit
       WRANGLER_VERSION: '4.125.0'
+      SOURCE_SHA: d37266077847e9c0c46cdfa73eb4b4afc2673875
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,27 +38,42 @@ jobs:
           const x=require('./evidence/schedules.json');
           if(!x.success) throw new Error('KEETA_CRON_READ_FAILED:'+JSON.stringify(x.errors||[]));
           const schedules=x.result?.schedules ?? x.result ?? [];
-          console.log('schedules='+JSON.stringify(schedules));
           const crons=Array.isArray(schedules)?schedules.map(s=>s.cron):[];
           console.log('crons='+JSON.stringify(crons));
           if(!crons.includes('* * * * *')) throw new Error('KEETA_CANONICAL_RECOVERY_CRON_NOT_REGISTERED');
           console.log('cron_registered=PASS');
           NODE
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Install pinned Wrangler
-        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
-      - name: Capture production Cron invocation
+      - name: Install source and Wrangler
+        working-directory: source
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+      - name: Controlled remote scheduled invocation
+        working-directory: source/workers/keeta
         shell: bash
         run: |
-          set -uo pipefail
-          timeout 75s wrangler tail "$SCRIPT_NAME" --format json > evidence/tail.jsonl 2> evidence/tail.stderr
-          rc=$?
-          echo "tail_exit=$rc" | tee -a evidence/summary.txt
-          cat evidence/tail.stderr || true
-          cat evidence/tail.jsonl || true
-          if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then exit "$rc"; fi
+          set -euo pipefail
+          wrangler dev --remote --test-scheduled --config wrangler.jsonc --port 8787 > "$GITHUB_WORKSPACE/evidence/dev.log" 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:8787/health" >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl --fail-with-body --silent --show-error "http://127.0.0.1:8787/__scheduled?cron=*+*+*+*+*" | tee "$GITHUB_WORKSPACE/evidence/scheduled-response.txt"
+          sleep 2
+          cat "$GITHUB_WORKSPACE/evidence/dev.log" || true
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
