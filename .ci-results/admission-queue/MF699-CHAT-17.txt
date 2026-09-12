@@ -1,7 +1,7 @@
 work_id=MF699-CHAT-17
-candidate_sha=7d3c39c05693ca2150476348fd635d5637ae3f6c
-base_main_sha=f4c677541abc62057c0da8e5fadfff69fdf97c41
-latest_main_sha=f4c677541abc62057c0da8e5fadfff69fdf97c41
+candidate_sha=06991793cf94c7b1710444968de212ffba23bd7c
+base_main_sha=7d3c39c05693ca2150476348fd635d5637ae3f6c
+latest_main_sha=7d3c39c05693ca2150476348fd635d5637ae3f6c
 collision=C0
 impact=V1
 reason=MAIN_MOVED_DOCS_ONLY
@@ -9,5 +9,5 @@ apply_status=DISJOINT_OVERLAY
 depends_on_specs=
 required_core_tests=ORDER,BUSINESS_DAY
 force_full_proof=true
-run_id=34665829979
+run_id=34667645218
 conclusion=success
