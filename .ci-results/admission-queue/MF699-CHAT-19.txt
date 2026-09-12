@@ -1,0 +1,13 @@
+work_id=MF699-CHAT-19
+candidate_sha=936ff86a382c20a7c2ef24f7850e7b3d66c61abc
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=ORDER,BUSINESS_DAY
+force_full_proof=true
+run_id=34671256612
+conclusion=failure
