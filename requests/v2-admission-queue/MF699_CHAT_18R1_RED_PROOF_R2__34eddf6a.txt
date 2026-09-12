@@ -1,0 +1,11 @@
+candidate_sha=34eddf6ac14f6f16113424dca959563f095b4ef5
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+work_id=MF699_CHAT_18R1_RED_PROOF_R2
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=RUNTIME_PROOF
+affected_ports=CUSTOMER
+depends_on_specs=docs/recovery/decisions/continuous-linkup-diagnostics-acceptance-rule-2026-09-09.md
+supersedes_candidate_sha=b5cc0e9646d0a123d35ac77c57764ff6060b98a5
+required_core_tests=BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=
