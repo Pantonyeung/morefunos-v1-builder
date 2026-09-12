@@ -1,0 +1,48 @@
+name: V2 Keeta Cron Tail
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/v2-keeta-cron-tail.txt'
+      - '.github/workflows/v2-keeta-cron-tail.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tail:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      WRANGLER_VERSION: '4.125.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install pinned Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION" --no-audit --no-fund
+      - name: Capture Keeta production tail
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p evidence
+          timeout 75s wrangler tail morefun-v2-keeta-sit --format json > evidence/tail.jsonl 2> evidence/tail.stderr
+          rc=$?
+          echo "tail_exit=$rc" | tee evidence/summary.txt
+          cat evidence/tail.stderr || true
+          cat evidence/tail.jsonl || true
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then exit "$rc"; fi
+      - name: Upload evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: v2-keeta-cron-tail-${{ github.run_id }}
+          path: evidence
+          retention-days: 14
