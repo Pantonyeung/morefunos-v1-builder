@@ -1,0 +1,11 @@
+candidate_sha=d0496814c1f0bc33870c3e5162d4034de8148666
+base_main_sha=3175da728fb595f39e4e94daffee834fba004014
+work_id=MF699_CHAT_18R1_COMBO_DIAGNOSTICS_RECONCILE
+capability_id=CAP-CATALOG-MENU-001
+capability_action=RUNTIME_PROOF
+affected_ports=CUSTOMER,SMM,SMT
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=BUSINESS_DAY,DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=
