@@ -1,0 +1,11 @@
+candidate_sha=52a2bc5ac125685efc2700103fcb89ace74ba934
+base_main_sha=bbfff247e29f1759a27f81dcde85cb2ffbd96d0d
+work_id=MF699-CHAT-17
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=REGRESSION_REPAIR
+affected_ports=CUSTOMER,SMM,CORE
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=ORDER,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=
