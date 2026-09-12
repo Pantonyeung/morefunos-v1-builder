@@ -1,0 +1,11 @@
+candidate_sha=8b5e841964d689c53d2e2275b560a7228128ead1
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+work_id=MF699_CHAT_18R1_RED_PROOF_R2
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=RUNTIME_PROOF
+affected_ports=CUSTOMER,SMM,SMT
+depends_on_specs=
+supersedes_candidate_sha=8b5e841964d689c53d2e2275b560a7228128ead1
+required_core_tests=BUSINESS_DAY,DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=
