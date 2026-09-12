@@ -17,7 +17,6 @@ jobs:
     env:
       WRANGLER_VERSION: '4.125.0'
       D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
-      TARGET_TEXT: '7205'
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
@@ -29,7 +28,7 @@ jobs:
           path: source
           persist-credentials: false
           fetch-depth: 1
-      - name: Locate 1001 evidence by text
+      - name: Read latest 1001 identities
         working-directory: source/workers/keeta
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -37,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message,received_at FROM keeta_webhook_evidence WHERE event_id=1001 AND message LIKE '%7205%' ORDER BY received_at DESC LIMIT 20" --json > "$RUNNER_TEMP/evidence.json"
+          npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$D1_DATABASE" --remote --config wrangler.jsonc --command "SELECT message_id,message,received_at FROM keeta_webhook_evidence WHERE event_id=1001 ORDER BY received_at DESC LIMIT 12" --json > "$RUNNER_TEMP/evidence.json"
           node - "$RUNNER_TEMP/evidence.json" <<'NODE'
           const fs=require('fs');
           const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
@@ -49,13 +48,10 @@ jobs:
             const out={
               messageId:row.message_id,
               receivedAt:row.received_at,
-              seqNo:String(pick(body,['merchantOrder.seqNoStr','merchantOrder.seqNo','baseOrder.seqNoStr','baseOrder.seqNo'])??''),
-              orderViewId:String(pick(body,['baseOrder.orderViewIdStr','merchantOrder.orderViewIdStr','orderViewIdStr','orderViewId','baseOrder.orderViewId','merchantOrder.orderViewId'])??''),
-              orderId:String(pick(body,['baseOrder.orderId','merchantOrder.orderId','orderId'])??''),
-              displayNo:String(pick(body,['displayNo','merchantOrder.displayNo','baseOrder.displayNo'])??'')
+              seqNo:String(pick(body,['orderInfo.merchantOrder.seqNoStr','orderInfo.merchantOrder.seqNo','merchantOrder.seqNoStr','merchantOrder.seqNo','orderInfo.baseOrder.seqNoStr','baseOrder.seqNoStr'])??''),
+              orderViewId:String(pick(body,['orderInfo.merchantOrder.orderViewIdStr','orderInfo.baseOrder.orderViewIdStr','orderInfo.baseOrder.orderViewId','merchantOrder.orderViewIdStr','baseOrder.orderViewIdStr','orderViewIdStr','orderViewId'])??'')
             };
-            console.log('IDENTITY_EVIDENCE='+JSON.stringify(out));
+            console.log('LATEST_1001='+JSON.stringify(out));
           }
-          console.log('IDENTITY_MATCH_COUNT='+rows.length);
-          if(rows.length===0)process.exit(2);
+          console.log('LATEST_1001_COUNT='+rows.length);
           NODE
