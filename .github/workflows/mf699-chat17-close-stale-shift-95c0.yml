@@ -1,0 +1,119 @@
+name: MF699 CHAT17 Close Stale Shift 95c0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mf699-chat17-close-stale-shift-95c0.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  close:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: 1ed17fcb-7e7a-4e13-a922-ae141aff4142
+      SOURCE_SHA: b00d29dd1aab5dd10fa0f74a17fdadf385acb88b
+      SHIFT_ID: 95c0d0bf-b586-4603-8eaa-4dfddeeb5974
+      DAY_ID: 5cbd0c54-72d3-4640-bc5d-23c2d5e126fc
+      EXPECTED_REVISION: '1'
+      EXPECTED_CASH_MINOR: '100000'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Verify exact deployed source and request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_SOURCE="$(sed -n 's/^source_sha=//p' requests/mf699-chat17-close-stale-shift-95c0.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          DEPLOYED="$(sed -n 's/^source_sha=//p' .ci-results/v2-admin-worker-deploy.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$REQUEST_SOURCE" == "$SOURCE_SHA" ]]
+          [[ "$DEPLOYED" == "$SOURCE_SHA" ]]
+
+      - name: Fail-closed preflight exact shift
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          query(){ NAME="$1"; SQL="$2"; SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"; curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > "evidence/$NAME.json"; }
+          query shift "SELECT cash_shift_id,business_day_id,store_id,lifecycle_status,revision,record_json,created_at FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID' LIMIT 1"
+          query movements "SELECT COUNT(*) AS count_value FROM mfos_cash_movement WHERE cash_shift_id='$SHIFT_ID'"
+          STORE_ID="$(node -e "const x=require('./evidence/shift.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);process.stdout.write(r.store_id)")"
+          OPENED_AT="$(node -e "const x=require('./evidence/shift.json');const r=x.result?.[0]?.results?.[0];if(!r)process.exit(2);const s=JSON.parse(r.record_json);process.stdout.write(s.openedAt||r.created_at)")"
+          query cash_payments "SELECT COUNT(*) AS count_value FROM mfos_payment_state WHERE store_id='$STORE_ID' AND lifecycle_status='COMPLETED' AND json_extract(payment_json,'$.tenderMethod')='CASH' AND updated_at>='$OPENED_AT'"
+          query refunds "SELECT COUNT(*) AS count_value FROM mfos_refund_state WHERE store_id='$STORE_ID' AND status='COMPLETED' AND created_at>='$OPENED_AT'"
+          query policy "SELECT basis,configured_value FROM mfos_business_day_close_variance_policy WHERE store_id='$STORE_ID' ORDER BY policy_revision DESC LIMIT 1"
+          node - <<'NODE' | tee evidence/preflight.txt
+          const fs=require('fs');
+          const rows=n=>JSON.parse(fs.readFileSync('evidence/'+n+'.json','utf8')).result?.[0]?.results||[];
+          const r=rows('shift')[0]; if(!r) throw new Error('SHIFT_MISSING');
+          const s=JSON.parse(r.record_json); const count=n=>Number(rows(n)[0]?.count_value??-1); const p=rows('policy')[0];
+          console.log(JSON.stringify({shift:r.cash_shift_id,day:r.business_day_id,status:r.lifecycle_status,revision:r.revision,openingCashMinor:s.openingCashMinor,movements:count('movements'),cashPayments:count('cash_payments'),refunds:count('refunds'),policy:p}));
+          if(r.cash_shift_id!==process.env.SHIFT_ID||r.business_day_id!==process.env.DAY_ID||r.lifecycle_status!=='OPEN'||Number(r.revision)!==1||Number(s.openingCashMinor)!==100000||count('movements')!==0||count('cash_payments')!==0||count('refunds')!==0||p?.basis!=='ABSOLUTE_MINOR'||Number(p?.configured_value)!==0) throw new Error('SHIFT_PREFLIGHT_CHANGED_FAIL_CLOSED');
+          console.log('preflight=PASS');
+          NODE
+
+      - name: Login canonical Admin authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$HTTP" | tee evidence/login.txt
+          test "$HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          echo "$COOKIE" >/tmp/cookie
+
+      - name: Preview and seal
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          node -e "require('fs').writeFileSync('/tmp/preview.json',JSON.stringify({action:'PREVIEW_CLOSE',idempotencyKey:'mf699-chat17-95c0-preview',payload:{actualClosingCashMinor:100000}}))"
+          PHTTP="$(curl -sS -o /tmp/preview.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/preview.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "preview_http=$PHTTP" | tee evidence/close.txt; cat /tmp/preview.out.json >> evidence/close.txt; test "$PHTTP" = 200
+          node -e "const x=require('/tmp/preview.out.json');const v=x.value;if(!x.ok||Number(v.expectedClosingCashMinor)!==100000||Number(v.actualClosingCashMinor)!==100000||Number(v.overShortMinor)!==0)process.exit(1)"
+          node -e "require('fs').writeFileSync('/tmp/seal.json',JSON.stringify({action:'SEAL',idempotencyKey:'mf699-chat17-95c0-seal-1',payload:{expectedRevision:1,actualClosingCashMinor:100000}}))"
+          SHTTP="$(curl -sS -o /tmp/seal.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/seal.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "seal_http=$SHTTP" | tee -a evidence/close.txt; cat /tmp/seal.out.json >> evidence/close.txt; test "$SHTTP" = 200
+          node -e "const x=require('/tmp/seal.out.json');if(!x.ok||!x.value?.shift?.latestCloseResultId||Number(x.value.shift.revision)!==2)process.exit(1)"
+
+      - name: Handover with zero withdrawal
+        shell: bash
+        run: |
+          set -euo pipefail
+          COOKIE="$(cat /tmp/cookie)"
+          node -e "require('fs').writeFileSync('/tmp/handover.json',JSON.stringify({action:'HANDOVER',idempotencyKey:'mf699-chat17-95c0-handover-2',payload:{expectedRevision:2,withdrawalMinor:0}}))"
+          HTTP="$(curl -sS -o /tmp/handover.out.json -w '%{http_code}' -H "Cookie: $COOKIE" -H 'content-type: application/json' --data-binary @/tmp/handover.json "$ADMIN_URL/api/admin/business-day/cash-shift")"
+          echo "handover_http=$HTTP" | tee evidence/handover.txt; cat /tmp/handover.out.json >> evidence/handover.txt; test "$HTTP" = 200
+          node -e "const x=require('/tmp/handover.out.json');if(!x.ok||x.value?.closedShift?.cashShiftId!==process.env.SHIFT_ID||x.value?.closedShift?.lifecycleStatus!=='CLOSED'||Number(x.value.closedShift.revision)!==3)process.exit(1)"
+
+      - name: Verify closed in canonical D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          D1_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$D1_DATABASE_ID/query"
+          SQL="SELECT lifecycle_status,revision FROM mfos_cash_shift WHERE cash_shift_id='$SHIFT_ID' LIMIT 1"
+          SQL="$SQL" node -e "require('fs').writeFileSync('/tmp/q.json',JSON.stringify({sql:process.env.SQL}))"
+          curl -fsS -X POST "$D1_URL" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/q.json > evidence/post.json
+          node -e "const x=require('./evidence/post.json');const r=x.result?.[0]?.results?.[0];console.log('shift_status='+r?.lifecycle_status);console.log('shift_revision='+r?.revision);if(r?.lifecycle_status!=='CLOSED'||Number(r.revision)!==3)process.exit(1)" | tee evidence/post.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mf699-chat17-close-stale-shift-95c0
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
