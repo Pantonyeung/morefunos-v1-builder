@@ -1,0 +1,7 @@
+candidate_sha=b5cc0e9646d0a123d35ac77c57764ff6060b98a5
+base_main_sha=10fdb81b5704feb2c86f739e883d1a23c9c567f3
+work_id=MF699_CHAT_18R1_RED_PROOF
+affected_ports=CUSTOMER,SMT,SMM
+depends_on_specs=docs/recovery/decisions/CONTINUOUS-LINKUP-DIAGNOSTICS-ACCEPTANCE-RULE-2026-09-09.md
+required_core_tests=BUSINESS_DAY
+force_full_proof=true
