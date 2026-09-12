@@ -1,0 +1,10 @@
+candidate_sha=c7efb00c262e2eb5cd2a9f869f90f170da5ecc3e
+base_main_sha=934bccc717f891d20538a6b74f4434ff412a1dc1
+work_id=MF699-CHAT-17
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=LINKUP
+affected_ports=CUSTOMER,SMM,KEETA,ADMIN
+supersedes_candidate_sha=1bcdb34cc83094078ba4604e4ad2a5c2a5b2bfe8
+required_core_tests=CATALOG,PRICING,AVAILABILITY,BUSINESS_DAY
+force_full_proof=true
+proof_source_sha=c7efb00c262e2eb5cd2a9f869f90f170da5ecc3e
