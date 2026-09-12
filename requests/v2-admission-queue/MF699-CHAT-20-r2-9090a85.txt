@@ -1,0 +1,11 @@
+candidate_sha=9090a85ac083e07156ec607efcc96e7c52550c2e
+base_main_sha=da33089129072a2cc75faa50cf129b4d1105c934
+work_id=MF699-CHAT-20
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=LINKUP
+affected_ports=CUSTOMER
+depends_on_specs=
+supersedes_candidate_sha=ded92ce7e6dd9277527cbcd2fadc0fb0aa6318d3
+required_core_tests=BUSINESS_DAY,DIAGNOSTICS
+force_full_proof=true
+proof_source_sha=ded92ce7e6dd9277527cbcd2fadc0fb0aa6318d3
