@@ -17,7 +17,7 @@ jobs:
     env:
       WRANGLER_VERSION: '4.125.0'
       D1_DATABASE: 'morefun-v2-keeta-sit-ingress'
-      TARGET_CODES: '0128,9624,2396'
+      TARGET_CODES: '7205'
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
