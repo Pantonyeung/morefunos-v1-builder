@@ -1,5 +1,5 @@
-source_sha=4b77b92ea1c3d457b1cf948e218b8d092bb0ada1
+source_sha=46b07facadc4fd380214526131695a1b9ae58e73
 request_id=ROUND025-DISPLAY-SOURCE-IDEMPOTENCY-CORE-20260911-01
-run_id=34557115059
+run_id=34750053819
 run_attempt=1
 conclusion=failure
