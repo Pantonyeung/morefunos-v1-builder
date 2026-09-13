@@ -1,0 +1,11 @@
+candidate_sha=69b8dd58b52a25dfb2d151269db4cbb27ae46a90
+base_main_sha=a26d7db9b2b1a14c3eb62eb1d3d5313fc2c1af9f
+work_id=MF-CODEX-PRINT-TEMPLATE-01
+capability_id=CAP-PRINT-CORE-001
+capability_action=EXTEND
+affected_ports=
+depends_on_specs=
+supersedes_candidate_sha=
+required_core_tests=PRINT
+force_full_proof=false
+proof_source_sha=
