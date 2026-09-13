@@ -1,7 +1,7 @@
-source_sha=b00d29dd1aab5dd10fa0f74a17fdadf385acb88b
-request_id=MF699-CHAT-17-ADMIN-CHANNEL-BINDING-R1
-run_id=34661193124
+source_sha=7a5a069484ae245a6b3be9d94d324e342f39a5e1
+request_id=MF-REL-BUSINESS-DAY-PROD-01-R1
+run_id=34746347250
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=a4f5183f-b032-426b-a0d2-c680297ca790
+worker_version=26b29e82-c17e-41f3-8b1d-2d100199cc47
