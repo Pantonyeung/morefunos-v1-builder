@@ -1,0 +1,50 @@
+[
+  {
+    "results": [
+      {
+        "order_id": "a19cde41-62a2-54b6-af7a-b07b9f24eb2f",
+        "row_revision": 1,
+        "legacy_order_revision": null,
+        "canonical_revision": 1,
+        "legacy_revision_type": null,
+        "canonical_revision_type": "integer",
+        "lifecycle_status": "ACCEPTED",
+        "created_at": "2026-09-12T00:27:36.000Z",
+        "updated_at": "2026-09-12T00:27:36.000Z",
+        "provider_ref": "KEETA:5203440498572922",
+        "projection_json": "{\"orderId\":\"a19cde41-62a2-54b6-af7a-b07b9f24eb2f\",\"storeId\":\"d2d882b4-5c7b-40f9-ad59-91f8faabb8e8\",\"salesPriceContext\":\"KEETA\",\"lifecycleStatus\":\"ACCEPTED\",\"revision\":1,\"lineItems\":[{\"orderItemId\":\"db776dd7-7c62-5d78-a3aa-c09382abe685\",\"productId\":\"cde33523-b6fb-529b-a4be-6b3e6a0884d9\",\"productRevisionAtAcceptance\":1,\"acceptedProductName\":\"SIT 無選項餐 A\",\"quantity\":1,\"selectedOptions\":[],\"salesPriceContext\":\"KEETA\",\"currency\":\"HKD\",\"acceptedUnitPriceMinor\":1000,\"acceptedAdjustmentMinor\":0,\"acceptedFinalUnitPriceMinor\":1000,\"acceptedLineTotalMinor\":1000,\"pricingProvenance\":{\"authority\":\"EXTERNAL_PLATFORM\",\"platformContext\":\"KEETA\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098569178595364916:product:1444305735\"}}],\"currency\":\"HKD\",\"subtotalMinor\":1000,\"totalDiscountMinor\":100,\"totalMinor\":900,\"canonicalIdentity\":{\"orderId\":\"a19cde41-62a2-54b6-af7a-b07b9f24eb2f\",\"storeId\":\"d2d882b4-5c7b-40f9-ad59-91f8faabb8e8\",\"sourceType\":\"PLATFORM\",\"sourceProvider\":\"KEETA\",\"sourceChannel\":\"DELIVERY_PLATFORM\",\"externalOrderId\":\"5203440498572922\",\"displayOrderCode\":\"2922\",\"sourceOrderKey\":\"KEETA:5203440498572922\"},\"localDisplayOrderCode\":\"0001\",\"providerOrderAlias\":{\"platformContext\":\"KEETA\",\"providerOrderId\":\"5203440498572922\",\"providerOrderCode\":\"2922\"},\"providerCommercialSnapshot\":{\"provider\":\"KEETA\",\"providerOrderId\":\"5203440498572922\",\"currency\":\"HKD\",\"merchandiseSubtotalMinor\":1000,\"customerPaidMinor\":6390,\"shippingFeeMinor\":290,\"customerPlatformFeeMinor\":200,\"minimumOrderTopUpMinor\":5000,\"merchantCommissionMinor\":1593,\"merchantActivityFeeMinor\":100,\"merchantEarningsMinor\":4307,\"settlementAuthority\":\"PROVIDER_ESTIMATE\",\"capturedAt\":\"2026-09-12T00:27:36.000Z\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098569178595364916\"},\"providerCheckoutSnapshot\":{\"platformContext\":\"KEETA\",\"currency\":\"HKD\",\"providerOrderId\":\"5203440498572922\",\"acceptedSubtotalMinor\":1000,\"acceptedDiscountMinor\":100,\"acceptedTotalMinor\":900,\"capturedAt\":\"2026-09-12T00:27:36.000Z\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098569178595364916\"},\"createdAt\":\"2026-09-12T00:27:36.000Z\",\"updatedAt\":\"2026-09-12T00:27:36.000Z\"}"
+      },
+      {
+        "order_id": "c25bf3fe-9e2d-576a-80ce-ba2b989fa359",
+        "row_revision": 1,
+        "legacy_order_revision": null,
+        "canonical_revision": 1,
+        "legacy_revision_type": null,
+        "canonical_revision_type": "integer",
+        "lifecycle_status": "ACCEPTED",
+        "created_at": "2026-09-12T01:54:15.000Z",
+        "updated_at": "2026-09-12T01:54:15.000Z",
+        "provider_ref": "KEETA:5203440160087205",
+        "projection_json": "{\"orderId\":\"c25bf3fe-9e2d-576a-80ce-ba2b989fa359\",\"storeId\":\"d2d882b4-5c7b-40f9-ad59-91f8faabb8e8\",\"salesPriceContext\":\"KEETA\",\"lifecycleStatus\":\"ACCEPTED\",\"revision\":1,\"lineItems\":[{\"orderItemId\":\"f86297a9-278e-50e9-807d-ea08cf8d5927\",\"productId\":\"cde33523-b6fb-529b-a4be-6b3e6a0884d9\",\"productRevisionAtAcceptance\":1,\"acceptedProductName\":\"SIT 無選項餐 A\",\"quantity\":1,\"selectedOptions\":[],\"salesPriceContext\":\"KEETA\",\"currency\":\"HKD\",\"acceptedUnitPriceMinor\":1000,\"acceptedAdjustmentMinor\":0,\"acceptedFinalUnitPriceMinor\":1000,\"acceptedLineTotalMinor\":1000,\"pricingProvenance\":{\"authority\":\"EXTERNAL_PLATFORM\",\"platformContext\":\"KEETA\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098590987109711958:product:1444560166\"}}],\"currency\":\"HKD\",\"subtotalMinor\":1000,\"totalDiscountMinor\":100,\"totalMinor\":900,\"canonicalIdentity\":{\"orderId\":\"c25bf3fe-9e2d-576a-80ce-ba2b989fa359\",\"storeId\":\"d2d882b4-5c7b-40f9-ad59-91f8faabb8e8\",\"sourceType\":\"PLATFORM\",\"sourceProvider\":\"KEETA\",\"sourceChannel\":\"DELIVERY_PLATFORM\",\"externalOrderId\":\"5203440160087205\",\"displayOrderCode\":\"7205\",\"sourceOrderKey\":\"KEETA:5203440160087205\"},\"localDisplayOrderCode\":\"0002\",\"providerOrderAlias\":{\"platformContext\":\"KEETA\",\"providerOrderId\":\"5203440160087205\",\"providerOrderCode\":\"7205\"},\"providerCommercialSnapshot\":{\"provider\":\"KEETA\",\"providerOrderId\":\"5203440160087205\",\"currency\":\"HKD\",\"merchandiseSubtotalMinor\":1000,\"customerPaidMinor\":6390,\"shippingFeeMinor\":290,\"customerPlatformFeeMinor\":200,\"minimumOrderTopUpMinor\":5000,\"merchantCommissionMinor\":1593,\"merchantActivityFeeMinor\":100,\"merchantEarningsMinor\":4307,\"settlementAuthority\":\"PROVIDER_ESTIMATE\",\"capturedAt\":\"2026-09-12T01:54:15.000Z\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098590987109711958\"},\"providerCheckoutSnapshot\":{\"platformContext\":\"KEETA\",\"currency\":\"HKD\",\"providerOrderId\":\"5203440160087205\",\"acceptedSubtotalMinor\":1000,\"acceptedDiscountMinor\":100,\"acceptedTotalMinor\":900,\"capturedAt\":\"2026-09-12T01:54:15.000Z\",\"providerEvidenceRef\":\"KEETA_SIGNED_1001:2098590987109711958\"},\"createdAt\":\"2026-09-12T01:54:15.000Z\",\"updatedAt\":\"2026-09-12T01:54:15.000Z\"}"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "ENAM",
+      "served_by_colo": "ORD",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.645
+      },
+      "duration": 0.645,
+      "changes": 0,
+      "last_row_id": 1,
+      "changed_db": false,
+      "size_after": 10248192,
+      "rows_read": 84,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]
