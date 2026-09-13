@@ -1,5 +1,5 @@
-source_sha=4b77b92ea1c3d457b1cf948e218b8d092bb0ada1
-base_sha=466dc2bd38b85d76fee1c1a925f1a45e4b24b4e4
-branch_name=hotfix/ORDER/ROUND025-display-source-idempotency
+source_sha=29f23314606bf52c56665d85e41b66c9eb75caae
+base_sha=fc73fb32da53a10a29e3106b7f54b22f2269727b
+branch_name=worker-b/mf-fix-fulfillment-revision-shape-01
 verification_phase=CANDIDATE
-request_id=ROUND025-DISPLAY-SOURCE-IDEMPOTENCY-CORE-20260911-01
+request_id=MF-FIX-FULFILLMENT-REVISION-SHAPE-01-RED-20260913-01
