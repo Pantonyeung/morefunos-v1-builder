@@ -1,0 +1,90 @@
+name: R3 Admin Scheduled Runtime Live Tail
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/r3-admin-scheduled-runtime-live-tail-request.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      ADMIN_URL: https://morefun-v2-admin.pantonyeung.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_LOGIN_SECRET: ${{ secrets.ADMIN_LOGIN_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate read-only request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ='requests/r3-admin-scheduled-runtime-live-tail-request.txt'
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$REQ" | tr -d '[:space:]')"
+          REQUEST_ID="$(sed -n 's/^request_id=//p' "$REQ" | tr -d '\r\n')"
+          VERSION_ID="$(sed -n 's/^worker_version=//p' "$REQ" | tr -d '[:space:]')"
+          test "$SOURCE_SHA" = 'fc73fb32da53a10a29e3106b7f54b22f2269727b'
+          test "$REQUEST_ID" = 'MF-REL-RUNTIME-ORCHESTRATOR-01-R3-LIVE-TAIL'
+          test "$VERSION_ID" = '772d459e-efc9-43e8-b45d-54df02f208d3'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$ADMIN_LOGIN_SECRET"
+          echo "version_id=$VERSION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Tail natural Cron read-only
+        shell: bash
+        env:
+          VERSION_ID: ${{ steps.req.outputs.version_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          set +e
+          timeout 95s npx --yes wrangler@4 tail morefun-v2-admin --format=json --search scheduled_runtime_lanes --version-id "$VERSION_ID" > evidence/raw-tail.ndjson 2> evidence/wrangler-stderr.txt
+          RC=$?
+          set -e
+          cat evidence/raw-tail.ndjson
+          cat evidence/wrangler-stderr.txt >&2
+          if [[ "$RC" != 0 && "$RC" != 124 && "$RC" != 143 ]]; then exit "$RC"; fi
+          grep -F 'scheduled_runtime_lanes' evidence/raw-tail.ndjson > evidence/scheduled-runtime-matches.ndjson
+          test -s evidence/scheduled-runtime-matches.ndjson
+
+      - name: Read current Admin Business Day
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_BODY="$(node -e 'process.stdout.write(JSON.stringify({loginSecret:process.env.ADMIN_LOGIN_SECRET}))')"
+          LOGIN_HTTP="$(curl -sS -D /tmp/login.headers -o /tmp/login.json -w '%{http_code}' -H 'content-type: application/json' --data "$LOGIN_BODY" "$ADMIN_URL/api/admin/session")"
+          echo "login_http=$LOGIN_HTTP" | tee evidence/business-day-readback.txt
+          test "$LOGIN_HTTP" = 200
+          COOKIE="$(sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p' /tmp/login.headers | tr -d '\r' | head -n1)"
+          test -n "$COOKIE"
+          HTTP="$(curl -sS -o /tmp/business-day.json -w '%{http_code}' -H "Cookie: $COOKIE" "$ADMIN_URL/api/admin/business-day")"
+          echo "business_day_http=$HTTP" | tee -a evidence/business-day-readback.txt
+          test "$HTTP" = 200
+          node - <<'NODE' | tee -a evidence/business-day-readback.txt
+          const x=require('/tmp/business-day.json');
+          if(!x.ok||!x.value?.businessDay) throw new Error('ADMIN_BUSINESS_DAY_READBACK_INVALID');
+          const d=x.value.businessDay;
+          console.log('business_day_id='+d.businessDayId);
+          console.log('business_date='+d.businessDate);
+          console.log('business_day_status='+(d.status||d.lifecycleStatus||'UNKNOWN'));
+          NODE
+
+      - name: Upload R3 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r3-admin-scheduled-runtime-live-tail-${{ steps.req.outputs.version_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
