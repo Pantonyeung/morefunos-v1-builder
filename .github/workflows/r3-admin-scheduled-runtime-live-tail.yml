@@ -33,9 +33,9 @@ jobs:
           SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$REQ" | tr -d '[:space:]')"
           REQUEST_ID="$(sed -n 's/^request_id=//p' "$REQ" | tr -d '\r\n')"
           VERSION_ID="$(sed -n 's/^worker_version=//p' "$REQ" | tr -d '[:space:]')"
-          test "$SOURCE_SHA" = 'fc73fb32da53a10a29e3106b7f54b22f2269727b'
-          test "$REQUEST_ID" = 'MF-REL-RUNTIME-ORCHESTRATOR-01-R3-LIVE-TAIL'
-          test "$VERSION_ID" = '772d459e-efc9-43e8-b45d-54df02f208d3'
+          test "$SOURCE_SHA" = 'f2b2e77a1392ecf6c04aba637e25f048861a66a3'
+          test "$REQUEST_ID" = 'MF-FIX-BUSINESS-DAY-SCHEDULED-CONNECTIVITY-01-R3-LIVE-TAIL'
+          test "$VERSION_ID" = '42f5e0c3-27ff-4818-a8ac-9073ed3982ad'
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$ADMIN_LOGIN_SECRET"
