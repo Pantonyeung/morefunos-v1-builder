@@ -1,0 +1,177 @@
+name: R4 Fulfillment Revision Conflict Readback
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/r4-fulfillment-revision-conflict-readback-request.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  readback:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve request
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/r4-fulfillment-revision-conflict-readback-request.txt | tr -d '[:space:]')"
+          WORK_ID="$(sed -n 's/^work_id=//p' requests/r4-fulfillment-revision-conflict-readback-request.txt | tr -d '\r\n')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$WORK_ID" = "MF-RCA-FULFILLMENT-REVISION-CONFLICT-01"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.req.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Production D1 SELECT-only evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          CONFIG='source/infra/cloudflare/admin-web-worker/wrangler.jsonc'
+          q() {
+            local name="$1"
+            local sql="$2"
+            npx --yes wrangler@4 d1 execute morefun-v2-production --remote --json --config "$CONFIG" --command "$sql" > "evidence/${name}.json"
+          }
+          q schema "SELECT name, sql FROM sqlite_master WHERE type='table' AND (name LIKE '%order%' OR name LIKE '%fulfillment%') ORDER BY name;"
+          q order_state "SELECT s.order_id,s.store_id,s.revision AS row_revision,json_extract(s.order_snapshot_json,'$.orderRevision') AS snapshot_revision,s.lifecycle_status,s.source,s.channel,s.provider_ref,s.created_at,s.updated_at,f.fulfillment_id,f.revision AS fulfillment_revision,f.lifecycle_status AS fulfillment_status,f.updated_at AS fulfillment_updated_at FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.created_at>='2026-09-10T23:18:26Z' ORDER BY s.created_at ASC,s.order_id ASC LIMIT 500;"
+          q missing_fulfillment "SELECT s.order_id,s.store_id,s.revision AS current_revision,json_extract(s.order_snapshot_json,'$.orderRevision') AS snapshot_revision,s.lifecycle_status,s.created_at,s.updated_at,s.source,s.channel,s.provider_ref FROM mfos_order_state s LEFT JOIN mfos_fulfillment_state f ON f.order_id=s.order_id WHERE s.lifecycle_status='ACCEPTED' AND s.created_at>='2026-09-10T23:18:26Z' AND f.order_id IS NULL ORDER BY s.created_at ASC,s.order_id ASC LIMIT 100;"
+          q lifecycle_audit "SELECT mutation_id,order_id,command_kind,idempotency_key,from_revision,to_revision,recorded_at FROM mfos_order_lifecycle_audit WHERE recorded_at BETWEEN '2026-09-13T12:10:00Z' AND '2026-09-13T12:12:30Z' ORDER BY recorded_at ASC,order_id ASC;"
+          q acceptance_audit "SELECT acceptance_id,order_id,idempotency_key,outcome,recorded_at FROM mfos_order_acceptance_audit WHERE recorded_at BETWEEN '2026-09-13T12:10:00Z' AND '2026-09-13T12:12:30Z' ORDER BY recorded_at ASC,order_id ASC;"
+          q outbox "SELECT event_id,domain,aggregate_id,event_type,status,recorded_at,metadata_json,payload_json FROM mfos_outbox WHERE recorded_at BETWEEN '2026-09-13T12:10:00Z' AND '2026-09-13T12:12:30Z' ORDER BY recorded_at ASC,event_id ASC LIMIT 500;"
+          q fulfillment_release "SELECT event_id,fulfillment_id,order_id,store_id,event_json,recorded_at FROM mfos_fulfillment_release_audit WHERE recorded_at BETWEEN '2026-09-13T12:10:00Z' AND '2026-09-13T12:12:30Z' ORDER BY recorded_at ASC,event_id ASC LIMIT 500;"
+          q fulfillment_state "SELECT fulfillment_id,order_id,store_id,revision,lifecycle_status,updated_at,snapshot_json FROM mfos_fulfillment_state WHERE updated_at BETWEEN '2026-09-13T12:10:00Z' AND '2026-09-13T12:12:30Z' ORDER BY updated_at ASC,order_id ASC LIMIT 500;"
+
+      - name: Evaluate revision conflict evidence
+        env:
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          WORK_ID: ${{ steps.req.outputs.work_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          function rows(name){
+            const x=JSON.parse(fs.readFileSync(`evidence/${name}.json`,'utf8'));
+            const batches=Array.isArray(x)?x:[x];
+            return batches.flatMap(v=>Array.isArray(v?.results)?v.results:[]);
+          }
+          const orders=rows('order_state');
+          const missing=rows('missing_fulfillment');
+          const lifecycle=rows('lifecycle_audit');
+          const acceptance=rows('acceptance_audit');
+          const outbox=rows('outbox');
+          const releases=rows('fulfillment_release');
+          const fstates=rows('fulfillment_state');
+          const target='2026-09-13T12:11:10.000Z';
+          const targetMs=Date.parse(target);
+          const events=[];
+          for(const r of lifecycle) events.push({kind:'ORDER_LIFECYCLE',orderId:r.order_id,at:r.recorded_at,fromRevision:r.from_revision,toRevision:r.to_revision,command:r.command_kind});
+          for(const r of acceptance) events.push({kind:'ORDER_ACCEPTANCE',orderId:r.order_id,at:r.recorded_at,outcome:r.outcome});
+          for(const r of outbox) events.push({kind:'OUTBOX',orderId:r.aggregate_id,at:r.recorded_at,eventType:r.event_type,status:r.status});
+          for(const r of releases) events.push({kind:'FULFILLMENT_RELEASE',orderId:r.order_id,at:r.recorded_at,fulfillmentId:r.fulfillment_id});
+          events.sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+          const near=events.filter(e=>Math.abs(Date.parse(e.at)-targetMs)<=15000);
+          const missingIds=new Set(missing.map(r=>r.order_id));
+          const lifecycleByOrder=new Map();
+          for(const r of lifecycle){const a=lifecycleByOrder.get(r.order_id)||[];a.push(r);lifecycleByOrder.set(r.order_id,a)}
+          const candidates=orders.filter(r=>{
+            if(Number(r.row_revision)!==Number(r.snapshot_revision)) return true;
+            if(lifecycleByOrder.has(r.order_id)) return true;
+            if(missingIds.has(r.order_id)) return true;
+            return false;
+          }).map(r=>({
+            orderId:r.order_id,
+            currentRevision:r.row_revision,
+            snapshotRevision:r.snapshot_revision,
+            lifecycleStatus:r.lifecycle_status,
+            createdAt:r.created_at,
+            updatedAt:r.updated_at,
+            fulfillmentId:r.fulfillment_id||null,
+            fulfillmentStatus:r.fulfillment_status||null,
+            lifecycleMutations:lifecycleByOrder.get(r.order_id)||[]
+          }));
+          const summary={
+            workId:process.env.WORK_ID,
+            sourceSha:process.env.SOURCE_SHA,
+            mode:'REMOTE_D1_SELECT_ONLY',
+            targetCronAt:target,
+            generatedAt:new Date().toISOString(),
+            counts:{orders:orders.length,missingFulfillment:missing.length,lifecycleAudit:lifecycle.length,acceptanceAudit:acceptance.length,outbox:outbox.length,fulfillmentRelease:releases.length,fulfillmentStateTouched:fstates.length},
+            missingFulfillment:missing,
+            eventsWithin15Seconds:near,
+            candidateOrders:candidates,
+            lifecycleAudit:lifecycle,
+            acceptanceAudit:acceptance,
+            outbox:outbox,
+            fulfillmentRelease:releases,
+            fulfillmentStateTouched:fstates
+          };
+          fs.writeFileSync('evidence/summary.json',JSON.stringify(summary,null,2)+'\n');
+          console.log(JSON.stringify(summary,null,2));
+          NODE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-fulfillment-revision-conflict-readback-${{ steps.req.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Seal durable summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.req.outputs.source_sha }}
+          WORK_ID: ${{ steps.req.outputs.work_id }}
+          RUN_ID: ${{ github.run_id }}
+          CONCLUSION: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "418982+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .ci-results
+            if [ -s "$GITHUB_WORKSPACE/evidence/summary.json" ]; then
+              cp "$GITHUB_WORKSPACE/evidence/summary.json" .ci-results/mf-rca-fulfillment-revision-conflict-01.json
+            else
+              printf '{"workId":"%s","sourceSha":"%s","runId":"%s","conclusion":"%s","error":"READBACK_FAILED"}\n' "$WORK_ID" "$SOURCE_SHA" "$RUN_ID" "$CONCLUSION" > .ci-results/mf-rca-fulfillment-revision-conflict-01.json
+            fi
+            git add .ci-results/mf-rca-fulfillment-revision-conflict-01.json
+            if ! git diff --cached --quiet; then git commit -m "rca(result): fulfillment revision conflict readback $CONCLUSION"; fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
