@@ -1,0 +1,7 @@
+candidate_sha=c08d3b18df6069092b5f0622cc4d3baabb64cf05
+base_main_sha=a26d7db9b2b1a14c3eb62eb1d3d5313fc2c1af9f
+work_id=MF-P0-BUSINESS-DAY-CONTROL-CHANGESZERO-01
+capability_id=CAP-BUSINESS-DAY-001
+capability_action=REGRESSION_REPAIR
+affected_ports=ADMIN,CORE
+required_core_tests=BUSINESS_DAY,PRINT,AVAILABILITY,ORDER
