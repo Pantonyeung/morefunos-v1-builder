@@ -1,5 +1,5 @@
-source_sha=274592edd1b551893f9d64fd810a8326ba4c8d75
-base_sha=fc73fb32da53a10a29e3106b7f54b22f2269727b
-branch_name=worker-b/mf-fix-fulfillment-revision-shape-01
+source_sha=c0089407cf2c51a41b100f8f58c38709b495a34c
+base_sha=f2b2e77a1392ecf6c04aba637e25f048861a66a3
+branch_name=work/mf-rel-fulfillment-fresh-main-integration-01
 verification_phase=CANDIDATE
-request_id=MF-FIX-FULFILLMENT-REVISION-SHAPE-01-GREEN-20260913-01
+request_id=MF-REL-FULFILLMENT-FRESH-MAIN-INTEGRATION-01-VERIFY-20260914-01
