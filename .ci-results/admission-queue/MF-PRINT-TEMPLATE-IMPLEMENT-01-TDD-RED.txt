@@ -1,0 +1,13 @@
+work_id=MF-PRINT-TEMPLATE-IMPLEMENT-01-TDD-RED
+candidate_sha=3328c2f37869219a9d79c5d78900651403de76c9
+base_main_sha=a26d7db9b2b1a14c3eb62eb1d3d5313fc2c1af9f
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=true
+run_id=34733424960
+conclusion=failure
