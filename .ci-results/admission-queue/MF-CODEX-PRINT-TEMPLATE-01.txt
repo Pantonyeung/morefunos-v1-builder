@@ -1,0 +1,13 @@
+work_id=MF-CODEX-PRINT-TEMPLATE-01
+candidate_sha=69b8dd58b52a25dfb2d151269db4cbb27ae46a90
+base_main_sha=a26d7db9b2b1a14c3eb62eb1d3d5313fc2c1af9f
+latest_main_sha=a26d7db9b2b1a14c3eb62eb1d3d5313fc2c1af9f
+collision=C0
+impact=V1
+reason=MAIN_MOVED_DOCS_ONLY
+apply_status=DISJOINT_OVERLAY
+depends_on_specs=
+required_core_tests=PRINT
+force_full_proof=false
+run_id=34734631608
+conclusion=failure
