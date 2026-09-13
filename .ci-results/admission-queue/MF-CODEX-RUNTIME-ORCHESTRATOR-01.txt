@@ -1,0 +1,13 @@
+work_id=MF-CODEX-RUNTIME-ORCHESTRATOR-01
+candidate_sha=46b07facadc4fd380214526131695a1b9ae58e73
+base_main_sha=7a5a069484ae245a6b3be9d94d324e342f39a5e1
+latest_main_sha=UNKNOWN
+collision=UNKNOWN
+impact=UNKNOWN
+reason=UNKNOWN
+apply_status=UNKNOWN
+depends_on_specs=
+required_core_tests=BUSINESS_DAY,PRINT
+force_full_proof=true
+run_id=34749966210
+conclusion=failure
