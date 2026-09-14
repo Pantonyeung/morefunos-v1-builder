@@ -5,19 +5,11 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "5a0239eafd711d4674a58776d9fb1c76bc7d7e15ddc3057e9c9b965356a270b6",
-      "artifact_id": "10330961790"
+      "artifact_digest": "0676a74a992282fd585c9c9f97eef50cd0785174d45f5bf4cc9def1f7022ed0f",
+      "artifact_id": "10330919197"
     }
   ],
   "baseline_comparison": [
-    {
-      "base_failure_signature": "sha256:e8c840c3c08406f589ae6bc68c690f077edeaa43fb0e93a526acb184198f41f2",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:e8c840c3c08406f589ae6bc68c690f077edeaa43fb0e93a526acb184198f41f2",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "system_diagnostics"
-    },
     {
       "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
       "base_outcome": "failure",
@@ -29,7 +21,7 @@
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "integration",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -96,12 +88,12 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "fulfillment",
       "global_scope": true,
       "outcome": "success",
-      "rail_required": true
+      "rail_required": false
     },
     {
       "base_failure_signature": null,
@@ -134,14 +126,14 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:e8c840c3c08406f589ae6bc68c690f077edeaa43fb0e93a526acb184198f41f2",
-      "base_outcome": "failure",
-      "changed_domain": false,
-      "failure_signature": "sha256:e8c840c3c08406f589ae6bc68c690f077edeaa43fb0e93a526acb184198f41f2",
+      "base_failure_signature": null,
+      "base_outcome": null,
+      "changed_domain": true,
+      "failure_signature": null,
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "failure",
-      "rail_required": false
+      "outcome": "success",
+      "rail_required": true
     },
     {
       "base_failure_signature": null,
@@ -197,11 +189,11 @@
   "identity": {
     "base_sha": "f2b2e77a1392ecf6c04aba637e25f048861a66a3",
     "builder_run_attempt": "1",
-    "builder_run_id": "34799938916",
-    "request_id": "MF-CODEX-GOV-BUILDER-CONTROL-PLANE-01-F471-REEVALUATION",
+    "builder_run_id": "34802134851",
+    "request_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01-PHASE-B",
     "source_identity": "PASS",
-    "source_sha": "f47157399b7e7228623bcc3172497f6499738e9e",
-    "work_id": "MF-REL-FULFILLMENT-FRESH-MAIN-INTEGRATION-02"
+    "source_sha": "74fddf6ae3f81f210e9e9f2fa74dd2bfc45440ca",
+    "work_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01"
   },
   "schema_version": 1,
   "verdicts": {
