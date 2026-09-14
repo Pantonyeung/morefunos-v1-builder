@@ -1,12 +1,14 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "CHANGE_VERIFICATION_FAIL"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "ccf90e5b87d8f3d45f962e0fa8ba418fa18fde5673e810ef15d488949437675b",
-      "artifact_id": "10334414399"
+      "artifact_digest": "e42694611564a9c43461bf55e161c0c61d367716e3ddc725522b29def44bfed8",
+      "artifact_id": "10334948121"
     }
   ],
   "baseline_comparison": [
@@ -28,7 +30,7 @@
     }
   ],
   "first_failed_station": {
-    "CHANGE": "NONE",
+    "CHANGE": "governance",
     "GLOBAL": "integration",
     "RAIL": "NONE"
   },
@@ -176,7 +178,7 @@
     {
       "base_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
       "base_outcome": "failure",
-      "changed_domain": false,
+      "changed_domain": true,
       "failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
       "gate_id": "governance",
       "global_scope": true,
@@ -197,15 +199,15 @@
   "identity": {
     "base_sha": "27beb33a3228bd8e335702370c38adb9ce925903",
     "builder_run_attempt": "1",
-    "builder_run_id": "34811371910",
-    "request_id": "issue-704-dispatch-5659399504",
+    "builder_run_id": "34811750259",
+    "request_id": "issue-704-dispatch-5659399504-r3",
     "source_identity": "PASS",
-    "source_sha": "9218e983ec6e7c42490d2911e5e91f5113451f71",
+    "source_sha": "ed44bb027784fe3fc18adc6eb99539ddbb9be11a",
     "work_id": "MF-P0-MONEY-REVIEW-OPERATOR-RESOLUTION-01"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "PASS",
+    "CHANGE_VERIFICATION": "FAIL",
     "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
