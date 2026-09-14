@@ -1,4 +1,4 @@
-source_sha=7a4fe6e29467cab536ed49e9630c338f3bbaebb9
-base_sha=e4b0c709abe5eea4b7ba72e8b25c15e66d0285bf
-branch_name=governance/SYS/B0043-team-family-recovery-branch-alias
-request_id=B0043-TEAM-FAMILY-RECOVERY-BRANCH-ALIAS-GOVERNANCE-20260907
+source_sha=91ef20b331871c0d9030f4e87d961db3ab104621
+base_sha=b96622b9b769d82852ef28cb93c68de21e5c58b3
+branch_name=governance/SYS/B0704-ai-execution-lock
+request_id=MF-GOV-AI-EXECUTION-LOCK-01-PREINTEGRATION
