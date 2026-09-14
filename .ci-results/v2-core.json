@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "0676a74a992282fd585c9c9f97eef50cd0785174d45f5bf4cc9def1f7022ed0f",
-      "artifact_id": "10330919197"
+      "artifact_digest": "d302cc77557cfac3d1a94c08ac046dcc4cdbed0cd5f6dca73bef73dd508055d5",
+      "artifact_id": "10332390000"
     }
   ],
   "baseline_comparison": [
@@ -189,10 +189,10 @@
   "identity": {
     "base_sha": "f2b2e77a1392ecf6c04aba637e25f048861a66a3",
     "builder_run_attempt": "1",
-    "builder_run_id": "34802134851",
-    "request_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01-PHASE-B",
+    "builder_run_id": "34802582337",
+    "request_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01-CORRECTION-R1",
     "source_identity": "PASS",
-    "source_sha": "74fddf6ae3f81f210e9e9f2fa74dd2bfc45440ca",
+    "source_sha": "b96622b9b769d82852ef28cb93c68de21e5c58b3",
     "work_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01"
   },
   "schema_version": 1,
