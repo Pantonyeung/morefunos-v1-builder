@@ -1,4 +1,4 @@
-source_sha=27beb33a3228bd8e335702370c38adb9ce925903
-base_sha=f24bdef9bf590e8e6d9efe53c0c072e04d65eda4
-branch_name=main
-request_id=MF-GOV-AI-EXECUTION-LOCK-01-CLOSED-CYCLE
+source_sha=4465f486d37b674c0c5f421043906d0574694061
+base_sha=9b42d733cd9534c90965db880882ac1688fbfe56
+branch_name=governance/SYS/B0705-authority-epoch-fresh-truth
+request_id=MF-GOV-SMT-PAYMENT-HOTPATH-LEASE-01
