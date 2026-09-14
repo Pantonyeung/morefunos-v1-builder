@@ -20,6 +20,22 @@ on:
         required: true
         default: CANDIDATE
         type: string
+      work_id:
+        description: Commander Work ID for evidence lineage
+        required: false
+        type: string
+      request_id:
+        description: Request or attempt identity for evidence lineage
+        required: false
+        type: string
+      rail_id:
+        description: Optional accepted Rail ID
+        required: false
+        type: string
+      required_rail_gates:
+        description: Optional comma-separated V2 Core gate IDs required by the Rail
+        required: false
+        type: string
   push:
     paths:
       - 'requests/v2-core-request.txt'
@@ -72,6 +88,10 @@ jobs:
           INPUT_BASE_SHA: ${{ inputs.base_sha }}
           INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
           INPUT_VERIFICATION_PHASE: ${{ inputs.verification_phase }}
+          INPUT_WORK_ID: ${{ inputs.work_id }}
+          INPUT_REQUEST_ID: ${{ inputs.request_id }}
+          INPUT_RAIL_ID: ${{ inputs.rail_id }}
+          INPUT_REQUIRED_RAIL_GATES: ${{ inputs.required_rail_gates }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
@@ -79,6 +99,10 @@ jobs:
             BASE_SHA="$(printf '%s' "${INPUT_BASE_SHA:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             BRANCH_NAME="$(printf '%s' "$INPUT_BRANCH_NAME" | tr -d '\r\n')"
             VERIFICATION_PHASE="$(printf '%s' "$INPUT_VERIFICATION_PHASE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+            WORK_ID="$(printf '%s' "${INPUT_WORK_ID:-}" | tr -d '\r\n')"
+            REQUEST_ID="$(printf '%s' "${INPUT_REQUEST_ID:-}" | tr -d '\r\n')"
+            RAIL_ID="$(printf '%s' "${INPUT_RAIL_ID:-}" | tr -d '\r\n')"
+            REQUIRED_RAIL_GATES="$(printf '%s' "${INPUT_REQUIRED_RAIL_GATES:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           else
             test -f requests/v2-core-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
@@ -86,6 +110,11 @@ jobs:
             BRANCH_NAME="$(sed -n 's/^branch_name=//p' requests/v2-core-request.txt | tr -d '\r\n')"
             VERIFICATION_PHASE="$(sed -n 's/^verification_phase=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             if [[ -z "$VERIFICATION_PHASE" ]]; then VERIFICATION_PHASE="CANDIDATE"; fi
+            WORK_ID="$(sed -n 's/^work_id=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+            REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+            if [[ -z "$REQUEST_ID" ]]; then REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-core-request.txt | tr -d '\r\n')"; fi
+            RAIL_ID="$(sed -n 's/^rail_id=//p' requests/v2-core-request.txt | tr -d '\r\n')"
+            REQUIRED_RAIL_GATES="$(sed -n 's/^required_rail_gates=//p' requests/v2-core-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
@@ -96,6 +125,10 @@ jobs:
             echo "base_sha=$BASE_SHA"
             echo "branch_name=$BRANCH_NAME"
             echo "verification_phase=$VERIFICATION_PHASE"
+            echo "work_id=$WORK_ID"
+            echo "request_id=$REQUEST_ID"
+            echo "rail_id=$RAIL_ID"
+            echo "required_rail_gates=$REQUIRED_RAIL_GATES"
           } >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
@@ -137,6 +170,8 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund --no-package-lock
 
       - name: Core Catalog tests
+        id: catalog
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -144,6 +179,8 @@ jobs:
           node --test packages/catalog/*.test.ts | tee "$RUNNER_TEMP/v2-core-catalog-tests.log"
 
       - name: Core Pricing tests
+        id: pricing
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -155,6 +192,8 @@ jobs:
           fi
 
       - name: Core Availability tests
+        id: availability
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -166,6 +205,8 @@ jobs:
           fi
 
       - name: Core Order tests
+        id: order
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -178,6 +219,8 @@ jobs:
           fi
 
       - name: Core BusinessDay Cash tests
+        id: business_day_cash
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -189,6 +232,8 @@ jobs:
           fi
 
       - name: Core Payment tests
+        id: payment
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -201,6 +246,8 @@ jobs:
           fi
 
       - name: Core Fulfillment tests
+        id: fulfillment
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -212,6 +259,8 @@ jobs:
           fi
 
       - name: Core Human Custody tests
+        id: human_custody
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -223,6 +272,8 @@ jobs:
           fi
 
       - name: Core Production Operations tests
+        id: production_operations
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -242,6 +293,8 @@ jobs:
           node --test "${FILES[@]}" | tee "$RUNNER_TEMP/v2-core-production-operations-tests.log"
 
       - name: Core Large Order B2B tests
+        id: large_order_b2b
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -253,6 +306,8 @@ jobs:
           fi
 
       - name: Core System Diagnostics tests
+        id: system_diagnostics
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -265,6 +320,8 @@ jobs:
           fi
 
       - name: Core Inventory tests
+        id: inventory
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -277,6 +334,8 @@ jobs:
           fi
 
       - name: Integration contract tests
+        id: integration
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -288,6 +347,8 @@ jobs:
           fi
 
       - name: TypeScript static check
+        id: typescript
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -296,6 +357,8 @@ jobs:
           ./node_modules/.bin/tsc --noEmit -p tsconfig.json --types node --jsx react-jsx | tee "$RUNNER_TEMP/v2-core-typecheck.log"
 
       - name: Governance guard
+        id: governance
+        continue-on-error: true
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
@@ -311,6 +374,8 @@ jobs:
           ) | tee "$RUNNER_TEMP/v2-core-governance.log"
 
       - name: Merge Request guard
+        id: merge_request
+        continue-on-error: true
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
@@ -335,36 +400,167 @@ jobs:
             ) | tee "$RUNNER_TEMP/v2-core-merge-request.log"
           fi
 
-      - name: Write evidence manifest
-        if: always()
+      - name: Decide exact baseline requirement
+        id: baseline_required
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          OUTCOMES: >-
+            ${{ steps.catalog.outcome }},${{ steps.pricing.outcome }},${{ steps.availability.outcome }},${{ steps.order.outcome }},
+            ${{ steps.business_day_cash.outcome }},${{ steps.payment.outcome }},${{ steps.fulfillment.outcome }},${{ steps.human_custody.outcome }},
+            ${{ steps.production_operations.outcome }},${{ steps.large_order_b2b.outcome }},${{ steps.system_diagnostics.outcome }},
+            ${{ steps.inventory.outcome }},${{ steps.integration.outcome }},${{ steps.typescript.outcome }},${{ steps.governance.outcome }},${{ steps.merge_request.outcome }}
+        run: |
+          OUTCOMES="${OUTCOMES//[[:space:]]/}"
+          if [[ ",$OUTCOMES," == *,failure,* ]]; then echo 'required=true' >> "$GITHUB_OUTPUT"; else echo 'required=false' >> "$GITHUB_OUTPUT"; fi
+
+      - name: Record candidate delta
+        if: ${{ !cancelled() }}
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
+        run: |
+          : > "$RUNNER_TEMP/v2-core-changed-files.txt"
+          if [[ -n "$BASE_SHA" ]]; then git -C source diff --name-only "$BASE_SHA" "$SOURCE_SHA" > "$RUNNER_TEMP/v2-core-changed-files.txt"; fi
+
+      - name: Checkout exact baseline source
+        if: ${{ steps.baseline_required.outputs.required == 'true' && steps.request.outputs.base_sha != '' }}
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.base_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: baseline
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run same failed verification families at exact baseline
+        if: ${{ steps.baseline_required.outputs.required == 'true' && steps.request.outputs.base_sha != '' }}
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
           BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
           VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+          CATALOG: ${{ steps.catalog.outcome }}
+          PRICING: ${{ steps.pricing.outcome }}
+          AVAILABILITY: ${{ steps.availability.outcome }}
+          ORDER: ${{ steps.order.outcome }}
+          BUSINESS_DAY_CASH: ${{ steps.business_day_cash.outcome }}
+          PAYMENT: ${{ steps.payment.outcome }}
+          FULFILLMENT: ${{ steps.fulfillment.outcome }}
+          HUMAN_CUSTODY: ${{ steps.human_custody.outcome }}
+          PRODUCTION_OPERATIONS: ${{ steps.production_operations.outcome }}
+          LARGE_ORDER_B2B: ${{ steps.large_order_b2b.outcome }}
+          SYSTEM_DIAGNOSTICS: ${{ steps.system_diagnostics.outcome }}
+          INVENTORY: ${{ steps.inventory.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          TYPESCRIPT: ${{ steps.typescript.outcome }}
+          GOVERNANCE: ${{ steps.governance.outcome }}
+          MERGE_REQUEST: ${{ steps.merge_request.outcome }}
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/v2-core-evidence.txt" <<EOF
-          builder_repo=Pantonyeung/morefunos-v1-builder
-          builder_run_id=${GITHUB_RUN_ID}
-          source_repo=Pantonyeung/Morefun-v2
-          source_sha=${SOURCE_SHA}
-          base_sha=${BASE_SHA:-none}
-          branch_name=${BRANCH_NAME}
-          verification_phase=${VERIFICATION_PHASE}
-          node_version=$(node --version)
-          typescript_version=7.0.2
-          node_types_version=24
-          EOF
+          test "$(git -C baseline rev-parse HEAD)" = "$BASE_SHA"
+          npm --prefix baseline install --ignore-scripts --no-audit --no-fund --no-package-lock
+          : > "$RUNNER_TEMP/v2-core-base-results.txt"
+          run_gate() {
+            local gate="$1" candidate_outcome="$2" log="$RUNNER_TEMP/v2-core-base-${1}.log" status=0 signature=''
+            [[ "$candidate_outcome" == failure ]] || return 0
+            set +e
+            case "$gate" in
+              catalog) (cd baseline && node --test packages/catalog/*.test.ts) 2>&1 | tee "$log" ;;
+              pricing) (cd baseline && if compgen -G 'packages/pricing/*.test.ts' >/dev/null; then node --test packages/pricing/*.test.ts; else echo 'no pricing tests present'; fi) 2>&1 | tee "$log" ;;
+              availability) (cd baseline && if compgen -G 'packages/availability/*.test.ts' >/dev/null; then node --test packages/availability/*.test.ts; else echo 'no availability tests present'; fi) 2>&1 | tee "$log" ;;
+              order) (cd baseline && npm run test:core-order) 2>&1 | tee "$log" ;;
+              business_day_cash) (cd baseline && node --test packages/business-day-cash/*.test.ts) 2>&1 | tee "$log" ;;
+              payment) (cd baseline && node --test packages/payment/*.test.ts) 2>&1 | tee "$log" ;;
+              fulfillment) (cd baseline && node --test packages/fulfillment/*.test.ts) 2>&1 | tee "$log" ;;
+              human_custody) (cd baseline && node --test packages/human-custody/*.test.ts) 2>&1 | tee "$log" ;;
+              production_operations) (cd baseline && mapfile -t files < <(find packages/production-kds packages/production-packing packages/production-eta packages/production-operations -maxdepth 1 -name '*.test.ts' -type f 2>/dev/null | sort); [[ ${#files[@]} -gt 0 ]] && node --test "${files[@]}") 2>&1 | tee "$log" ;;
+              large_order_b2b) (cd baseline && if compgen -G 'packages/large-order-b2b/*.test.ts' >/dev/null; then node --test packages/large-order-b2b/*.test.ts; else echo 'no large-order-b2b tests present'; fi) 2>&1 | tee "$log" ;;
+              system_diagnostics) (cd baseline && node --test packages/system-diagnostics/*.test.ts) 2>&1 | tee "$log" ;;
+              inventory) (cd baseline && node --test packages/inventory/*.test.ts) 2>&1 | tee "$log" ;;
+              integration) (cd baseline && node --experimental-loader "$GITHUB_WORKSPACE/scripts/cloudflare-workers-node-test-loader.mjs" --test packages/integration/*.test.ts) 2>&1 | tee "$log" ;;
+              typescript) (cd baseline && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@7.0.2 @types/node@24 && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --types node --jsx react-jsx) 2>&1 | tee "$log" ;;
+              governance) (cd baseline && python3 scripts/governance_guard.py --base "$BASE_SHA" --head "$BASE_SHA" --branch "$BRANCH_NAME") 2>&1 | tee "$log" ;;
+              merge_request) (cd baseline && if [[ "$VERIFICATION_PHASE" == CANDIDATE ]]; then echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP'; else python3 scripts/merge_request_guard.py --base "$BASE_SHA" --head "$BASE_SHA" --branch "$BRANCH_NAME"; fi) 2>&1 | tee "$log" ;;
+            esac
+            status=${PIPESTATUS[0]}
+            set -e
+            if [[ "$status" -eq 0 ]]; then
+              printf '%s|success|\n' "$gate" >> "$RUNNER_TEMP/v2-core-base-results.txt"
+            else
+              signature="$(python3 scripts/v2_verification_classifier.py signature "$log")"
+              printf '%s|failure|%s\n' "$gate" "$signature" >> "$RUNNER_TEMP/v2-core-base-results.txt"
+            fi
+          }
+          run_gate catalog "$CATALOG"
+          run_gate pricing "$PRICING"
+          run_gate availability "$AVAILABILITY"
+          run_gate order "$ORDER"
+          run_gate business_day_cash "$BUSINESS_DAY_CASH"
+          run_gate payment "$PAYMENT"
+          run_gate fulfillment "$FULFILLMENT"
+          run_gate human_custody "$HUMAN_CUSTODY"
+          run_gate production_operations "$PRODUCTION_OPERATIONS"
+          run_gate large_order_b2b "$LARGE_ORDER_B2B"
+          run_gate system_diagnostics "$SYSTEM_DIAGNOSTICS"
+          run_gate inventory "$INVENTORY"
+          run_gate integration "$INTEGRATION"
+          run_gate typescript "$TYPESCRIPT"
+          run_gate governance "$GOVERNANCE"
+          run_gate merge_request "$MERGE_REQUEST"
+
+      - name: Write evidence manifest
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          WORK_ID: ${{ steps.request.outputs.work_id }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          RAIL_ID: ${{ steps.request.outputs.rail_id }}
+          RAIL_GATES: ${{ steps.request.outputs.required_rail_gates }}
+          GATE_CATALOG: ${{ steps.catalog.outcome }}
+          GATE_PRICING: ${{ steps.pricing.outcome }}
+          GATE_AVAILABILITY: ${{ steps.availability.outcome }}
+          GATE_ORDER: ${{ steps.order.outcome }}
+          GATE_BUSINESS_DAY_CASH: ${{ steps.business_day_cash.outcome }}
+          GATE_PAYMENT: ${{ steps.payment.outcome }}
+          GATE_FULFILLMENT: ${{ steps.fulfillment.outcome }}
+          GATE_HUMAN_CUSTODY: ${{ steps.human_custody.outcome }}
+          GATE_PRODUCTION_OPERATIONS: ${{ steps.production_operations.outcome }}
+          GATE_LARGE_ORDER_B2B: ${{ steps.large_order_b2b.outcome }}
+          GATE_SYSTEM_DIAGNOSTICS: ${{ steps.system_diagnostics.outcome }}
+          GATE_INVENTORY: ${{ steps.inventory.outcome }}
+          GATE_INTEGRATION: ${{ steps.integration.outcome }}
+          GATE_TYPESCRIPT: ${{ steps.typescript.outcome }}
+          GATE_GOVERNANCE: ${{ steps.governance.outcome }}
+          GATE_MERGE_REQUEST: ${{ steps.merge_request.outcome }}
+        run: |
+          set -euo pipefail
+          test -f "$RUNNER_TEMP/v2-core-base-results.txt" || : > "$RUNNER_TEMP/v2-core-base-results.txt"
+          python3 scripts/v2_verification_classifier.py collect-core \
+            --source-sha "$SOURCE_SHA" --base-sha "$BASE_SHA" --work-id "$WORK_ID" --request-id "$REQUEST_ID" \
+            --builder-run-id "$GITHUB_RUN_ID" --builder-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --rail-id "$RAIL_ID" --rail-gates "$RAIL_GATES" \
+            --changed-files "$RUNNER_TEMP/v2-core-changed-files.txt" \
+            --base-results "$RUNNER_TEMP/v2-core-base-results.txt" --runner-temp "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/v2-core-evidence.json"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("CHANGE_VERIFICATION="+d["verdicts"]["CHANGE_VERIFICATION"]); print("RAIL_VERIFICATION="+d["verdicts"]["RAIL_VERIFICATION"]); print("GLOBAL_SYSTEM_HEALTH="+d["verdicts"]["GLOBAL_SYSTEM_HEALTH"])' "$RUNNER_TEMP/v2-core-evidence.json" | tee "$RUNNER_TEMP/v2-core-verdicts.txt"
 
       - name: Upload Core evidence
-        if: always()
+        id: core_evidence
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: v2-core-evidence-${{ steps.request.outputs.source_sha }}
           path: |
-            ${{ runner.temp }}/v2-core-evidence.txt
+            ${{ runner.temp }}/v2-core-evidence.json
+            ${{ runner.temp }}/v2-core-verdicts.txt
+            ${{ runner.temp }}/v2-core-changed-files.txt
+            ${{ runner.temp }}/v2-core-base-results.txt
+            ${{ runner.temp }}/v2-core-base-*.log
             ${{ runner.temp }}/v2-core-catalog-tests.log
             ${{ runner.temp }}/v2-core-pricing-tests.log
             ${{ runner.temp }}/v2-core-availability-tests.log
@@ -384,21 +580,33 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Seal artifact identity into evidence manifest
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.core_evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.core_evidence.outputs.artifact-digest }}
+        run: |
+          python3 - "$RUNNER_TEMP/v2-core-evidence.json" "$RUNNER_TEMP/v2-core-sealed-evidence.json" <<'PY'
+          import json, os, sys
+          source, target = sys.argv[1:]
+          data = json.load(open(source, encoding='utf-8'))
+          data['artifacts'] = [{'artifact_id': os.environ['ARTIFACT_ID'], 'artifact_digest': os.environ['ARTIFACT_DIGEST']}]
+          with open(target, 'w', encoding='utf-8') as handle:
+              json.dump(data, handle, indent=2, sort_keys=True)
+              handle.write('\n')
+          PY
+
       - name: Seal durable Builder result
-        if: always()
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          CONCLUSION: ${{ job.status }}
+          EVIDENCE_MANIFEST: ${{ runner.temp }}/v2-core-sealed-evidence.json
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-core-request.txt | tr -d '\r\n')"
-          if [[ -z "$REQUEST_ID" ]]; then
-            REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-core-request.txt | tr -d '\r\n')"
-          fi
+          CONCLUSION="$(python3 -c 'import json,sys; print("PASS" if json.load(open(sys.argv[1]))["admission"]["eligible"] else "FAIL")' "$EVIDENCE_MANIFEST")"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
@@ -406,14 +614,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             mkdir -p .ci-results
-            {
-              echo "source_sha=${SOURCE_SHA:-UNKNOWN}"
-              echo "request_id=${REQUEST_ID:-UNKNOWN}"
-              echo "run_id=$RUN_ID"
-              echo "run_attempt=$RUN_ATTEMPT"
-              echo "conclusion=$CONCLUSION"
-            } > .ci-results/v2-core.txt
-            git add .ci-results/v2-core.txt
+            cp "$EVIDENCE_MANIFEST" .ci-results/v2-core.json
+            git add .ci-results/v2-core.json
             if git diff --cached --quiet; then exit 0; fi
             git commit -m "ci(result): V2 Core ${CONCLUSION} ${SOURCE_SHA:-UNKNOWN}"
             if git push origin HEAD:main; then exit 0; fi
@@ -421,4 +623,9 @@ jobs:
           done
           echo "RESULT_SEAL_PUSH_FAILED" >&2
           exit 1
+
+      - name: Enforce classified final verdict
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); print(json.dumps(data["verdicts"], sort_keys=True)); raise SystemExit(0 if data["admission"]["eligible"] else 1)' "$RUNNER_TEMP/v2-core-sealed-evidence.json"
 
