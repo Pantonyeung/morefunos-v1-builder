@@ -59,9 +59,16 @@ jobs:
             .github/workflows/verify-design-center.yml \
             .github/workflows/verify-carrier.yml \
             .github/workflows/runtime-release-v2.yml \
-            .github/workflows/runtime-release-v3.yml \
-            .github/workflows/android-release-v2.yml \
-            .github/workflows/repair-smt-p01-lockfile.yml
+             .github/workflows/runtime-release-v3.yml \
+             .github/workflows/android-release-v2.yml \
+             .github/workflows/repair-smt-p01-lockfile.yml \
+             .github/workflows/verify-v2-core.yml \
+             .github/workflows/v2-builder-admission-queue.yml \
+             .github/workflows/verify-v2-customer-production-integration.yml
+
+      - name: Verify V2 classification and artifact proof fixtures
+        shell: bash
+        run: python3 -m unittest -v tests.test_v2_verification_classifier tests.test_verify_customer_sw_artifact
 
       - name: Verify current Builder policy
         shell: bash

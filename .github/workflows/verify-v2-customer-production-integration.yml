@@ -103,6 +103,15 @@ jobs:
           test -s dist/index.html
           find dist/assets -maxdepth 1 -type f | grep -E '/[^/]+-[A-Za-z0-9_-]+\.(js|css)$'
 
+      - name: Customer production Service Worker artifact proof
+        id: customer_sw
+        shell: bash
+        run: |
+          python3 scripts/verify_customer_sw_artifact.py \
+            --source source/apps/customer-web/public/service-worker.js \
+            --artifact source/apps/customer-web/dist/service-worker.js \
+            --output evidence/customer-sw-artifact.json
+
       - name: Customer Worker Wrangler dry-run
         working-directory: source
         run: npx --yes wrangler@4 deploy --dry-run --config infra/cloudflare/customer-web-worker/wrangler.jsonc
@@ -118,7 +127,7 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           mkdir -p evidence
-          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-customer-production-integration.yml\n' "$SOURCE_SHA" > evidence/summary.txt
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nworkflow=verify-v2-customer-production-integration.yml\ncustomer_sw_result=%s\n' "$SOURCE_SHA" '${{ steps.customer_sw.outcome }}' > evidence/summary.txt
 
       - name: Publish Team2 audit comment
         if: always()
@@ -131,6 +140,7 @@ jobs:
         run: gh issue comment 98 --repo Pantonyeung/morefunos-v1-builder --body "T2_CUSTOMER_PRODUCTION_INTEGRATION status=$JOB_STATUS run_id=$RUN_ID source_sha=$SOURCE_SHA"
 
       - name: Upload evidence
+        id: customer_evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -147,13 +157,21 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           CONCLUSION: ${{ job.status }}
+          SW_EVIDENCE: ${{ github.workspace }}/evidence/customer-sw-artifact.json
+          ARTIFACT_ID: ${{ steps.customer_evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.customer_evidence.outputs.artifact-digest }}
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-customer-production-integration-request.txt | tr -d '\r\n')"
-          if [[ -z "$REQUEST_ID" ]]; then
-            REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-customer-production-integration-request.txt | tr -d '\r\n')"
+          REQUEST_ID=''
+          if [[ -f requests/v2-customer-production-integration-request.txt ]]; then
+            REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-customer-production-integration-request.txt | tr -d '\r\n')"
+            if [[ -z "$REQUEST_ID" ]]; then REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-customer-production-integration-request.txt | tr -d '\r\n')"; fi
           fi
+          export REQUEST_ID
+          SOURCE_SW_SHA256="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("source_sw_sha256") or "UNKNOWN")' "$SW_EVIDENCE")"
+          DIST_SW_SHA256="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("dist_sw_sha256") or "UNKNOWN")' "$SW_EVIDENCE")"
+          SW_EQUAL="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("public_to_dist_equal", False)).lower())' "$SW_EVIDENCE")"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
@@ -167,8 +185,26 @@ jobs:
               echo "run_id=$RUN_ID"
               echo "run_attempt=$RUN_ATTEMPT"
               echo "conclusion=$CONCLUSION"
+              echo "source_sw_sha256=$SOURCE_SW_SHA256"
+              echo "dist_sw_sha256=$DIST_SW_SHA256"
+              echo "public_to_dist_equal=$SW_EQUAL"
+              echo "evidence_artifact_id=$ARTIFACT_ID"
+              echo "evidence_artifact_digest=$ARTIFACT_DIGEST"
             } > .ci-results/v2-customer-production-integration.txt
-            git add .ci-results/v2-customer-production-integration.txt
+            python3 - "$SW_EVIDENCE" .ci-results/v2-customer-production-integration.json <<'PY'
+          import json, os, sys
+          data = json.load(open(sys.argv[1], encoding='utf-8'))
+          data.update({
+              'source_sha': os.environ['SOURCE_SHA'], 'request_id': os.environ.get('REQUEST_ID') or None,
+              'builder_run_id': os.environ['RUN_ID'], 'builder_run_attempt': os.environ['RUN_ATTEMPT'],
+              'conclusion': os.environ['CONCLUSION'], 'evidence_artifact_id': os.environ['ARTIFACT_ID'],
+              'evidence_artifact_digest': os.environ['ARTIFACT_DIGEST'],
+          })
+          with open(sys.argv[2], 'w', encoding='utf-8') as handle:
+              json.dump(data, handle, indent=2, sort_keys=True)
+              handle.write('\n')
+          PY
+            git add .ci-results/v2-customer-production-integration.txt .ci-results/v2-customer-production-integration.json
             if git diff --cached --quiet; then exit 0; fi
             git commit -m "ci(result): V2 Customer Production Integration ${CONCLUSION} ${SOURCE_SHA:-UNKNOWN}"
             if git push origin HEAD:main; then exit 0; fi

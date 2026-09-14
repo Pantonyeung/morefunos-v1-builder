@@ -57,6 +57,11 @@ on:
         required: false
         default: ''
         type: string
+      physical_proof_ref:
+        description: Required immutable device or production evidence reference for PHYSICAL_ACCEPTANCE
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -95,6 +100,7 @@ jobs:
           INPUT_REQUIRED_CORE_TESTS: ${{ inputs.required_core_tests }}
           INPUT_FORCE_FULL_PROOF: ${{ inputs.force_full_proof }}
           INPUT_PROOF_SOURCE_SHA: ${{ inputs.proof_source_sha }}
+          INPUT_PHYSICAL_PROOF_REF: ${{ inputs.physical_proof_ref }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
@@ -116,6 +122,7 @@ jobs:
             REQUIRED_CORE_TESTS="$(printf '%s' "$INPUT_REQUIRED_CORE_TESTS" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(printf '%s' "$INPUT_FORCE_FULL_PROOF" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             PROOF_SOURCE_SHA="$(printf '%s' "$INPUT_PROOF_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            PHYSICAL_PROOF_REF="$(printf '%s' "$INPUT_PHYSICAL_PROOF_REF" | tr -d '\r\n')"
             REQUEST_FILE=WORKFLOW_DISPATCH
           else
             mapfile -t REQUEST_FILES < <(
@@ -149,12 +156,14 @@ jobs:
             REQUIRED_CORE_TESTS="$(read_request required_core_tests "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
             FORCE_FULL_PROOF="$(read_request force_full_proof "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             PROOF_SOURCE_SHA="$(read_request proof_source_sha "$REQUEST_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            PHYSICAL_PROOF_REF="$(read_request physical_proof_ref "$REQUEST_FILE")"
           fi
           DEPENDS_ON_SPECS="${DEPENDS_ON_SPECS:-}"
           SUPERSEDES_CANDIDATE_SHA="${SUPERSEDES_CANDIDATE_SHA:-}"
           REQUIRED_CORE_TESTS="${REQUIRED_CORE_TESTS:-}"
           FORCE_FULL_PROOF="${FORCE_FULL_PROOF:-false}"
           PROOF_SOURCE_SHA="${PROOF_SOURCE_SHA:-}"
+          PHYSICAL_PROOF_REF="${PHYSICAL_PROOF_REF:-}"
           [[ "$FORCE_FULL_PROOF" == "true" || "$FORCE_FULL_PROOF" == "false" ]]
           if [[ -n "$PROOF_SOURCE_SHA" ]]; then
             [[ "$PROOF_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -212,7 +221,48 @@ jobs:
           echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
           echo "force_full_proof=$FORCE_FULL_PROOF" >> "$GITHUB_OUTPUT"
           echo "proof_source_sha=$PROOF_SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "physical_proof_ref=$PHYSICAL_PROOF_REF" >> "$GITHUB_OUTPUT"
           echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Consume exact formal CHANGE RAIL GLOBAL classification
+        id: formal_classification
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ steps.request.outputs.candidate_sha }}
+          CAPABILITY_ACTION: ${{ steps.request.outputs.capability_action }}
+          PROOF_SOURCE_SHA: ${{ steps.request.outputs.proof_source_sha }}
+          PHYSICAL_PROOF_REF: ${{ steps.request.outputs.physical_proof_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git show origin/main:.ci-results/v2-core.json > "$RUNNER_TEMP/v2-core.json" 2>/dev/null || { echo 'FORMAL_CLASSIFICATION_MISSING' >&2; exit 41; }
+          test -s "$RUNNER_TEMP/v2-core.json" || { echo 'FORMAL_CLASSIFICATION_EMPTY' >&2; exit 41; }
+          mkdir -p evidence
+          cp "$RUNNER_TEMP/v2-core.json" evidence/core-classification.json
+          python3 - "$GITHUB_OUTPUT" <<'PY'
+          import json, os, sys
+          data = json.load(open(os.environ['RUNNER_TEMP'] + '/v2-core.json', encoding='utf-8'))
+          identity = data.get('identity', {})
+          verdicts = data.get('verdicts', {})
+          admission = data.get('admission', {})
+          expected = os.environ['CANDIDATE_SHA']
+          if identity.get('source_sha') != expected or identity.get('source_identity') != 'PASS':
+              raise SystemExit('FORMAL_SOURCE_IDENTITY_MISMATCH')
+          change = verdicts.get('CHANGE_VERIFICATION')
+          rail = verdicts.get('RAIL_VERIFICATION')
+          global_health = verdicts.get('GLOBAL_SYSTEM_HEALTH')
+          if change != 'PASS': raise SystemExit('FORMAL_CHANGE_VERIFICATION_BLOCKED:' + str(change))
+          if rail != 'PASS': raise SystemExit('FORMAL_RAIL_VERIFICATION_BLOCKED:' + str(rail))
+          if global_health not in {'PASS', 'PRE_EXISTING_GLOBAL_RED'}:
+              raise SystemExit('FORMAL_GLOBAL_SYSTEM_HEALTH_BLOCKED:' + str(global_health))
+          if not admission.get('eligible'): raise SystemExit('FORMAL_ADMISSION_NOT_ELIGIBLE')
+          if os.environ['CAPABILITY_ACTION'] == 'PHYSICAL_ACCEPTANCE':
+              if not os.environ.get('PROOF_SOURCE_SHA'): raise SystemExit('PHYSICAL_PROOF_SOURCE_REQUIRED')
+              if not os.environ.get('PHYSICAL_PROOF_REF'): raise SystemExit('PHYSICAL_PROOF_REFERENCE_REQUIRED')
+          with open(sys.argv[1], 'a', encoding='utf-8') as output:
+              output.write(f'change_verification={change}\nrail_verification={rail}\nglobal_system_health={global_health}\n')
+              output.write(f'global_green={str(global_health == "PASS").lower()}\n')
+          PY
 
       - name: Require V2 source credential
         env:
@@ -662,6 +712,10 @@ jobs:
             echo "## MoreFunOS Admission Queue"
             echo
             test -f evidence/impact-summary.txt && cat evidence/impact-summary.txt || true
+            echo "CHANGE_VERIFICATION=${{ steps.formal_classification.outputs.change_verification }}"
+            echo "RAIL_VERIFICATION=${{ steps.formal_classification.outputs.rail_verification }}"
+            echo "GLOBAL_SYSTEM_HEALTH=${{ steps.formal_classification.outputs.global_system_health }}"
+            echo "GLOBAL_GREEN=${{ steps.formal_classification.outputs.global_green }}"
             echo
             echo "Temporary integration working tree only; Morefun-v2 is never mutated by this workflow."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -692,6 +746,11 @@ jobs:
           DEPENDS_ON_SPECS: ${{ steps.request.outputs.depends_on_specs }}
           REQUIRED_CORE_TESTS: ${{ steps.request.outputs.required_core_tests }}
           FORCE_FULL_PROOF: ${{ steps.request.outputs.force_full_proof }}
+          PHYSICAL_PROOF_REF: ${{ steps.request.outputs.physical_proof_ref }}
+          CHANGE_VERIFICATION: ${{ steps.formal_classification.outputs.change_verification }}
+          RAIL_VERIFICATION: ${{ steps.formal_classification.outputs.rail_verification }}
+          GLOBAL_SYSTEM_HEALTH: ${{ steps.formal_classification.outputs.global_system_health }}
+          GLOBAL_GREEN: ${{ steps.formal_classification.outputs.global_green }}
         shell: bash
         run: |
           set -euo pipefail
@@ -715,6 +774,11 @@ jobs:
               echo "depends_on_specs=$DEPENDS_ON_SPECS"
               echo "required_core_tests=$REQUIRED_CORE_TESTS"
               echo "force_full_proof=$FORCE_FULL_PROOF"
+              echo "physical_proof_ref=$PHYSICAL_PROOF_REF"
+              echo "change_verification=$CHANGE_VERIFICATION"
+              echo "rail_verification=$RAIL_VERIFICATION"
+              echo "global_system_health=$GLOBAL_SYSTEM_HEALTH"
+              echo "global_green=$GLOBAL_GREEN"
               echo "run_id=$RUN_ID"
               echo "conclusion=$CONCLUSION"
             } > ".ci-results/admission-queue/${safe_work_id}.txt"
