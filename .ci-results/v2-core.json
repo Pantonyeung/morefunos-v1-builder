@@ -1,14 +1,12 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "RAIL_VERIFICATION_FAIL"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "469bb2a68057131eb75ca9b2e3034a1ed03efe8d198d24b873db8bbd1c3129e9",
-      "artifact_id": "10331325665"
+      "artifact_digest": "481f0e430bbdf9f6a822cf42cf88d491d80ffc8f12dc5f6bbfe2b94a9678df51",
+      "artifact_id": "10330996325"
     }
   ],
   "baseline_comparison": [
@@ -24,7 +22,7 @@
   "first_failed_station": {
     "CHANGE": "NONE",
     "GLOBAL": "integration",
-    "RAIL": "integration"
+    "RAIL": "NONE"
   },
   "gate_outcomes": [
     {
@@ -95,7 +93,7 @@
       "gate_id": "fulfillment",
       "global_scope": true,
       "outcome": "success",
-      "rail_required": true
+      "rail_required": false
     },
     {
       "base_failure_signature": null,
@@ -155,7 +153,7 @@
       "gate_id": "integration",
       "global_scope": true,
       "outcome": "failure",
-      "rail_required": true
+      "rail_required": false
     },
     {
       "base_failure_signature": null,
@@ -191,8 +189,8 @@
   "identity": {
     "base_sha": "f2b2e77a1392ecf6c04aba637e25f048861a66a3",
     "builder_run_attempt": "1",
-    "builder_run_id": "34799590827",
-    "request_id": "MF-CODEX-GOV-BUILDER-CONTROL-PLANE-01-CANDIDATE",
+    "builder_run_id": "34799719234",
+    "request_id": "MF-CODEX-GOV-BUILDER-CONTROL-PLANE-01-CANDIDATE-R2",
     "source_identity": "PASS",
     "source_sha": "74fddf6ae3f81f210e9e9f2fa74dd2bfc45440ca",
     "work_id": "MF-CODEX-GOV-BUILDER-CONTROL-PLANE-01"
@@ -201,6 +199,6 @@
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
     "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
-    "RAIL_VERIFICATION": "FAIL"
+    "RAIL_VERIFICATION": "PASS"
   }
 }
