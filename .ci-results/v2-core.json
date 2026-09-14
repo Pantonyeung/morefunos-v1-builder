@@ -1,14 +1,12 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "CHANGE_VERIFICATION_FAIL"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "e42694611564a9c43461bf55e161c0c61d367716e3ddc725522b29def44bfed8",
-      "artifact_id": "10334948121"
+      "artifact_digest": "a8387ff7cca98e645254f31e5c5b9e3c5e6fc7b980b244931fb1fc1e782c86b7",
+      "artifact_id": "10334909194"
     }
   ],
   "baseline_comparison": [
@@ -19,18 +17,10 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
-    },
-    {
-      "base_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
-    "CHANGE": "governance",
+    "CHANGE": "NONE",
     "GLOBAL": "integration",
     "RAIL": "NONE"
   },
@@ -176,13 +166,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": true,
-      "failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
+      "failure_signature": null,
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -199,15 +189,15 @@
   "identity": {
     "base_sha": "27beb33a3228bd8e335702370c38adb9ce925903",
     "builder_run_attempt": "1",
-    "builder_run_id": "34811750259",
-    "request_id": "issue-704-dispatch-5659399504-r3",
+    "builder_run_id": "34812366226",
+    "request_id": "issue-704-dispatch-5659399504-r4",
     "source_identity": "PASS",
-    "source_sha": "ed44bb027784fe3fc18adc6eb99539ddbb9be11a",
+    "source_sha": "7242371fed0d8f71bbb77c1d24841f7004ba4e30",
     "work_id": "MF-P0-MONEY-REVIEW-OPERATOR-RESOLUTION-01"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "FAIL",
+    "CHANGE_VERIFICATION": "PASS",
     "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
