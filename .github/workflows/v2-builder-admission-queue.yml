@@ -68,7 +68,6 @@ permissions:
 
 concurrency:
   group: morefun-v2-builder-admission-queue
-  queue: max
 
 jobs:
   integrate:
@@ -209,20 +208,21 @@ jobs:
             fi
           fi
 
-          echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
-          echo "base_main_sha=$BASE_MAIN_SHA" >> "$GITHUB_OUTPUT"
-          echo "work_id=$WORK_ID" >> "$GITHUB_OUTPUT"
-          echo "capability_id=$CAPABILITY_ID" >> "$GITHUB_OUTPUT"
-          echo "capability_action=$CAPABILITY_ACTION" >> "$GITHUB_OUTPUT"
-          echo "affected_ports=$AFFECTED_PORTS" >> "$GITHUB_OUTPUT"
-          echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
-          echo "depends_on_specs=$DEPENDS_ON_SPECS" >> "$GITHUB_OUTPUT"
-          echo "supersedes_candidate_sha=$SUPERSEDES_CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
-          echo "required_core_tests=$REQUIRED_CORE_TESTS" >> "$GITHUB_OUTPUT"
-          echo "force_full_proof=$FORCE_FULL_PROOF" >> "$GITHUB_OUTPUT"
-          echo "proof_source_sha=$PROOF_SOURCE_SHA" >> "$GITHUB_OUTPUT"
-          echo "physical_proof_ref=$PHYSICAL_PROOF_REF" >> "$GITHUB_OUTPUT"
-          echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
+          {
+            echo "candidate_sha=$CANDIDATE_SHA"
+            echo "base_main_sha=$BASE_MAIN_SHA"
+            echo "work_id=$WORK_ID"
+            echo "capability_id=$CAPABILITY_ID"
+            echo "capability_action=$CAPABILITY_ACTION"
+            echo "affected_ports=$AFFECTED_PORTS"
+            echo "request_file=$REQUEST_FILE"
+            echo "depends_on_specs=$DEPENDS_ON_SPECS"
+            echo "supersedes_candidate_sha=$SUPERSEDES_CANDIDATE_SHA"
+            echo "required_core_tests=$REQUIRED_CORE_TESTS"
+            echo "force_full_proof=$FORCE_FULL_PROOF"
+            echo "proof_source_sha=$PROOF_SOURCE_SHA"
+            echo "physical_proof_ref=$PHYSICAL_PROOF_REF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Consume exact formal CHANGE RAIL GLOBAL classification
         id: formal_classification
@@ -560,13 +560,15 @@ jobs:
             echo "train_count=$TRAIN_COUNT"
           } | tee evidence/impact-summary.txt
 
-          echo "latest_sha=$LATEST_SHA" >> "$GITHUB_OUTPUT"
-          echo "collision=$COLLISION" >> "$GITHUB_OUTPUT"
-          echo "impact=$IMPACT" >> "$GITHUB_OUTPUT"
-          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
-          echo "apply_status=$APPLY_STATUS" >> "$GITHUB_OUTPUT"
-          echo "already_admitted=$ALREADY_ADMITTED" >> "$GITHUB_OUTPUT"
-          echo "verification_source=$VERIFICATION_SOURCE" >> "$GITHUB_OUTPUT"
+          {
+            echo "latest_sha=$LATEST_SHA"
+            echo "collision=$COLLISION"
+            echo "impact=$IMPACT"
+            echo "reason=$REASON"
+            echo "apply_status=$APPLY_STATUS"
+            echo "already_admitted=$ALREADY_ADMITTED"
+            echo "verification_source=$VERIFICATION_SOURCE"
+          } >> "$GITHUB_OUTPUT"
           if [[ "$APPLY_STATUS" == CONFLICT ]]; then exit 22; fi
 
       - name: Setup Node 24
@@ -711,7 +713,9 @@ jobs:
           {
             echo "## MoreFunOS Admission Queue"
             echo
-            test -f evidence/impact-summary.txt && cat evidence/impact-summary.txt || true
+            if [[ -f evidence/impact-summary.txt ]]; then
+              cat evidence/impact-summary.txt
+            fi
             echo "CHANGE_VERIFICATION=${{ steps.formal_classification.outputs.change_verification }}"
             echo "RAIL_VERIFICATION=${{ steps.formal_classification.outputs.rail_verification }}"
             echo "GLOBAL_SYSTEM_HEALTH=${{ steps.formal_classification.outputs.global_system_health }}"
