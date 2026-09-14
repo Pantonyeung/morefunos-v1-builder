@@ -1,4 +1,4 @@
-source_sha=27beb33a3228bd8e335702370c38adb9ce925903
-base_sha=f24bdef9bf590e8e6d9efe53c0c072e04d65eda4
-branch_name=main
-request_id=MF-GOV-AI-EXECUTION-LOCK-01-CLOSED-CYCLE
+source_sha=fc76b3f178ec8a8aadf50ee38b551b54da8f2883
+base_sha=e6449644710f99ba1994f40b712ceaec1c614aa6
+branch_name=governance/SYS/B0706-global-money-gate-retirement
+request_id=MF-GOV-GLOBAL-MONEY-GATE-RETIREMENT-01
