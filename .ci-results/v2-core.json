@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "d302cc77557cfac3d1a94c08ac046dcc4cdbed0cd5f6dca73bef73dd508055d5",
-      "artifact_id": "10332390000"
+      "artifact_digest": "ccf90e5b87d8f3d45f962e0fa8ba418fa18fde5673e810ef15d488949437675b",
+      "artifact_id": "10334414399"
     }
   ],
   "baseline_comparison": [
@@ -17,6 +17,14 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
+    },
+    {
+      "base_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
@@ -78,7 +86,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": false,
+      "changed_domain": true,
       "failure_signature": null,
       "gate_id": "payment",
       "global_scope": true,
@@ -133,7 +141,7 @@
       "gate_id": "system_diagnostics",
       "global_scope": true,
       "outcome": "success",
-      "rail_required": true
+      "rail_required": false
     },
     {
       "base_failure_signature": null,
@@ -163,17 +171,17 @@
       "gate_id": "typescript",
       "global_scope": true,
       "outcome": "success",
-      "rail_required": true
+      "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
-      "changed_domain": true,
-      "failure_signature": null,
+      "base_failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
+      "base_outcome": "failure",
+      "changed_domain": false,
+      "failure_signature": "sha256:f40cd19cd29fb60356dc200bbaf134098ee019fb38414563d9e1f0ba92892cf5",
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "success",
-      "rail_required": true
+      "outcome": "failure",
+      "rail_required": false
     },
     {
       "base_failure_signature": null,
@@ -187,13 +195,13 @@
     }
   ],
   "identity": {
-    "base_sha": "f2b2e77a1392ecf6c04aba637e25f048861a66a3",
+    "base_sha": "27beb33a3228bd8e335702370c38adb9ce925903",
     "builder_run_attempt": "1",
-    "builder_run_id": "34802582337",
-    "request_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01-CORRECTION-R1",
+    "builder_run_id": "34811371910",
+    "request_id": "issue-704-dispatch-5659399504",
     "source_identity": "PASS",
-    "source_sha": "b96622b9b769d82852ef28cb93c68de21e5c58b3",
-    "work_id": "MF-REL-GOV-BUILDER-CONTROL-PLANE-MAIN-INTEGRATION-01"
+    "source_sha": "9218e983ec6e7c42490d2911e5e91f5113451f71",
+    "work_id": "MF-P0-MONEY-REVIEW-OPERATOR-RESOLUTION-01"
   },
   "schema_version": 1,
   "verdicts": {
