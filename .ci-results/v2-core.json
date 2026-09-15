@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "bbd59ca3aba9d30ea7a0dfbbe78b8420d641e8df44d0a114ebac2ada187bb6a1",
-      "artifact_id": "10421613479"
+      "artifact_digest": "724e6b8e9457974ebacf670a2a909cbe128a9bb6a7e67c1840b4f1b1e1012e71",
+      "artifact_id": "10423042756"
     }
   ],
   "baseline_comparison": [
@@ -76,7 +76,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "business_day_cash",
       "global_scope": true,
@@ -195,13 +195,13 @@
     }
   ],
   "identity": {
-    "base_sha": "f70b226540f8f1b8ea7e1f5857dc6f28a772bb92",
+    "base_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
     "builder_run_attempt": "1",
-    "builder_run_id": "35032023118",
-    "request_id": "G2BD-LANDED-MAIN-01",
+    "builder_run_id": "35035161191",
+    "request_id": "G3SO-BUILDER-01",
     "source_identity": "PASS",
-    "source_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
-    "work_id": "MF-CLOSE-G2-BUSINESS-DAY-DISPLAY-R1"
+    "source_sha": "cff56a5c63ed6cdf27a8b98f70fd7653ffe55d68",
+    "work_id": "MF-IMPL-G3-STAFF-ORDER-LOCAL-ADAPTER-R1"
   },
   "schema_version": 1,
   "verdicts": {
