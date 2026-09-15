@@ -1,4 +1,4 @@
-candidate_sha=32ef8e19cf23ff35f0eb5ab05e4bfb8cf1cccb9d
+candidate_sha=3f369b44c722ab027d824f52ee72a6d5f413540f
 base_main_sha=d15dffe5e36e286772228fd60f3566600f5d7da2
 work_id=MF-GOV-DEBUG-EVIDENCE-LAYER-01
 capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
