@@ -1,0 +1,215 @@
+name: V2 Store Kernel Foundation Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 candidate SHA
+        required: true
+        type: string
+      base_sha:
+        description: Exact accepted Morefun-v2 G1 base SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source and base identities
+        id: identity
+        shell: bash
+        env:
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          BASE_SHA="$(printf '%s' "$INPUT_BASE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$SOURCE_SHA" != "$BASE_SHA"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.identity.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source lineage and closed-world allowlist
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.identity.outputs.source_sha }}
+          BASE_SHA: ${{ steps.identity.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C source cat-file -e "$BASE_SHA^{commit}"
+          git -C source merge-base --is-ancestor "$BASE_SHA" "$SOURCE_SHA"
+          mapfile -t changed < <(git -C source diff --name-only "$BASE_SHA..$SOURCE_SHA")
+          test "${#changed[@]}" -gt 0
+          allowed="$(mktemp)"
+          printf '%s\n' \
+            apps/smt-android/app/build.gradle.kts \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/MainActivity.java \
+            packages/store-kernel/store-kernel-contract.ts \
+            packages/store-kernel/store-kernel-contract.test.ts \
+            packages/smt-ui-integration/store-kernel-native-port.ts \
+            packages/smt-ui-integration/store-kernel-native-port.test.ts \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelDatabase.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelDao.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelContract.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelAggregateEntity.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelCommandReceiptEntity.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelInboxEntity.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelOutboxEntity.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelJournalEntity.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelTransactionCoordinator.java \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel/StoreKernelBridgeController.java \
+            apps/smt-android/app/src/test/java/com/morefunos/smt/storekernel/StoreKernelDatabaseTest.java \
+            apps/smt-android/app/src/test/java/com/morefunos/smt/storekernel/StoreKernelTransactionCoordinatorTest.java \
+            apps/smt-android/app/src/test/java/com/morefunos/smt/storekernel/StoreKernelBridgeControllerTest.java \
+            apps/smt-android/app/schemas/com.morefunos.smt.storekernel.StoreKernelDatabase/1.json \
+            > "$allowed"
+          for path in "${changed[@]}"; do grep -Fxq "$path" "$allowed"; done
+          if [[ -d source/.github/workflows ]]; then
+            test "$(find source/.github/workflows -type f | wc -l)" -eq 0
+          fi
+          printf '%s\n' "${changed[@]}" > /tmp/store-kernel-changed-files.txt
+
+      - name: Prove protected runtime and domain blobs unchanged
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.identity.outputs.source_sha }}
+          BASE_SHA: ${{ steps.identity.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          git -C source diff --quiet "$BASE_SHA..$SOURCE_SHA" -- \
+            apps/smt-clean/src/runtime/network-production-runtime.ts \
+            packages/event-durability \
+            packages/order \
+            packages/payment \
+            packages/business-day-cash \
+            packages/fulfillment \
+            packages/print \
+            packages/frontline-ui-integration/offline-staff-order-intent.ts \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/print/gateway \
+            apps/smt-android/app/src/main/java/com/morefunos/smt/FrontlineFaultJournal.java \
+            infra/cloudflare
+          ! grep -REn 'network-production-runtime|PrintGateway|NativePrint|java\.net|okhttp|retrofit|WebView' \
+            source/apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel
+          test "$(grep -RIl 'createStoreKernelNativePort' source/packages --include='*.ts' | sort | tr '\n' ' ')" = \
+            "source/packages/smt-ui-integration/store-kernel-native-port.test.ts source/packages/smt-ui-integration/store-kernel-native-port.ts "
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Install root dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Store Kernel TypeScript contract tests
+        working-directory: source
+        run: node --test packages/store-kernel/store-kernel-contract.test.ts packages/smt-ui-integration/store-kernel-native-port.test.ts
+
+      - name: Root TypeScript typecheck
+        working-directory: source
+        run: npm run typecheck
+
+      - name: Build immutable SMT web asset prerequisite
+        working-directory: source/apps/smt-clean
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+
+      - name: Store Kernel Android tests and compiler schema export
+        working-directory: source
+        run: gradle -p apps/smt-android :app:testDebugUnitTest --tests 'com.morefunos.smt.storekernel.*' --no-daemon
+
+      - name: Android compile and lint
+        working-directory: source
+        run: |
+          gradle -p apps/smt-android :app:compileDebugJavaWithJavac --no-daemon
+          gradle -p apps/smt-android :app:lintDebug --no-daemon
+
+      - name: Verify exported schema v1
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          SCHEMA='apps/smt-android/app/schemas/com.morefunos.smt.storekernel.StoreKernelDatabase/1.json'
+          test -s "$SCHEMA"
+          grep -Fq '"version": 1' "$SCHEMA"
+          grep -Fq 'store_kernel_command_receipt' "$SCHEMA"
+          grep -Fq 'store_kernel_inbox' "$SCHEMA"
+          grep -Fq 'store_kernel_outbox' "$SCHEMA"
+          grep -Fq 'store_kernel_diagnostic_journal' "$SCHEMA"
+          ! grep -Rqn 'fallbackToDestructiveMigration' apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel
+
+      - name: Write exact-SHA evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.identity.outputs.source_sha }}
+          BASE_SHA: ${{ steps.identity.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/schema evidence/test-results
+          cp /tmp/store-kernel-changed-files.txt evidence/changed-files.txt 2>/dev/null || true
+          cp source/apps/smt-android/app/schemas/com.morefunos.smt.storekernel.StoreKernelDatabase/1.json evidence/schema/1.json 2>/dev/null || true
+          cp -R source/apps/smt-android/app/build/test-results/testDebugUnitTest/. evidence/test-results/ 2>/dev/null || true
+          printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbase_sha=%s\nbuilder_sha=%s\nworkflow=verify-v2-store-kernel-foundation.yml\nruntime_cutover=NOT_EXECUTED\nproduction_readback=NOT_APPLICABLE_G1\n' \
+            "$SOURCE_SHA" "$BASE_SHA" "$GITHUB_SHA" > evidence/summary.txt
+          find evidence -type f -print0 | sort -z | xargs -0 sha256sum > evidence/SHA256SUMS.txt
+
+      - name: Upload Store Kernel evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-store-kernel-foundation-${{ steps.identity.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
