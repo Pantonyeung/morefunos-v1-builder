@@ -197,19 +197,19 @@ jobs:
           BASE_SHA: ${{ steps.identity.outputs.base_sha }}
         run: |
           set -euo pipefail
-          mkdir -p evidence/schema evidence/test-results
-          cp /tmp/store-kernel-changed-files.txt evidence/changed-files.txt 2>/dev/null || true
-          cp source/apps/smt-android/app/schemas/com.morefunos.smt.storekernel.StoreKernelDatabase/1.json evidence/schema/1.json 2>/dev/null || true
-          cp -R source/apps/smt-android/app/build/test-results/testDebugUnitTest/. evidence/test-results/ 2>/dev/null || true
+          mkdir -p run-evidence/schema run-evidence/test-results
+          cp /tmp/store-kernel-changed-files.txt run-evidence/changed-files.txt 2>/dev/null || true
+          cp source/apps/smt-android/app/schemas/com.morefunos.smt.storekernel.StoreKernelDatabase/1.json run-evidence/schema/1.json 2>/dev/null || true
+          cp -R source/apps/smt-android/app/build/test-results/testDebugUnitTest/. run-evidence/test-results/ 2>/dev/null || true
           printf 'source_repo=Pantonyeung/Morefun-v2\nsource_sha=%s\nbase_sha=%s\nbuilder_sha=%s\nworkflow=verify-v2-store-kernel-foundation.yml\nruntime_cutover=NOT_EXECUTED\nproduction_readback=NOT_APPLICABLE_G1\n' \
-            "$SOURCE_SHA" "$BASE_SHA" "$GITHUB_SHA" > evidence/summary.txt
-          find evidence -type f -print0 | sort -z | xargs -0 sha256sum > evidence/SHA256SUMS.txt
+            "$SOURCE_SHA" "$BASE_SHA" "$GITHUB_SHA" > run-evidence/summary.txt
+          find run-evidence -type f -print0 | sort -z | xargs -0 sha256sum > run-evidence/SHA256SUMS.txt
 
       - name: Upload Store Kernel evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v2-store-kernel-foundation-${{ steps.identity.outputs.source_sha }}
-          path: evidence
+          path: run-evidence
           if-no-files-found: error
           retention-days: 30
