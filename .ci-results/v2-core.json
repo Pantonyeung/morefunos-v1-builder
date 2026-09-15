@@ -1,14 +1,12 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "CHANGE_VERIFICATION_FAIL"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "92998abf566a4df087de02dcfc9ddb0d0701f4731ddd65ad49703320c55edbdd",
-      "artifact_id": "10379541076"
+      "artifact_digest": "01617cc228086268140e4982bba9b9070ff21772d20b88279d00db864686ab9a",
+      "artifact_id": "10380242032"
     }
   ],
   "baseline_comparison": [
@@ -27,18 +25,10 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
-    },
-    {
-      "base_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
-    "CHANGE": "governance",
+    "CHANGE": "NONE",
     "GLOBAL": "system_diagnostics",
     "RAIL": "NONE"
   },
@@ -184,13 +174,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": true,
-      "failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
+      "failure_signature": null,
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -205,17 +195,17 @@
     }
   ],
   "identity": {
-    "base_sha": "0ea313e3dfff54fd8801588bafc18691651a0975",
+    "base_sha": "d15dffe5e36e286772228fd60f3566600f5d7da2",
     "builder_run_attempt": "1",
-    "builder_run_id": "34924729586",
-    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-01",
+    "builder_run_id": "34927030337",
+    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-02",
     "source_identity": "PASS",
-    "source_sha": "ea641acfd8ad79f30f91889175f44605c8242482",
+    "source_sha": "c986dd6febe7698548c2c6b7c0c7a119a151f661",
     "work_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "FAIL",
+    "CHANGE_VERIFICATION": "PASS",
     "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
