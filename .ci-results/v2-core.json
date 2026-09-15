@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "8c3abbcca199a7a23cb239b4fd494160a4eefa7276436b3ed6e79bb966f58f6e",
-      "artifact_id": "10393715602"
+      "artifact_digest": "edd17375f78f7467758541ff3737d1682ab1125b0703c476a5865e72baae6edb",
+      "artifact_id": "10405067469"
     }
   ],
   "baseline_comparison": [
@@ -66,7 +66,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": false,
+      "changed_domain": true,
       "failure_signature": null,
       "gate_id": "order",
       "global_scope": true,
@@ -76,7 +76,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": false,
+      "changed_domain": true,
       "failure_signature": null,
       "gate_id": "business_day_cash",
       "global_scope": true,
@@ -176,7 +176,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": false,
+      "changed_domain": true,
       "failure_signature": null,
       "gate_id": "governance",
       "global_scope": true,
@@ -195,13 +195,13 @@
     }
   ],
   "identity": {
-    "base_sha": "03d8077c88cdac7f6a876ebb3b3ba86775d7c9d5",
+    "base_sha": "f70b226540f8f1b8ea7e1f5857dc6f28a772bb92",
     "builder_run_attempt": "1",
-    "builder_run_id": "34961359678",
-    "request_id": "G1-FINAL",
+    "builder_run_id": "34990291558",
+    "request_id": "G2BD-BUILDER-01",
     "source_identity": "PASS",
-    "source_sha": "f779d7b57095594488375bac0844a22f976c3c67",
-    "work_id": "MF-IMPL-STORE-KERNEL-FOUNDATION-01"
+    "source_sha": "b30d5670d85257803f0c041b7a5ed7894291ff23",
+    "work_id": "MF-IMPL-G2-BUSINESS-DAY-DISPLAY-R1"
   },
   "schema_version": 1,
   "verdicts": {
