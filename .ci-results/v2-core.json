@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "dd5452cf99d84eacb1f59c2bd0bc58e1de00123962db1f64023e46ee13ec24eb",
-      "artifact_id": "10385816714"
+      "artifact_digest": "8c3abbcca199a7a23cb239b4fd494160a4eefa7276436b3ed6e79bb966f58f6e",
+      "artifact_id": "10393715602"
     }
   ],
   "baseline_comparison": [
@@ -25,14 +25,6 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
-    },
-    {
-      "base_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
@@ -84,7 +76,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "business_day_cash",
       "global_scope": true,
@@ -182,13 +174,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
+      "failure_signature": null,
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -203,13 +195,13 @@
     }
   ],
   "identity": {
-    "base_sha": "1d316735461c02e431d299f89deaa9cea4809481",
+    "base_sha": "03d8077c88cdac7f6a876ebb3b3ba86775d7c9d5",
     "builder_run_attempt": "1",
-    "builder_run_id": "34942429968",
-    "request_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1-VERIFY-20260915-02",
+    "builder_run_id": "34961359678",
+    "request_id": "G1-FINAL",
     "source_identity": "PASS",
-    "source_sha": "83d9c1de1fa4a65d07426ead5d891717eba911c3",
-    "work_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1"
+    "source_sha": "f779d7b57095594488375bac0844a22f976c3c67",
+    "work_id": "MF-IMPL-STORE-KERNEL-FOUNDATION-01"
   },
   "schema_version": 1,
   "verdicts": {
