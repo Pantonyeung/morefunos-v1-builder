@@ -1,15 +1,26 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "CHANGE_VERIFICATION_FAIL",
+      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "068e43d52b8d253ad0c513ef87a8bdcabfb14e854be5bcfe0dfc43c172f61d2d",
-      "artifact_id": "10380524371"
+      "artifact_digest": "b4cb7558467dbbfc7eeb9ae07b819113b4fe861170d9627091742f97e5a8a9c0",
+      "artifact_id": "10385855834"
     }
   ],
   "baseline_comparison": [
+    {
+      "base_failure_signature": null,
+      "base_outcome": "success",
+      "candidate_failure_signature": "sha256:10a9a19d850bbb0a411e86093ea129e8b3571c29a9f0ff7c7c731e559116ed83",
+      "candidate_outcome": "failure",
+      "classification": "NEW_GLOBAL_REGRESSION",
+      "gate_id": "business_day_cash"
+    },
     {
       "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
       "base_outcome": "failure",
@@ -25,11 +36,19 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
+    },
+    {
+      "base_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
-    "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "CHANGE": "business_day_cash",
+    "GLOBAL": "business_day_cash",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -75,12 +94,12 @@
     },
     {
       "base_failure_signature": null,
-      "base_outcome": null,
-      "changed_domain": false,
-      "failure_signature": null,
+      "base_outcome": "success",
+      "changed_domain": true,
+      "failure_signature": "sha256:10a9a19d850bbb0a411e86093ea129e8b3571c29a9f0ff7c7c731e559116ed83",
       "gate_id": "business_day_cash",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -174,13 +193,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
-      "changed_domain": true,
-      "failure_signature": null,
+      "base_failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
+      "base_outcome": "failure",
+      "changed_domain": false,
+      "failure_signature": "sha256:693beccb2a6df44056af99e2983b31bb7b76283a9c538354617ff35285243103",
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -195,18 +214,18 @@
     }
   ],
   "identity": {
-    "base_sha": "d15dffe5e36e286772228fd60f3566600f5d7da2",
+    "base_sha": "1d316735461c02e431d299f89deaa9cea4809481",
     "builder_run_attempt": "1",
-    "builder_run_id": "34929417157",
-    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-03",
+    "builder_run_id": "34941477664",
+    "request_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1-VERIFY-20260915-01",
     "source_identity": "PASS",
-    "source_sha": "c17c81d64b7ee709decc5faf65f29c3803e2f773",
-    "work_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1"
+    "source_sha": "c36417a524fee3046b20363f2eb10c03fd79835c",
+    "work_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
+    "CHANGE_VERIFICATION": "FAIL",
+    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
     "RAIL_VERIFICATION": "PASS"
   }
 }
