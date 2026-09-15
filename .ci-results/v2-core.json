@@ -1,15 +1,25 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "CHANGE_VERIFICATION_FAIL"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "a8387ff7cca98e645254f31e5c5b9e3c5e6fc7b980b244931fb1fc1e782c86b7",
-      "artifact_id": "10334909194"
+      "artifact_digest": "92998abf566a4df087de02dcfc9ddb0d0701f4731ddd65ad49703320c55edbdd",
+      "artifact_id": "10379541076"
     }
   ],
   "baseline_comparison": [
+    {
+      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "system_diagnostics"
+    },
     {
       "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
       "base_outcome": "failure",
@@ -17,11 +27,19 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
+    },
+    {
+      "base_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
-    "CHANGE": "NONE",
-    "GLOBAL": "integration",
+    "CHANGE": "governance",
+    "GLOBAL": "system_diagnostics",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -78,7 +96,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "payment",
       "global_scope": true,
@@ -126,13 +144,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
-      "changed_domain": true,
-      "failure_signature": null,
+      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "base_outcome": "failure",
+      "changed_domain": false,
+      "failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -166,13 +184,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
+      "base_failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
+      "base_outcome": "failure",
       "changed_domain": true,
-      "failure_signature": null,
+      "failure_signature": "sha256:c578ea00f6b5cf96a449c4aedadbde9e343540a78f08d6850264adc0eed4a5d5",
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -187,17 +205,17 @@
     }
   ],
   "identity": {
-    "base_sha": "27beb33a3228bd8e335702370c38adb9ce925903",
+    "base_sha": "0ea313e3dfff54fd8801588bafc18691651a0975",
     "builder_run_attempt": "1",
-    "builder_run_id": "34812366226",
-    "request_id": "issue-704-dispatch-5659399504-r4",
+    "builder_run_id": "34924729586",
+    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-01",
     "source_identity": "PASS",
-    "source_sha": "7242371fed0d8f71bbb77c1d24841f7004ba4e30",
-    "work_id": "MF-P0-MONEY-REVIEW-OPERATOR-RESOLUTION-01"
+    "source_sha": "ea641acfd8ad79f30f91889175f44605c8242482",
+    "work_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "PASS",
+    "CHANGE_VERIFICATION": "FAIL",
     "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
