@@ -187,6 +187,7 @@ jobs:
           grep -Fq 'store_kernel_inbox' "$SCHEMA"
           grep -Fq 'store_kernel_outbox' "$SCHEMA"
           grep -Fq 'store_kernel_diagnostic_journal' "$SCHEMA"
+          git diff --exit-code -- "$SCHEMA"
           ! grep -Rqn 'fallbackToDestructiveMigration' apps/smt-android/app/src/main/java/com/morefunos/smt/storekernel
 
       - name: Write exact-SHA evidence
