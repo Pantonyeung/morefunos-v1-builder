@@ -1,0 +1,7 @@
+candidate_sha=32ef8e19cf23ff35f0eb5ab05e4bfb8cf1cccb9d
+base_main_sha=d15dffe5e36e286772228fd60f3566600f5d7da2
+work_id=MF-GOV-DEBUG-EVIDENCE-LAYER-01
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=
+required_core_tests=
