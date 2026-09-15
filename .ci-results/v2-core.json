@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "01617cc228086268140e4982bba9b9070ff21772d20b88279d00db864686ab9a",
-      "artifact_id": "10380242032"
+      "artifact_digest": "068e43d52b8d253ad0c513ef87a8bdcabfb14e854be5bcfe0dfc43c172f61d2d",
+      "artifact_id": "10380524371"
     }
   ],
   "baseline_comparison": [
@@ -197,10 +197,10 @@
   "identity": {
     "base_sha": "d15dffe5e36e286772228fd60f3566600f5d7da2",
     "builder_run_attempt": "1",
-    "builder_run_id": "34927030337",
-    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-02",
+    "builder_run_id": "34929417157",
+    "request_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1-VERIFY-20260915-03",
     "source_identity": "PASS",
-    "source_sha": "c986dd6febe7698548c2c6b7c0c7a119a151f661",
+    "source_sha": "c17c81d64b7ee709decc5faf65f29c3803e2f773",
     "work_id": "MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1"
   },
   "schema_version": 1,
