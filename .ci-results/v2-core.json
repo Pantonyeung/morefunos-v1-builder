@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "edd17375f78f7467758541ff3737d1682ab1125b0703c476a5865e72baae6edb",
-      "artifact_id": "10405067469"
+      "artifact_digest": "5d636616b75c3c71d9e3246ec4acf58418a292b4d4d18a6440eb9640004110b4",
+      "artifact_id": "10405920619"
     }
   ],
   "baseline_comparison": [
@@ -197,10 +197,10 @@
   "identity": {
     "base_sha": "f70b226540f8f1b8ea7e1f5857dc6f28a772bb92",
     "builder_run_attempt": "1",
-    "builder_run_id": "34990291558",
-    "request_id": "G2BD-BUILDER-01",
+    "builder_run_id": "34990836625",
+    "request_id": "G2BD-BUILDER-FINAL-01",
     "source_identity": "PASS",
-    "source_sha": "b30d5670d85257803f0c041b7a5ed7894291ff23",
+    "source_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
     "work_id": "MF-IMPL-G2-BUSINESS-DAY-DISPLAY-R1"
   },
   "schema_version": 1,
