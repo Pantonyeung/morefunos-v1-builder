@@ -1,0 +1,7 @@
+candidate_sha=a74d9ca5ac95da28ee9bbf11b9041ac1a28cd499
+base_main_sha=0ea313e3dfff54fd8801588bafc18691651a0975
+work_id=MF-STORE-SMT-G2-CHECKOUT-CONTINUITY-R1
+capability_id=CAP-ORDER-SYNC-001
+capability_action=REGRESSION_REPAIR
+affected_ports=SMT
+required_core_tests=SMT_UI
