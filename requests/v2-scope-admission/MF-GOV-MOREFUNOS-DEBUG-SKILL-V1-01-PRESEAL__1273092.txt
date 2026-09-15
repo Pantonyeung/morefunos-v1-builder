@@ -1,0 +1,7 @@
+candidate_sha=12730924899d32c74cd32974efb3ca3e84b0473f
+base_main_sha=1d316735461c02e431d299f89deaa9cea4809481
+work_id=MF-GOV-MOREFUNOS-DEBUG-SKILL-V1-01
+capability_id=CAP-SYSTEM-LINK-DIAGNOSTICS-001
+capability_action=EXTEND
+affected_ports=
+required_core_tests=DIAGNOSTICS
