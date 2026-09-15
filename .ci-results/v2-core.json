@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "724e6b8e9457974ebacf670a2a909cbe128a9bb6a7e67c1840b4f1b1e1012e71",
-      "artifact_id": "10423042756"
+      "artifact_digest": "9b023ec84d86eb34b58703affdb78235370fd63b6e8b9fc277896bab586dc83b",
+      "artifact_id": "10422839073"
     }
   ],
   "baseline_comparison": [
@@ -197,10 +197,10 @@
   "identity": {
     "base_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
     "builder_run_attempt": "1",
-    "builder_run_id": "35035161191",
-    "request_id": "G3SO-BUILDER-01",
+    "builder_run_id": "35035501297",
+    "request_id": "G3SO-BUILDER-FINAL",
     "source_identity": "PASS",
-    "source_sha": "cff56a5c63ed6cdf27a8b98f70fd7653ffe55d68",
+    "source_sha": "f58b4ae82c15f1d4027bf5f7cfd1bfe506cc0d31",
     "work_id": "MF-IMPL-G3-STAFF-ORDER-LOCAL-ADAPTER-R1"
   },
   "schema_version": 1,
