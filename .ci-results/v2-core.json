@@ -1,26 +1,15 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "CHANGE_VERIFICATION_FAIL",
-      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "b4cb7558467dbbfc7eeb9ae07b819113b4fe861170d9627091742f97e5a8a9c0",
-      "artifact_id": "10385855834"
+      "artifact_digest": "dd5452cf99d84eacb1f59c2bd0bc58e1de00123962db1f64023e46ee13ec24eb",
+      "artifact_id": "10385816714"
     }
   ],
   "baseline_comparison": [
-    {
-      "base_failure_signature": null,
-      "base_outcome": "success",
-      "candidate_failure_signature": "sha256:10a9a19d850bbb0a411e86093ea129e8b3571c29a9f0ff7c7c731e559116ed83",
-      "candidate_outcome": "failure",
-      "classification": "NEW_GLOBAL_REGRESSION",
-      "gate_id": "business_day_cash"
-    },
     {
       "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
       "base_outcome": "failure",
@@ -47,8 +36,8 @@
     }
   ],
   "first_failed_station": {
-    "CHANGE": "business_day_cash",
-    "GLOBAL": "business_day_cash",
+    "CHANGE": "NONE",
+    "GLOBAL": "system_diagnostics",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -94,12 +83,12 @@
     },
     {
       "base_failure_signature": null,
-      "base_outcome": "success",
+      "base_outcome": null,
       "changed_domain": true,
-      "failure_signature": "sha256:10a9a19d850bbb0a411e86093ea129e8b3571c29a9f0ff7c7c731e559116ed83",
+      "failure_signature": null,
       "gate_id": "business_day_cash",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -216,16 +205,16 @@
   "identity": {
     "base_sha": "1d316735461c02e431d299f89deaa9cea4809481",
     "builder_run_attempt": "1",
-    "builder_run_id": "34941477664",
-    "request_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1-VERIFY-20260915-01",
+    "builder_run_id": "34942429968",
+    "request_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1-VERIFY-20260915-02",
     "source_identity": "PASS",
-    "source_sha": "c36417a524fee3046b20363f2eb10c03fd79835c",
+    "source_sha": "83d9c1de1fa4a65d07426ead5d891717eba911c3",
     "work_id": "MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1"
   },
   "schema_version": 1,
   "verdicts": {
-    "CHANGE_VERIFICATION": "FAIL",
-    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
+    "CHANGE_VERIFICATION": "PASS",
+    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
 }
