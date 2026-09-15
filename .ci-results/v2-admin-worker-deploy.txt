@@ -1,7 +1,7 @@
-source_sha=3995dbcca5d1cfde267a48966ee989f050a940cd
-request_id=MF-CODEX-BUSINESS-DAY-SCHEDULED-CONNECTIVITY-01
-run_id=34839257070
+source_sha=83d9c1de1fa4a65d07426ead5d891717eba911c3
+request_id=MF-STORE-SMT-BUSINESS-DATE-DAY-END-DECOUPLE-R1
+run_id=34947014907
 run_attempt=1
 conclusion=success
 url=https://morefun-v2-admin.pantonyeung.workers.dev
-worker_version=ea1a9a83-1bbc-425c-90f9-009cc39e6e18
+worker_version=88de6371-6d21-4347-8952-ab429add03eb
