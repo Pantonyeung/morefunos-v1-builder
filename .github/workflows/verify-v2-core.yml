@@ -16,10 +16,14 @@ on:
         required: true
         type: string
       verification_phase:
-        description: CANDIDATE or FINAL_MERGE_REQUEST
+        description: CANDIDATE, FINAL_MERGE_REQUEST, or POST_LANDING_READBACK
         required: true
         default: CANDIDATE
-        type: string
+        type: choice
+        options:
+          - CANDIDATE
+          - FINAL_MERGE_REQUEST
+          - POST_LANDING_READBACK
       work_id:
         description: Commander Work ID for evidence lineage
         required: false
@@ -119,12 +123,15 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$BASE_SHA" ]]; then [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; fi
           [[ -n "$BRANCH_NAME" ]]
-          [[ "$VERIFICATION_PHASE" == "CANDIDATE" || "$VERIFICATION_PHASE" == "FINAL_MERGE_REQUEST" ]]
+          INTENT="$(python3 scripts/v2_verification_classifier.py resolve-verification-intent \
+            --verification-phase "$VERIFICATION_PHASE" --branch-name "$BRANCH_NAME")"
+          IFS='|' read -r VERIFICATION_PHASE MERGE_REQUEST_GUARD_MODE <<< "$INTENT"
           {
             echo "source_sha=$SOURCE_SHA"
             echo "base_sha=$BASE_SHA"
             echo "branch_name=$BRANCH_NAME"
             echo "verification_phase=$VERIFICATION_PHASE"
+            echo "merge_request_guard_mode=$MERGE_REQUEST_GUARD_MODE"
             echo "work_id=$WORK_ID"
             echo "request_id=$REQUEST_ID"
             echo "rail_id=$RAIL_ID"
@@ -382,23 +389,40 @@ jobs:
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
           BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
           VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+          MERGE_REQUEST_GUARD_MODE: ${{ steps.request.outputs.merge_request_guard_mode }}
         run: |
           set -euo pipefail
           test -f source/scripts/merge_request_guard.py
-          if [[ "$VERIFICATION_PHASE" == "CANDIDATE" ]]; then
-            {
-              echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP'
-              echo "branch=$BRANCH_NAME"
-              echo 'formal_merge_request_not_yet_authorized=true'
-            } | tee "$RUNNER_TEMP/v2-core-merge-request.log"
-          else
-            ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
-            if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
-            (
-              cd source
-              python3 scripts/merge_request_guard.py "${ARGS[@]}"
-            ) | tee "$RUNNER_TEMP/v2-core-merge-request.log"
-          fi
+          case "$MERGE_REQUEST_GUARD_MODE" in
+            CANDIDATE_PHASE_SKIP)
+              {
+                echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP'
+                echo "branch=$BRANCH_NAME"
+                echo 'formal_merge_request_not_yet_authorized=true'
+              } | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+              ;;
+            POST_LANDING_READBACK_SKIP)
+              test "$VERIFICATION_PHASE" = "POST_LANDING_READBACK"
+              test "$BRANCH_NAME" = "main"
+              {
+                echo 'MERGE REQUEST GUARD: POST_LANDING_READBACK_PHASE_SKIP'
+                echo "branch=$BRANCH_NAME"
+                echo 'formal_merge_request_not_applicable=already_landed'
+              } | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+              ;;
+            FORMAL_MERGE_REQUEST)
+              ARGS=(--head "$SOURCE_SHA" --branch "$BRANCH_NAME")
+              if [[ -n "$BASE_SHA" ]]; then ARGS+=(--base "$BASE_SHA"); fi
+              (
+                cd source
+                python3 scripts/merge_request_guard.py "${ARGS[@]}"
+              ) | tee "$RUNNER_TEMP/v2-core-merge-request.log"
+              ;;
+            *)
+              echo "::error::MERGE_REQUEST_GUARD_MODE_INVALID:$MERGE_REQUEST_GUARD_MODE"
+              exit 1
+              ;;
+          esac
 
       - name: Decide exact baseline requirement
         id: baseline_required
@@ -442,6 +466,7 @@ jobs:
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
           BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
           VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+          MERGE_REQUEST_GUARD_MODE: ${{ steps.request.outputs.merge_request_guard_mode }}
           CATALOG: ${{ steps.catalog.outcome }}
           PRICING: ${{ steps.pricing.outcome }}
           AVAILABILITY: ${{ steps.availability.outcome }}
@@ -483,7 +508,21 @@ jobs:
               integration) (cd baseline && node --experimental-loader "$GITHUB_WORKSPACE/scripts/cloudflare-workers-node-test-loader.mjs" --test packages/integration/*.test.ts) 2>&1 | tee "$log" ;;
               typescript) (cd baseline && npm install --no-save --ignore-scripts --no-audit --no-fund typescript@7.0.2 @types/node@24 && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --types node --jsx react-jsx) 2>&1 | tee "$log" ;;
               governance) (cd baseline && python3 scripts/governance_guard.py --base "$BASE_SHA" --head "$BASE_SHA" --branch "$BRANCH_NAME") 2>&1 | tee "$log" ;;
-              merge_request) (cd baseline && if [[ "$VERIFICATION_PHASE" == CANDIDATE ]]; then echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP'; else python3 scripts/merge_request_guard.py --base "$BASE_SHA" --head "$BASE_SHA" --branch "$BRANCH_NAME"; fi) 2>&1 | tee "$log" ;;
+              merge_request)
+                (
+                  cd baseline
+                  case "$MERGE_REQUEST_GUARD_MODE" in
+                    CANDIDATE_PHASE_SKIP) echo 'MERGE REQUEST GUARD: CANDIDATE_PHASE_SKIP' ;;
+                    POST_LANDING_READBACK_SKIP)
+                      test "$VERIFICATION_PHASE" = "POST_LANDING_READBACK"
+                      test "$BRANCH_NAME" = "main"
+                      echo 'MERGE REQUEST GUARD: POST_LANDING_READBACK_PHASE_SKIP'
+                      ;;
+                    FORMAL_MERGE_REQUEST) python3 scripts/merge_request_guard.py --base "$BASE_SHA" --head "$BASE_SHA" --branch "$BRANCH_NAME" ;;
+                    *) echo "::error::MERGE_REQUEST_GUARD_MODE_INVALID:$MERGE_REQUEST_GUARD_MODE"; exit 1 ;;
+                  esac
+                ) 2>&1 | tee "$log"
+                ;;
             esac
             status=${PIPESTATUS[0]}
             set -e
@@ -519,6 +558,9 @@ jobs:
           BASE_SHA: ${{ steps.request.outputs.base_sha }}
           WORK_ID: ${{ steps.request.outputs.work_id }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          BRANCH_NAME: ${{ steps.request.outputs.branch_name }}
+          VERIFICATION_PHASE: ${{ steps.request.outputs.verification_phase }}
+          MERGE_REQUEST_GUARD_MODE: ${{ steps.request.outputs.merge_request_guard_mode }}
           RAIL_ID: ${{ steps.request.outputs.rail_id }}
           RAIL_GATES: ${{ steps.request.outputs.required_rail_gates }}
           GATE_CATALOG: ${{ steps.catalog.outcome }}
@@ -543,6 +585,8 @@ jobs:
           python3 scripts/v2_verification_classifier.py collect-core \
             --source-sha "$SOURCE_SHA" --base-sha "$BASE_SHA" --work-id "$WORK_ID" --request-id "$REQUEST_ID" \
             --builder-run-id "$GITHUB_RUN_ID" --builder-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --branch-name "$BRANCH_NAME" --verification-phase "$VERIFICATION_PHASE" \
+            --merge-request-guard-mode "$MERGE_REQUEST_GUARD_MODE" \
             --rail-id "$RAIL_ID" --rail-gates "$RAIL_GATES" \
             --changed-files "$RUNNER_TEMP/v2-core-changed-files.txt" \
             --base-results "$RUNNER_TEMP/v2-core-base-results.txt" --runner-temp "$RUNNER_TEMP" \
