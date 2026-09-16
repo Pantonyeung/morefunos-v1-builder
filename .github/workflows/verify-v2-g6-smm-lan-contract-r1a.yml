@@ -1,0 +1,95 @@
+name: V2 G6 SMM LAN Contract R1A Verification
+
+on:
+  push:
+    paths:
+      - 'requests/v2-g6-smm-lan-contract-r1a-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-g6-smm-lan-contract-r1a-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-g6-smm-lan-contract-r1a-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Run exact G6 allowlist tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=()
+          [[ -f apps/smm-web/src/smm-lan-order-client.test.ts ]] && files+=(apps/smm-web/src/smm-lan-order-client.test.ts)
+          [[ -f apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts ]] && files+=(apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts)
+          ((${#files[@]} > 0))
+          node --test "${files[@]}"
+
+      - name: Typecheck touched apps
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec tsc -p apps/smm-web/tsconfig.json --noEmit
+          pnpm exec tsc -p apps/smt-clean/tsconfig.json --noEmit
