@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "ab2a45334c145f8c09117605dc0fe071a83cd68f534a2a34598548f74fe3e1dc",
-      "artifact_id": "10441294553"
+      "artifact_digest": "5c59e41cc05dcd3cdd49ffa9f6e24966b87704a234de4c6ede3ecb6a919e8608",
+      "artifact_id": "10443313052"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "base_failure_signature": "sha256:33b0b107e09de38f7cadf5d4fefd5d08ba6df688647cbe76424f6e4d90092ed4",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "candidate_failure_signature": "sha256:33b0b107e09de38f7cadf5d4fefd5d08ba6df688647cbe76424f6e4d90092ed4",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "base_failure_signature": "sha256:33b0b107e09de38f7cadf5d4fefd5d08ba6df688647cbe76424f6e4d90092ed4",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "failure_signature": "sha256:33b0b107e09de38f7cadf5d4fefd5d08ba6df688647cbe76424f6e4d90092ed4",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -203,16 +203,16 @@
     }
   ],
   "identity": {
-    "base_sha": "f2460ae2e2c315a9ecf6d113b368f1d8d005e0fd",
-    "branch_name": "work/SMT/MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1",
+    "base_sha": "8b09079cf8723e0b65df37d3cb5a434fbb4d4390",
+    "branch_name": "work/SMT/MF-REPLAY-G4-KNIFE-B-ONTO-CURRENT-MAIN-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35085643299",
+    "builder_run_id": "35089076409",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-FIX-G4-BUILDER-SEMANTIC-FAILURE-EQUIVALENCE-R1-881043-CORE-PUSH-01",
+    "request_id": "MF-REPLAY-G4-KNIFE-B-ONTO-CURRENT-MAIN-R1-CORE-01",
     "source_identity": "PASS",
-    "source_sha": "180fb29b90a4e3dfda7913a6627b09ca3b64dbcf",
+    "source_sha": "3ad9bf9538c700b922de0237067eb0580ad50c7c",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1"
+    "work_id": "MF-REPLAY-G4-KNIFE-B-ONTO-CURRENT-MAIN-R1"
   },
   "schema_version": 1,
   "verdicts": {
