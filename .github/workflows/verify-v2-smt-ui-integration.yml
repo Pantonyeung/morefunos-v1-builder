@@ -109,9 +109,12 @@ jobs:
       - name: Install SMT app dependencies
         working-directory: source/apps/smt-clean
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: SMT app tests
+      - name: SMT app Vitest tests
         working-directory: source/apps/smt-clean
-        run: npm test
+        run: npm test -- --exclude src/runtime/smm-lan-order-ingress.test.ts
+      - name: SMT app Node-native G6 ingress test
+        working-directory: source/apps/smt-clean
+        run: node --test src/runtime/smm-lan-order-ingress.test.ts
       - name: SMT app typecheck
         working-directory: source/apps/smt-clean
         run: npm run typecheck
