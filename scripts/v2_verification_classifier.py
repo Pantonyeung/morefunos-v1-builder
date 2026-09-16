@@ -226,11 +226,27 @@ def _node_assert_match_semantic_identity(clean: str) -> str | None:
     return identities[0] if len(identities) == 1 else None
 
 
+def _looks_like_node_assert_match_failure(clean: str) -> bool:
+    return (
+        "The input did not match the regular expression" in clean
+        and "ERR_ASSERTION" in clean
+        and "AssertionError" in clean
+    )
+
+
+def _failure_signatures_are_equivalent(candidate_signature: Any, base_signature: Any) -> bool:
+    if not isinstance(candidate_signature, str) or candidate_signature != base_signature:
+        return False
+    return bool(candidate_signature) and not candidate_signature.startswith("opaque-node-assert-match:")
+
+
 def failure_signature(text: str) -> str:
     clean = re.sub(r"\x1b\[[0-9;]*m", "", text.replace("\r\n", "\n"))
     semantic_identity = _node_assert_match_semantic_identity(clean)
     if semantic_identity is not None:
         return "sha256:" + hashlib.sha256(semantic_identity.encode("utf-8")).hexdigest()
+    if _looks_like_node_assert_match_failure(clean):
+        return "opaque-node-assert-match:sha256:" + hashlib.sha256(clean.encode("utf-8")).hexdigest()
     stable: list[str] = []
     for line in clean.splitlines():
         normalized = line.strip()
@@ -287,7 +303,7 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
         elif base_outcome == "success":
             classification = NEW_GLOBAL_REGRESSION
             new_regression.append(gate_id)
-        elif base_outcome == "failure" and candidate_signature and candidate_signature == base_signature:
+        elif base_outcome == "failure" and _failure_signatures_are_equivalent(candidate_signature, base_signature):
             classification = PRE_EXISTING_GLOBAL_RED
             pre_existing.append(gate_id)
         else:
