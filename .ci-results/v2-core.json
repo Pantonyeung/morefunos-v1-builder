@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "9c79aed23884081c1a6e30e485b9b18b5f7a5933d1b9c99a92fa477c62ff708e",
-      "artifact_id": "10424209462"
+      "artifact_digest": "427e0189fa68638477fe1c7eb59565b728bb6bf3f44983fa401fa46de19e1ae1",
+      "artifact_id": "10426658977"
     }
   ],
   "baseline_comparison": [
@@ -25,6 +25,14 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
+    },
+    {
+      "base_failure_signature": "sha256:8146513c00a454d0a6f2870e6dc9c01f513d21b3904c0eef6771bfa90a420c81",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:8146513c00a454d0a6f2870e6dc9c01f513d21b3904c0eef6771bfa90a420c81",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
@@ -66,7 +74,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "order",
       "global_scope": true,
@@ -174,13 +182,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
-      "changed_domain": true,
-      "failure_signature": null,
+      "base_failure_signature": "sha256:8146513c00a454d0a6f2870e6dc9c01f513d21b3904c0eef6771bfa90a420c81",
+      "base_outcome": "failure",
+      "changed_domain": false,
+      "failure_signature": "sha256:8146513c00a454d0a6f2870e6dc9c01f513d21b3904c0eef6771bfa90a420c81",
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -195,13 +203,13 @@
     }
   ],
   "identity": {
-    "base_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
+    "base_sha": "58268a1e6badec3608b365f3815ffe09f9f3604a",
     "builder_run_attempt": "1",
-    "builder_run_id": "35039248925",
-    "request_id": "MF-CLOSE-G3-STAFF-ORDER-LOCAL-ADAPTER-R1-LANDED-01",
+    "builder_run_id": "35046019784",
+    "request_id": "MF-IMPL-G5-CONTROL-PLANE-SNAPSHOT-R1-CANDIDATE-1",
     "source_identity": "PASS",
-    "source_sha": "7aa4a41d597de6d273d91eaef557f7198b555541",
-    "work_id": "MF-IMPL-G3-STAFF-ORDER-LOCAL-ADAPTER-R1"
+    "source_sha": "984f8cec24527bd70db4d2990ec6800ddb7c1771",
+    "work_id": "MF-IMPL-G5-CONTROL-PLANE-SNAPSHOT-R1"
   },
   "schema_version": 1,
   "verdicts": {
