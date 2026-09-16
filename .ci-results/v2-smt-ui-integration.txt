@@ -1,5 +1,5 @@
-source_sha=f2cb94b663490677b74581231484135e2aa93747
-request_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED
-run_id=35051527189
+source_sha=a7d26d20a6cb9a77a3849adc3589e1e2a06d20c8
+request_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1-CANDIDATE
+run_id=35051656367
 run_attempt=1
 conclusion=failure
