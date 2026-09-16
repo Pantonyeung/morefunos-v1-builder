@@ -10,6 +10,10 @@ on:
         description: Exact Morefun-v2 source SHA
         required: true
         type: string
+      request_id:
+        description: Request or attempt identity for evidence lineage
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -30,16 +34,23 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_REQUEST_ID: ${{ inputs.request_id }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUEST_ID="$(printf '%s' "$INPUT_REQUEST_ID" | tr -d '\r\n')"
           else
             test -f requests/v2-smt-ui-integration-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-ui-integration-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-smt-ui-integration-request.txt | tr -d '\r\n')"
+            if [[ -z "$REQUEST_ID" ]]; then REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-smt-ui-integration-request.txt | tr -d '\r\n')"; fi
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ -n "$REQUEST_ID" ]]
+          [[ "$REQUEST_ID" =~ [^[:space:]] ]]
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
       - name: Require V2 source credential
         shell: bash
         env:
@@ -129,16 +140,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           CONCLUSION: ${{ job.status }}
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-smt-ui-integration-request.txt | tr -d '\r\n')"
-          if [[ -z "$REQUEST_ID" ]]; then
-            REQUEST_ID="$(sed -n 's/^attempt=//p' requests/v2-smt-ui-integration-request.txt | tr -d '\r\n')"
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
