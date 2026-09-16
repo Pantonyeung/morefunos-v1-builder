@@ -1,6 +1,6 @@
-source_sha=37db1833c10004881d789c822080ab48247c505d
+source_sha=37db1833f2b59c3de2919e2ea0b5edc1d80b1cfc
 base_sha=58268a1e6badec3608b365f3815ffe09f9f3604a
 branch_name=worker4/mf-impl-g6-smm-lan-contract-r1-sol
 verification_phase=CANDIDATE
 work_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1
-request_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED-20260916
+request_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED-20260916-R2
