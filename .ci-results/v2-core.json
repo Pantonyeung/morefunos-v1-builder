@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "eac465b083440e0d2d612a15c592dd4d0f64069ed71af48d39975c1ea3970f12",
-      "artifact_id": "10429496200"
+      "artifact_digest": "cf6602672b959bbf0b645658b9a8d5022f45ed2d5d6c7846f7ee61ec5383876e",
+      "artifact_id": "10429318123"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
+      "base_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
+      "candidate_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
+      "base_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
+      "failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -203,13 +203,13 @@
     }
   ],
   "identity": {
-    "base_sha": "58268a1e6badec3608b365f3815ffe09f9f3604a",
+    "base_sha": "8f1afac8506dab925e77af43d12ad5df75674b18",
     "builder_run_attempt": "1",
-    "builder_run_id": "35051595640",
-    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-R1A-FIRST-RED-20260916-01",
+    "builder_run_id": "35052441150",
+    "request_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1-CANDIDATE-01",
     "source_identity": "PASS",
-    "source_sha": "2cce5be6c6051644811fbd320f2097e8ee92e69f",
-    "work_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1"
+    "source_sha": "00486e936a2ab165ed5d4f43a208eedf6e81fcf1",
+    "work_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1"
   },
   "schema_version": 1,
   "verdicts": {
