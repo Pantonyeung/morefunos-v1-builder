@@ -1,12 +1,14 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "cf6602672b959bbf0b645658b9a8d5022f45ed2d5d6c7846f7ee61ec5383876e",
-      "artifact_id": "10429318123"
+      "artifact_digest": "f980c987baa6187c4298dd261a47440206d83bb8c41c2a2e4b94dd4909d7d797",
+      "artifact_id": "10428749190"
     }
   ],
   "baseline_comparison": [
@@ -27,17 +29,17 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
+      "base_failure_signature": null,
+      "base_outcome": "success",
+      "candidate_failure_signature": "sha256:5c804f0f21c1b6d7009c4a4fe72a6ca0943263953b34649fbd1fa12ef0504eb2",
       "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "governance"
+      "classification": "NEW_GLOBAL_REGRESSION",
+      "gate_id": "merge_request"
     }
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "merge_request",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -182,31 +184,31 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
-      "base_outcome": "failure",
-      "changed_domain": false,
-      "failure_signature": "sha256:5a6815ef2c459cf64692f8c5a5c3086f0c3dfb7abd96df8e3c3dbf8d86e82c61",
-      "gate_id": "governance",
-      "global_scope": true,
-      "outcome": "failure",
-      "rail_required": false
-    },
-    {
       "base_failure_signature": null,
       "base_outcome": null,
       "changed_domain": false,
       "failure_signature": null,
-      "gate_id": "merge_request",
+      "gate_id": "governance",
       "global_scope": true,
       "outcome": "success",
+      "rail_required": false
+    },
+    {
+      "base_failure_signature": null,
+      "base_outcome": "success",
+      "changed_domain": false,
+      "failure_signature": "sha256:5c804f0f21c1b6d7009c4a4fe72a6ca0943263953b34649fbd1fa12ef0504eb2",
+      "gate_id": "merge_request",
+      "global_scope": true,
+      "outcome": "failure",
       "rail_required": false
     }
   ],
   "identity": {
     "base_sha": "8f1afac8506dab925e77af43d12ad5df75674b18",
     "builder_run_attempt": "1",
-    "builder_run_id": "35052441150",
-    "request_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1-CANDIDATE-01",
+    "builder_run_id": "35052691963",
+    "request_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1-POSTLAND-01",
     "source_identity": "PASS",
     "source_sha": "00486e936a2ab165ed5d4f43a208eedf6e81fcf1",
     "work_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1"
@@ -214,7 +216,7 @@
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
+    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
     "RAIL_VERIFICATION": "PASS"
   }
 }
