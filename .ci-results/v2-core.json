@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "ce0c4abc86f6cfe1cd1efaf894b5af7de7b409a517bd2dc95fae30ac39cb4706",
-      "artifact_id": "10432683743"
+      "artifact_digest": "4d5ad4f216c9bb426c0b25d8641ba0c26756f2b6ec08fd6ccb3f6e9e3c540e74",
+      "artifact_id": "10432804331"
     }
   ],
   "baseline_comparison": [
@@ -25,6 +25,14 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
+    },
+    {
+      "base_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "governance"
     }
   ],
   "first_failed_station": {
@@ -174,13 +182,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
+      "base_failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
+      "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": null,
+      "failure_signature": "sha256:5dfefa37a8f57361344478e3166341e2c2ddebab052cf63d8fd2a0398de428a6",
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -195,16 +203,16 @@
     }
   ],
   "identity": {
-    "base_sha": "8f1afac8506dab925e77af43d12ad5df75674b18",
-    "branch_name": "main",
+    "base_sha": "2b85c394724a17709a3c1aec13ecaddb4d0686d5",
+    "branch_name": "work/SMT/MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35062318010",
-    "merge_request_guard_mode": "POST_LANDING_READBACK_SKIP",
-    "request_id": "MF-FIX-V1-BUILDER-POSTLAND-READBACK-R1-LANDED-MAIN-01",
+    "builder_run_id": "35064283397",
+    "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
+    "request_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1-KNIFE-A-CANDIDATE",
     "source_identity": "PASS",
-    "source_sha": "00486e936a2ab165ed5d4f43a208eedf6e81fcf1",
-    "verification_phase": "POST_LANDING_READBACK",
-    "work_id": "MF-FIX-V1-BUILDER-POSTLAND-READBACK-R1"
+    "source_sha": "f2460ae2e2c315a9ecf6d113b368f1d8d005e0fd",
+    "verification_phase": "CANDIDATE",
+    "work_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1"
   },
   "schema_version": 1,
   "verdicts": {
