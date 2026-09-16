@@ -142,7 +142,8 @@ jobs:
         run: |
           set -euo pipefail
           npm install --prefix "$SMT_RUNTIME_ROOT" --ignore-scripts --no-audit --no-fund
-          npm run --prefix "$SMT_RUNTIME_ROOT" test
+          npm run --prefix "$SMT_RUNTIME_ROOT" test -- --exclude src/runtime/smm-lan-order-ingress.test.ts
+          node --test "$SMT_RUNTIME_ROOT/src/runtime/smm-lan-order-ingress.test.ts"
           npm run --prefix "$SMT_RUNTIME_ROOT" typecheck
           npm run --prefix "$SMT_RUNTIME_ROOT" build
           test -s "$SMT_RUNTIME_ROOT/dist/index.html"
