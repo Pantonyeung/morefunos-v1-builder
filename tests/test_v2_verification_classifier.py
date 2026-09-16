@@ -3,7 +3,10 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from scripts.v2_verification_classifier import classify
+import scripts.v2_verification_classifier as classifier
+
+
+classify = classifier.classify
 
 
 def gate(gate_id: str, outcome: str = "success", **overrides: object) -> dict:
@@ -30,6 +33,9 @@ def payload(*gates: dict, **metadata: object) -> dict:
         "builder_run_id": "123",
         "builder_run_attempt": "1",
         "source_identity": "PASS",
+        "branch_name": "work/CORE/WORK-1",
+        "verification_phase": "CANDIDATE",
+        "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
         "physical_proof_required": False,
         "physical_proof": "NOT_REQUIRED",
         "gates": list(gates),
@@ -40,6 +46,26 @@ def payload(*gates: dict, **metadata: object) -> dict:
 
 
 class V2VerificationClassifierTest(unittest.TestCase):
+    def test_worker_candidate_keeps_candidate_skip(self) -> None:
+        self.assertEqual(
+            classifier.resolve_verification_intent("CANDIDATE", "work/CORE/WORK-1"),
+            ("CANDIDATE", "CANDIDATE_PHASE_SKIP"),
+        )
+
+    def test_worker_final_merge_request_keeps_formal_guard(self) -> None:
+        self.assertEqual(
+            classifier.resolve_verification_intent("FINAL_MERGE_REQUEST", "work/CORE/WORK-1"),
+            ("FINAL_MERGE_REQUEST", "FORMAL_MERGE_REQUEST"),
+        )
+
+    def test_main_post_landing_readback_skips_only_merge_admission(self) -> None:
+        self.assertEqual(
+            classifier.resolve_verification_intent("POST_LANDING_READBACK", "main"),
+            ("POST_LANDING_READBACK", "POST_LANDING_READBACK_SKIP"),
+        )
+        with self.assertRaisesRegex(ValueError, "POST_LANDING_READBACK_REQUIRES_MAIN_BRANCH"):
+            classifier.resolve_verification_intent("POST_LANDING_READBACK", "work/CORE/WORK-1")
+
     def test_all_green(self) -> None:
         result = classify(payload(gate("catalog", changed_domain=True, rail_required=True)))
         self.assertEqual(result["verdicts"], {
@@ -78,6 +104,34 @@ class V2VerificationClassifierTest(unittest.TestCase):
         self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
         self.assertFalse(result["admission"]["eligible"])
 
+    def test_post_landing_core_regression_still_fails(self) -> None:
+        result = classify(payload(
+            gate("order", "failure", changed_domain=True),
+            gate("merge_request"),
+            branch_name="main",
+            verification_phase="POST_LANDING_READBACK",
+            merge_request_guard_mode="POST_LANDING_READBACK_SKIP",
+        ))
+        self.assertEqual(result["verdicts"]["CHANGE_VERIFICATION"], "FAIL")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_post_landing_mode_cannot_wash_global_system_health_red(self) -> None:
+        result = classify(payload(
+            gate("system_diagnostics", "failure"),
+            gate("merge_request"),
+            branch_name="main",
+            verification_phase="POST_LANDING_READBACK",
+            merge_request_guard_mode="POST_LANDING_READBACK_SKIP",
+        ))
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_verification_intent_is_sealed_in_evidence_identity(self) -> None:
+        result = classify(payload(gate("merge_request")))
+        self.assertEqual(result["identity"]["branch_name"], "work/CORE/WORK-1")
+        self.assertEqual(result["identity"]["verification_phase"], "CANDIDATE")
+        self.assertEqual(result["identity"]["merge_request_guard_mode"], "CANDIDATE_PHASE_SKIP")
+
     def test_missing_baseline_is_held(self) -> None:
         result = classify(payload(
             gate("system_diagnostics", "failure", base_outcome=None),
@@ -111,6 +165,15 @@ class V2VerificationClassifierTest(unittest.TestCase):
             workflow.index("name: Write evidence manifest"), workflow.index("name: Enforce classified final verdict"),
         ]
         self.assertEqual(ordered, sorted(ordered))
+
+    def test_formal_core_workflow_routes_post_landing_intent_without_weakening_final_merge(self) -> None:
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/verify-v2-core.yml").read_text(encoding="utf-8")
+        self.assertIn("- POST_LANDING_READBACK", workflow)
+        self.assertIn("merge_request_guard_mode=$MERGE_REQUEST_GUARD_MODE", workflow)
+        self.assertIn("POST_LANDING_READBACK_PHASE_SKIP", workflow)
+        self.assertIn("formal_merge_request_not_applicable=already_landed", workflow)
+        self.assertIn("FORMAL_MERGE_REQUEST)", workflow)
+        self.assertGreaterEqual(workflow.count("python3 scripts/merge_request_guard.py"), 2)
 
     def test_admission_consumes_formal_verdict_without_false_global_green(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/v2-builder-admission-queue.yml").read_text(encoding="utf-8")

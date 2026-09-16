@@ -17,6 +17,12 @@ HELD = "HELD"
 PRE_EXISTING_GLOBAL_RED = "PRE_EXISTING_GLOBAL_RED"
 NEW_GLOBAL_REGRESSION = "NEW_GLOBAL_REGRESSION"
 OUTCOMES = {"success", "failure", "skipped", "cancelled"}
+VERIFICATION_PHASES = {"CANDIDATE", "FINAL_MERGE_REQUEST", "POST_LANDING_READBACK"}
+MERGE_REQUEST_GUARD_MODES = {
+    "CANDIDATE": "CANDIDATE_PHASE_SKIP",
+    "FINAL_MERGE_REQUEST": "FORMAL_MERGE_REQUEST",
+    "POST_LANDING_READBACK": "POST_LANDING_READBACK_SKIP",
+}
 CORE_GATES = {
     "catalog": ("v2-core-catalog-tests.log", ("packages/catalog/",)),
     "pricing": ("v2-core-pricing-tests.log", ("packages/pricing/",)),
@@ -35,6 +41,18 @@ CORE_GATES = {
     "governance": ("v2-core-governance.log", ("docs/", "scripts/governance", "scripts/railway", "AI-INDEX.yaml", "AUTHORITY.md")),
     "merge_request": ("v2-core-merge-request.log", ("docs/merge-requests/", "scripts/merge_request_guard.py")),
 }
+
+
+def resolve_verification_intent(verification_phase: str, branch_name: str) -> tuple[str, str]:
+    phase = verification_phase.strip().upper()
+    branch = branch_name.strip()
+    if phase not in VERIFICATION_PHASES:
+        raise ValueError(f"VERIFICATION_PHASE_INVALID:{phase or 'EMPTY'}")
+    if not branch:
+        raise ValueError("BRANCH_NAME_REQUIRED")
+    if phase == "POST_LANDING_READBACK" and branch != "main":
+        raise ValueError(f"POST_LANDING_READBACK_REQUIRES_MAIN_BRANCH:{branch}")
+    return phase, MERGE_REQUEST_GUARD_MODES[phase]
 
 
 def failure_signature(text: str) -> str:
@@ -162,6 +180,9 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
             "builder_run_id": payload.get("builder_run_id"),
             "builder_run_attempt": payload.get("builder_run_attempt"),
             "source_identity": payload.get("source_identity"),
+            "branch_name": payload.get("branch_name"),
+            "verification_phase": payload.get("verification_phase"),
+            "merge_request_guard_mode": payload.get("merge_request_guard_mode"),
         },
         "gate_outcomes": gates,
         "first_failed_station": {
@@ -181,6 +202,14 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def collect_core_payload(args: argparse.Namespace) -> dict[str, Any]:
+    verification_phase, expected_merge_request_mode = resolve_verification_intent(
+        args.verification_phase, args.branch_name
+    )
+    if args.merge_request_guard_mode != expected_merge_request_mode:
+        raise ValueError(
+            "MERGE_REQUEST_GUARD_MODE_MISMATCH:"
+            f"expected={expected_merge_request_mode}:actual={args.merge_request_guard_mode}"
+        )
     changed = []
     if args.changed_files.is_file():
         changed = [line.strip().replace("\\", "/") for line in args.changed_files.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -218,6 +247,9 @@ def collect_core_payload(args: argparse.Namespace) -> dict[str, Any]:
         "builder_run_id": args.builder_run_id,
         "builder_run_attempt": args.builder_run_attempt,
         "source_identity": PASS,
+        "branch_name": args.branch_name,
+        "verification_phase": verification_phase,
+        "merge_request_guard_mode": expected_merge_request_mode,
         "physical_proof_required": False,
         "physical_proof": "NOT_REQUIRED",
         "rail_id": args.rail_id or None,
@@ -235,6 +267,9 @@ def main() -> int:
     classify_parser.add_argument("input", type=pathlib.Path)
     classify_parser.add_argument("output", type=pathlib.Path)
     classify_parser.add_argument("--require-eligible", action="store_true")
+    intent_parser = subparsers.add_parser("resolve-verification-intent")
+    intent_parser.add_argument("--verification-phase", required=True)
+    intent_parser.add_argument("--branch-name", required=True)
     collect_parser = subparsers.add_parser("collect-core")
     collect_parser.add_argument("--source-sha", required=True)
     collect_parser.add_argument("--base-sha", default="")
@@ -242,6 +277,9 @@ def main() -> int:
     collect_parser.add_argument("--request-id", default="")
     collect_parser.add_argument("--builder-run-id", required=True)
     collect_parser.add_argument("--builder-run-attempt", required=True)
+    collect_parser.add_argument("--branch-name", required=True)
+    collect_parser.add_argument("--verification-phase", required=True)
+    collect_parser.add_argument("--merge-request-guard-mode", required=True)
     collect_parser.add_argument("--rail-id", default="")
     collect_parser.add_argument("--rail-gates", default="")
     collect_parser.add_argument("--changed-files", required=True, type=pathlib.Path)
@@ -251,6 +289,12 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "signature":
         print(failure_signature(args.log.read_text(encoding="utf-8", errors="replace")))
+        return 0
+    if args.command == "resolve-verification-intent":
+        phase, merge_request_guard_mode = resolve_verification_intent(
+            args.verification_phase, args.branch_name
+        )
+        print(f"{phase}|{merge_request_guard_mode}")
         return 0
     if args.command == "collect-core":
         result = classify(collect_core_payload(args))
