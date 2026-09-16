@@ -1,14 +1,12 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "f980c987baa6187c4298dd261a47440206d83bb8c41c2a2e4b94dd4909d7d797",
-      "artifact_id": "10428749190"
+      "artifact_digest": "035bde675e2c67ad349f5135b975d6b368f52a1949b71aab930b95aeef531c91",
+      "artifact_id": "10432386245"
     }
   ],
   "baseline_comparison": [
@@ -27,19 +25,11 @@
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "integration"
-    },
-    {
-      "base_failure_signature": null,
-      "base_outcome": "success",
-      "candidate_failure_signature": "sha256:5c804f0f21c1b6d7009c4a4fe72a6ca0943263953b34649fbd1fa12ef0504eb2",
-      "candidate_outcome": "failure",
-      "classification": "NEW_GLOBAL_REGRESSION",
-      "gate_id": "merge_request"
     }
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "merge_request",
+    "GLOBAL": "system_diagnostics",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -195,28 +185,31 @@
     },
     {
       "base_failure_signature": null,
-      "base_outcome": "success",
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "sha256:5c804f0f21c1b6d7009c4a4fe72a6ca0943263953b34649fbd1fa12ef0504eb2",
+      "failure_signature": null,
       "gate_id": "merge_request",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     }
   ],
   "identity": {
     "base_sha": "8f1afac8506dab925e77af43d12ad5df75674b18",
+    "branch_name": "main",
     "builder_run_attempt": "1",
-    "builder_run_id": "35052691963",
-    "request_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1-POSTLAND-01",
+    "builder_run_id": "35060009530",
+    "merge_request_guard_mode": "POST_LANDING_READBACK_SKIP",
+    "request_id": "MF-FIX-V1-BUILDER-POSTLAND-READBACK-R1-PROOF-01",
     "source_identity": "PASS",
     "source_sha": "00486e936a2ab165ed5d4f43a208eedf6e81fcf1",
-    "work_id": "MF-REPLAY-LAND-G5-CONTROL-PLANE-SNAPSHOT-R1"
+    "verification_phase": "POST_LANDING_READBACK",
+    "work_id": "MF-FIX-V1-BUILDER-POSTLAND-READBACK-R1"
   },
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
+    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
 }
