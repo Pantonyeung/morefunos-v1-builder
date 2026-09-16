@@ -10,9 +10,13 @@ on:
         description: Exact Morefun-v2 source SHA
         required: true
         type: string
+      request_id:
+        description: Exact verification request identity
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -24,22 +28,30 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Resolve exact source SHA
+      - name: Resolve exact verification request
         id: request
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_REQUEST_ID: ${{ inputs.request_id }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUEST_ID="$(printf '%s' "$INPUT_REQUEST_ID" | tr -d '\r\n')"
           else
             test -f requests/v2-g6-smm-lan-contract-r1a-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-g6-smm-lan-contract-r1a-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            REQUEST_ID="$(sed -n 's/^request_id=//p' requests/v2-g6-smm-lan-contract-r1a-request.txt | tr -d '\r\n')"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$REQUEST_ID"
+          [[ "$REQUEST_ID" =~ ^[A-Za-z0-9._-]+$ ]]
+          ARTIFACT="v2-g6-smm-lan-contract-r1a-${REQUEST_ID}"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "request_id=$REQUEST_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
 
       - name: Require V2 source credential
         shell: bash
@@ -76,6 +88,8 @@ jobs:
         run: npm install --no-save --ignore-scripts --no-audit --no-fund
 
       - name: Run exact G6 allowlist tests
+        id: product_tests
+        continue-on-error: true
         working-directory: source
         shell: bash
         run: |
@@ -85,3 +99,99 @@ jobs:
           [[ -f apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts ]] && files+=(apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts)
           ((${#files[@]} > 0))
           node --test "${files[@]}"
+
+      - name: Write exact evidence seal
+        if: always() && steps.request.outcome == 'success'
+        id: seal
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          ARTIFACT: ${{ steps.request.outputs.artifact }}
+          TEST_OUTCOME: ${{ steps.product_tests.outcome }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          RESULT="RED"
+          [[ "$TEST_OUTCOME" == "success" ]] && RESULT="GREEN"
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "request_id=$REQUEST_ID"
+            echo "artifact=$ARTIFACT"
+            echo "result=$RESULT"
+            echo "test_outcome=$TEST_OUTCOME"
+            echo "run_id=$RUN_ID"
+            echo "run_attempt=$RUN_ATTEMPT"
+            echo "run_url=$SERVER_URL/$REPOSITORY/actions/runs/$RUN_ID"
+          } > evidence/v2-g6-smm-lan-contract-r1a.txt
+          echo "result=$RESULT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact evidence artifact
+        if: always() && steps.seal.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.artifact }}
+          path: evidence/v2-g6-smm-lan-contract-r1a.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Persist durable result seal
+        if: always() && steps.seal.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, json, os, urllib.error, urllib.request
+
+          repo = os.environ['REPOSITORY']
+          branch = os.environ['BRANCH']
+          token = os.environ['GH_TOKEN']
+          path = '.ci-results/v2-g6-smm-lan-contract-r1a.txt'
+          with open('evidence/v2-g6-smm-lan-contract-r1a.txt', 'rb') as fh:
+              content = base64.b64encode(fh.read()).decode('ascii')
+
+          url = f'https://api.github.com/repos/{repo}/contents/{path}'
+          headers = {
+              'Accept': 'application/vnd.github+json',
+              'Authorization': f'Bearer {token}',
+              'X-GitHub-Api-Version': '2022-11-28',
+          }
+          sha = None
+          try:
+              req = urllib.request.Request(f'{url}?ref={branch}', headers=headers)
+              with urllib.request.urlopen(req) as response:
+                  sha = json.load(response).get('sha')
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise
+
+          payload = {
+              'message': 'ci(g6): persist exact verification evidence',
+              'content': content,
+              'branch': branch,
+          }
+          if sha:
+              payload['sha'] = sha
+          data = json.dumps(payload).encode('utf-8')
+          req = urllib.request.Request(url, data=data, headers={**headers, 'Content-Type': 'application/json'}, method='PUT')
+          with urllib.request.urlopen(req) as response:
+              if response.status not in (200, 201):
+                  raise RuntimeError(f'unexpected contents API status: {response.status}')
+          PY
+
+      - name: Enforce exact verification result
+        if: always() && steps.request.outcome == 'success'
+        shell: bash
+        env:
+          RESULT: ${{ steps.seal.outputs.result }}
+        run: |
+          set -euo pipefail
+          test "$RESULT" = "GREEN"
