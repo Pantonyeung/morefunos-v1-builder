@@ -1,0 +1,7 @@
+candidate_sha=9e36c72e01e783bed519d2f35b3e9357fbe88817
+base_main_sha=7aa4a41d597de6d273d91eaef557f7198b555541
+work_id=MF-GOV-AI-EXECUTION-LOCK-01
+capability_id=CAP-GOV-MEMORY-001
+capability_action=EXTEND
+affected_ports=
+required_core_tests=
