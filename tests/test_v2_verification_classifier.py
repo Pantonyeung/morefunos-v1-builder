@@ -45,6 +45,57 @@ def payload(*gates: dict, **metadata: object) -> dict:
     return value
 
 
+def node_assert_match_log(
+    *,
+    title: str = "SMT Catalog endpoint records APPLIED only after canonical Menu readback",
+    location: str = "packages/system-diagnostics/catalog-readback-wiring.test.ts:75:1",
+    expected_regex: str = r"/refreshMenu=async\(signal\?:CatalogRealtimeDoorbell\)/",
+    actual: str = "export function assertMenu() { throw new Error('payload'); }",
+    include_operator: bool = True,
+    fail_count: int = 1,
+) -> str:
+    operator = "  operator: 'match'\n" if include_operator else ""
+    return (
+        "TAP version 13\n"
+        f"# Subtest: {title}\n"
+        f"not ok 1 - {title}\n"
+        "  ---\n"
+        "  duration_ms: 1.234\n"
+        "  type: 'test'\n"
+        f"  location: '{location}'\n"
+        "  failureType: 'testCodeFailure'\n"
+        "  error: |-\n"
+        f"    The input did not match the regular expression {expected_regex}. Input:\n"
+        "    \n"
+        f"    {actual!r}\n"
+        "  code: 'ERR_ASSERTION'\n"
+        "  name: 'AssertionError'\n"
+        f"  actual: {actual!r}\n"
+        f"{operator}"
+        "  stack: |-\n"
+        f"    TestContext.<anonymous> ({location})\n"
+        "  ...\n"
+        "# tests 152\n"
+        "# pass 151\n"
+        f"# fail {fail_count}\n"
+    )
+
+
+def classified_global_failure(
+    base_log: str,
+    candidate_log: str,
+    **gate_overrides: object,
+) -> dict:
+    return classify(payload(gate(
+        "system_diagnostics",
+        "failure",
+        base_outcome="failure",
+        failure_signature=classifier.failure_signature(candidate_log),
+        base_failure_signature=classifier.failure_signature(base_log),
+        **gate_overrides,
+    )))
+
+
 class V2VerificationClassifierTest(unittest.TestCase):
     def test_worker_candidate_keeps_candidate_skip(self) -> None:
         self.assertEqual(
@@ -102,6 +153,89 @@ class V2VerificationClassifierTest(unittest.TestCase):
     def test_base_pass_candidate_fail_is_new_global_regression(self) -> None:
         result = classify(payload(gate("system_diagnostics", "failure")))
         self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_same_identity_ignores_only_mutable_actual(self) -> None:
+        base_log = node_assert_match_log(actual="export function assertMenu() { throw new Error('BASE-' + 'x'.repeat(200)); }")
+        candidate_log = node_assert_match_log(actual="export function assertMenu() { throw new Error('CANDIDATE-' + 'y'.repeat(200)); }")
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "PRE_EXISTING_GLOBAL_RED")
+        self.assertTrue(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_base_pass_candidate_fail_stays_new(self) -> None:
+        candidate_log = node_assert_match_log(actual="throw new Error('candidate only')")
+        result = classify(payload(gate(
+            "system_diagnostics",
+            "failure",
+            base_outcome="success",
+            failure_signature=classifier.failure_signature(candidate_log),
+            base_failure_signature=None,
+        )))
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_different_test_identity_stays_new(self) -> None:
+        base_log = node_assert_match_log(actual="throw new Error('base')")
+        candidate_log = node_assert_match_log(
+            title="different semantic test identity",
+            actual="throw new Error('candidate')",
+        )
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_different_missing_regex_stays_new(self) -> None:
+        base_log = node_assert_match_log(actual="throw new Error('base')")
+        candidate_log = node_assert_match_log(
+            expected_regex=r"/differentExpectedContract/",
+            actual="throw new Error('candidate')",
+        )
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_truncated_identity_fails_closed(self) -> None:
+        base_log = node_assert_match_log(actual="throw new Error('base')", include_operator=False)
+        candidate_log = node_assert_match_log(actual="throw new Error('candidate')", include_operator=False)
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_ambiguous_multiple_failures_fail_closed(self) -> None:
+        first_base = node_assert_match_log(actual="throw new Error('base one')", fail_count=2)
+        second_base = node_assert_match_log(
+            title="second failing assertion",
+            location="packages/example/second.test.ts:20:1",
+            expected_regex=r"/secondExpected/",
+            actual="throw new Error('base two')",
+            fail_count=2,
+        ).replace("not ok 1 -", "not ok 2 -", 1)
+        first_candidate = node_assert_match_log(actual="throw new Error('candidate one')", fail_count=2)
+        second_candidate = node_assert_match_log(
+            title="second failing assertion",
+            location="packages/example/second.test.ts:20:1",
+            expected_regex=r"/secondExpected/",
+            actual="throw new Error('candidate two')",
+            fail_count=2,
+        ).replace("not ok 1 -", "not ok 2 -", 1)
+        result = classified_global_failure(first_base + second_base, first_candidate + second_candidate)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_equivalence_does_not_weaken_change(self) -> None:
+        base_log = node_assert_match_log(actual="throw new Error('base')")
+        candidate_log = node_assert_match_log(actual="throw new Error('candidate')")
+        result = classified_global_failure(base_log, candidate_log, changed_domain=True)
+        self.assertEqual(result["verdicts"]["CHANGE_VERIFICATION"], "FAIL")
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "PRE_EXISTING_GLOBAL_RED")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_structured_node_assert_match_equivalence_does_not_weaken_rail(self) -> None:
+        base_log = node_assert_match_log(actual="throw new Error('base')")
+        candidate_log = node_assert_match_log(actual="throw new Error('candidate')")
+        result = classified_global_failure(base_log, candidate_log, rail_required=True)
+        self.assertEqual(result["verdicts"]["RAIL_VERIFICATION"], "FAIL")
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "PRE_EXISTING_GLOBAL_RED")
         self.assertFalse(result["admission"]["eligible"])
 
     def test_post_landing_core_regression_still_fails(self) -> None:
