@@ -1,43 +1,20 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "GLOBAL_SYSTEM_HEALTH_HELD"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "51835c91144f644fd9c5f6001abfa73519c44363196a30c4cbcb04e44e09ddb5",
-      "artifact_id": "10427805362"
+      "artifact_digest": "0c2dcbb73a9b0a963a2fdecff2c10e1b095f5de2f668c083c63920f95093ae69",
+      "artifact_id": "10428260057"
     }
   ],
-  "baseline_comparison": [
-    {
-      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "system_diagnostics"
-    },
-    {
-      "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "integration"
-    },
-    {
-      "base_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "governance"
-    }
-  ],
+  "baseline_comparison": [],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "catalog",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -48,7 +25,7 @@
       "failure_signature": null,
       "gate_id": "catalog",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -58,7 +35,7 @@
       "failure_signature": null,
       "gate_id": "pricing",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -68,7 +45,7 @@
       "failure_signature": null,
       "gate_id": "availability",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -78,7 +55,7 @@
       "failure_signature": null,
       "gate_id": "order",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -88,7 +65,7 @@
       "failure_signature": null,
       "gate_id": "business_day_cash",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -98,7 +75,7 @@
       "failure_signature": null,
       "gate_id": "payment",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -108,7 +85,7 @@
       "failure_signature": null,
       "gate_id": "fulfillment",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -118,7 +95,7 @@
       "failure_signature": null,
       "gate_id": "human_custody",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -128,7 +105,7 @@
       "failure_signature": null,
       "gate_id": "production_operations",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -138,17 +115,17 @@
       "failure_signature": null,
       "gate_id": "large_order_b2b",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "failure_signature": null,
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -158,37 +135,37 @@
       "failure_signature": null,
       "gate_id": "inventory",
       "global_scope": true,
-      "outcome": "success",
-      "rail_required": false
-    },
-    {
-      "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
-      "base_outcome": "failure",
-      "changed_domain": false,
-      "failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
-      "gate_id": "integration",
-      "global_scope": true,
-      "outcome": "failure",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
-      "gate_id": "typescript",
+      "gate_id": "integration",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
+      "failure_signature": null,
+      "gate_id": "typescript",
+      "global_scope": true,
+      "outcome": "skipped",
+      "rail_required": false
+    },
+    {
+      "base_failure_signature": null,
+      "base_outcome": null,
+      "changed_domain": false,
+      "failure_signature": null,
       "gate_id": "governance",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "skipped",
       "rail_required": false
     },
     {
@@ -198,23 +175,23 @@
       "failure_signature": null,
       "gate_id": "merge_request",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "skipped",
       "rail_required": false
     }
   ],
   "identity": {
     "base_sha": "58268a1e6badec3608b365f3815ffe09f9f3604a",
     "builder_run_attempt": "1",
-    "builder_run_id": "35047041473",
-    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED-20260916-R2",
+    "builder_run_id": "35048013051",
+    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED-20260916-01",
     "source_identity": "PASS",
-    "source_sha": "37db1833f2b59c3de2919e2ea0b5edc1d80b1cfc",
+    "source_sha": "37db1833c10004881d789c822080ab48247c505d",
     "work_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1"
   },
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
+    "GLOBAL_SYSTEM_HEALTH": "HELD",
     "RAIL_VERIFICATION": "PASS"
   }
 }
