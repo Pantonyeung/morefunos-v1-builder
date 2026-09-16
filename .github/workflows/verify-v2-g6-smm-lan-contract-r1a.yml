@@ -91,5 +91,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm exec tsc -p apps/smm-web/tsconfig.json --noEmit
-          pnpm exec tsc -p apps/smt-clean/tsconfig.json --noEmit
+          npx tsc -p apps/smm-web/tsconfig.json --noEmit
+          npx tsc -p apps/smt-clean/tsconfig.json --noEmit
