@@ -55,8 +55,91 @@ def resolve_verification_intent(verification_phase: str, branch_name: str) -> tu
     return phase, MERGE_REQUEST_GUARD_MODES[phase]
 
 
+def _node_assert_match_semantic_identity(clean: str) -> str | None:
+    lines = clean.splitlines()
+    not_ok: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        match = re.fullmatch(r"\s*not ok\s+\d+\s+-\s+(.+?)\s*", line)
+        if match:
+            not_ok.append((index, match.group(1).strip()))
+    fail_counts = [
+        int(match.group(1))
+        for line in lines
+        if (match := re.fullmatch(r"\s*#\s*fail\s+(\d+)\s*", line))
+    ]
+    if len(not_ok) != 1 or fail_counts != [1]:
+        return None
+
+    start, title = not_ok[0]
+    if not title:
+        return None
+    previous = [line.strip() for line in lines[max(0, start - 3):start] if line.strip()]
+    if f"# Subtest: {title}" not in previous:
+        return None
+
+    end = next(
+        (index for index in range(start + 1, len(lines)) if re.fullmatch(r"\s*\.\.\.\s*", lines[index])),
+        None,
+    )
+    if end is None:
+        return None
+    block = lines[start:end + 1]
+
+    def single_field(name: str) -> str | None:
+        values: list[str] = []
+        pattern = re.compile(rf"\s*{re.escape(name)}:\s*(.*?)\s*")
+        for line in block:
+            match = pattern.fullmatch(line)
+            if match:
+                value = match.group(1).strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                    value = value[1:-1]
+                values.append(value)
+        if len(values) != 1 or not values[0]:
+            return None
+        return values[0]
+
+    location = single_field("location")
+    code = single_field("code")
+    name = single_field("name")
+    operator = single_field("operator")
+    actual_markers = [line for line in block if re.match(r"\s*actual:\s*", line)]
+    if (
+        not location
+        or code != "ERR_ASSERTION"
+        or name != "AssertionError"
+        or operator != "match"
+        or len(actual_markers) != 1
+    ):
+        return None
+
+    expected: list[str] = []
+    message_pattern = re.compile(
+        r"\s*The input did not match the regular expression (/.*/[a-z]*)\. Input:\s*"
+    )
+    for line in block:
+        match = message_pattern.fullmatch(line)
+        if match:
+            expected.append(match.group(1))
+    if len(expected) != 1 or not re.fullmatch(r"/(?:\\.|[^/])*/[a-z]*", expected[0]):
+        return None
+
+    return "\n".join((
+        "node_assert_match",
+        f"title={title}",
+        f"location={location}",
+        f"code={code}",
+        f"name={name}",
+        f"operator={operator}",
+        f"expected_regex={expected[0]}",
+    ))
+
+
 def failure_signature(text: str) -> str:
     clean = re.sub(r"\x1b\[[0-9;]*m", "", text.replace("\r\n", "\n"))
+    semantic_identity = _node_assert_match_semantic_identity(clean)
+    if semantic_identity is not None:
+        return "sha256:" + hashlib.sha256(semantic_identity.encode("utf-8")).hexdigest()
     stable: list[str] = []
     for line in clean.splitlines():
         normalized = line.strip()
