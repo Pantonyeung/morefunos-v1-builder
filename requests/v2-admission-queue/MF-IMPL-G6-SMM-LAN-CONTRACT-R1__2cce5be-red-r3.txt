@@ -1,0 +1,12 @@
+candidate_sha=2cce5be6c6051644811fbd320f2097e8ee92e69f
+base_main_sha=58268a1e6badec3608b365f3815ffe09f9f3604a
+work_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1
+capability_id=CAP-ORDER-INTAKE-001
+capability_action=EXTEND
+affected_ports=SMT,SMM
+depends_on_specs=
+supersedes_candidate_sha=c33dd691325cfa4fd88e29ac2e9eb592959f0097
+required_core_tests=ORDER
+force_full_proof=true
+proof_source_sha=
+physical_proof_ref=
