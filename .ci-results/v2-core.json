@@ -1,21 +1,23 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "4d5ad4f216c9bb426c0b25d8641ba0c26756f2b6ec08fd6ccb3f6e9e3c540e74",
-      "artifact_id": "10432804331"
+      "artifact_digest": "11da10fec217f9ee256cb2f4ab4b73a273b04aea28ef1ad325e220cd5915fdb3",
+      "artifact_id": "10436604558"
     }
   ],
   "baseline_comparison": [
     {
       "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "candidate_failure_signature": "sha256:edf0b2f8f583722f8037a5b813ebe82fd2047236fde63375334bbd918313003a",
       "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "classification": "NEW_GLOBAL_REGRESSION",
       "gate_id": "system_diagnostics"
     },
     {
@@ -145,7 +147,7 @@
       "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "failure_signature": "sha256:edf0b2f8f583722f8037a5b813ebe82fd2047236fde63375334bbd918313003a",
       "gate_id": "system_diagnostics",
       "global_scope": true,
       "outcome": "failure",
@@ -203,21 +205,21 @@
     }
   ],
   "identity": {
-    "base_sha": "2b85c394724a17709a3c1aec13ecaddb4d0686d5",
+    "base_sha": "f2460ae2e2c315a9ecf6d113b368f1d8d005e0fd",
     "branch_name": "work/SMT/MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35064283397",
+    "builder_run_id": "35074232203",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1-KNIFE-A-CANDIDATE",
+    "request_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1-KNIFE-B-180fb29b9-CORE-01",
     "source_identity": "PASS",
-    "source_sha": "f2460ae2e2c315a9ecf6d113b368f1d8d005e0fd",
+    "source_sha": "180fb29b90a4e3dfda7913a6627b09ca3b64dbcf",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1"
   },
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
+    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
     "RAIL_VERIFICATION": "PASS"
   }
 }
