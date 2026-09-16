@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "93614e2af10f64c19884436e26d354f0b017e43e5b13df5d8c2e90f0e5caeca2",
-      "artifact_id": "10422724358"
+      "artifact_digest": "9c79aed23884081c1a6e30e485b9b18b5f7a5933d1b9c99a92fa477c62ff708e",
+      "artifact_id": "10424209462"
     }
   ],
   "baseline_comparison": [
@@ -197,8 +197,8 @@
   "identity": {
     "base_sha": "02711f30c5e6da24dea31db1e08a12b469229e03",
     "builder_run_attempt": "1",
-    "builder_run_id": "35036543219",
-    "request_id": "G3SO-BUILDER-HANDOFF-FINAL",
+    "builder_run_id": "35039248925",
+    "request_id": "MF-CLOSE-G3-STAFF-ORDER-LOCAL-ADAPTER-R1-LANDED-01",
     "source_identity": "PASS",
     "source_sha": "7aa4a41d597de6d273d91eaef557f7198b555541",
     "work_id": "MF-IMPL-G3-STAFF-ORDER-LOCAL-ADAPTER-R1"
