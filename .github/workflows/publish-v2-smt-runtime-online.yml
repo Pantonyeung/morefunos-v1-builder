@@ -14,6 +14,12 @@ on:
         description: Successful V2 SMT signed runtime package run ID
         required: true
         type: string
+      release_channel:
+        description: Runtime channel sealed by the package artifact
+        required: true
+        default: candidate
+        type: choice
+        options: [candidate, stable]
 
 permissions:
   contents: read
@@ -45,21 +51,27 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
           INPUT_PACKAGE_RUN_ID: ${{ inputs.package_run_id }}
+          INPUT_RELEASE_CHANNEL: ${{ inputs.release_channel }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             PACKAGE_RUN_ID="$(printf '%s' "$INPUT_PACKAGE_RUN_ID" | tr -d '[:space:]')"
+            RELEASE_CHANNEL="$(printf '%s' "$INPUT_RELEASE_CHANNEL" | tr -d '[:space:]')"
           else
             test -f requests/v2-smt-runtime-online-publish-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-smt-runtime-online-publish-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             PACKAGE_RUN_ID="$(sed -n 's/^package_run_id=//p' requests/v2-smt-runtime-online-publish-request.txt | tr -d '[:space:]')"
+            RELEASE_CHANNEL="$(sed -n 's/^release_channel=//p' requests/v2-smt-runtime-online-publish-request.txt | tr -d '[:space:]')"
+            RELEASE_CHANNEL="${RELEASE_CHANNEL:-candidate}"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$PACKAGE_RUN_ID" =~ ^[0-9]+$ ]]
+          case "$RELEASE_CHANNEL" in candidate|stable) ;; *) exit 1 ;; esac
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "package_run_id=$PACKAGE_RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=v2-smt-runtime-runtime-candidate-${SOURCE_SHA:0:12}" >> "$GITHUB_OUTPUT"
+          echo "release_channel=$RELEASE_CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=v2-smt-runtime-runtime-${RELEASE_CHANNEL}-${SOURCE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
       - name: Require credentials
         shell: bash
@@ -108,6 +120,7 @@ jobs:
         env:
           EXPECTED_SHA: ${{ steps.request.outputs.source_sha }}
           EXPECTED_RUN: ${{ steps.request.outputs.package_run_id }}
+          EXPECTED_CHANNEL: ${{ steps.request.outputs.release_channel }}
         run: |
           set -euo pipefail
           test -f package/runtime-build-metadata.json
@@ -122,10 +135,13 @@ jobs:
           const manifest=JSON.parse(fs.readFileSync('package/runtime-update.json','utf8'));
           const expected=process.env.EXPECTED_SHA;
           const run=process.env.EXPECTED_RUN;
+          const channel=process.env.EXPECTED_CHANNEL;
           if(meta.sourceSha!==expected) throw new Error('PACKAGE_SOURCE_SHA_MISMATCH');
           if(String(meta.builderRunId)!==run) throw new Error('PACKAGE_RUN_ID_MISMATCH');
           if(meta.publicationStatus!=='UNPUBLISHED'||meta.deviceAcceptance!=='NOT_EXECUTED') throw new Error('PACKAGE_PREPUBLICATION_STATE_INVALID');
           if(meta.releaseId!==manifest.releaseId||meta.runtimeVersion!==manifest.runtimeVersion||meta.bundleUrl!==manifest.bundleUrl||meta.archiveSha256!==manifest.archiveSha256) throw new Error('PACKAGE_MANIFEST_IDENTITY_MISMATCH');
+          if(meta.channel!==channel||manifest.channel!==channel) throw new Error('PACKAGE_RELEASE_CHANNEL_MISMATCH');
+          if(meta.releaseId!==`runtime-${channel}-${expected.slice(0,12)}`) throw new Error('PACKAGE_RELEASE_ID_MISMATCH');
           if(meta.minCarrierVersionCode!==24||meta.bridgeVersion!==1||manifest.minCarrierVersionCode!==24||manifest.bridgeVersion!==1) throw new Error('PACKAGE_CARRIER_CONTRACT_MISMATCH');
           if(path.basename(meta.bundleUrl)!==meta.bundleUrl) throw new Error('PACKAGE_BUNDLE_PATH_INVALID');
           NODE
@@ -199,6 +215,7 @@ jobs:
           ORIGIN: ${{ steps.public.outputs.origin }}
           EXPECTED_RELEASE: ${{ steps.package.outputs.release_id }}
           EXPECTED_HASH: ${{ steps.package.outputs.archive_sha256 }}
+          EXPECTED_CHANNEL: ${{ steps.request.outputs.release_channel }}
         run: |
           set -euo pipefail
           curl --fail-with-body --silent --show-error -H 'Cache-Control: no-cache' "$ORIGIN/runtime-update.json" > "$RUNNER_TEMP/public-manifest.json"
@@ -207,6 +224,7 @@ jobs:
           const m=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/public-manifest.json','utf8'));
           if(m.releaseId!==process.env.EXPECTED_RELEASE) throw new Error('PUBLIC_RELEASE_ID_MISMATCH');
           if(m.archiveSha256!==process.env.EXPECTED_HASH) throw new Error('PUBLIC_ARCHIVE_HASH_MISMATCH');
+          if(m.channel!==process.env.EXPECTED_CHANNEL) throw new Error('PUBLIC_RELEASE_CHANNEL_MISMATCH');
           if(m.bridgeVersion!==1||m.minCarrierVersionCode!==24) throw new Error('PUBLIC_CARRIER_CONTRACT_MISMATCH');
           process.stdout.write(m.bundleUrl);
           NODE
@@ -220,13 +238,14 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           PACKAGE_RUN_ID: ${{ steps.request.outputs.package_run_id }}
+          RELEASE_CHANNEL: ${{ steps.request.outputs.release_channel }}
           RELEASE_ID: ${{ steps.package.outputs.release_id }}
           ARCHIVE_SHA256: ${{ steps.package.outputs.archive_sha256 }}
           ORIGIN: ${{ steps.public.outputs.origin }}
         run: |
           mkdir -p evidence
-          printf 'scope=v2-smt-runtime-online-publication\nsource_sha=%s\npackage_run_id=%s\nrelease_id=%s\narchive_sha256=%s\npublic_origin=%s\ndevice_acceptance=NOT_EXECUTED\n' \
-            "$SOURCE_SHA" "$PACKAGE_RUN_ID" "$RELEASE_ID" "$ARCHIVE_SHA256" "$ORIGIN" > evidence/summary.txt
+          printf 'scope=v2-smt-runtime-online-publication\nsource_sha=%s\npackage_run_id=%s\nrelease_channel=%s\nrelease_id=%s\narchive_sha256=%s\npublic_origin=%s\ndevice_acceptance=NOT_EXECUTED\n' \
+            "$SOURCE_SHA" "$PACKAGE_RUN_ID" "$RELEASE_CHANNEL" "$RELEASE_ID" "$ARCHIVE_SHA256" "$ORIGIN" > evidence/summary.txt
           cat evidence/summary.txt
 
       - name: Upload publication evidence
