@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "82d3afe793f9a57f83a306f86270f8c16ef98042af8f0913c5ba65613a71093b",
-      "artifact_id": "10427633536"
+      "artifact_digest": "eac465b083440e0d2d612a15c592dd4d0f64069ed71af48d39975c1ea3970f12",
+      "artifact_id": "10429496200"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
+      "base_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
+      "candidate_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
+      "base_failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:6437927901cf746c2d7b379a7a7296da67f182be18f46a167de285275f517fe9",
+      "failure_signature": "sha256:f6520608fab365369b53ecb5a82b0d988667f54d521bc8e78d139e69e655359d",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -205,10 +205,10 @@
   "identity": {
     "base_sha": "58268a1e6badec3608b365f3815ffe09f9f3604a",
     "builder_run_attempt": "1",
-    "builder_run_id": "35048962391",
-    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-CANDIDATE-20260916-R1",
+    "builder_run_id": "35051595640",
+    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-R1A-FIRST-RED-20260916-01",
     "source_identity": "PASS",
-    "source_sha": "c33dd691325cfa4fd88e29ac2e9eb592959f0097",
+    "source_sha": "2cce5be6c6051644811fbd320f2097e8ee92e69f",
     "work_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1"
   },
   "schema_version": 1,
