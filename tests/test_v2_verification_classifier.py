@@ -81,6 +81,41 @@ def node_assert_match_log(
     )
 
 
+def node_spec_assert_match_log(
+    *,
+    title: str = "SMT Catalog endpoint records APPLIED only after canonical Menu readback",
+    location: str = "packages/system-diagnostics/catalog-readback-wiring.test.ts:75:1",
+    expected_regex: str = r"/refreshMenu=async\(signal\?:CatalogRealtimeDoorbell\)/",
+    actual: str = "export function assertMenu() { throw new Error('payload'); }",
+    include_operator: bool = True,
+    fail_count: int = 1,
+) -> str:
+    operator = "    operator: 'match',\n" if include_operator else ""
+    return (
+        f"✖ {title} (8.868653ms)\n"
+        "✔ another test stays green (1.0ms)\n"
+        "ℹ tests 152\n"
+        "ℹ suites 0\n"
+        "ℹ pass 151\n"
+        f"ℹ fail {fail_count}\n"
+        "ℹ cancelled 0\n"
+        "ℹ skipped 0\n"
+        "ℹ todo 0\n"
+        "ℹ duration_ms 2748.225351\n\n"
+        "✖ failing tests:\n\n"
+        f"test at {location}\n"
+        f"✖ {title} (8.868653ms)\n"
+        f"  AssertionError [ERR_ASSERTION]: The input did not match the regular expression {expected_regex}. Input:\n\n"
+        f"  {actual!r}\n\n"
+        "    code: 'ERR_ASSERTION',\n"
+        f"    actual: {actual!r},\n"
+        f"    expected: {expected_regex},\n"
+        f"{operator}"
+        "    diff: 'simple'\n"
+        "  }\n"
+    )
+
+
 def classified_global_failure(
     base_log: str,
     candidate_log: str,
@@ -161,6 +196,41 @@ class V2VerificationClassifierTest(unittest.TestCase):
         result = classified_global_failure(base_log, candidate_log)
         self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "PRE_EXISTING_GLOBAL_RED")
         self.assertTrue(result["admission"]["eligible"])
+
+    def test_node_spec_assert_match_same_identity_ignores_only_mutable_actual(self) -> None:
+        base_log = node_spec_assert_match_log(actual="export const version='BASE-' + 'x'.repeat(500)")
+        candidate_log = node_spec_assert_match_log(actual="export const version='CANDIDATE-' + 'y'.repeat(500)")
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "PRE_EXISTING_GLOBAL_RED")
+        self.assertTrue(result["admission"]["eligible"])
+
+    def test_node_spec_assert_match_different_test_identity_stays_new(self) -> None:
+        base_log = node_spec_assert_match_log(actual="base")
+        candidate_log = node_spec_assert_match_log(title="different semantic test identity", actual="candidate")
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_node_spec_assert_match_different_missing_regex_stays_new(self) -> None:
+        base_log = node_spec_assert_match_log(actual="base")
+        candidate_log = node_spec_assert_match_log(expected_regex=r"/differentExpectedContract/", actual="candidate")
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_node_spec_assert_match_truncated_identity_fails_closed(self) -> None:
+        base_log = node_spec_assert_match_log(actual="base", include_operator=False)
+        candidate_log = node_spec_assert_match_log(actual="candidate", include_operator=False)
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
+
+    def test_node_spec_assert_match_ambiguous_failure_count_fails_closed(self) -> None:
+        base_log = node_spec_assert_match_log(actual="base", fail_count=2)
+        candidate_log = node_spec_assert_match_log(actual="candidate", fail_count=2)
+        result = classified_global_failure(base_log, candidate_log)
+        self.assertEqual(result["verdicts"]["GLOBAL_SYSTEM_HEALTH"], "NEW_GLOBAL_REGRESSION")
+        self.assertFalse(result["admission"]["eligible"])
 
     def test_structured_node_assert_match_base_pass_candidate_fail_stays_new(self) -> None:
         candidate_log = node_assert_match_log(actual="throw new Error('candidate only')")
@@ -312,7 +382,7 @@ class V2VerificationClassifierTest(unittest.TestCase):
     def test_admission_consumes_formal_verdict_without_false_global_green(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/v2-builder-admission-queue.yml").read_text(encoding="utf-8")
         self.assertIn(".ci-results/v2-core.json", workflow)
-        self.assertIn("global_green={str(global_health == \"PASS\").lower()}", workflow)
+        self.assertIn('global_green={str(global_health == "PASS").lower()}', workflow)
         self.assertIn("PHYSICAL_PROOF_REFERENCE_REQUIRED", workflow)
 
 

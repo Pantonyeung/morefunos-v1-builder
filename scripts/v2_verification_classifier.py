@@ -55,8 +55,7 @@ def resolve_verification_intent(verification_phase: str, branch_name: str) -> tu
     return phase, MERGE_REQUEST_GUARD_MODES[phase]
 
 
-def _node_assert_match_semantic_identity(clean: str) -> str | None:
-    lines = clean.splitlines()
+def _node_assert_match_tap_identity(lines: list[str]) -> str | None:
     not_ok: list[tuple[int, str]] = []
     for index, line in enumerate(lines):
         match = re.fullmatch(r"\s*not ok\s+\d+\s+-\s+(.+?)\s*", line)
@@ -91,7 +90,7 @@ def _node_assert_match_semantic_identity(clean: str) -> str | None:
         for line in block:
             match = pattern.fullmatch(line)
             if match:
-                value = match.group(1).strip()
+                value = match.group(1).strip().rstrip(",").strip()
                 if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
                     value = value[1:-1]
                 values.append(value)
@@ -104,28 +103,27 @@ def _node_assert_match_semantic_identity(clean: str) -> str | None:
     name = single_field("name")
     operator = single_field("operator")
     actual_markers = [line for line in block if re.match(r"\s*actual:\s*", line)]
+    expected: list[str] = []
+    message_pattern = re.compile(
+        r"\s*The input did not match the regular expression (/(?:\\.|[^/])*/[a-z]*)\. Input:\s*"
+    )
+    for line in block:
+        match = message_pattern.fullmatch(line)
+        if match:
+            expected.append(match.group(1))
     if (
         not location
         or code != "ERR_ASSERTION"
         or name != "AssertionError"
         or operator != "match"
         or len(actual_markers) != 1
+        or len(expected) != 1
     ):
-        return None
-
-    expected: list[str] = []
-    message_pattern = re.compile(
-        r"\s*The input did not match the regular expression (/.*/[a-z]*)\. Input:\s*"
-    )
-    for line in block:
-        match = message_pattern.fullmatch(line)
-        if match:
-            expected.append(match.group(1))
-    if len(expected) != 1 or not re.fullmatch(r"/(?:\\.|[^/])*/[a-z]*", expected[0]):
         return None
 
     return "\n".join((
         "node_assert_match",
+        "format=tap",
         f"title={title}",
         f"location={location}",
         f"code={code}",
@@ -133,6 +131,99 @@ def _node_assert_match_semantic_identity(clean: str) -> str | None:
         f"operator={operator}",
         f"expected_regex={expected[0]}",
     ))
+
+
+def _node_assert_match_spec_identity(lines: list[str]) -> str | None:
+    fail_counts = [
+        int(match.group(1))
+        for line in lines
+        if (match := re.fullmatch(r"\s*ℹ\s*fail\s+(\d+)\s*", line))
+    ]
+    if fail_counts != [1]:
+        return None
+
+    marker_indices = [
+        index
+        for index, line in enumerate(lines)
+        if re.fullmatch(r"\s*✖\s+failing tests:\s*", line)
+    ]
+    if len(marker_indices) != 1:
+        return None
+    block = lines[marker_indices[0] + 1:]
+
+    location_pattern = re.compile(r"\s*test at\s+(.+?)\s*")
+    title_pattern = re.compile(r"\s*✖\s+(.+?)\s+\(([0-9.]+)ms\)\s*")
+    message_pattern = re.compile(
+        r"\s*AssertionError \[ERR_ASSERTION\]: The input did not match the regular expression "
+        r"(/(?:\\.|[^/])*/[a-z]*)\. Input:\s*"
+    )
+    code_pattern = re.compile(r"\s*code:\s*['\"]([^'\"]+)['\"],?\s*")
+    expected_pattern = re.compile(r"\s*expected:\s*(/(?:\\.|[^/])*/[a-z]*),?\s*")
+    operator_pattern = re.compile(r"\s*operator:\s*['\"]([^'\"]+)['\"],?\s*")
+
+    locations: list[str] = []
+    titles: list[str] = []
+    message_expected: list[str] = []
+    codes: list[str] = []
+    structured_expected: list[str] = []
+    operators: list[str] = []
+    actual_markers = 0
+    for line in block:
+        if match := location_pattern.fullmatch(line):
+            locations.append(match.group(1).strip())
+        if match := title_pattern.fullmatch(line):
+            titles.append(match.group(1).strip())
+        if match := message_pattern.fullmatch(line):
+            message_expected.append(match.group(1))
+        if match := code_pattern.fullmatch(line):
+            codes.append(match.group(1))
+        if match := expected_pattern.fullmatch(line):
+            structured_expected.append(match.group(1))
+        if match := operator_pattern.fullmatch(line):
+            operators.append(match.group(1))
+        if re.match(r"\s*actual:\s*", line):
+            actual_markers += 1
+
+    if not (
+        len(locations) == 1
+        and len(titles) == 1
+        and len(message_expected) == 1
+        and len(codes) == 1
+        and len(structured_expected) == 1
+        and len(operators) == 1
+        and actual_markers == 1
+    ):
+        return None
+    if (
+        codes[0] != "ERR_ASSERTION"
+        or operators[0] != "match"
+        or message_expected[0] != structured_expected[0]
+    ):
+        return None
+
+    return "\n".join((
+        "node_assert_match",
+        "format=spec",
+        f"title={titles[0]}",
+        f"location={locations[0]}",
+        "code=ERR_ASSERTION",
+        "name=AssertionError",
+        "operator=match",
+        f"expected_regex={message_expected[0]}",
+    ))
+
+
+def _node_assert_match_semantic_identity(clean: str) -> str | None:
+    lines = clean.splitlines()
+    identities = [
+        identity
+        for identity in (
+            _node_assert_match_tap_identity(lines),
+            _node_assert_match_spec_identity(lines),
+        )
+        if identity is not None
+    ]
+    return identities[0] if len(identities) == 1 else None
 
 
 def failure_signature(text: str) -> str:
