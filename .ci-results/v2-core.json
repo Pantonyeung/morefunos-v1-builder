@@ -1,23 +1,21 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "11da10fec217f9ee256cb2f4ab4b73a273b04aea28ef1ad325e220cd5915fdb3",
-      "artifact_id": "10436604558"
+      "artifact_digest": "ab2a45334c145f8c09117605dc0fe071a83cd68f534a2a34598548f74fe3e1dc",
+      "artifact_id": "10441294553"
     }
   ],
   "baseline_comparison": [
     {
-      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:edf0b2f8f583722f8037a5b813ebe82fd2047236fde63375334bbd918313003a",
+      "candidate_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "candidate_outcome": "failure",
-      "classification": "NEW_GLOBAL_REGRESSION",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "system_diagnostics"
     },
     {
@@ -144,10 +142,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:f56224a410bbb224bd11f3100cd37f731eaad5506a45c3da0c2c109108660421",
+      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:edf0b2f8f583722f8037a5b813ebe82fd2047236fde63375334bbd918313003a",
+      "failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "gate_id": "system_diagnostics",
       "global_scope": true,
       "outcome": "failure",
@@ -208,9 +206,9 @@
     "base_sha": "f2460ae2e2c315a9ecf6d113b368f1d8d005e0fd",
     "branch_name": "work/SMT/MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35074232203",
+    "builder_run_id": "35085643299",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-IMPL-G4-STORE-CHECKOUT-COMMIT-R1-KNIFE-B-180fb29b9-CORE-01",
+    "request_id": "MF-FIX-G4-BUILDER-SEMANTIC-FAILURE-EQUIVALENCE-R1-881043-CORE-PUSH-01",
     "source_identity": "PASS",
     "source_sha": "180fb29b90a4e3dfda7913a6627b09ca3b64dbcf",
     "verification_phase": "CANDIDATE",
@@ -219,7 +217,7 @@
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
+    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
 }
