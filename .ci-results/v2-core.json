@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "dc08d573e6a62c25bce8005bbe3bd24489017770ee4376f11cc9c972d49d70e9",
-      "artifact_id": "10427882380"
+      "artifact_digest": "9440e87ff8920f062981adb1706f515f82c01f91a12d84345820f19e7aecaf6c",
+      "artifact_id": "10427299318"
     }
   ],
   "baseline_comparison": [
@@ -205,10 +205,10 @@
   "identity": {
     "base_sha": "58268a1e6badec3608b365f3815ffe09f9f3604a",
     "builder_run_attempt": "1",
-    "builder_run_id": "35048122960",
-    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-FIRST-RED-20260916-02",
+    "builder_run_id": "35048951026",
+    "request_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1-CANDIDATE-20260916-R1",
     "source_identity": "PASS",
-    "source_sha": "37db1833f2b59c3de2919e2ea0b5edc1d80b1cfc",
+    "source_sha": "c33dd691325cfa4fd88e29ac2e9eb592959f0097",
     "work_id": "MF-IMPL-G6-SMM-LAN-CONTRACT-R1"
   },
   "schema_version": 1,
