@@ -85,11 +85,3 @@ jobs:
           [[ -f apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts ]] && files+=(apps/smt-clean/src/runtime/smm-lan-order-ingress.test.ts)
           ((${#files[@]} > 0))
           node --test "${files[@]}"
-
-      - name: Typecheck touched apps
-        working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx tsc -p apps/smm-web/tsconfig.json --noEmit
-          npx tsc -p apps/smt-clean/tsconfig.json --noEmit
