@@ -1,5 +1,5 @@
-source_sha=2b85c394724a17709a3c1aec13ecaddb4d0686d5
+source_sha=2062d009ffd68b3aaf8508b8750dbd93ecb3d618
 request_id=MF-IMPL-G6-SMM-LAN-CONTRACT-R1-CANDIDATE
-run_id=35060139147
+run_id=35063054178
 run_attempt=1
-conclusion=success
+conclusion=failure
