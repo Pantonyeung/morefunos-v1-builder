@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "3a0e9e4f0f891e940826d707876de06cd07528dea4d7b60a966d178b15714d7e",
-      "artifact_id": "10495475472"
+      "artifact_digest": "370dada8f88463661261ccc182b17a94eff49a7a781501b205ab847c7f3d0d71",
+      "artifact_id": "10495100958"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "base_failure_signature": "sha256:01acf36164f5237546be1b981520cb723bd0b9b3247765d5d9c17511de485593",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "candidate_failure_signature": "sha256:01acf36164f5237546be1b981520cb723bd0b9b3247765d5d9c17511de485593",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "base_failure_signature": "sha256:01acf36164f5237546be1b981520cb723bd0b9b3247765d5d9c17511de485593",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "failure_signature": "sha256:01acf36164f5237546be1b981520cb723bd0b9b3247765d5d9c17511de485593",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -204,13 +204,13 @@
   ],
   "identity": {
     "base_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
-    "branch_name": "work/CORE/MF-LINKUP-STORE-CONFIG-FRONTLINE-R1",
+    "branch_name": "work/CORE/MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-D1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35215698164",
+    "builder_run_id": "35215986191",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-D1-RED-01",
+    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-D1-VERIFY-01",
     "source_identity": "PASS",
-    "source_sha": "6b3b0148b81a86073040a4f5ae73076844d8ee9c",
+    "source_sha": "7864d0c966ad5e465befb4859399f0ecfaeb6f86",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1"
   },
