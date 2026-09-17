@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "0c160988afc350c80be06b8eecc99fb8fb54b6a47b45c25f90eaef6bbf1e6060",
-      "artifact_id": "10484041545"
+      "artifact_digest": "8b7ed9cd53748f1189a2fad846d5db601c761d19a6378b4a2d5bc97d414b5c26",
+      "artifact_id": "10487576850"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:e1345671b356a52ebfa49d6bcb1fbc0e673124ba76ea354396c9efc0951000df",
+      "base_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:e1345671b356a52ebfa49d6bcb1fbc0e673124ba76ea354396c9efc0951000df",
+      "candidate_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:e1345671b356a52ebfa49d6bcb1fbc0e673124ba76ea354396c9efc0951000df",
+      "base_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:e1345671b356a52ebfa49d6bcb1fbc0e673124ba76ea354396c9efc0951000df",
+      "failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -203,16 +203,16 @@
     }
   ],
   "identity": {
-    "base_sha": "a3223d330a26c677ff5073f84584804ee694aeb1",
-    "branch_name": "work/MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1-method-b-replay",
+    "base_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
+    "branch_name": "work/SMT/MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35189877604",
+    "builder_run_id": "35200273194",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-G7-METHOD-B-REPLAY-VERIFY-R1",
+    "request_id": "MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1-VERIFY-01",
     "source_identity": "PASS",
-    "source_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
+    "source_sha": "106f9d9f193d0c511e3f16b51989ebbf8a3e7565",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1"
+    "work_id": "MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1"
   },
   "schema_version": 1,
   "verdicts": {
