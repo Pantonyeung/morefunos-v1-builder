@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "8b7ed9cd53748f1189a2fad846d5db601c761d19a6378b4a2d5bc97d414b5c26",
-      "artifact_id": "10487576850"
+      "artifact_digest": "46911c15ae5325a6c56b08b39009f661dd6791e39ec5fc2a54520dc6fcd39354",
+      "artifact_id": "10494132923"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
+      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
+      "candidate_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
+      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:5deedb64e0942124ebf7b3738bfdf5978c9c77fb6b1406b5dccaefd27a2dc277",
+      "failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -204,15 +204,15 @@
   ],
   "identity": {
     "base_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
-    "branch_name": "work/SMT/MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1",
+    "branch_name": "work/CORE/MF-LINKUP-STORE-CONFIG-FRONTLINE-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35200273194",
+    "builder_run_id": "35213919845",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1-VERIFY-01",
+    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-VERIFY-01",
     "source_identity": "PASS",
-    "source_sha": "106f9d9f193d0c511e3f16b51989ebbf8a3e7565",
+    "source_sha": "cc45a661b65b6c20572eb578a00c3d2b43bb6977",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-FIX-BUSINESS-DAY-RUNTIME-GATE-DEPRECATION-R1"
+    "work_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1"
   },
   "schema_version": 1,
   "verdicts": {
