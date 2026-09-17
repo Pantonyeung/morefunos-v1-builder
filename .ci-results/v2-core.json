@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "69a7af411ed0bd76c51f855cd404e5bd33566d10ae2d5697757b40de79e6c911",
-      "artifact_id": "10494028624"
+      "artifact_digest": "3a0e9e4f0f891e940826d707876de06cd07528dea4d7b60a966d178b15714d7e",
+      "artifact_id": "10495475472"
     }
   ],
   "baseline_comparison": [
@@ -206,11 +206,11 @@
     "base_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
     "branch_name": "work/CORE/MF-LINKUP-STORE-CONFIG-FRONTLINE-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35214291915",
+    "builder_run_id": "35215698164",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-VERIFY-02",
+    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-D1-RED-01",
     "source_identity": "PASS",
-    "source_sha": "b772bb95ee7146bced8414efee1a5a2c14aa0a6b",
+    "source_sha": "6b3b0148b81a86073040a4f5ae73076844d8ee9c",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1"
   },
