@@ -1,0 +1,369 @@
+name: G7 Step Debug Clean Runtime Mutation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ci-requests/g7-step-debug-clean-runtime-mutation.request'
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout builder request
+        uses: actions/checkout@v7
+        with:
+          path: builder
+          persist-credentials: false
+
+      - name: Read bounded request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          source builder/.ci-requests/g7-step-debug-clean-runtime-mutation.request
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_RUNTIME_BLOB" =~ ^[0-9a-f]{40}$ ]]
+          test "$TARGET_BRANCH" = 'work/SMT/MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1'
+          test "$BASE_SHA" = '3ad9bf9538c700b922de0237067eb0580ad50c7c'
+          test "$EXPECTED_RUNTIME_BLOB" = '4bb6745697ec08b0d065e51fafef4268d17b3a9d'
+          echo "expected_head=$EXPECTED_HEAD" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "expected_runtime_blob=$EXPECTED_RUNTIME_BLOB" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact clean replay branch
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.target_branch }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 32
+          persist-credentials: true
+
+      - name: Guard exact clean replay state
+        working-directory: source
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ steps.request.outputs.expected_head }}
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+          EXPECTED_RUNTIME_BLOB: ${{ steps.request.outputs.expected_runtime_blob }}
+        run: |
+          set -euo pipefail
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          ACTUAL_PARENT="$(git rev-parse HEAD^)"
+          ACTUAL_RUNTIME_BLOB="$(git rev-parse HEAD:apps/smt-clean/src/runtime/network-production-runtime.ts)"
+          printf 'expected_head=%s\nactual_head=%s\nbase_sha=%s\nactual_parent=%s\nexpected_runtime_blob=%s\nactual_runtime_blob=%s\n' \
+            "$EXPECTED_HEAD" "$ACTUAL_HEAD" "$BASE_SHA" "$ACTUAL_PARENT" "$EXPECTED_RUNTIME_BLOB" "$ACTUAL_RUNTIME_BLOB" >> "$GITHUB_STEP_SUMMARY"
+          test "$ACTUAL_HEAD" = "$EXPECTED_HEAD"
+          test "$ACTUAL_PARENT" = "$BASE_SHA"
+          test "$ACTUAL_RUNTIME_BLOB" = "$EXPECTED_RUNTIME_BLOB"
+          test "$(git diff --name-only "$BASE_SHA"...HEAD | wc -l | tr -d ' ')" = 4
+          test "$(git diff --name-only "$BASE_SHA"...HEAD | sort | tr '\n' '|')" = 'apps/smt-clean/src/presentation/RuntimeMoreWorkspace.tsx|apps/smt-clean/src/runtime/network-production-runtime-store-checkout-cutover.test.ts|packages/smt-ui-integration/store-kernel-native-port.test.ts|packages/smt-ui-integration/store-kernel-native-port.ts|'
+
+      - name: Apply bounded runtime instrumentation only
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/smt-clean/src/runtime/network-production-runtime.ts')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}_MATCH_COUNT={count}')
+              text = text.replace(old, new, 1)
+
+          def replace_count(old: str, new: str, expected: int, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{label}_MATCH_COUNT={count}')
+              text = text.replace(old, new)
+
+          replace_once(
+              "import {createStoreKernelNativePort,type StoreKernelMessageTarget,type StoreKernelNativeBridge} from '../../../../packages/smt-ui-integration/store-kernel-native-port.ts';",
+              "import {createStoreKernelNativePort,type StoreKernelMessageTarget,type StoreKernelNativeBridge,type StoreKernelNativeObservation} from '../../../../packages/smt-ui-integration/store-kernel-native-port.ts';",
+              'G7_IMPORT',
+          )
+
+          replace_once(
+              "export const SMT_CHECKOUT_CONTEXT_STORAGE_KEY='morefunos.smt.checkout-context.v1';\n",
+              "export const SMT_CHECKOUT_CONTEXT_STORAGE_KEY='morefunos.smt.checkout-context.v1';\nexport const SMT_STORE_COMMIT_STEP_DEBUG_STORAGE_KEY='morefunos.smt.store-commit-step-debug.v1';\n",
+              'G7_STORAGE_KEY',
+          )
+
+          diagnostic_anchor = """export interface SmtRuntimeBootstrapDiagnostic{
+  readonly stage:SmtRuntimeBootstrapStage;
+  readonly code:string;
+  readonly status?:number;
+  readonly serverCode?:string;
+}
+
+export interface SmtNetworkSession {
+"""
+          diagnostic_replacement = """export interface SmtRuntimeBootstrapDiagnostic{
+  readonly stage:SmtRuntimeBootstrapStage;
+  readonly code:string;
+  readonly status?:number;
+  readonly serverCode?:string;
+}
+export type SmtStoreCommitStepDebugStatus='PASS'|'FAIL'|'UNKNOWN'|'NOT_REACHED';
+export type SmtStoreCommitStepDebugName='UI_PAYMENT_INTENT'|'WEB_SEND'|'NATIVE_ACCEPTED_OBSERVED'|'TERMINAL_RECEIVED'|'TIMEOUT_UNKNOWN'|'REQUEST_CORRELATED'|'UI_SETTLED';
+export interface SmtStoreCommitStepDebugStep{
+  readonly step:1|2|3|4|5|6;
+  readonly name:SmtStoreCommitStepDebugName;
+  readonly status:SmtStoreCommitStepDebugStatus;
+  readonly code:string;
+  readonly segmentMs:number|null;
+  readonly cumulativeMs:number|null;
+  readonly observedAtEpochMs:number|null;
+}
+export interface SmtStoreCommitStepDebugTrace{
+  readonly version:1;
+  readonly traceId:string;
+  readonly startedAtEpochMs:number;
+  readonly updatedAtEpochMs:number;
+  readonly nativeRequestId?:string;
+  readonly steps:readonly SmtStoreCommitStepDebugStep[];
+}
+
+export interface SmtNetworkSession {
+"""
+          replace_once(diagnostic_anchor, diagnostic_replacement, 'G7_TYPES')
+
+          store_anchor = """function store(source:NetworkWindow){try{return source.localStorage??null;}catch{return null;}}
+function readStoredSmtOrderSyncCursor(source:NetworkWindow,storeId:string):number|null{
+"""
+          store_replacement = """function store(source:NetworkWindow){try{return source.localStorage??null;}catch{return null;}}
+const stableDiagnosticCode=(value:unknown,fallback:string):string=>typeof value==='string'&&/^[A-Z0-9_:-]{1,160}$/.test(value)?value:fallback;
+const STORE_COMMIT_STEP_NAMES=Object.freeze(['UI_PAYMENT_INTENT','WEB_SEND','NATIVE_ACCEPTED_OBSERVED','TERMINAL_RECEIVED','REQUEST_CORRELATED','UI_SETTLED'] as const);
+const STORE_COMMIT_STEP_NOT_REACHED='STORE_COMMIT_NOT_REACHED';
+
+function initialStoreCommitSteps():readonly SmtStoreCommitStepDebugStep[]{
+  return Object.freeze(STORE_COMMIT_STEP_NAMES.map((name,index)=>Object.freeze({
+    step:(index+1) as 1|2|3|4|5|6,
+    name,
+    status:'NOT_REACHED' as const,
+    code:STORE_COMMIT_STEP_NOT_REACHED,
+    segmentMs:null,
+    cumulativeMs:null,
+    observedAtEpochMs:null,
+  })));
+}
+function validStoreCommitStatus(value:unknown):value is SmtStoreCommitStepDebugStatus{
+  return value==='PASS'||value==='FAIL'||value==='UNKNOWN'||value==='NOT_REACHED';
+}
+function validStoreCommitName(step:number,value:unknown):value is SmtStoreCommitStepDebugName{
+  if(step===4)return value==='TERMINAL_RECEIVED'||value==='TIMEOUT_UNKNOWN';
+  return value===STORE_COMMIT_STEP_NAMES[step-1];
+}
+export function readStoredSmtStoreCommitStepDebug(source:NetworkWindow=window):SmtStoreCommitStepDebugTrace|null{
+  try{
+    const raw=store(source)?.getItem(SMT_STORE_COMMIT_STEP_DEBUG_STORAGE_KEY);
+    if(!raw)return null;
+    const parsed=JSON.parse(raw) as Partial<SmtStoreCommitStepDebugTrace>;
+    if(parsed.version!==1||!nonEmpty(parsed.traceId)||!Number.isFinite(parsed.startedAtEpochMs)||!Number.isFinite(parsed.updatedAtEpochMs)||!Array.isArray(parsed.steps)||parsed.steps.length!==6)return null;
+    const steps:SmtStoreCommitStepDebugStep[]=[];
+    for(let index=0;index<6;index+=1){
+      const item=parsed.steps[index] as Partial<SmtStoreCommitStepDebugStep>|undefined;
+      const step=index+1;
+      if(!item||item.step!==step||!validStoreCommitName(step,item.name)||!validStoreCommitStatus(item.status)||!nonEmpty(item.code))return null;
+      const segmentMs=item.segmentMs===null?null:Number(item.segmentMs);
+      const cumulativeMs=item.cumulativeMs===null?null:Number(item.cumulativeMs);
+      const observedAtEpochMs=item.observedAtEpochMs===null?null:Number(item.observedAtEpochMs);
+      if(segmentMs!==null&&(!Number.isFinite(segmentMs)||segmentMs<0))return null;
+      if(cumulativeMs!==null&&(!Number.isFinite(cumulativeMs)||cumulativeMs<0))return null;
+      if(observedAtEpochMs!==null&&!Number.isFinite(observedAtEpochMs))return null;
+      steps.push(Object.freeze({step:step as 1|2|3|4|5|6,name:item.name,status:item.status,code:stableDiagnosticCode(item.code,'STORE_COMMIT_OBSERVATION_INVALID'),segmentMs,cumulativeMs,observedAtEpochMs}));
+    }
+    return Object.freeze({version:1,traceId:parsed.traceId,startedAtEpochMs:Number(parsed.startedAtEpochMs),updatedAtEpochMs:Number(parsed.updatedAtEpochMs),...(nonEmpty(parsed.nativeRequestId)?{nativeRequestId:parsed.nativeRequestId}:{}),steps:Object.freeze(steps)});
+  }catch{return null;}
+}
+function writeStoreCommitStepDebug(source:NetworkWindow,trace:SmtStoreCommitStepDebugTrace):void{
+  try{store(source)?.setItem(SMT_STORE_COMMIT_STEP_DEBUG_STORAGE_KEY,JSON.stringify(trace));}catch{}
+}
+function beginStoreCommitStepDebug(source:NetworkWindow,traceId:string):void{
+  try{
+    const existing=readStoredSmtStoreCommitStepDebug(source);
+    if(existing?.traceId===traceId)return;
+    const now=Date.now();
+    const steps=[...initialStoreCommitSteps()];
+    steps[0]=Object.freeze({step:1,name:'UI_PAYMENT_INTENT',status:'PASS',code:'SMT_STORE_COMMIT_UI_PAYMENT_INTENT',segmentMs:0,cumulativeMs:0,observedAtEpochMs:now});
+    writeStoreCommitStepDebug(source,Object.freeze({version:1,traceId,startedAtEpochMs:now,updatedAtEpochMs:now,steps:Object.freeze(steps)}));
+  }catch{}
+}
+function updateStoreCommitStepDebug(source:NetworkWindow,input:{readonly traceId:string;readonly step:2|3|4|5|6;readonly name:SmtStoreCommitStepDebugName;readonly status:Exclude<SmtStoreCommitStepDebugStatus,'NOT_REACHED'>;readonly code:string;readonly observedAtEpochMs?:number;readonly nativeRequestId?:string;readonly preserveProblem?:boolean}):void{
+  try{
+    const current=readStoredSmtStoreCommitStepDebug(source);
+    if(!current||current.traceId!==input.traceId)return;
+    const index=input.step-1;
+    const previous=current.steps[index]!;
+    if(input.preserveProblem!==false&&(previous.status==='FAIL'||previous.status==='UNKNOWN'))return;
+    const at=Number.isFinite(input.observedAtEpochMs)?Number(input.observedAtEpochMs):Date.now();
+    const priorObserved=[...current.steps.slice(0,index)].reverse().find(item=>item.observedAtEpochMs!==null)?.observedAtEpochMs??current.startedAtEpochMs;
+    const steps=[...current.steps];
+    steps[index]=Object.freeze({
+      step:input.step,
+      name:input.name,
+      status:input.status,
+      code:stableDiagnosticCode(input.code,'STORE_COMMIT_OBSERVATION_INVALID'),
+      segmentMs:Math.max(0,Math.round(at-priorObserved)),
+      cumulativeMs:Math.max(0,Math.round(at-current.startedAtEpochMs)),
+      observedAtEpochMs:at,
+    });
+    writeStoreCommitStepDebug(source,Object.freeze({...current,updatedAtEpochMs:at,...(input.nativeRequestId?{nativeRequestId:current.nativeRequestId??input.nativeRequestId}:{}),steps:Object.freeze(steps)}));
+  }catch{}
+}
+function recordSmtStoreCommitNativeObservation(source:NetworkWindow,observation:StoreKernelNativeObservation):void{
+  try{
+    if(observation.requestType!=='store.kernel.commit.v1'||!observation.traceId)return;
+    const trace=readStoredSmtStoreCommitStepDebug(source);
+    if(!trace||trace.traceId!==observation.traceId)return;
+    if(observation.stage==='WEB_SEND'){
+      updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:2,name:'WEB_SEND',status:observation.status,code:observation.code,observedAtEpochMs:observation.observedAtEpochMs,nativeRequestId:observation.requestId});
+      return;
+    }
+    const nativeRequestId=trace.nativeRequestId;
+    if(observation.stage==='NATIVE_ACCEPTED_OBSERVED'){
+      if(nativeRequestId&&observation.requestId!==nativeRequestId)return;
+      updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:3,name:'NATIVE_ACCEPTED_OBSERVED',status:'PASS',code:observation.code,observedAtEpochMs:observation.observedAtEpochMs});
+      return;
+    }
+    if(observation.stage==='TERMINAL_RECEIVED'){
+      if(trace.steps[2]?.status==='NOT_REACHED')updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:3,name:'NATIVE_ACCEPTED_OBSERVED',status:'UNKNOWN',code:'STORE_KERNEL_NATIVE_ACCEPTED_NOT_OBSERVED',observedAtEpochMs:observation.observedAtEpochMs});
+      updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:4,name:'TERMINAL_RECEIVED',status:'PASS',code:observation.code,observedAtEpochMs:observation.observedAtEpochMs});
+      return;
+    }
+    if(observation.stage==='TIMEOUT_UNKNOWN'){
+      if(trace.steps[2]?.status==='NOT_REACHED')updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:3,name:'NATIVE_ACCEPTED_OBSERVED',status:'UNKNOWN',code:'STORE_KERNEL_NATIVE_ACCEPTED_NOT_OBSERVED',observedAtEpochMs:observation.observedAtEpochMs});
+      updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:4,name:'TIMEOUT_UNKNOWN',status:'UNKNOWN',code:observation.code,observedAtEpochMs:observation.observedAtEpochMs});
+      return;
+    }
+    if(observation.stage==='REQUEST_CORRELATED'){
+      if(observation.status==='PASS'&&nativeRequestId&&observation.requestId!==nativeRequestId){
+        updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:5,name:'REQUEST_CORRELATED',status:'FAIL',code:'STORE_KERNEL_REQUEST_ID_MISMATCH',observedAtEpochMs:observation.observedAtEpochMs,preserveProblem:false});
+        return;
+      }
+      updateStoreCommitStepDebug(source,{traceId:observation.traceId,step:5,name:'REQUEST_CORRELATED',status:observation.status,code:observation.code,observedAtEpochMs:observation.observedAtEpochMs,preserveProblem:false});
+    }
+  }catch{}
+}
+function markStoreCommitUiSettled(source:NetworkWindow,traceId:string):void{
+  updateStoreCommitStepDebug(source,{traceId,step:6,name:'UI_SETTLED',status:'PASS',code:'SMT_STORE_COMMIT_UI_SETTLED'});
+}
+function markStoreCommitUiFailure(source:NetworkWindow,traceId:string,error:unknown):void{
+  try{
+    const trace=readStoredSmtStoreCommitStepDebug(source);
+    if(!trace||trace.traceId!==traceId||trace.steps.slice(0,5).some(step=>step.status==='FAIL'||step.status==='UNKNOWN'))return;
+    const code=stableDiagnosticCode(error instanceof Error?error.message:error,'SMT_STORE_COMMIT_UI_NOT_SETTLED');
+    updateStoreCommitStepDebug(source,{traceId,step:6,name:'UI_SETTLED',status:'FAIL',code});
+  }catch{}
+}
+
+function readStoredSmtOrderSyncCursor(source:NetworkWindow,storeId:string):number|null{
+"""
+          replace_once(store_anchor, store_replacement, 'G7_OBSERVER_HELPERS')
+
+          port_anchor = """    port:createStoreKernelNativePort({
+      bridge,
+      ...(sourceTarget&&sourceTarget!==completionTarget?{windowTarget:sourceTarget}:{}),
+    }),
+"""
+          port_replacement = """    port:createStoreKernelNativePort({
+      bridge,
+      ...(sourceTarget&&sourceTarget!==completionTarget?{windowTarget:sourceTarget}:{}),
+      observer:observation=>recordSmtStoreCommitNativeObservation(source,observation),
+    }),
+"""
+          replace_once(port_anchor, port_replacement, 'G7_NATIVE_OBSERVER_WIRE')
+
+          offline_settle_anchor = """      pendingSaved=false;
+      publish();
+      if(orderIntentStore){
+"""
+          offline_settle_replacement = """      pendingSaved=false;
+      publish();
+      markStoreCommitUiSettled(source,frozen.traceId);
+      if(orderIntentStore){
+"""
+          replace_once(offline_settle_anchor, offline_settle_replacement, 'G7_OFFLINE_UI_SETTLED')
+
+          payment_anchor = """        const frozen=freezeStoreCheckoutIntent(checkoutContext,session,intent);
+        updateCheckoutContext(Object.freeze({...checkoutContext,state:'COMMITTING' as const,storeCheckoutIntent:frozen}));
+        publish();
+        await commitFrozenCheckout();
+        return;
+"""
+          payment_replacement = """        const frozen=freezeStoreCheckoutIntent(checkoutContext,session,intent);
+        beginStoreCommitStepDebug(source,frozen.traceId);
+        updateCheckoutContext(Object.freeze({...checkoutContext,state:'COMMITTING' as const,storeCheckoutIntent:frozen}));
+        publish();
+        try{await commitFrozenCheckout();}
+        catch(error){markStoreCommitUiFailure(source,frozen.traceId,error);throw error;}
+        return;
+"""
+          replace_count(payment_anchor, payment_replacement, 2, 'G7_PAYMENT_ENTRYPOINTS')
+
+          online_settle_anchor = """      updateCheckoutContext(Object.freeze({...frozen,state:'SETTLED' as const,displayOrderCode:result.displayOrderCode}));
+      orderSyncIssue=undefined;
+      publish();
+
+      const liveTraceStorage=store(source);
+"""
+          online_settle_replacement = """      updateCheckoutContext(Object.freeze({...frozen,state:'SETTLED' as const,displayOrderCode:result.displayOrderCode}));
+      orderSyncIssue=undefined;
+      publish();
+      markStoreCommitUiSettled(source,frozen.traceId);
+
+      const liveTraceStorage=store(source);
+"""
+          replace_once(online_settle_anchor, online_settle_replacement, 'G7_ONLINE_UI_SETTLED')
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = 1
+          test "$(git diff --name-only)" = 'apps/smt-clean/src/runtime/network-production-runtime.ts'
+          git diff -- apps/smt-clean/src/runtime/network-production-runtime.ts > /tmp/g7-runtime.diff
+
+          grep -q "SMT_STORE_COMMIT_STEP_DEBUG_STORAGE_KEY" /tmp/g7-runtime.diff
+          grep -q "NATIVE_ACCEPTED_OBSERVED" /tmp/g7-runtime.diff
+          grep -q "TIMEOUT_UNKNOWN" /tmp/g7-runtime.diff
+          grep -q "STORE_KERNEL_REQUEST_ID_MISMATCH" /tmp/g7-runtime.diff
+          grep -q "observer:observation=>recordSmtStoreCommitNativeObservation" /tmp/g7-runtime.diff
+          grep -q "markStoreCommitUiSettled" /tmp/g7-runtime.diff
+          grep -q "beginStoreCommitStepDebug" /tmp/g7-runtime.diff
+          ! grep -q '^+.*SMT_ORDER_DETAIL_READBACK_TIMEOUT_MS=' /tmp/g7-runtime.diff
+          ! grep -q '^+.*SMT_BOOTSTRAP_NETWORK_TIMEOUT_MS=' /tmp/g7-runtime.diff
+          ! grep -q '^+.*STORE_CHECKOUT_COMMIT_TENDER_ALLOWLIST=' /tmp/g7-runtime.diff
+
+      - name: Commit and push bounded runtime mutation
+        working-directory: source
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.request.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name 'morefunos-builder-bot'
+          git config user.email '107616897+Pantonyeung@users.noreply.github.com'
+          git add apps/smt-clean/src/runtime/network-production-runtime.ts
+          git commit -m 'feat(g7): add clean Store Commit runtime observations'
+
+          test "$(git diff --name-only "$BASE_SHA"...HEAD | wc -l | tr -d ' ')" = 5
+          test "$(git diff --name-only "$BASE_SHA"...HEAD | sort | tr '\n' '|')" = 'apps/smt-clean/src/presentation/RuntimeMoreWorkspace.tsx|apps/smt-clean/src/runtime/network-production-runtime-store-checkout-cutover.test.ts|apps/smt-clean/src/runtime/network-production-runtime.ts|packages/smt-ui-integration/store-kernel-native-port.test.ts|packages/smt-ui-integration/store-kernel-native-port.ts|'
+          test -z "$(git diff --name-only "$BASE_SHA"...HEAD -- 'apps/smt-android/**')"
+          git push origin HEAD:${{ steps.request.outputs.target_branch }}
+          printf 'new_head=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
