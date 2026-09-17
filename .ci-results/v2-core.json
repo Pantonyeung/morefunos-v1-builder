@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "2637d14872e08138009a4f0c824481190ba218c5926d204ed9680a6200430b81",
-      "artifact_id": "10478981139"
+      "artifact_digest": "093c43af55c55c119aa7f44aa17c73ec2a7b48b86d0a76ebb39d4f2fcef16773",
+      "artifact_id": "10482780569"
     }
   ],
   "baseline_comparison": [
@@ -27,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:38c910dde27d2fe24a6332a070409368dfc517750f16be14d3eb8410172be38e",
+      "base_failure_signature": "sha256:e1ac8940bb95b5e5c00180d942c8655c92208da209165206d51bc266c3bf847f",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:38c910dde27d2fe24a6332a070409368dfc517750f16be14d3eb8410172be38e",
+      "candidate_failure_signature": "sha256:e1ac8940bb95b5e5c00180d942c8655c92208da209165206d51bc266c3bf847f",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -182,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:38c910dde27d2fe24a6332a070409368dfc517750f16be14d3eb8410172be38e",
+      "base_failure_signature": "sha256:e1ac8940bb95b5e5c00180d942c8655c92208da209165206d51bc266c3bf847f",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:38c910dde27d2fe24a6332a070409368dfc517750f16be14d3eb8410172be38e",
+      "failure_signature": "sha256:e1ac8940bb95b5e5c00180d942c8655c92208da209165206d51bc266c3bf847f",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -204,15 +204,15 @@
   ],
   "identity": {
     "base_sha": "3ad9bf9538c700b922de0237067eb0580ad50c7c",
-    "branch_name": "work/SMT/MF-G7-STORE-COMMIT-STEP-DEBUG-R1",
+    "branch_name": "work/SMT/MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35176435718",
+    "builder_run_id": "35186231955",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-G7-STORE-COMMIT-STEP-DEBUG-R1-CORE-01",
+    "request_id": "MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1-CORE-01",
     "source_identity": "PASS",
-    "source_sha": "58ff802d8efc700aa0121b9aa8fc879645edbb65",
+    "source_sha": "6b817ee3183c7e55fae82f3407dea407a593b74b",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-G7-STORE-COMMIT-STEP-DEBUG-R1"
+    "work_id": "MF-G7-STEP-DEBUG-CLEAN-LAND-OTA-R1"
   },
   "schema_version": 1,
   "verdicts": {
