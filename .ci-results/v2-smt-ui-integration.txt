@@ -1,5 +1,5 @@
-source_sha=8a665bae233d1221f3edbc05e96f4fbf20a2cb28
-request_id=MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-SMT-RED-02
-run_id=35217423381
+source_sha=5e41fc7d7835a486017c5262ff2ccea57d1e3834
+request_id=MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-SMT-GREEN-01
+run_id=35218105119
 run_attempt=1
 conclusion=failure
