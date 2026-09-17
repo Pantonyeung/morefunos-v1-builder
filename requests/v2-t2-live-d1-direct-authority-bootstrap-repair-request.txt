@@ -1,3 +1,3 @@
 source_sha=62b0fa07ba6f69c97c3d022ecd3ea807167bddcd
 scope=T2-P0-B-ADMIN-WORKER-TRUSTED-BOOTSTRAP-MOUNT
-attempt=2-post-admission
+attempt=2-post-admission-pr-verification
