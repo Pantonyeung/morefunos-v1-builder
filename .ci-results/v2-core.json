@@ -7,15 +7,15 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "1b04af9b9eb1ea12442d2b96870a4578f75bc0c6fa7ad80febcc0621927bf2f9",
-      "artifact_id": "10548021227"
+      "artifact_digest": "cf3076351a94bbb69d91feac526cecbaf7ce4f2ab801e72ca38f3b69c9f172dc",
+      "artifact_id": "10547773734"
     }
   ],
   "baseline_comparison": [
     {
       "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "base_outcome": "failure",
-      "candidate_failure_signature": "opaque-node-assert-match:sha256:ca6c9e7388196e854db96ddf902ecf777b0300f75558b4931f6db4c48bd625d9",
+      "candidate_failure_signature": "opaque-node-assert-match:sha256:10e59df9383f87ebc4885318459bfa2ff15aa5bb665dda10d1da4d0ab9407114",
       "candidate_outcome": "failure",
       "classification": "NEW_GLOBAL_REGRESSION",
       "gate_id": "system_diagnostics"
@@ -147,7 +147,7 @@
       "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "opaque-node-assert-match:sha256:ca6c9e7388196e854db96ddf902ecf777b0300f75558b4931f6db4c48bd625d9",
+      "failure_signature": "opaque-node-assert-match:sha256:10e59df9383f87ebc4885318459bfa2ff15aa5bb665dda10d1da4d0ab9407114",
       "gate_id": "system_diagnostics",
       "global_scope": true,
       "outcome": "failure",
@@ -208,11 +208,11 @@
     "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
     "branch_name": "work/SMT/MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35347746830",
+    "builder_run_id": "35348010980",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-01",
+    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-02",
     "source_identity": "PASS",
-    "source_sha": "9333091fb89ee555b019675febbc1381d0618807",
+    "source_sha": "14329ac791d8c3c27c6aff9575881cc4a127bd1f",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1"
   },
