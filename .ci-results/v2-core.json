@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "be653a3dadb51e2d591b538947f6d3c22a47ef75932bf09a94785f64d49ba365",
-      "artifact_id": "10550391723"
+      "artifact_digest": "8cbd898e8173ed458894ec0dfe27c86a4c8cb479c8272d17cce93e49c2c2d378",
+      "artifact_id": "10550427285"
     }
   ],
   "baseline_comparison": [
@@ -198,11 +198,11 @@
     "base_sha": "e222121a3228f1c0acae646ee7ed9f67ec6a41b5",
     "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R3",
     "builder_run_attempt": "1",
-    "builder_run_id": "35352506446",
+    "builder_run_id": "35352768090",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-03",
+    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-04",
     "source_identity": "PASS",
-    "source_sha": "ac663692c3824d2e3fa411b678fb9bb039bc668e",
+    "source_sha": "c289cb27820756d97b018735ef97a9d5705f7eca",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1"
   },
