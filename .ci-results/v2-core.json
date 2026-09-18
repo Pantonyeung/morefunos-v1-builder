@@ -1,25 +1,15 @@
 {
   "admission": {
-    "blocking_reasons": [
-      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
-    ],
-    "eligible": false
+    "blocking_reasons": [],
+    "eligible": true
   },
   "artifacts": [
     {
-      "artifact_digest": "cf3076351a94bbb69d91feac526cecbaf7ce4f2ab801e72ca38f3b69c9f172dc",
-      "artifact_id": "10547773734"
+      "artifact_digest": "c70aae4bbfebebb23652b6f72faa9499910aabe0a32a04400eaf08151d862ec6",
+      "artifact_id": "10548675541"
     }
   ],
   "baseline_comparison": [
-    {
-      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "opaque-node-assert-match:sha256:10e59df9383f87ebc4885318459bfa2ff15aa5bb665dda10d1da4d0ab9407114",
-      "candidate_outcome": "failure",
-      "classification": "NEW_GLOBAL_REGRESSION",
-      "gate_id": "system_diagnostics"
-    },
     {
       "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
       "base_outcome": "failure",
@@ -39,7 +29,7 @@
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "integration",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -144,13 +134,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "opaque-node-assert-match:sha256:10e59df9383f87ebc4885318459bfa2ff15aa5bb665dda10d1da4d0ab9407114",
+      "failure_signature": null,
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -208,18 +198,18 @@
     "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
     "branch_name": "work/SMT/MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35348010980",
+    "builder_run_id": "35348417752",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-02",
+    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-03",
     "source_identity": "PASS",
-    "source_sha": "14329ac791d8c3c27c6aff9575881cc4a127bd1f",
+    "source_sha": "44cdb1372590a967a2ac3d9ae5dd6c8cba43f744",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1"
   },
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
+    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
     "RAIL_VERIFICATION": "PASS"
   }
 }
