@@ -5,11 +5,19 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "e67e0def9f81d12eaff77972b667746f7df631b300c4c8bee0ba95e9232e0cb2",
-      "artifact_id": "10548596052"
+      "artifact_digest": "f6949e4131845bb0ec1d6c8e37ee439a13d94b93719231aa90310c9ca1971d8c",
+      "artifact_id": "10549652888"
     }
   ],
   "baseline_comparison": [
+    {
+      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
+      "base_outcome": "failure",
+      "candidate_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
+      "candidate_outcome": "failure",
+      "classification": "PRE_EXISTING_GLOBAL_RED",
+      "gate_id": "system_diagnostics"
+    },
     {
       "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
       "base_outcome": "failure",
@@ -19,9 +27,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:499384cd422aed069908583d0e6fc0a6e02ed6d304d5c7a0d395ce1c8998eeb1",
+      "base_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:499384cd422aed069908583d0e6fc0a6e02ed6d304d5c7a0d395ce1c8998eeb1",
+      "candidate_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -29,7 +37,7 @@
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "integration",
+    "GLOBAL": "system_diagnostics",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -46,7 +54,7 @@
     {
       "base_failure_signature": null,
       "base_outcome": null,
-      "changed_domain": true,
+      "changed_domain": false,
       "failure_signature": null,
       "gate_id": "pricing",
       "global_scope": true,
@@ -134,13 +142,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": null,
-      "base_outcome": null,
+      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
+      "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": null,
+      "failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -174,10 +182,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:499384cd422aed069908583d0e6fc0a6e02ed6d304d5c7a0d395ce1c8998eeb1",
+      "base_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:499384cd422aed069908583d0e6fc0a6e02ed6d304d5c7a0d395ce1c8998eeb1",
+      "failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -196,15 +204,15 @@
   ],
   "identity": {
     "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
-    "branch_name": "work/SMT/MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1",
+    "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35348815276",
+    "builder_run_id": "35350414557",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-04",
+    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-01",
     "source_identity": "PASS",
-    "source_sha": "caffe0b459d9197b3ae75860d36bc4a518b964f1",
+    "source_sha": "44ebbec0da7ab346cdc5e59d6bca1ec39bfaee5f",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1"
+    "work_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1"
   },
   "schema_version": 1,
   "verdicts": {
