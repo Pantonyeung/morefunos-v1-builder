@@ -1,5 +1,5 @@
-source_sha=e222121a3228f1c0acae646ee7ed9f67ec6a41b5
-request_id=MF-R1-POSPAL-PRINT-DEVICE-RECOVERY-VERTICAL-R1-BASELINE-01
-run_id=35352750103
+source_sha=c289cb27820756d97b018735ef97a9d5705f7eca
+request_id=MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-SMT-04
+run_id=35352773693
 run_attempt=1
-conclusion=failure
+conclusion=success
