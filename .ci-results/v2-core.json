@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "697a7bd1204ce2adc38a4411e8931d75de3a63a0658d0bc61c4b3bbde392b691",
-      "artifact_id": "10549239323"
+      "artifact_digest": "be653a3dadb51e2d591b538947f6d3c22a47ef75932bf09a94785f64d49ba365",
+      "artifact_id": "10550391723"
     }
   ],
   "baseline_comparison": [
@@ -19,9 +19,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
+      "base_failure_signature": "sha256:ae9185cf81f06e4c56a7d67f650d65ad3d46b39d7f06a17d58c0c2a06c9f8645",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
+      "candidate_failure_signature": "sha256:ae9185cf81f06e4c56a7d67f650d65ad3d46b39d7f06a17d58c0c2a06c9f8645",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -174,10 +174,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
+      "base_failure_signature": "sha256:ae9185cf81f06e4c56a7d67f650d65ad3d46b39d7f06a17d58c0c2a06c9f8645",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
+      "failure_signature": "sha256:ae9185cf81f06e4c56a7d67f650d65ad3d46b39d7f06a17d58c0c2a06c9f8645",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -195,14 +195,14 @@
     }
   ],
   "identity": {
-    "base_sha": "caffe0b459d9197b3ae75860d36bc4a518b964f1",
-    "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R2",
+    "base_sha": "e222121a3228f1c0acae646ee7ed9f67ec6a41b5",
+    "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R3",
     "builder_run_attempt": "1",
-    "builder_run_id": "35351108435",
+    "builder_run_id": "35352506446",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-02",
+    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-03",
     "source_identity": "PASS",
-    "source_sha": "2050c41c94f31bd0ffd94e22c73bae2e28c86f7c",
+    "source_sha": "ac663692c3824d2e3fa411b678fb9bb039bc668e",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1"
   },
