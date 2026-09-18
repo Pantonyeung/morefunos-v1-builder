@@ -1,15 +1,25 @@
 {
   "admission": {
-    "blocking_reasons": [],
-    "eligible": true
+    "blocking_reasons": [
+      "GLOBAL_SYSTEM_HEALTH_NEW_GLOBAL_REGRESSION"
+    ],
+    "eligible": false
   },
   "artifacts": [
     {
-      "artifact_digest": "187fc9cd132554722e178c91bb5071ce090332c0542cbf904805ccf9bdcb2896",
-      "artifact_id": "10495148694"
+      "artifact_digest": "931c3fecef070a64a37053d575a18ce3c02dc7dfd2360553e492edbb4200a6ca",
+      "artifact_id": "10547160962"
     }
   ],
   "baseline_comparison": [
+    {
+      "base_failure_signature": null,
+      "base_outcome": "success",
+      "candidate_failure_signature": "sha256:7fd8acc655480f34f1029a08a064840121421dde2fb65f6e6bd3097af218a12e",
+      "candidate_outcome": "failure",
+      "classification": "NEW_GLOBAL_REGRESSION",
+      "gate_id": "pricing"
+    },
     {
       "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
       "base_outcome": "failure",
@@ -27,9 +37,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "base_failure_signature": "sha256:5051a636b9a9f55a94e4c30bb73cb54c9db22e737ec021f8f7facfe2b07c7806",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "candidate_failure_signature": "sha256:5051a636b9a9f55a94e4c30bb73cb54c9db22e737ec021f8f7facfe2b07c7806",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -37,7 +47,7 @@
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "pricing",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -53,12 +63,12 @@
     },
     {
       "base_failure_signature": null,
-      "base_outcome": null,
+      "base_outcome": "success",
       "changed_domain": false,
-      "failure_signature": null,
+      "failure_signature": "sha256:7fd8acc655480f34f1029a08a064840121421dde2fb65f6e6bd3097af218a12e",
       "gate_id": "pricing",
       "global_scope": true,
-      "outcome": "success",
+      "outcome": "failure",
       "rail_required": false
     },
     {
@@ -182,10 +192,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "base_failure_signature": "sha256:5051a636b9a9f55a94e4c30bb73cb54c9db22e737ec021f8f7facfe2b07c7806",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:b7db11ff0ffc2b3b3f4803b7c0f81b29b183f26a6045d5b2cdc07d36d4109b11",
+      "failure_signature": "sha256:5051a636b9a9f55a94e4c30bb73cb54c9db22e737ec021f8f7facfe2b07c7806",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -203,21 +213,21 @@
     }
   ],
   "identity": {
-    "base_sha": "29237082a9dd57eabe441237a8eecf56967a6b0b",
-    "branch_name": "work/CORE/MF-LINKUP-STORE-CONFIG-FRONTLINE-R1",
+    "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
+    "branch_name": "work/SMT/MF-R1-CANONICAL-REFRESH-SHARED-SOCKET-HUB-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35217086299",
+    "builder_run_id": "35345976446",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1-SMT-MOUNT-RED-01",
+    "request_id": "MF-R1-VERIFY-CANONICAL-REFRESH-SHARED-SOCKET-HUB-R1-CORE-01",
     "source_identity": "PASS",
-    "source_sha": "8a665bae233d1221f3edbc05e96f4fbf20a2cb28",
+    "source_sha": "58e972716192b93fa7d7653dcfd22a69e8280d7d",
     "verification_phase": "CANDIDATE",
-    "work_id": "MF-LINKUP-STORE-CONFIG-FRONTLINE-R1"
+    "work_id": "MF-R1-VERIFY-CANONICAL-REFRESH-SHARED-SOCKET-HUB-R1"
   },
   "schema_version": 1,
   "verdicts": {
     "CHANGE_VERIFICATION": "PASS",
-    "GLOBAL_SYSTEM_HEALTH": "PRE_EXISTING_GLOBAL_RED",
+    "GLOBAL_SYSTEM_HEALTH": "NEW_GLOBAL_REGRESSION",
     "RAIL_VERIFICATION": "PASS"
   }
 }
