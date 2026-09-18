@@ -1,5 +1,5 @@
-source_sha=44cdb1372590a967a2ac3d9ae5dd6c8cba43f744
-request_id=MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-SMT-01
-run_id=35348591683
+source_sha=caffe0b459d9197b3ae75860d36bc4a518b964f1
+request_id=MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-SMT-02
+run_id=35349006348
 run_attempt=1
-conclusion=failure
+conclusion=success
