@@ -5,19 +5,11 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "f6949e4131845bb0ec1d6c8e37ee439a13d94b93719231aa90310c9ca1971d8c",
-      "artifact_id": "10549652888"
+      "artifact_digest": "697a7bd1204ce2adc38a4411e8931d75de3a63a0658d0bc61c4b3bbde392b691",
+      "artifact_id": "10549239323"
     }
   ],
   "baseline_comparison": [
-    {
-      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
-      "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
-      "candidate_outcome": "failure",
-      "classification": "PRE_EXISTING_GLOBAL_RED",
-      "gate_id": "system_diagnostics"
-    },
     {
       "base_failure_signature": "sha256:108dc73d76e6059ade995c7e09cc28badd7cc895a9596e4e4d72aceb4d18550b",
       "base_outcome": "failure",
@@ -27,9 +19,9 @@
       "gate_id": "integration"
     },
     {
-      "base_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
+      "base_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
       "base_outcome": "failure",
-      "candidate_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
+      "candidate_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
       "candidate_outcome": "failure",
       "classification": "PRE_EXISTING_GLOBAL_RED",
       "gate_id": "governance"
@@ -37,7 +29,7 @@
   ],
   "first_failed_station": {
     "CHANGE": "NONE",
-    "GLOBAL": "system_diagnostics",
+    "GLOBAL": "integration",
     "RAIL": "NONE"
   },
   "gate_outcomes": [
@@ -142,13 +134,13 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
-      "base_outcome": "failure",
+      "base_failure_signature": null,
+      "base_outcome": null,
       "changed_domain": false,
-      "failure_signature": "sha256:9554c71c0f00c8a8de8f70e95e915ae76bb8913d9a260218088abde31bddc5a4",
+      "failure_signature": null,
       "gate_id": "system_diagnostics",
       "global_scope": true,
-      "outcome": "failure",
+      "outcome": "success",
       "rail_required": false
     },
     {
@@ -182,10 +174,10 @@
       "rail_required": false
     },
     {
-      "base_failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
+      "base_failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
       "base_outcome": "failure",
       "changed_domain": false,
-      "failure_signature": "sha256:5a76e311bab65a24309b67307dc2e1fe94db2cf74805096bbb5aff6d94dc1064",
+      "failure_signature": "sha256:45a3d7e8baa8f9559bfcd9b85779593f04e0752432a562ecf1228f6db7940ccb",
       "gate_id": "governance",
       "global_scope": true,
       "outcome": "failure",
@@ -203,14 +195,14 @@
     }
   ],
   "identity": {
-    "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
-    "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1",
+    "base_sha": "caffe0b459d9197b3ae75860d36bc4a518b964f1",
+    "branch_name": "work/STORE/MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R2",
     "builder_run_attempt": "1",
-    "builder_run_id": "35350414557",
+    "builder_run_id": "35351108435",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-01",
+    "request_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1-CORE-02",
     "source_identity": "PASS",
-    "source_sha": "44ebbec0da7ab346cdc5e59d6bca1ec39bfaee5f",
+    "source_sha": "2050c41c94f31bd0ffd94e22c73bae2e28c86f7c",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-STORE-CHECKOUT-UNKNOWN-RECEIPT-READBACK-R1"
   },
