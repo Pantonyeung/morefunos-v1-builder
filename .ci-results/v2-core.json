@@ -5,8 +5,8 @@
   },
   "artifacts": [
     {
-      "artifact_digest": "c70aae4bbfebebb23652b6f72faa9499910aabe0a32a04400eaf08151d862ec6",
-      "artifact_id": "10548675541"
+      "artifact_digest": "e67e0def9f81d12eaff77972b667746f7df631b300c4c8bee0ba95e9232e0cb2",
+      "artifact_id": "10548596052"
     }
   ],
   "baseline_comparison": [
@@ -198,11 +198,11 @@
     "base_sha": "a17808f772825284b986f09e5c2b7b2b9f966eb9",
     "branch_name": "work/SMT/MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1",
     "builder_run_attempt": "1",
-    "builder_run_id": "35348417752",
+    "builder_run_id": "35348815276",
     "merge_request_guard_mode": "CANDIDATE_PHASE_SKIP",
-    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-03",
+    "request_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1-CORE-04",
     "source_identity": "PASS",
-    "source_sha": "44cdb1372590a967a2ac3d9ae5dd6c8cba43f744",
+    "source_sha": "caffe0b459d9197b3ae75860d36bc4a518b964f1",
     "verification_phase": "CANDIDATE",
     "work_id": "MF-R1-CORRECT-CANONICAL-REFRESH-REALTIME-LIFECYCLE-R1"
   },
