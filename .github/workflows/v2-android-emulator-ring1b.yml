@@ -27,7 +27,7 @@ on:
         type: string
 
 concurrency:
-  group: v2-android-emulator-ring1b
+  group: v2-android-emulator-ring1b-m07-m08-863-workerb
   cancel-in-progress: true
 
 permissions:
