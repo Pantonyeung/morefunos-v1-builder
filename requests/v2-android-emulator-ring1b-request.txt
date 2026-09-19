@@ -1,8 +1,8 @@
-source_sha=875d47a9ad0e52a9219c4cb4e7ffe2d20e6738e5
-requested_by=WORKER_B_850_ROUND024_TEXT_CONTAINS_SELECTOR
+source_sha=b9a6451bc78d027cce8eb88f0abb60ec07e1af75
+requested_by=WORKER_A_862_ROUND025_CHECKOUT_READBACK_ACCESSIBILITY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=850-round024-text-contains-selector-r1
+request_nonce=862-round025-checkout-readback-accessibility-01
 scenario_path=manifests/862-m03-auth-deferred-cart-combo-quote.json
 selector_map_path=manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json
