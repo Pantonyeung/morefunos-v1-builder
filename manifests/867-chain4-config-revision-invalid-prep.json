@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "scenario_id": "867-chain4-config-revision-invalid-prep",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {
+    "transition_ms": 15000,
+    "poll_ms": 300
+  },
+  "fault_text_patterns": [
+    "Owner 管理密碼",
+    "員工 PIN",
+    "配對此收銀機",
+    "SMT 發生故障"
+  ],
+  "steps": [
+    {
+      "id": "boot-with-invalid-published-admin-config",
+      "action": "launch",
+      "expect": {
+        "present": ["config_revision_invalid", "local_flow_forbidden", "smt_live_transaction_owner", "core_connector_only", "d1_transport_only"],
+        "absent": ["auth_deferred", "admin_config_revision_applied", "admin_config_revision", "config_revision_missing", "local_flow_admitted", "chain4_methods_visible", "checkout_intent_staged", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
+      }
+    },
+    {
+      "id": "invalid-config-remains-distinct-from-transport-outage",
+      "action": "checkpoint",
+      "expect": {
+        "present": ["config_revision_invalid", "local_flow_forbidden"],
+        "absent": ["core_d1_unavailable", "local_flow_admitted", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
+      }
+    }
+  ]
+}
