@@ -1,5 +1,5 @@
-source_sha=7652e7955a25712edab3dd4fa3687bd3cbe9e398
-request_id=DSP-004-A-855-STAGE2-AVAILABILITY-RED-02
-run_id=35413387253
+source_sha=18e22323cc6a540089bd3dbb9dd8a55eb3d3b3f1
+request_id=DSP-004-A-855-STAGE2-AVAILABILITY-GREEN-01
+run_id=35413415796
 run_attempt=1
 conclusion=failure
