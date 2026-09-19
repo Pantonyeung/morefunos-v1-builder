@@ -62,12 +62,16 @@ class FunctionalDriver:
         timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
         deadline = time.monotonic() + timeout_ms / 1000.0
         latest = self._observe_checked(step_id)
-        if expectation_matches(latest, expect, self.selectors):
+        if expectation_matches(latest, expect, self.selectors) and (
+            before is None or latest.fingerprint != before.fingerprint
+        ):
             return latest
         while time.monotonic() < deadline:
             self.backend.sleep(self.poll_ms / 1000.0)
             latest = self._observe_checked(step_id)
-            if expectation_matches(latest, expect, self.selectors):
+            if expectation_matches(latest, expect, self.selectors) and (
+                before is None or latest.fingerprint != before.fingerprint
+            ):
                 return latest
         if before is not None and latest.fingerprint == before.fingerprint:
             raise DriverFailure(
