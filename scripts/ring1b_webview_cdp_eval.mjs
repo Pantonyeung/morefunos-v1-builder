@@ -21,7 +21,7 @@ const pid = pidRaw.split(/\s+/).filter(Boolean)[0];
 if (!pid) throw new Error('R1B_CDP_APP_PID_MISSING');
 
 const port = Number(arg('--port') || '9223');
-adb(['forward', '--remove', `tcp:${port}`]);
+try { adb(['forward', '--remove', `tcp:${port}`]); } catch { /* no prior listener is expected on a fresh emulator */ }
 adb(['forward', `tcp:${port}`, `localabstract:webview_devtools_remote_${pid}`]);
 
 let pages = null;
