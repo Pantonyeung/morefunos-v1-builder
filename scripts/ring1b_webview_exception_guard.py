@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION = "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION"
 
 _UNCAUGHT_RE = re.compile(
-    r"\bUncaught(?:\s+\(in promise\))?\s+(?:[A-Za-z][A-Za-z0-9_.]*(?:Error|Exception))\s*:",
+    r"\bUncaught(?:\s+\(in promise\))?\s+(?:(?:[A-Za-z][A-Za-z0-9_.]*)?(?:Error|Exception))\s*:",
     re.IGNORECASE,
 )
 _APP_SOURCE_RE = re.compile(
@@ -22,7 +22,7 @@ _APP_SOURCE_RE = re.compile(
     re.IGNORECASE,
 )
 _EXCEPTION_TEXT_RE = re.compile(
-    r"(?P<exception>Uncaught(?:\s+\(in promise\))?\s+(?:[A-Za-z][A-Za-z0-9_.]*(?:Error|Exception))\s*:[^\r\n\"]+)",
+    r"(?P<exception>Uncaught(?:\s+\(in promise\))?\s+(?:(?:[A-Za-z][A-Za-z0-9_.]*)?(?:Error|Exception))\s*:[^\r\n\"]+)",
     re.IGNORECASE,
 )
 
