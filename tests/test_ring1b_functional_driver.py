@@ -1,11 +1,14 @@
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from ring1b_functional_adb import AdbBackend, UiHierarchyUnavailable  # noqa: E402
 from ring1b_functional_driver import FunctionalDriver  # noqa: E402
 from ring1b_functional_core import (  # noqa: E402
     DriverFailure,
@@ -14,11 +17,13 @@ from ring1b_functional_core import (  # noqa: E402
     R1B_EXPECTED_STATE_NOT_REACHED,
     R1B_SELECTOR_NOT_FOUND,
     R1B_RESTART_PERSISTENCE_MISMATCH,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
     expectation_matches,
     load_json,
     make_observation,
     resolve_tap_coordinates,
+    selector_present,
     validate_manifest,
     validate_selector_map,
 )
@@ -57,6 +62,43 @@ class FakeBackend:
         pass
 
 
+class ScriptedAdbBackend(AdbBackend):
+    def __init__(self, evidence_dir, attempts, *, max_attempts=None):
+        self.scripted_attempts = list(attempts)
+        self.script_index = 0
+        super().__init__(
+            "com.morefunos.smt",
+            ".MainActivity",
+            evidence_dir,
+            hierarchy_max_attempts=max_attempts or len(self.scripted_attempts),
+            hierarchy_retry_ms=0,
+        )
+
+    def _run(self, args, *, check=True, timeout=30):
+        if args[0] == "shell" and len(args) == 2 and args[1].startswith("rm -f "):
+            return subprocess.CompletedProcess(args, 0, "", "")
+        if args[:3] == ["shell", "uiautomator", "dump"]:
+            item = self.scripted_attempts[min(self.script_index, len(self.scripted_attempts) - 1)]
+            return subprocess.CompletedProcess(
+                args,
+                item.get("dump_rc", 0),
+                item.get("dump_stdout", "UI hierchary dumped to: /sdcard/test.xml\n"),
+                item.get("dump_stderr", ""),
+            )
+        if args[:2] == ["exec-out", "cat"]:
+            item = self.scripted_attempts[min(self.script_index, len(self.scripted_attempts) - 1)]
+            self.script_index += 1
+            return subprocess.CompletedProcess(
+                args,
+                item.get("cat_rc", 0),
+                item.get("payload", ""),
+                item.get("cat_stderr", ""),
+            )
+        if args == ["shell", "dumpsys activity activities"]:
+            return subprocess.CompletedProcess(args, 0, "mResumedActivity: MainActivity\n", "")
+        raise AssertionError(f"unexpected adb call: {args}")
+
+
 def read(name):
     return (FIX / name).read_text(encoding="utf-8")
 
@@ -75,6 +117,50 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         broken["steps"][1]["target"] = "missing_selector"
         with self.assertRaises(ManifestError):
             validate_manifest(broken, self.selectors)
+
+    def test_exact_text_remains_exact_when_contains_exists(self):
+        self.assertTrue(selector_present(self.before.ui_xml, {"text": "Rice Ball"}))
+        self.assertFalse(selector_present(self.before.ui_xml, {"text": "Rice"}))
+        self.assertEqual(resolve_tap_coordinates(self.before.ui_xml, {"text": "Rice Ball"}), (250, 200))
+
+    def test_text_contains_matches_rule_fragment_in_multiline_node(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        selector = {"text_contains": "可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。"}
+        self.assertTrue(selector_present(xml, selector))
+
+    def test_text_contains_matches_code_fragment_in_same_multiline_node(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        self.assertTrue(selector_present(xml, {"text_contains": "M03_COMBO_REQUIRED_SELECTION_MISSING"}))
+
+    def test_text_contains_missing_substring_is_false(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="rule&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        self.assertFalse(selector_present(xml, {"text_contains": "M03_OTHER_CODE"}))
+
+    def test_selector_schema_and_validator_accept_text_contains_but_reject_unknown_key(self):
+        schema = load_json(ROOT / "schemas" / "ring1b-selector-map.schema.json")
+        locator = schema["properties"]["selectors"]["additionalProperties"]
+        self.assertEqual(locator["properties"]["text_contains"], {"type": "string", "minLength": 1})
+        self.assertIn({"required": ["text_contains"]}, locator["anyOf"])
+        validated = validate_selector_map(
+            {"schema_version": 1, "selectors": {"rule": {"text_contains": "literal fragment"}}}
+        )
+        self.assertEqual(validated["rule"]["text_contains"], "literal fragment")
+        with self.assertRaises(ManifestError):
+            validate_selector_map(
+                {"schema_version": 1, "selectors": {"bad": {"text_contains": "literal", "regex": ".*"}}}
+            )
+
+    def test_text_contains_cannot_be_used_as_tap_target(self):
+        selectors = dict(self.selectors)
+        selectors["contains_target"] = {"text_contains": "Rice"}
+        manifest = json.loads(json.dumps(self.manifest))
+        manifest["steps"][1]["target"] = "contains_target"
+        with self.assertRaises(ManifestError):
+            validate_manifest(manifest, selectors)
+        self.assertIsNone(resolve_tap_coordinates(self.before.ui_xml, selectors["contains_target"]))
 
     def test_selector_fallback_order_reaches_text_when_resource_id_misses(self):
         selector = {
@@ -242,6 +328,76 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         with self.assertRaises(DriverFailure) as ctx:
             driver.run()
         self.assertEqual(ctx.exception.code, R1B_RESTART_PERSISTENCE_MISMATCH)
+
+    def test_ui_hierarchy_empty_readback_is_bounded_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(tmp, [{"payload": ""}, {"payload": ""}], max_attempts=2)
+            with self.assertRaises(UiHierarchyUnavailable) as ctx:
+                backend.observe()
+            self.assertIn("attempts=2/2", ctx.exception.summary)
+            self.assertIn("empty_readback", ctx.exception.summary)
+            self.assertTrue((Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").is_file())
+
+    def test_ui_hierarchy_non_xml_readback_is_bounded_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(tmp, [{"payload": "UI hierarchy unavailable"}], max_attempts=1)
+            with self.assertRaises(UiHierarchyUnavailable) as ctx:
+                backend.observe()
+            self.assertIn("non_xml_readback", ctx.exception.summary)
+
+    def test_ui_hierarchy_invalid_first_valid_later_recovers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [{"payload": "<hierarchy"}, {"payload": read("ui-before.xml")}],
+                max_attempts=2,
+            )
+            obs = backend.observe()
+            self.assertIn("Rice Ball", obs.ui_xml)
+            summary = json.loads(
+                (Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(summary["recovered"])
+            self.assertEqual(summary["attempt_count"], 2)
+            self.assertEqual(summary["attempts"][0]["classification"], "invalid_xml")
+            self.assertEqual(summary["attempts"][1]["classification"], "valid_xml")
+
+    def test_ui_hierarchy_dump_and_cat_failures_are_distinct(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [
+                    {"dump_rc": 1, "dump_stderr": "dump failed", "cat_rc": 1, "cat_stderr": "missing"},
+                    {"dump_rc": 0, "cat_rc": 1, "cat_stderr": "cat failed"},
+                ],
+                max_attempts=2,
+            )
+            with self.assertRaises(UiHierarchyUnavailable) as ctx:
+                backend.observe()
+            self.assertIn("dump_failure", ctx.exception.summary)
+            self.assertIn("cat_failure", ctx.exception.summary)
+
+    def test_persistent_invalid_hierarchy_maps_to_stable_driver_failure(self):
+        step = {
+            "id": "boot-auth-deferred-menu",
+            "action": "checkpoint",
+            "expect": {"present": ["product_tile"]},
+            "timeout_ms": 50,
+        }
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(tmp, [{"payload": "<hierarchy"}, {"payload": "<hierarchy"}], max_attempts=2)
+            driver = FunctionalDriver(manifest, self.selectors, backend)
+            with self.assertRaises(DriverFailure) as ctx:
+                driver.run()
+            failure = ctx.exception
+            self.assertEqual(failure.code, R1B_UI_HIERARCHY_UNAVAILABLE)
+            self.assertEqual(failure.step_id, "boot-auth-deferred-menu")
+            self.assertEqual(failure.expected, "valid UIAutomator hierarchy")
+            self.assertEqual(failure.layer, "ANDROID_UI_OBSERVATION")
+            self.assertIn("attempts=2/2", failure.actual)
+            self.assertIn("invalid_xml", failure.actual)
 
 
 if __name__ == "__main__":

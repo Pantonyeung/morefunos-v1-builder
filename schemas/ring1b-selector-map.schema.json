@@ -15,6 +15,7 @@
         "properties": {
           "resource_id": {"type": "string"},
           "text": {"type": "string"},
+          "text_contains": {"type": "string", "minLength": 1},
           "content_desc": {"type": "string"},
           "bounds": {
             "oneOf": [
@@ -27,6 +28,7 @@
         "anyOf": [
           {"required": ["resource_id"]},
           {"required": ["text"]},
+          {"required": ["text_contains"]},
           {"required": ["content_desc"]},
           {"required": ["bounds"]}
         ]

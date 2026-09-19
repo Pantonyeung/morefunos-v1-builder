@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ring1b_functional_adb import AdbBackend
+from ring1b_functional_adb import AdbBackend, UiHierarchyUnavailable
 from ring1b_functional_core import (
     DriverFailure,
     ManifestError,
@@ -18,6 +18,7 @@ from ring1b_functional_core import (
     R1B_MANIFEST_INVALID,
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_SELECTOR_NOT_FOUND,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
     expectation_matches,
     expectation_text,
@@ -52,7 +53,16 @@ class FunctionalDriver:
             )
 
     def _observe_checked(self, step_id: str) -> Observation:
-        obs = self.backend.observe()
+        try:
+            obs = self.backend.observe()
+        except UiHierarchyUnavailable as exc:
+            raise DriverFailure(
+                R1B_UI_HIERARCHY_UNAVAILABLE,
+                step_id=step_id,
+                expected="valid UIAutomator hierarchy",
+                actual=exc.summary,
+                layer="ANDROID_UI_OBSERVATION",
+            ) from exc
         self._check_fault(obs, step_id)
         return obs
 
@@ -163,11 +173,12 @@ class FunctionalDriver:
                     self._run_restart(step, index)
                 else:
                     raise ManifestError(f"unhandled action: {action}")
-            except DriverFailure:
-                try:
-                    self.backend.capture_evidence(f"{index:02d}-{step_id}-failure")
-                except Exception:
-                    pass
+            except DriverFailure as failure:
+                if failure.code != R1B_UI_HIERARCHY_UNAVAILABLE:
+                    try:
+                        self.backend.capture_evidence(f"{index:02d}-{step_id}-failure")
+                    except Exception:
+                        pass
                 raise
             self.last_green = step_id
         return {"scenario_id": self.manifest["scenario_id"], "last_green": self.last_green, "result": "GREEN"}
