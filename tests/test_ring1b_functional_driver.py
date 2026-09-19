@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from ring1b_functional_driver import FunctionalDriver  # noqa: E402
+from ring1b_functional_adb import UiHierarchyUnavailable  # noqa: E402
 from ring1b_functional_core import (  # noqa: E402
     DriverFailure,
     ManifestError,
@@ -15,6 +16,7 @@ from ring1b_functional_core import (  # noqa: E402
     R1B_SELECTOR_NOT_FOUND,
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     expectation_matches,
     load_json,
     make_observation,
@@ -242,6 +244,21 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         with self.assertRaises(DriverFailure) as ctx:
             driver.run()
         self.assertEqual(ctx.exception.code, R1B_RESTART_PERSISTENCE_MISMATCH)
+
+
+    def test_ui_hierarchy_unavailable_has_stable_code(self):
+        class BrokenHierarchyBackend(FakeBackend):
+            def observe(self):
+                raise UiHierarchyUnavailable("attempt=5; xml_bytes=0; parse=no element found")
+
+        step = {"id": "boot", "action": "checkpoint", "expect": {"present": ["product_tile"]}, "timeout_ms": 50}
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        driver = FunctionalDriver(manifest, self.selectors, BrokenHierarchyBackend([self.before]))
+        with self.assertRaises(DriverFailure) as ctx:
+            driver.run()
+        self.assertEqual(ctx.exception.code, R1B_UI_HIERARCHY_UNAVAILABLE)
+        self.assertEqual(ctx.exception.layer, "ANDROID_UI_CAPTURE")
 
 
 if __name__ == "__main__":

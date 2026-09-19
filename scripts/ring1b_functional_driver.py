@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ring1b_functional_adb import AdbBackend
+from ring1b_functional_adb import AdbBackend, UiHierarchyUnavailable
 from ring1b_functional_core import (
     DriverFailure,
     ManifestError,
@@ -19,6 +19,7 @@ from ring1b_functional_core import (
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_SELECTOR_NOT_FOUND,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     expectation_matches,
     expectation_text,
     fault_match,
@@ -52,7 +53,16 @@ class FunctionalDriver:
             )
 
     def _observe_checked(self, step_id: str) -> Observation:
-        obs = self.backend.observe()
+        try:
+            obs = self.backend.observe()
+        except UiHierarchyUnavailable as exc:
+            raise DriverFailure(
+                R1B_UI_HIERARCHY_UNAVAILABLE,
+                step_id=step_id,
+                expected="valid parseable UIAutomator hierarchy",
+                actual=str(exc),
+                layer="ANDROID_UI_CAPTURE",
+            ) from exc
         self._check_fault(obs, step_id)
         return obs
 

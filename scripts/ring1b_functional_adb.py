@@ -4,10 +4,15 @@ import os
 import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Optional
 
 from ring1b_functional_core import Observation, make_observation
+
+
+class UiHierarchyUnavailable(RuntimeError):
+    pass
 
 
 class AdbBackend:
@@ -26,15 +31,32 @@ class AdbBackend:
 
     def observe(self) -> Observation:
         self._obs_counter += 1
-        remote = f"/sdcard/r1b-functional-{os.getpid()}-{self._obs_counter}.xml"
-        try:
-            self._shell(f"uiautomator dump {remote}", check=False, timeout=15)
-            readback = self._run(["exec-out", "cat", remote], check=False, timeout=15)
-            xml = readback.stdout if readback.returncode == 0 else ""
-        finally:
-            self._shell(f"rm -f {remote}", check=False, timeout=10)
-        activity = self._shell("dumpsys activity activities", check=False, timeout=15)
-        return make_observation(xml, activity)
+        last_actual = "UIAutomator hierarchy unavailable"
+        for attempt in range(1, 6):
+            remote = f"/sdcard/r1b-functional-{os.getpid()}-{self._obs_counter}-{attempt}.xml"
+            dump = None
+            readback = None
+            xml = ""
+            try:
+                dump = self._run(["shell", "uiautomator", "dump", remote], check=False, timeout=15)
+                readback = self._run(["exec-out", "cat", remote], check=False, timeout=15)
+                xml = readback.stdout if readback.returncode == 0 else ""
+                try:
+                    ET.fromstring(xml)
+                except ET.ParseError as exc:
+                    stderr = ((dump.stderr if dump else "") or "").strip().replace("\n", " ")[:240]
+                    last_actual = (
+                        f"attempt={attempt}; dump_rc={getattr(dump, 'returncode', -1)}; "
+                        f"read_rc={getattr(readback, 'returncode', -1)}; "
+                        f"xml_bytes={len(xml.encode('utf-8'))}; parse={exc}; dump_stderr={stderr}"
+                    )
+                else:
+                    activity = self._shell("dumpsys activity activities", check=False, timeout=15)
+                    return make_observation(xml, activity)
+            finally:
+                self._shell(f"rm -f {remote}", check=False, timeout=10)
+            time.sleep(0.3)
+        raise UiHierarchyUnavailable(last_actual)
 
     def capture_evidence(self, label: str, obs: Optional[Observation] = None) -> Observation:
         safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
