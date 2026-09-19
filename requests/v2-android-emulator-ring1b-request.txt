@@ -1,8 +1,8 @@
-source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
-requested_by=WORKER_B_863_M07_M08_REALITY_DISCOVERY
+source_sha=875d47a9ad0e52a9219c4cb4e7ffe2d20e6738e5
+requested_by=WORKER_B_850_ROUND021_CHAIN2_MANIFEST_REPLAY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=863-m07-m08-reality-discovery-01
-scenario_path=
-selector_map_path=
+request_nonce=850-round021-chain2-m03-fresh-builder-r1
+scenario_path=manifests/862-m03-auth-deferred-cart-combo-quote.json
+selector_map_path=manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json
