@@ -25,19 +25,27 @@ class AdbBackend:
         main_activity: str,
         evidence_dir: str | Path,
         *,
-        hierarchy_max_attempts: int = 3,
-        hierarchy_retry_ms: int = 200,
+        hierarchy_max_attempts: int = 4,
+        hierarchy_retry_ms: int = 500,
+        hierarchy_readback_max_attempts: int = 3,
+        hierarchy_readback_retry_ms: int = 250,
     ) -> None:
         if hierarchy_max_attempts <= 0 or hierarchy_max_attempts > 10:
             raise ValueError("hierarchy_max_attempts must be 1..10")
         if hierarchy_retry_ms < 0 or hierarchy_retry_ms > 5000:
             raise ValueError("hierarchy_retry_ms must be 0..5000")
+        if hierarchy_readback_max_attempts <= 0 or hierarchy_readback_max_attempts > 10:
+            raise ValueError("hierarchy_readback_max_attempts must be 1..10")
+        if hierarchy_readback_retry_ms < 0 or hierarchy_readback_retry_ms > 5000:
+            raise ValueError("hierarchy_readback_retry_ms must be 0..5000")
         self.package_id = package_id
         self.main_activity = main_activity
         self.evidence_dir = Path(evidence_dir)
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self.hierarchy_max_attempts = hierarchy_max_attempts
         self.hierarchy_retry_ms = hierarchy_retry_ms
+        self.hierarchy_readback_max_attempts = hierarchy_readback_max_attempts
+        self.hierarchy_readback_retry_ms = hierarchy_readback_retry_ms
         self._obs_counter = 0
 
     def _run(self, args: List[str], *, check: bool = True, timeout: int = 30) -> subprocess.CompletedProcess:
@@ -109,6 +117,11 @@ class AdbBackend:
             return "non_uiautomator_xml", f"root tag is {root.tag!r}, expected 'hierarchy'"
         return "valid_xml", ""
 
+    @staticmethod
+    def _file_absent(result: Dict[str, Any], payload: str) -> bool:
+        message = f"{payload}\n{result['stderr']}"
+        return "No such file or directory" in message
+
     def _write_attempt_evidence(self, observation_dir: Path, attempt: Dict[str, Any]) -> None:
         attempt_dir = observation_dir / f"attempt-{attempt['attempt']:02d}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +131,15 @@ class AdbBackend:
         (attempt_dir / "dump.stderr.txt").write_text(dump["stderr"], encoding="utf-8", errors="replace")
         (attempt_dir / "cat.stdout.txt").write_text(cat["stdout"], encoding="utf-8", errors="replace")
         (attempt_dir / "cat.stderr.txt").write_text(cat["stderr"], encoding="utf-8", errors="replace")
+        for readback in attempt["readback_results"]:
+            readback_result = readback["result"]
+            prefix = attempt_dir / f"readback-{readback['readback']:02d}"
+            prefix.with_suffix(".stdout.txt").write_text(
+                readback_result["stdout"], encoding="utf-8", errors="replace"
+            )
+            prefix.with_suffix(".stderr.txt").write_text(
+                readback_result["stderr"], encoding="utf-8", errors="replace"
+            )
         compact = {
             "attempt": attempt["attempt"],
             "classification": attempt["classification"],
@@ -126,6 +148,19 @@ class AdbBackend:
             "payload_preview": attempt["payload_preview"],
             "dump_result": {k: dump[k] for k in ("returncode", "timed_out", "elapsed_ms", "stdout_preview", "stderr_preview")},
             "cat_result": {k: cat[k] for k in ("returncode", "timed_out", "elapsed_ms", "stdout_preview", "stderr_preview")},
+            "readback_results": [
+                {
+                    "readback": item["readback"],
+                    "classification": item["classification"],
+                    "detail": item["detail"],
+                    "payload_preview": item["payload_preview"],
+                    "result": {
+                        k: item["result"][k]
+                        for k in ("returncode", "timed_out", "elapsed_ms", "stdout_preview", "stderr_preview")
+                    },
+                }
+                for item in attempt["readback_results"]
+            ],
         }
         (attempt_dir / "attempt.json").write_text(
             json.dumps(compact, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -155,6 +190,7 @@ class AdbBackend:
                     "dump_timed_out": item["dump_result"]["timed_out"],
                     "cat_returncode": item["cat_result"]["returncode"],
                     "cat_timed_out": item["cat_result"]["timed_out"],
+                    "readback_count": len(item["readback_results"]),
                 }
                 for item in attempts
             ],
@@ -172,6 +208,7 @@ class AdbBackend:
                 f"{item['attempt']}:{item['classification']}"
                 f" dump_rc={item['dump_result']['returncode']}"
                 f" cat_rc={item['cat_result']['returncode']}"
+                f" readbacks={len(item['readback_results'])}/{self.hierarchy_readback_max_attempts}"
                 f" payload={item['payload_preview']!r}"
             )
         return (
@@ -191,14 +228,39 @@ class AdbBackend:
             self._shell(f"rm -f {remote}", check=False, timeout=10)
             try:
                 dump_result, _ = self._run_recorded(["shell", "uiautomator", "dump", remote], timeout=15)
-                cat_result, payload = self._run_recorded(["exec-out", "cat", remote], timeout=15)
+                readback_results: List[Dict[str, Any]] = []
+                payload = ""
+                for readback_no in range(1, self.hierarchy_readback_max_attempts + 1):
+                    cat_result, payload = self._run_recorded(["exec-out", "cat", remote], timeout=15)
+                    if self._file_absent(cat_result, payload):
+                        readback_classification, readback_detail = "file_absent", "requested hierarchy file is absent"
+                    elif cat_result["timed_out"] or cat_result["returncode"] != 0:
+                        readback_classification, readback_detail = "cat_failure", "exec-out cat failed or timed out"
+                    else:
+                        readback_classification, readback_detail = self._classify_xml(payload)
+                    readback_results.append(
+                        {
+                            "readback": readback_no,
+                            "classification": readback_classification,
+                            "detail": readback_detail,
+                            "payload_preview": self._preview(payload),
+                            "result": cat_result,
+                        }
+                    )
+                    if (
+                        dump_result["timed_out"]
+                        or dump_result["returncode"] != 0
+                        or readback_classification != "file_absent"
+                    ):
+                        break
+                    if readback_no < self.hierarchy_readback_max_attempts and self.hierarchy_readback_retry_ms:
+                        self.sleep(self.hierarchy_readback_retry_ms / 1000.0)
 
                 if dump_result["timed_out"] or dump_result["returncode"] != 0:
                     classification, detail = "dump_failure", "uiautomator dump failed or timed out"
-                elif cat_result["timed_out"] or cat_result["returncode"] != 0:
-                    classification, detail = "cat_failure", "exec-out cat failed or timed out"
                 else:
-                    classification, detail = self._classify_xml(payload)
+                    classification = readback_results[-1]["classification"]
+                    detail = readback_results[-1]["detail"]
 
                 attempt = {
                     "attempt": attempt_no,
@@ -208,11 +270,12 @@ class AdbBackend:
                     "payload_preview": self._preview(payload),
                     "dump_result": dump_result,
                     "cat_result": cat_result,
+                    "readback_results": readback_results,
                 }
                 attempts.append(attempt)
 
                 if classification == "valid_xml":
-                    if attempt_no > 1:
+                    if attempt_no > 1 or len(readback_results) > 1:
                         self._write_attempt_evidence(observation_dir, attempt)
                         self._write_observation_summary(
                             observation_dir,

@@ -63,22 +63,30 @@ class FakeBackend:
 
 
 class ScriptedAdbBackend(AdbBackend):
-    def __init__(self, evidence_dir, attempts, *, max_attempts=None):
+    def __init__(self, evidence_dir, attempts, *, max_attempts=None, readback_max_attempts=1):
         self.scripted_attempts = list(attempts)
-        self.script_index = 0
+        self.current_dump_index = 0
+        self.current_cat_index = 0
+        self.dump_calls = 0
+        self.cat_calls = 0
         super().__init__(
             "com.morefunos.smt",
             ".MainActivity",
             evidence_dir,
             hierarchy_max_attempts=max_attempts or len(self.scripted_attempts),
             hierarchy_retry_ms=0,
+            hierarchy_readback_max_attempts=readback_max_attempts,
+            hierarchy_readback_retry_ms=0,
         )
 
     def _run(self, args, *, check=True, timeout=30):
         if args[0] == "shell" and len(args) == 2 and args[1].startswith("rm -f "):
             return subprocess.CompletedProcess(args, 0, "", "")
         if args[:3] == ["shell", "uiautomator", "dump"]:
-            item = self.scripted_attempts[min(self.script_index, len(self.scripted_attempts) - 1)]
+            self.current_dump_index = min(self.dump_calls, len(self.scripted_attempts) - 1)
+            self.current_cat_index = 0
+            self.dump_calls += 1
+            item = self.scripted_attempts[self.current_dump_index]
             return subprocess.CompletedProcess(
                 args,
                 item.get("dump_rc", 0),
@@ -86,12 +94,15 @@ class ScriptedAdbBackend(AdbBackend):
                 item.get("dump_stderr", ""),
             )
         if args[:2] == ["exec-out", "cat"]:
-            item = self.scripted_attempts[min(self.script_index, len(self.scripted_attempts) - 1)]
-            self.script_index += 1
+            item = self.scripted_attempts[self.current_dump_index]
+            payloads = item.get("cat_payloads", [item.get("payload", "")])
+            payload = payloads[min(self.current_cat_index, len(payloads) - 1)]
+            self.current_cat_index += 1
+            self.cat_calls += 1
             return subprocess.CompletedProcess(
                 args,
                 item.get("cat_rc", 0),
-                item.get("payload", ""),
+                payload,
                 item.get("cat_stderr", ""),
             )
         if args == ["shell", "dumpsys activity activities"]:
@@ -117,6 +128,22 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         broken["steps"][1]["target"] = "missing_selector"
         with self.assertRaises(ManifestError):
             validate_manifest(broken, self.selectors)
+
+    def test_chain4_auth_deferred_provenance_is_required_not_forbidden(self):
+        names = (
+            "867-chain4-payment-certainty-nominal-prep.json",
+            "867-chain4-payment-certainty-unknown-retry-prep.json",
+            "867-chain4-config-revision-missing-prep.json",
+            "867-chain4-config-revision-invalid-prep.json",
+        )
+        for name in names:
+            manifest = load_json(ROOT / "manifests" / name)
+            boot_expect = manifest["steps"][0]["expect"]
+            self.assertIn("auth_deferred", boot_expect.get("present", []), name)
+            self.assertIn("mock_core_authority", boot_expect.get("absent", []), name)
+            for step in manifest["steps"]:
+                expect = step.get("expect", {})
+                self.assertNotIn("auth_deferred", expect.get("absent", []), f"{name}:{step['id']}")
 
     def test_exact_text_remains_exact_when_contains_exists(self):
         self.assertTrue(selector_present(self.before.ui_xml, {"text": "Rice Ball"}))
@@ -337,6 +364,54 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
             self.assertIn("attempts=2/2", ctx.exception.summary)
             self.assertIn("empty_readback", ctx.exception.summary)
             self.assertTrue((Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").is_file())
+
+    def test_ui_hierarchy_valid_immediate_xml_uses_one_dump_and_one_readback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(tmp, [{"payload": read("ui-before.xml")}], max_attempts=1)
+            obs = backend.observe()
+            self.assertIn("Rice Ball", obs.ui_xml)
+            self.assertEqual(backend.dump_calls, 1)
+            self.assertEqual(backend.cat_calls, 1)
+
+    def test_ui_hierarchy_delayed_file_materialization_recovers_without_second_dump(self):
+        missing = "cat: /sdcard/r1b.xml: No such file or directory\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [{"cat_payloads": [missing, read("ui-before.xml")]}],
+                max_attempts=1,
+                readback_max_attempts=2,
+            )
+            obs = backend.observe()
+            self.assertIn("Rice Ball", obs.ui_xml)
+            self.assertEqual(backend.dump_calls, 1)
+            self.assertEqual(backend.cat_calls, 2)
+            summary = json.loads(
+                (Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(summary["recovered"])
+            self.assertEqual(summary["attempts"][0]["readback_count"], 2)
+
+    def test_ui_hierarchy_rc0_file_absent_is_bounded_unavailable(self):
+        missing = "cat: /sdcard/r1b.xml: No such file or directory\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [{"payload": missing}, {"payload": missing}],
+                max_attempts=2,
+                readback_max_attempts=3,
+            )
+            with self.assertRaises(UiHierarchyUnavailable) as ctx:
+                backend.observe()
+            self.assertIn("file_absent", ctx.exception.summary)
+            self.assertIn("attempts=2/2", ctx.exception.summary)
+            self.assertEqual(backend.dump_calls, 2)
+            self.assertEqual(backend.cat_calls, 6)
+            summary = json.loads(
+                (Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(summary["recovered"])
+            self.assertEqual([item["readback_count"] for item in summary["attempts"]], [3, 3])
 
     def test_ui_hierarchy_non_xml_readback_is_bounded_unavailable(self):
         with tempfile.TemporaryDirectory() as tmp:
