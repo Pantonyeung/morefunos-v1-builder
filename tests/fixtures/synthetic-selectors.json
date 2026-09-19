@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "selectors": {
+    "product_tile": {
+      "resource_id": "com.synthetic:id/product",
+      "text": "Rice Ball",
+      "content_desc": "product tile",
+      "bounds": [100, 100, 400, 300]
+    },
+    "cart_line": {
+      "resource_id": "com.synthetic:id/cart-line",
+      "text": "1 × Rice Ball",
+      "content_desc": "cart line",
+      "bounds": [1200, 100, 1800, 220]
+    }
+  }
+}
