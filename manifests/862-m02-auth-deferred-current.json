@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scenario_id": "862-m02-auth-deferred-menu-product-modifier-current",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {"transition_ms": 12000, "poll_ms": 300},
+  "fault_text_patterns": ["Owner 管理密碼", "員工 PIN", "配對此收銀機", "SMT 發生故障"],
+  "steps": [
+    {
+      "id": "boot-auth-deferred-menu",
+      "action": "launch",
+      "expect": {"present": ["auth_deferred", "menu_category", "product_riceball", "cart_empty"]}
+    },
+    {
+      "id": "open-real-product-config",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "required-modifier-red-visible",
+      "action": "checkpoint",
+      "expect": {"present": ["required_missing", "product_config"]}
+    },
+    {
+      "id": "select-real-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["modifier_ready", "confirm_add", "product_config"]}
+    },
+    {
+      "id": "confirm-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["auth_deferred", "cart_note", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "force-stop-relaunch-reset",
+      "action": "restart",
+      "timeout_ms": 15000,
+      "persistence": {
+        "mode": "RESET_EXPECTED",
+        "before": ["cart_note", "cart_total_50"],
+        "after": ["auth_deferred", "product_riceball", "cart_empty"]
+      }
+    }
+  ]
+}
