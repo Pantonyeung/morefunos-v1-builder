@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morefunos.local/schemas/ring1b-functional-manifest.schema.json",
+  "title": "MoreFunOS Ring1B Functional Scenario Manifest",
+  "type": "object",
+  "required": ["schema_version", "scenario_id", "package_id", "main_activity", "steps"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "package_id": {"type": "string", "minLength": 1},
+    "main_activity": {"type": "string", "minLength": 1},
+    "timeouts": {
+      "type": "object",
+      "properties": {
+        "transition_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
+        "poll_ms": {"type": "integer", "minimum": 1, "maximum": 60000}
+      },
+      "additionalProperties": false
+    },
+    "fault_text_patterns": {"type": "array", "items": {"type": "string"}},
+    "fault_activity_patterns": {"type": "array", "items": {"type": "string"}},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "action"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "action": {"enum": ["launch", "tap", "checkpoint", "restart"]},
+          "target": {"type": "string", "minLength": 1},
+          "timeout_ms": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "expect": {
+            "type": "object",
+            "properties": {
+              "present": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "absent": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "activity_contains": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "persistence": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": {
+              "mode": {"enum": ["PRESERVE", "RESET_EXPECTED", "RECOVER"]},
+              "before": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "after": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
