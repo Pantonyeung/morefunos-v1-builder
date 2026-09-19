@@ -19,6 +19,7 @@
       "action": "launch",
       "expect": {
         "present": [
+          "auth_deferred",
           "admin_config_revision_applied",
           "admin_config_revision",
           "smt_live_transaction_owner",
@@ -31,7 +32,7 @@
           "product_combo",
           "cart_empty"
         ],
-        "absent": ["auth_deferred", "config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority"]
+        "absent": ["config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority"]
       }
     },
     {
@@ -112,7 +113,7 @@
       "id": "observe-payment-methods",
       "action": "checkpoint",
       "expect": {
-        "present": ["admin_config_revision_applied", "smt_live_transaction_owner", "core_d1_unavailable", "local_flow_admitted", "chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
+        "present": ["auth_deferred", "admin_config_revision_applied", "smt_live_transaction_owner", "core_d1_unavailable", "local_flow_admitted", "chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
         "absent": ["config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority", "payment_request_transition", "store_commit_succeeded"]
       }
     },
