@@ -13,12 +13,27 @@ mkdir -p "$EVIDENCE_DIR"
 bash "$BASE_RUNNER" "$@"
 sha256sum "$APK" | tee "$EVIDENCE_DIR/apk-sha256.txt"
 
-ESBUILD="$(find "$GITHUB_WORKSPACE/source" -path "*/node_modules/.bin/esbuild" -print -quit)"
-if [[ -z "$ESBUILD" || ! -x "$ESBUILD" ]]; then echo "R1B_M07_PROBE_ESBUILD_BINARY_NOT_FOUND" >&2; exit 1; fi
-"$ESBUILD" "$GITHUB_WORKSPACE/scripts/ring1b_m07_browser_probe_entry.ts" \
-  --bundle --format=iife --platform=browser --target=chrome83 \
-  --global-name=Ring1BM07Bundle \
-  --outfile="$EVIDENCE_DIR/m07-browser-probe.js"
+VITE="$GITHUB_WORKSPACE/source/apps/smt-clean/node_modules/.bin/vite"
+if [[ ! -x "$VITE" ]]; then echo "R1B_M07_PROBE_VITE_BINARY_NOT_FOUND" >&2; exit 1; fi
+cat > "$EVIDENCE_DIR/m07-probe-vite.config.mjs" <<EOF
+export default {
+  build: {
+    target: 'chrome83',
+    minify: false,
+    emptyOutDir: true,
+    outDir: '$EVIDENCE_DIR/m07-probe-build',
+    lib: {
+      entry: '$GITHUB_WORKSPACE/scripts/ring1b_m07_browser_probe_entry.ts',
+      name: 'Ring1BM07Bundle',
+      formats: ['iife'],
+      fileName: () => 'm07-browser-probe.js'
+    }
+  }
+}
+EOF
+"$VITE" build --config "$EVIDENCE_DIR/m07-probe-vite.config.mjs"
+test -s "$EVIDENCE_DIR/m07-probe-build/m07-browser-probe.js"
+cp "$EVIDENCE_DIR/m07-probe-build/m07-browser-probe.js" "$EVIDENCE_DIR/m07-browser-probe.js"
 
 wait_for_pid() {
   for _ in $(seq 1 40); do
