@@ -1,4 +1,4 @@
 source_sha=c05af5b8182715ed22e5cfb41f3770a3bacab94e
 scenario_path=manifests/862-m02-auth-deferred-c05.json
 selector_map_path=manifests/862-m02-auth-deferred-c05-selectors.json
-request_nonce=862-m02-c05-functional-r1
+request_nonce=862-m02-c05-functional-r2
