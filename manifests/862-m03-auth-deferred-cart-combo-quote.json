@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "scenario_id": "862-m03-auth-deferred-cart-combo-quote-checkout-intent",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {
+    "transition_ms": 15000,
+    "poll_ms": 300
+  },
+  "fault_text_patterns": [
+    "Owner 管理密碼",
+    "員工 PIN",
+    "配對此收銀機",
+    "SMT 發生故障"
+  ],
+  "steps": [
+    {
+      "id": "boot-auth-deferred-menu",
+      "action": "launch",
+      "expect": {
+        "present": [
+          "auth_deferred",
+          "menu_category",
+          "product_riceball",
+          "product_combo",
+          "cart_empty"
+        ]
+      }
+    },
+    {
+      "id": "m02-open-product-config",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {
+        "present": [
+          "product_config",
+          "required_missing",
+          "option_nori",
+          "confirm_add"
+        ]
+      }
+    },
+    {
+      "id": "m02-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {
+        "present": [
+          "modifier_ready",
+          "confirm_add",
+          "product_config"
+        ]
+      }
+    },
+    {
+      "id": "m02-confirm-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {
+        "present": [
+          "cart_product_riceball",
+          "cart_note_nori",
+          "cart_total_50"
+        ],
+        "absent": [
+          "product_config"
+        ]
+      }
+    },
+    {
+      "id": "open-combo",
+      "action": "tap",
+      "target": "product_combo",
+      "expect": {
+        "present": [
+          "combo_workspace",
+          "combo_required_3",
+          "combo_required_code",
+          "combo_rule_text",
+          "choice_combo_riceball",
+          "combo_add"
+        ]
+      }
+    },
+    {
+      "id": "combo-required-red-visible",
+      "action": "checkpoint",
+      "expect": {
+        "present": [
+          "combo_required_3",
+          "combo_required_code",
+          "combo_rule_text",
+          "combo_add"
+        ]
+      }
+    },
+    {
+      "id": "select-combo-riceball",
+      "action": "tap",
+      "target": "choice_combo_riceball",
+      "expect": {
+        "present": [
+          "combo_required_2",
+          "combo_required_code",
+          "combo_rule_text",
+          "choice_combo_snack",
+          "combo_add"
+        ]
+      }
+    },
+    {
+      "id": "select-combo-snack",
+      "action": "tap",
+      "target": "choice_combo_snack",
+      "expect": {
+        "present": [
+          "combo_required_1",
+          "combo_required_code",
+          "combo_rule_text",
+          "choice_combo_drink",
+          "combo_add"
+        ]
+      }
+    },
+    {
+      "id": "select-combo-drink",
+      "action": "tap",
+      "target": "choice_combo_drink",
+      "expect": {
+        "present": [
+          "combo_complete",
+          "combo_quote_50",
+          "combo_add"
+        ]
+      }
+    },
+    {
+      "id": "add-combo-to-cart",
+      "action": "tap",
+      "target": "combo_add",
+      "expect": {
+        "present": [
+          "cart_product_riceball",
+          "cart_note_nori",
+          "cart_combo_riceball",
+          "cart_combo_snack",
+          "cart_combo_drink",
+          "cart_total_100"
+        ],
+        "absent": [
+          "combo_workspace"
+        ]
+      }
+    },
+    {
+      "id": "stage-checkout-intent",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": [
+          "checkout_workspace",
+          "checkout_intent_staged",
+          "payment_not_invoked",
+          "frozen_checkpoint",
+          "frozen_catalog",
+          "frozen_pricing",
+          "frozen_pricing_token",
+          "combo_children_3",
+          "checkout_combo_riceball",
+          "checkout_combo_snack",
+          "checkout_combo_drink"
+        ]
+      }
+    },
+    {
+      "id": "force-stop-relaunch-reset",
+      "action": "restart",
+      "timeout_ms": 15000,
+      "persistence": {
+        "mode": "RESET_EXPECTED",
+        "before": [
+          "checkout_intent_staged",
+          "payment_not_invoked",
+          "combo_children_3"
+        ],
+        "after": [
+          "auth_deferred",
+          "product_riceball",
+          "product_combo",
+          "cart_empty"
+        ]
+      }
+    }
+  ]
+}
