@@ -164,7 +164,10 @@ if(!job || job.canonicalPrintJobId!=='cpj-ring1b-m07-001' || job.dispatchAttempt
 if(job?.target?.kind!=='LAN' || job?.target?.endpointId!=='ring1b-sink'){
   console.error('R1B_M07_ROUTE_DEVICE_READBACK_MISMATCH', value); process.exit(1);
 }
-console.log('M07_GATEWAY_ROUTE_DEVICE_READBACK_GREEN');
+if(job.state!=='AMBIGUOUS_AFTER_SEND' || job.lastStage!=='WRITE_COMPLETED' || job.lastCode!=='PRINT_DEVICE_ACK_UNAVAILABLE'){
+  console.error('R1B_M07_COMPLETION_CORRELATION_NOT_APPLIED', value); process.exit(1);
+}
+console.log('M07_COMPLETION_CORRELATION_GREEN');
 NODE
 capture_android m07-before-restart
 
@@ -183,7 +186,13 @@ const job=value?.value?.lastJob;
 if(!job || job.canonicalPrintJobId!=='cpj-ring1b-m07-001' || job.dispatchAttemptId!=='dispatch-ring1b-m07-gateway-001'){
   console.error('R1B_M07_RESTART_READBACK_MISMATCH', value); process.exit(1);
 }
-console.log('M07_RESTART_READBACK_GREEN');
+if(job?.target?.kind!=='LAN' || job?.target?.endpointId!=='ring1b-sink'){
+  console.error('R1B_M07_RESTART_ROUTE_DEVICE_MISMATCH', value); process.exit(1);
+}
+if(job.state!=='AMBIGUOUS_AFTER_SEND' || job.lastStage!=='WRITE_COMPLETED' || job.lastCode!=='PRINT_DEVICE_ACK_UNAVAILABLE'){
+  console.error('R1B_M07_RESTART_CERTAINTY_MISMATCH', value); process.exit(1);
+}
+console.log('M07_RESTART_CERTAINTY_READBACK_GREEN');
 NODE
 capture_android m07-after-restart
 
@@ -400,7 +409,7 @@ capture_android m08-final
 cat > "$EVIDENCE_DIR/m07-m08-reality-summary.txt" <<EOF
 source_sha=$SOURCE_SHA
 M07_TIMEOUT=OUTCOME_UNKNOWN/LAN_NATIVE_RESULT_TIMEOUT
-M07_GATEWAY=canonicalPrintJobId+dispatchAttemptId+route/device persisted
+M07_GATEWAY=canonicalPrintJobId+dispatchAttemptId+route/device persisted\nM07_COMPLETION_CORRELATION=AMBIGUOUS_AFTER_SEND/WRITE_COMPLETED/PRINT_DEVICE_ACK_UNAVAILABLE
 M07_RESTART=readback preserved
 M07_WEBVIEW_EXCEPTION_GUARD=R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION deterministic RED
 M08_OUTBOX=PENDING read-only snapshot
