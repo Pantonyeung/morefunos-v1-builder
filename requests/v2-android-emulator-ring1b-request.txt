@@ -1,6 +1,8 @@
-source_sha=84529d96d50fb1f432907ecb4348c2f5d034e54a
-requested_by=WORKER_A_858_WEBVIEW83_INTL_COMPAT_PROOF
+source_sha=36eebad15e4b3ad7713eaa9f8cc17dcaa855d9ad
+requested_by=WORKER_A_862_M02_AUTH_DEFERRED_DISCOVERY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-webview83-intl-20260919-01
+request_nonce=862-m02-auth-deferred-discovery-01
+scenario_path=
+selector_map_path=
