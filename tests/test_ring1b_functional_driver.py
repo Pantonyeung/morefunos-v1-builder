@@ -413,6 +413,60 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
             self.assertFalse(summary["recovered"])
             self.assertEqual([item["readback_count"] for item in summary["attempts"]], [3, 3])
 
+    def test_ui_hierarchy_null_root_recovers_within_bounded_attempts(self):
+        missing = "cat: /sdcard/r1b.xml: No such file or directory\n"
+        null_root = "ERROR: null root node returned by UiTestAutomationBridge.\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [
+                    {"payload": missing, "dump_stderr": null_root},
+                    {"payload": missing, "dump_stderr": null_root},
+                    {"payload": missing, "dump_stderr": null_root},
+                    {"payload": missing, "dump_stderr": null_root},
+                    {"payload": missing, "dump_stderr": null_root},
+                    {"payload": read("ui-before.xml")},
+                ],
+                max_attempts=6,
+            )
+            obs = backend.observe()
+            self.assertIn("Rice Ball", obs.ui_xml)
+            self.assertEqual(backend.dump_calls, 6)
+            summary = json.loads(
+                (Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertTrue(summary["recovered"])
+            self.assertEqual(
+                [item["classification"] for item in summary["attempts"]],
+                ["root_not_materialized"] * 5 + ["valid_xml"],
+            )
+
+    def test_ui_hierarchy_persistent_null_root_remains_deterministic_red(self):
+        missing = "cat: /sdcard/r1b.xml: No such file or directory\n"
+        null_root = "ERROR: null root node returned by UiTestAutomationBridge.\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = ScriptedAdbBackend(
+                tmp,
+                [{"payload": missing, "dump_stderr": null_root}] * 6,
+                max_attempts=6,
+            )
+            with self.assertRaises(UiHierarchyUnavailable) as ctx:
+                backend.observe()
+            self.assertIn("attempts=6/6", ctx.exception.summary)
+            self.assertIn("root_not_materialized", ctx.exception.summary)
+            summary = json.loads(
+                (Path(tmp) / "ui-hierarchy-observation" / "observation-0001" / "summary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertFalse(summary["recovered"])
+            self.assertEqual(
+                [item["classification"] for item in summary["attempts"]],
+                ["root_not_materialized"] * 6,
+            )
+
     def test_ui_hierarchy_non_xml_readback_is_bounded_unavailable(self):
         with tempfile.TemporaryDirectory() as tmp:
             backend = ScriptedAdbBackend(tmp, [{"payload": "UI hierarchy unavailable"}], max_attempts=1)

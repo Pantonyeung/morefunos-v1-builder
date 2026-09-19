@@ -25,7 +25,7 @@ class AdbBackend:
         main_activity: str,
         evidence_dir: str | Path,
         *,
-        hierarchy_max_attempts: int = 4,
+        hierarchy_max_attempts: int = 6,
         hierarchy_retry_ms: int = 500,
         hierarchy_readback_max_attempts: int = 3,
         hierarchy_readback_retry_ms: int = 250,
@@ -121,6 +121,15 @@ class AdbBackend:
     def _file_absent(result: Dict[str, Any], payload: str) -> bool:
         message = f"{payload}\n{result['stderr']}"
         return "No such file or directory" in message
+
+    @staticmethod
+    def _dump_classification(result: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        message = f"{result['stdout']}\n{result['stderr']}"
+        if "null root node returned by UiTestAutomationBridge" in message:
+            return "root_not_materialized", "UIAutomator accessibility root is not materialized"
+        if result["timed_out"] or result["returncode"] != 0:
+            return "dump_failure", "uiautomator dump failed or timed out"
+        return None
 
     def _write_attempt_evidence(self, observation_dir: Path, attempt: Dict[str, Any]) -> None:
         attempt_dir = observation_dir / f"attempt-{attempt['attempt']:02d}"
@@ -256,8 +265,9 @@ class AdbBackend:
                     if readback_no < self.hierarchy_readback_max_attempts and self.hierarchy_readback_retry_ms:
                         self.sleep(self.hierarchy_readback_retry_ms / 1000.0)
 
-                if dump_result["timed_out"] or dump_result["returncode"] != 0:
-                    classification, detail = "dump_failure", "uiautomator dump failed or timed out"
+                dump_classification = self._dump_classification(dump_result)
+                if dump_classification is not None:
+                    classification, detail = dump_classification
                 else:
                     classification = readback_results[-1]["classification"]
                     detail = readback_results[-1]["detail"]
