@@ -4,6 +4,6 @@ api_level=30
 arch=x86_64
 mode=HEADLESS
 reality_probe=M07_M08
-request_nonce=863-m07-m08-exact-source-replay-r2-01
+request_nonce=863-m07-m08-exact-source-replay-r2-02
 scenario_path=
 selector_map_path=
