@@ -1,8 +1,8 @@
-source_sha=fd634b0553798e57e906c5f226cf363deb53c0c0
+source_sha=875d47a9ad0e52a9219c4cb4e7ffe2d20e6738e5
 requested_by=WORKER_A_862_M03_UI_HIERARCHY_RETRY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=862-m03-uihierarchy-retry-fd634b-r5
+request_nonce=862-m03-webview83-combo-reachability-r6
 scenario_path=manifests/862-m03-auth-deferred-cart-combo-quote.json
 selector_map_path=manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json
