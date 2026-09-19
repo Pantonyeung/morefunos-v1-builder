@@ -1,17 +1,50 @@
 {
   "schema_version": 1,
   "selectors": {
-    "auth_deferred": {"text": "AUTH_DEFERRED provenance"},
-    "menu_category": {"text": "開發驗證餐點"},
-    "product_riceball": {"text": "商品 紫米飯糰"},
-    "cart_empty": {"text": "購物車未有商品"},
-    "product_config": {"text": "設定 紫米飯糰"},
-    "required_missing": {"text": "1 項必選未完成"},
-    "option_nori": {"text": "選項 紫菜"},
-    "modifier_ready": {"text": "可以加入"},
-    "confirm_add": {"text": "確認加入"},
-    "cart_product": {"text": "購物車商品 紫米飯糰"},
-    "cart_note": {"text": "紫菜"},
-    "cart_total_50": {"text": "$50"}
+    "auth_deferred": {
+      "text": "AUTH_DEFERRED provenance"
+    },
+    "menu_category": {
+      "text": "開發驗證餐點"
+    },
+    "product_riceball": {
+      "text": "商品 紫米飯糰"
+    },
+    "cart_empty": {
+      "text": "購物車未有商品"
+    },
+    "product_config": {
+      "text": "設定 紫米飯糰"
+    },
+    "required_missing": {
+      "text": "1 項必選未完成"
+    },
+    "option_nori": {
+      "text": "選項 紫菜"
+    },
+    "modifier_ready": {
+      "text": "可以加入"
+    },
+    "confirm_add": {
+      "text": "確認加入"
+    },
+    "cart_product": {
+      "text": "購物車商品 紫米飯糰"
+    },
+    "cart_note": {
+      "text": "紫菜"
+    },
+    "cart_total_50": {
+      "text": "$50"
+    },
+    "frozen_checkpoint": {
+      "text": "CART_QUOTE_FROZEN"
+    },
+    "frozen_catalog": {
+      "text": "catalogRevision auth-deferred-catalog-r1"
+    },
+    "frozen_pricing_token": {
+      "text": "pricingRevisionToken auth-deferred-pricing-r1"
+    }
   }
 }
