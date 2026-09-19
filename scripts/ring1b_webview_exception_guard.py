@@ -10,7 +10,10 @@ from typing import Any, Dict, List, Optional
 
 R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION = "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION"
 
-_UNCAUGHT_RE = re.compile(r"\bUncaught\s+(?:[A-Za-z][A-Za-z0-9_.]*Error)\s*:", re.IGNORECASE)
+_UNCAUGHT_RE = re.compile(
+    r"\bUncaught(?:\s+\(in promise\))?\s+(?:[A-Za-z][A-Za-z0-9_.]*(?:Error|Exception))\s*:",
+    re.IGNORECASE,
+)
 _APP_SOURCE_RE = re.compile(
     r"(?P<source>"
     r"https?://appassets\.androidplatform\.net/(?:assets|baseline)(?:/[^\s\"'),]+)*"
@@ -18,7 +21,10 @@ _APP_SOURCE_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
-_EXCEPTION_TEXT_RE = re.compile(r"(?P<exception>Uncaught\s+(?:[A-Za-z][A-Za-z0-9_.]*Error)\s*:[^\r\n\"]+)", re.IGNORECASE)
+_EXCEPTION_TEXT_RE = re.compile(
+    r"(?P<exception>Uncaught(?:\s+\(in promise\))?\s+(?:[A-Za-z][A-Za-z0-9_.]*(?:Error|Exception))\s*:[^\r\n\"]+)",
+    re.IGNORECASE,
+)
 
 
 def detect_app_webview_uncaught(log_text: str) -> Optional[Dict[str, Any]]:
