@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APK_PATH="\${1:?APK path required}"
-SOURCE_SHA="\${2:?source SHA required}"
-EVIDENCE_DIR="\${3:?evidence dir required}"
-SCENARIO_PATH="\${4:-}"
-SELECTOR_MAP_PATH="\${5:-}"
-WORKSPACE="\${GITHUB_WORKSPACE:-\$(pwd)}"
+APK_PATH="${1:?APK path required}"
+SOURCE_SHA="${2:?source SHA required}"
+EVIDENCE_DIR="${3:?evidence dir required}"
+SCENARIO_PATH="${4:-}"
+SELECTOR_MAP_PATH="${5:-}"
+WORKSPACE="${GITHUB_WORKSPACE:-$(pwd)}"
 
 mkdir -p "$EVIDENCE_DIR"
 
