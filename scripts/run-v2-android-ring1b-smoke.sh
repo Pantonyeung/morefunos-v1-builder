@@ -6,6 +6,9 @@ SOURCE_SHA="${2:?source SHA required}"
 EVIDENCE_DIR="${3:-$GITHUB_WORKSPACE/ring1b-evidence}"
 PACKAGE_ID="com.morefunos.smt"
 MAIN_ACTIVITY=".MainActivity"
+WORKSPACE="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+WEBVIEW_EXCEPTION_GUARD="$WORKSPACE/scripts/ring1b_webview_exception_guard.py"
+WEBVIEW_EXCEPTION_SEEN=0
 
 mkdir -p "$EVIDENCE_DIR"
 RESULT="FAIL"
@@ -65,7 +68,29 @@ assert_no_recovery_fault() {
   fi
 }
 
+record_app_webview_uncaught() {
+  local label="$1"
+  local log_file="$2"
+  local output_json="$EVIDENCE_DIR/webview-uncaught-$label.json"
+  local rc=0
+
+  if python3 "$WEBVIEW_EXCEPTION_GUARD" "$log_file" --label "$label" --output-json "$output_json"; then
+    return 0
+  else
+    rc=$?
+  fi
+
+  if [[ "$rc" -eq 1 ]]; then
+    WEBVIEW_EXCEPTION_SEEN=1
+    return 0
+  fi
+
+  echo "RING1B_WEBVIEW_EXCEPTION_GUARD_ERROR_$label" >&2
+  exit 25
+}
+
 test -s "$APK_PATH"
+test -s "$WEBVIEW_EXCEPTION_GUARD"
 adb wait-for-device
 adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done' >/dev/null 2>&1 || true
 
@@ -86,6 +111,7 @@ test -n "$PID1"
 echo "$PID1" > "$EVIDENCE_DIR/pid-1.txt"
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen-launch-1.png"
 adb logcat -d --pid="$PID1" -v threadtime > "$EVIDENCE_DIR/logcat-launch-1.txt" 2>&1 || true
+record_app_webview_uncaught "launch-1" "$EVIDENCE_DIR/logcat-launch-1.txt"
 assert_no_recovery_fault "launch-1"
 
 if grep -Eq 'FATAL EXCEPTION|ANR in com\.morefunos\.smt|Process: com\.morefunos\.smt.*has died' "$EVIDENCE_DIR/logcat-launch-1.txt"; then
@@ -108,6 +134,7 @@ test -n "$PID2"
 echo "$PID2" > "$EVIDENCE_DIR/pid-2.txt"
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen-launch-2.png"
 adb logcat -d --pid="$PID2" -v threadtime > "$EVIDENCE_DIR/logcat-launch-2.txt" 2>&1 || true
+record_app_webview_uncaught "launch-2" "$EVIDENCE_DIR/logcat-launch-2.txt"
 assert_no_recovery_fault "launch-2"
 
 if grep -Eq 'FATAL EXCEPTION|ANR in com\.morefunos\.smt|Process: com\.morefunos\.smt.*has died' "$EVIDENCE_DIR/logcat-launch-2.txt"; then
@@ -117,5 +144,11 @@ fi
 
 # Require the intended activity to be present in the current task stack.
 adb shell dumpsys activity activities | grep -F 'com.morefunos.smt/.MainActivity' > "$EVIDENCE_DIR/main-activity-check.txt"
+
+if [[ "$WEBVIEW_EXCEPTION_SEEN" -ne 0 ]]; then
+  echo "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION" >&2
+  echo "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION" > "$EVIDENCE_DIR/failure-code.txt"
+  exit 24
+fi
 
 echo "RING1B_ANDROID_EMULATOR_SMOKE_GREEN"
