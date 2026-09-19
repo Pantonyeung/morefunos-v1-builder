@@ -1,0 +1,202 @@
+name: V2 Android Emulator Ring1B
+
+on:
+  push:
+    paths:
+      - 'requests/v2-android-emulator-ring1b-request.txt'
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact Morefun-v2 source SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  ring1b:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Publish Ring1B pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=pending \
+            -f context='builder/v2-android-emulator-ring1b' \
+            -f description='Android Ring1B emulator running' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact source SHA
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          else
+            test -f requests/v2-android-emulator-ring1b-request.txt
+            SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-android-emulator-ring1b-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          fi
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact Morefun-v2 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Install source dependencies
+        working-directory: source
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund
+
+      - name: Install SMT app dependencies
+        working-directory: source/apps/smt-clean
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build SMT web bundle
+        working-directory: source/apps/smt-clean
+        run: npm run typecheck && npm run build
+
+      - name: Assemble debug Carrier APK
+        working-directory: source
+        run: gradle -p apps/smt-android :app:assembleDebug --no-daemon
+
+      - name: Require debug APK
+        working-directory: source
+        shell: bash
+        run: test -s apps/smt-android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          ls -l /dev/kvm
+
+      - name: Android 8.1 headless virtual tablet smoke
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 27
+          target: default
+          arch: x86_64
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: >-
+            -no-window
+            -no-snapshot
+            -noaudio
+            -no-boot-anim
+            -gpu swiftshader_indirect
+            -camera-back none
+            -camera-front none
+            -skin 1920x1080
+          script: >-
+            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b-smoke.sh"
+            "$GITHUB_WORKSPACE/source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
+            "${{ steps.request.outputs.source_sha }}"
+            "$GITHUB_WORKSPACE/ring1b-evidence"
+
+      - name: Upload Ring1B evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-android-ring1b-${{ steps.request.outputs.source_sha }}
+          path: ring1b-evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload Ring1B debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-android-ring1b-debug-apk-${{ steps.request.outputs.source_sha }}
+          path: source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish Ring1B success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=success \
+            -f context='builder/v2-android-emulator-ring1b' \
+            -f description='Android Ring1B emulator passed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+      - name: Publish Ring1B failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh api --method POST "/repos/${{ github.repository }}/statuses/$SHA" \
+            -f state=failure \
+            -f context='builder/v2-android-emulator-ring1b' \
+            -f description='Android Ring1B emulator failed' \
+            -f target_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
