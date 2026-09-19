@@ -10,6 +10,16 @@ on:
         description: Exact Morefun-v2 source SHA
         required: true
         type: string
+      scenario_path:
+        description: Optional Builder-relative Ring1B functional scenario manifest path
+        required: false
+        default: ''
+        type: string
+      selector_map_path:
+        description: Optional Builder-relative API30 selector map path
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: v2-android-emulator-ring1b
@@ -41,22 +51,52 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Resolve exact source SHA
+      - name: Resolve exact source and functional inputs
         id: request
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_SCENARIO_PATH: ${{ inputs.scenario_path }}
+          INPUT_SELECTOR_MAP_PATH: ${{ inputs.selector_map_path }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            SCENARIO_PATH="$(printf '%s' "$INPUT_SCENARIO_PATH" | xargs)"
+            SELECTOR_MAP_PATH="$(printf '%s' "$INPUT_SELECTOR_MAP_PATH" | xargs)"
           else
             test -f requests/v2-android-emulator-ring1b-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-android-emulator-ring1b-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            SCENARIO_PATH="$(sed -n 's/^scenario_path=//p' requests/v2-android-emulator-ring1b-request.txt | xargs)"
+            SELECTOR_MAP_PATH="$(sed -n 's/^selector_map_path=//p' requests/v2-android-emulator-ring1b-request.txt | xargs)"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$SCENARIO_PATH" || -n "$SELECTOR_MAP_PATH" ]]; then
+            test -n "$SCENARIO_PATH"
+            test -n "$SELECTOR_MAP_PATH"
+            [[ "$SCENARIO_PATH" != /* && "$SCENARIO_PATH" != *..* ]]
+            [[ "$SELECTOR_MAP_PATH" != /* && "$SELECTOR_MAP_PATH" != *..* ]]
+            test -s "$SCENARIO_PATH"
+            test -s "$SELECTOR_MAP_PATH"
+          fi
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "scenario_path=$SCENARIO_PATH" >> "$GITHUB_OUTPUT"
+          echo "selector_map_path=$SELECTOR_MAP_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Ring1B functional driver self-check
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ring1b-evidence
+          python3 -m unittest discover -s tests -p 'test_ring1b_functional_driver.py' -v \
+            2>&1 | tee ring1b-evidence/functional-driver-selfcheck.txt
+          python3 scripts/ring1b_functional_driver.py \
+            --manifest tests/fixtures/synthetic-manifest.json \
+            --selector-map tests/fixtures/synthetic-selectors.json \
+            --evidence-dir ring1b-evidence/selfcheck-validate \
+            --validate-only \
+            2>&1 | tee ring1b-evidence/functional-manifest-validation.txt
 
       - name: Require V2 source credential
         shell: bash
@@ -136,7 +176,7 @@ jobs:
           test -e /dev/kvm
           ls -l /dev/kvm
 
-      - name: Android 11 headless virtual tablet smoke
+      - name: Android 11 headless virtual tablet Ring1B
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 30
@@ -158,10 +198,12 @@ jobs:
             -camera-front none
             -skin 1920x1080
           script: >-
-            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b-smoke.sh"
+            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b.sh"
             "$GITHUB_WORKSPACE/source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
             "${{ steps.request.outputs.source_sha }}"
             "$GITHUB_WORKSPACE/ring1b-evidence"
+            "${{ steps.request.outputs.scenario_path }}"
+            "${{ steps.request.outputs.selector_map_path }}"
 
       - name: Upload Ring1B evidence
         if: always()
