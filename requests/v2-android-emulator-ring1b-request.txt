@@ -1,6 +1,6 @@
-source_sha=fb156eb73e587e69b17a717777419798e95aff67
-requested_by=WORKER_A_857_WEBVIEW83_PORT_PROOF
+source_sha=84529d96d50fb1f432907ecb4348c2f5d034e54a
+requested_by=WORKER_A_858_WEBVIEW83_INTL_COMPAT_PROOF
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-webview83-20260919-01
+request_nonce=ring1b-webview83-intl-20260919-01
