@@ -1,6 +1,7 @@
-source_sha=84529d96d50fb1f432907ecb4348c2f5d034e54a
-requested_by=WORKER_A_858_WEBVIEW83_INTL_COMPAT_PROOF
+source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
+requested_by=WORKER_B_863_M07_M08_ANDROID_REALITY_PROOF
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-webview83-intl-20260919-01
+reality_probe=M07_M08
+request_nonce=ring1b-m07-m08-reality-20260919-01
