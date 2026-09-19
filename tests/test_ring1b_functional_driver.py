@@ -105,6 +105,15 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         self.assertEqual(result["result"], "GREEN")
         self.assertEqual(green_backend.taps, [(250, 200)])
 
+    def test_preexisting_expected_state_does_not_hide_noop_tap(self):
+        tap_step = self.manifest["steps"][1]
+        manifest = dict(self.manifest)
+        manifest["steps"] = [tap_step]
+        driver = FunctionalDriver(manifest, self.selectors, FakeBackend([self.after, self.after, self.after]))
+        with self.assertRaises(DriverFailure) as ctx:
+            driver.run()
+        self.assertEqual(ctx.exception.code, R1B_ACTION_NO_STATE_CHANGE)
+
     def test_selector_not_found_has_stable_code(self):
         selectors = dict(self.selectors)
         selectors["missing_target"] = {"resource_id": "com.synthetic:id/missing"}
