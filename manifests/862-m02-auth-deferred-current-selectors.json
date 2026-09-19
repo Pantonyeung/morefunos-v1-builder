@@ -7,7 +7,7 @@
     "cart_empty": {"text": "購物車未有商品"},
     "product_config": {"content_desc": "設定 紫米飯糰"},
     "required_missing": {"text": "1 項必選未完成"},
-    "option_nori": {"text": "紫菜"},
+    "option_nori": {"text": "紫菜 價格按結帳計算"},
     "modifier_ready": {"text": "可以加入"},
     "confirm_add": {"text": "確認加入"},
     "cart_note": {"text": "紫菜"},
