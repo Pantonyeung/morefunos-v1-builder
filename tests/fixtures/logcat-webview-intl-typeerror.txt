@@ -1,0 +1,2 @@
+09-19 11:31:08.001  5177  5177 I chromium: [INFO:CONSOLE(1)] "startup", source: https://appassets.androidplatform.net/assets/assets/index-CFasgcuH.js (1)
+09-19 11:31:08.117  5177  5177 E chromium: [ERROR:CONSOLE(1)] "Uncaught TypeError: Intl.supportedValuesOf is not a function", source: https://appassets.androidplatform.net/assets/assets/index-CFasgcuH.js (1)
