@@ -20,9 +20,14 @@ on:
         required: false
         default: ''
         type: string
+      reality_probe:
+        description: Optional bounded native reality probe
+        required: false
+        default: ''
+        type: string
 
 concurrency:
-  group: v2-android-emulator-ring1b
+  group: v2-android-emulator-ring1b-m07-m08-863-workerb
   cancel-in-progress: true
 
 permissions:
@@ -59,17 +64,20 @@ jobs:
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
           INPUT_SCENARIO_PATH: ${{ inputs.scenario_path }}
           INPUT_SELECTOR_MAP_PATH: ${{ inputs.selector_map_path }}
+          INPUT_REALITY_PROBE: ${{ inputs.reality_probe }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SOURCE_SHA="$(printf '%s' "$INPUT_SOURCE_SHA" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             SCENARIO_PATH="$(printf '%s' "$INPUT_SCENARIO_PATH" | xargs)"
             SELECTOR_MAP_PATH="$(printf '%s' "$INPUT_SELECTOR_MAP_PATH" | xargs)"
+            REALITY_PROBE="$(printf '%s' "$INPUT_REALITY_PROBE" | xargs)"
           else
             test -f requests/v2-android-emulator-ring1b-request.txt
             SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/v2-android-emulator-ring1b-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
             SCENARIO_PATH="$(sed -n 's/^scenario_path=//p' requests/v2-android-emulator-ring1b-request.txt | xargs)"
             SELECTOR_MAP_PATH="$(sed -n 's/^selector_map_path=//p' requests/v2-android-emulator-ring1b-request.txt | xargs)"
+            REALITY_PROBE="$(sed -n 's/^reality_probe=//p' requests/v2-android-emulator-ring1b-request.txt | xargs)"
           fi
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$SCENARIO_PATH" || -n "$SELECTOR_MAP_PATH" ]]; then
@@ -82,7 +90,12 @@ jobs:
           fi
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "scenario_path=$SCENARIO_PATH" >> "$GITHUB_OUTPUT"
+          if [[ -n "$REALITY_PROBE" && "$REALITY_PROBE" != "M07_M08" ]]; then
+            echo "R1B_REALITY_PROBE_INVALID" >&2
+            exit 44
+          fi
           echo "selector_map_path=$SELECTOR_MAP_PATH" >> "$GITHUB_OUTPUT"
+          echo "reality_probe=$REALITY_PROBE" >> "$GITHUB_OUTPUT"
 
       - name: Ring1B functional driver self-check
         shell: bash
@@ -91,6 +104,9 @@ jobs:
           mkdir -p ring1b-evidence
           python3 -m unittest discover -s tests -p 'test_ring1b_functional_driver.py' -v \
             2>&1 | tee ring1b-evidence/functional-driver-selfcheck.txt
+          python3 -m unittest discover -s tests -p 'test_ring1b_webview_exception_guard.py' -v \
+            2>&1 | tee ring1b-evidence/webview-exception-guard-selfcheck.txt
+          python3 -m py_compile scripts/ring1b_m07_m08_reality_probe.py
           python3 scripts/ring1b_functional_driver.py \
             --manifest tests/fixtures/synthetic-manifest.json \
             --selector-map tests/fixtures/synthetic-selectors.json \
@@ -157,6 +173,10 @@ jobs:
         working-directory: source/apps/smt-clean
         run: npm run typecheck && npm run build
 
+      - name: Run M07 Android gateway correlation unit test
+        working-directory: source
+        run: gradle -p apps/smt-android :app:testDebugUnitTest --tests com.morefunos.smt.PrintCommandControllerTest --no-daemon
+
       - name: Assemble debug Carrier APK
         working-directory: source
         run: gradle -p apps/smt-android :app:assembleDebug --no-daemon
@@ -204,6 +224,7 @@ jobs:
             "$GITHUB_WORKSPACE/ring1b-evidence"
             "${{ steps.request.outputs.scenario_path }}"
             "${{ steps.request.outputs.selector_map_path }}"
+            "${{ steps.request.outputs.reality_probe }}"
 
       - name: Upload Ring1B evidence
         if: always()
