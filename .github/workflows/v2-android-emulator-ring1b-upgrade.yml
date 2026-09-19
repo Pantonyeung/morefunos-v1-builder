@@ -1,0 +1,263 @@
+name: V2 Android Emulator Ring1B Legacy Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      legacy_source_sha:
+        description: Exact legacy Morefun-v2 source SHA
+        required: true
+        default: a64c72c9160e9c116db2e8ff99e54223f6bd8e2f
+        type: string
+      repaired_source_sha:
+        description: Exact repaired Morefun-v2 source SHA
+        required: true
+        type: string
+
+concurrency:
+  group: v2-android-ring1b-upgrade-${{ inputs.repaired_source_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-apks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validate exact source identities
+        shell: bash
+        env:
+          LEGACY_SOURCE_SHA: ${{ inputs.legacy_source_sha }}
+          REPAIRED_SOURCE_SHA: ${{ inputs.repaired_source_sha }}
+        run: |
+          set -euo pipefail
+          test "$LEGACY_SOURCE_SHA" = "a64c72c9160e9c116db2e8ff99e54223f6bd8e2f"
+          [[ "$REPAIRED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$REPAIRED_SOURCE_SHA" != "$LEGACY_SOURCE_SHA"
+
+      - name: Ring1B upgrade harness self-check
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_ring1b_*.py' -v
+          python3 scripts/ring1b_functional_driver.py \
+            --manifest manifests/867-chain3-legacy-upgrade-pending.json \
+            --selector-map manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json \
+            --evidence-dir ring1b-upgrade-selfcheck \
+            --validate-only
+
+      - name: Require V2 source credential
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+      - name: Checkout exact legacy source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ inputs.legacy_source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: legacy-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout exact repaired source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ inputs.repaired_source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: repaired-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact source checkouts
+        shell: bash
+        env:
+          LEGACY_SOURCE_SHA: ${{ inputs.legacy_source_sha }}
+          REPAIRED_SOURCE_SHA: ${{ inputs.repaired_source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C legacy-source rev-parse HEAD)" = "$LEGACY_SOURCE_SHA"
+          test "$(git -C repaired-source rev-parse HEAD)" = "$REPAIRED_SOURCE_SHA"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Build exact legacy APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix legacy-source --no-save --ignore-scripts --no-audit --no-fund
+          npm install --prefix legacy-source/apps/smt-clean --ignore-scripts --no-audit --no-fund
+          npm run typecheck --prefix legacy-source/apps/smt-clean
+          npm run build --prefix legacy-source/apps/smt-clean
+          gradle -p legacy-source/apps/smt-android :app:assembleDebug --no-daemon
+          mkdir -p upgrade-apks
+          cp legacy-source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk upgrade-apks/legacy.apk
+
+      - name: Build exact repaired APK with the same debug signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix repaired-source --no-save --ignore-scripts --no-audit --no-fund
+          npm install --prefix repaired-source/apps/smt-clean --ignore-scripts --no-audit --no-fund
+          npm run typecheck --prefix repaired-source/apps/smt-clean
+          npm run build --prefix repaired-source/apps/smt-clean
+          gradle -p repaired-source/apps/smt-android :app:assembleDebug --no-daemon
+          cp repaired-source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk upgrade-apks/repaired.apk
+
+      - name: Verify package and signer continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$APKSIGNER" verify --print-certs upgrade-apks/legacy.apk | tee upgrade-apks/legacy-signing.txt
+          "$APKSIGNER" verify --print-certs upgrade-apks/repaired.apk | tee upgrade-apks/repaired-signing.txt
+          LEGACY_CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' upgrade-apks/legacy-signing.txt)"
+          REPAIRED_CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' upgrade-apks/repaired-signing.txt)"
+          test -n "$LEGACY_CERT"
+          test "$LEGACY_CERT" = "$REPAIRED_CERT"
+          "$AAPT" dump badging upgrade-apks/legacy.apk | head -n 1 | tee upgrade-apks/legacy-package.txt
+          "$AAPT" dump badging upgrade-apks/repaired.apk | head -n 1 | tee upgrade-apks/repaired-package.txt
+          LEGACY_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" upgrade-apks/legacy-package.txt)"
+          REPAIRED_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" upgrade-apks/repaired-package.txt)"
+          test "$LEGACY_PACKAGE" = "com.morefunos.smt"
+          test "$REPAIRED_PACKAGE" = "$LEGACY_PACKAGE"
+          sha256sum upgrade-apks/legacy.apk upgrade-apks/repaired.apk | tee upgrade-apks/sha256.txt
+
+      - name: Upload exact upgrade APK pair
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-ring1b-upgrade-apks-${{ inputs.repaired_source_sha }}
+          path: upgrade-apks
+          if-no-files-found: error
+          retention-days: 7
+
+  upgrade-custody:
+    needs: build-apks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [PENDING, COMMITTING, SETTLED]
+    steps:
+      - name: Checkout Builder definition
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact legacy source for fixture gate
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/Morefun-v2
+          ref: ${{ inputs.legacy_source_sha }}
+          token: ${{ secrets.V2_SOURCE_READ_TOKEN }}
+          path: legacy-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify fixture-gate legacy source identity
+        shell: bash
+        env:
+          LEGACY_SOURCE_SHA: ${{ inputs.legacy_source_sha }}
+        run: |
+          set -euo pipefail
+          test "$LEGACY_SOURCE_SHA" = "a64c72c9160e9c116db2e8ff99e54223f6bd8e2f"
+          test "$(git -C legacy-source rev-parse HEAD)" = "$LEGACY_SOURCE_SHA"
+
+      - name: Download exact upgrade APK pair
+        uses: actions/download-artifact@v5
+        with:
+          name: v2-ring1b-upgrade-apks-${{ inputs.repaired_source_sha }}
+          path: upgrade-apks
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Setup Android platform tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+
+      - name: Android 11 preserved-data upgrade custody
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: >-
+            -no-window
+            -no-snapshot
+            -noaudio
+            -no-boot-anim
+            -gpu swiftshader_indirect
+            -camera-back none
+            -camera-front none
+            -skin 1920x1080
+          script: >-
+            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b-upgrade.sh"
+            "$GITHUB_WORKSPACE/upgrade-apks/legacy.apk"
+            "$GITHUB_WORKSPACE/upgrade-apks/repaired.apk"
+            "${{ inputs.legacy_source_sha }}"
+            "${{ inputs.repaired_source_sha }}"
+            "${{ matrix.state }}"
+            "$GITHUB_WORKSPACE/ring1b-upgrade-evidence/${{ matrix.state }}"
+            "manifests/867-chain3-legacy-upgrade-pending.json"
+            "manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json"
+            "$GITHUB_WORKSPACE/legacy-source"
+
+      - name: Upload upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-ring1b-upgrade-${{ matrix.state }}-${{ inputs.repaired_source_sha }}
+          path: ring1b-upgrade-evidence/${{ matrix.state }}
+          if-no-files-found: warn
+          retention-days: 30
