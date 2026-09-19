@@ -21,9 +21,15 @@ if [[ -n "$REALITY_PROBE" ]]; then
     echo "R1B_REALITY_PROBE_INVALID" >&2
     exit 44
   fi
+  EXACT_PRINT_TRANSPORT_JS="$EVIDENCE_DIR/m07-m08-reality/exact-print-transport.js"
+  node "$WORKSPACE/scripts/ring1b_compile_exact_print_transport.mjs" \
+    "$WORKSPACE/source/packages/print/android-native-print-transport.ts" \
+    "$EXACT_PRINT_TRANSPORT_JS"
   python3 "$WORKSPACE/scripts/ring1b_m07_m08_reality_probe.py" \
     "$EVIDENCE_DIR/m07-m08-reality" \
-    "$APK_PATH"
+    "$APK_PATH" \
+    "$SOURCE_SHA" \
+    "$EXACT_PRINT_TRANSPORT_JS"
 fi
 
 if [[ -z "$SCENARIO_PATH" && -z "$SELECTOR_MAP_PATH" ]]; then
