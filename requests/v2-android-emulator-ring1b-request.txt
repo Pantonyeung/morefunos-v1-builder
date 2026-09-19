@@ -1,0 +1,5 @@
+source_sha=28e1bb050bcac500dbc2e04ceccd094d658b882a
+requested_by=OWNER_RING1B_ANDROID_EMULATOR
+api_level=27
+arch=x86_64
+mode=HEADLESS
