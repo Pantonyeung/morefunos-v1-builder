@@ -1,6 +1,8 @@
-source_sha=13f9d956f71072348865b303f8bec5452471ec54
-requested_by=OWNER_RING1B_FUNCTIONAL_GUARD
+source_sha=4e77fc36f780c7f8920136a7e933b75b3580cb37
+requested_by=WORKER_B_RING1B_FUNCTIONAL_DRIVER
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-functional-001
+scenario_path=
+selector_map_path=
+request_nonce=ring1b-functional-driver-candidate-001
