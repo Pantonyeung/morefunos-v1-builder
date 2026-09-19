@@ -152,6 +152,45 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         result = driver.run()
         self.assertEqual(result["result"], "GREEN")
 
+    def test_tap_expectation_already_true_still_requires_transition(self):
+        step = {
+            "id": "tap-product-again",
+            "action": "tap",
+            "target": "product_tile",
+            "expect": {"present": ["cart_line"]},
+            "timeout_ms": 50,
+        }
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        driver = FunctionalDriver(manifest, self.selectors, FakeBackend([self.after, self.after, self.after]))
+        with self.assertRaises(DriverFailure) as ctx:
+            driver.run()
+        self.assertEqual(ctx.exception.code, R1B_ACTION_NO_STATE_CHANGE)
+
+    def test_restart_modes_preserve_reset_and_recover_are_asserted(self):
+        cases = [
+            ("PRESERVE", self.after, self.after, ["cart_line"], ["cart_line"]),
+            ("RESET_EXPECTED", self.after, self.before, ["cart_line"], ["product_tile"]),
+            ("RECOVER", self.after, self.before, ["cart_line"], ["product_tile"]),
+        ]
+        for mode, before, after, before_names, after_names in cases:
+            with self.subTest(mode=mode):
+                step = {
+                    "id": f"restart-{mode.lower()}",
+                    "action": "restart",
+                    "timeout_ms": 50,
+                    "persistence": {
+                        "mode": mode,
+                        "before": before_names,
+                        "after": after_names,
+                    },
+                }
+                manifest = dict(self.manifest)
+                manifest["steps"] = [step]
+                driver = FunctionalDriver(manifest, self.selectors, FakeBackend([before, after]))
+                result = driver.run()
+                self.assertEqual(result["result"], "GREEN")
+
     def test_selector_not_found_has_stable_code(self):
         selectors = dict(self.selectors)
         selectors["missing_target"] = {"resource_id": "com.synthetic:id/missing"}
