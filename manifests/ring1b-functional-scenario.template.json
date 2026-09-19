@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scenario_id": "replace-with-stage-scenario-id",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {"transition_ms": 5000, "poll_ms": 250},
+  "steps": [
+    {
+      "id": "boot-visible-ready",
+      "action": "launch",
+      "expect": {"present": ["BOOT_READY_SELECTOR_FROM_853"]}
+    },
+    {
+      "id": "first-real-action",
+      "action": "tap",
+      "target": "ACTION_SELECTOR_FROM_853",
+      "expect": {"present": ["EXPECTED_STATE_SELECTOR_FROM_853"]}
+    },
+    {
+      "id": "restart-check",
+      "action": "restart",
+      "persistence": {
+        "mode": "PRESERVE",
+        "before": ["EXPECTED_STATE_SELECTOR_FROM_853"],
+        "after": ["EXPECTED_STATE_SELECTOR_FROM_853"]
+      }
+    }
+  ]
+}
