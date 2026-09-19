@@ -1,5 +1,5 @@
-source_sha=94298962c497f53a3a8ab7aed7fe7da56f22c5b5
-request_id=DSP-003-A-852-STAGE2-FROZEN-QUOTE-GREEN-03
-run_id=35411007528
+source_sha=dddff3fa4b1ad8d55bf9acc742d853e7eb633b03
+request_id=DSP-004-A-855-STAGE2-AVAILABILITY-RED-01
+run_id=35413281507
 run_attempt=1
-conclusion=success
+conclusion=failure
