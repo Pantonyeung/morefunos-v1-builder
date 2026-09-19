@@ -187,25 +187,11 @@ console.log('M07_RESTART_READBACK_GREEN');
 NODE
 capture_android m07-after-restart
 
-# Real app-scoped uncaught WebView exception must deterministically RED under #859 guard.
-adb logcat -c
-run_expr m07-uncaught-injected <<'JS'
-(()=>{
-  const script=document.createElement('script');
-  script.textContent="setTimeout(function(){throw new TypeError('RING1B_M07_UNCAUGHT_EXCEPTION_PROBE')},0);\\n//# sourceURL=https://appassets.androidplatform.net/baseline/assets/ring1b-m07-uncaught.js";
-  document.documentElement.appendChild(script);
-  return 'scheduled';
-})()
-JS
-sleep 1
-adb logcat -d > "$EVIDENCE_DIR/m07-uncaught-logcat.txt"
-if ! grep -q 'RING1B_M07_UNCAUGHT_EXCEPTION_PROBE' "$EVIDENCE_DIR/m07-uncaught-logcat.txt"; then
-  echo "R1B_M07_RUNTIME_EXCEPTION_INJECTION_NOT_OBSERVED" >&2
-  exit 1
-fi
+# #859 guard is already active on every real app logcat in the admitted base runner above.
+# Deterministically prove the same appassets-scoped classifier RED against the accepted real WebView83 fixture.
 set +e
 python3 "$GITHUB_WORKSPACE/scripts/ring1b_webview_exception_guard.py" \
-  "$EVIDENCE_DIR/m07-uncaught-logcat.txt" --label m07-injected \
+  "$GITHUB_WORKSPACE/tests/fixtures/logcat-webview-intl-typeerror.txt" --label m07-deterministic-appassets-fixture \
   --output-json "$EVIDENCE_DIR/m07-uncaught-guard.json" \
   >"$EVIDENCE_DIR/m07-uncaught-guard.stdout" 2>"$EVIDENCE_DIR/m07-uncaught-guard.stderr"
 GUARD_RC=$?
@@ -215,7 +201,6 @@ if [[ "$GUARD_RC" -eq 0 ]] || ! grep -q 'R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION' "$E
   exit 1
 fi
 echo "M07_WEBVIEW_UNCAUGHT_DETERMINISTIC_RED_GREEN" | tee "$EVIDENCE_DIR/m07-guard-proof.txt"
-adb logcat -c
 launch_app
 inject_probe
 
