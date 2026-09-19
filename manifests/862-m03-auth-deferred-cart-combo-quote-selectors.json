@@ -53,7 +53,7 @@
       "text": "尚欠 1 項必選"
     },
     "combo_required_red": {
-      "text": "M03_COMBO_REQUIRED_SELECTION_MISSING"
+      "text": "可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。\nM03_COMBO_REQUIRED_SELECTION_MISSING"
     },
     "choice_combo_riceball": {
       "text": "套餐選項 紫米小飯糰"
