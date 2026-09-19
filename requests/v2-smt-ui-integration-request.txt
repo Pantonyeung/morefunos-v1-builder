@@ -1,2 +1,2 @@
-source_sha=dddff3fa4b1ad8d55bf9acc742d853e7eb633b03
-request_id=DSP-004-A-855-STAGE2-AVAILABILITY-RED-01
+source_sha=7652e7955a25712edab3dd4fa3687bd3cbe9e398
+request_id=DSP-004-A-855-STAGE2-AVAILABILITY-RED-02
