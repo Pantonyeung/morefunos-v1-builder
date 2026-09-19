@@ -136,11 +136,11 @@ jobs:
           test -e /dev/kvm
           ls -l /dev/kvm
 
-      - name: Android 8.1 headless virtual tablet smoke
+      - name: Android 11 headless virtual tablet smoke
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 27
-          target: default
+          api-level: 30
+          target: google_apis
           arch: x86_64
           cores: 2
           ram-size: 2048M
