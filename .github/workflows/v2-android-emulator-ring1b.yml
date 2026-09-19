@@ -106,6 +106,7 @@ jobs:
             2>&1 | tee ring1b-evidence/functional-driver-selfcheck.txt
           python3 -m unittest discover -s tests -p 'test_ring1b_webview_exception_guard.py' -v \
             2>&1 | tee ring1b-evidence/webview-exception-guard-selfcheck.txt
+          python3 -m py_compile scripts/ring1b_m07_m08_reality_probe.py
           python3 scripts/ring1b_functional_driver.py \
             --manifest tests/fixtures/synthetic-manifest.json \
             --selector-map tests/fixtures/synthetic-selectors.json \
