@@ -15,10 +15,23 @@
   ],
   "steps": [
     {
-      "id": "boot-auth-deferred-menu",
+      "id": "boot-local-sovereign-menu-with-core-d1-unavailable",
       "action": "launch",
       "expect": {
-        "present": ["auth_deferred", "menu_category", "product_riceball", "product_combo", "cart_empty"]
+        "present": [
+          "admin_config_revision_applied",
+          "admin_config_revision",
+          "smt_live_transaction_owner",
+          "core_connector_only",
+          "d1_transport_only",
+          "core_d1_unavailable",
+          "local_flow_admitted",
+          "menu_category",
+          "product_riceball",
+          "product_combo",
+          "cart_empty"
+        ],
+        "absent": ["auth_deferred", "config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority"]
       }
     },
     {
@@ -99,8 +112,8 @@
       "id": "observe-payment-methods",
       "action": "checkpoint",
       "expect": {
-        "present": ["chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
-        "absent": ["payment_request_transition", "store_commit_succeeded"]
+        "present": ["admin_config_revision_applied", "smt_live_transaction_owner", "core_d1_unavailable", "local_flow_admitted", "chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
+        "absent": ["config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority", "payment_request_transition", "store_commit_succeeded"]
       }
     },
     {
