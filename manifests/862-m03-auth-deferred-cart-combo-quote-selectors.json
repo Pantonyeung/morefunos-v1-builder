@@ -2,16 +2,16 @@
   "schema_version": 1,
   "selectors": {
     "auth_deferred": {
-      "content_desc": "AUTH_DEFERRED provenance"
+      "text": "AUTH_DEFERRED provenance"
     },
     "menu_category": {
       "text": "開發驗證餐點"
     },
     "product_riceball": {
-      "content_desc": "商品 紫米飯糰"
+      "text": "商品 紫米飯糰"
     },
     "product_combo": {
-      "content_desc": "商品 紫米套餐"
+      "text": "商品 紫米套餐"
     },
     "cart_empty": {
       "text": "購物車未有商品"
@@ -32,7 +32,7 @@
       "text": "確認加入"
     },
     "cart_product_riceball": {
-      "content_desc": "購物車商品 紫米飯糰"
+      "text": "購物車商品 紫米飯糰"
     },
     "cart_note_nori": {
       "text": "紫菜"
@@ -56,13 +56,13 @@
       "text": "M03_COMBO_REQUIRED_SELECTION_MISSING"
     },
     "choice_combo_riceball": {
-      "content_desc": "套餐選項 紫米小飯糰"
+      "text": "套餐選項 紫米小飯糰"
     },
     "choice_combo_snack": {
-      "content_desc": "套餐選項 香烤薯角"
+      "text": "套餐選項 香烤薯角"
     },
     "choice_combo_drink": {
-      "content_desc": "套餐選項 台式奶茶"
+      "text": "套餐選項 台式奶茶"
     },
     "combo_complete": {
       "text": "套餐已完成"
@@ -71,25 +71,25 @@
       "text": "$50"
     },
     "combo_add": {
-      "content_desc": "套餐加入購物車"
+      "text": "套餐加入購物車"
     },
     "cart_combo_riceball": {
-      "content_desc": "購物車商品 紫米小飯糰"
+      "text": "購物車商品 紫米小飯糰"
     },
     "cart_combo_snack": {
-      "content_desc": "購物車商品 香烤薯角"
+      "text": "購物車商品 香烤薯角"
     },
     "cart_combo_drink": {
-      "content_desc": "購物車商品 台式奶茶"
+      "text": "購物車商品 台式奶茶"
     },
     "cart_total_100": {
       "text": "$100"
     },
     "checkout": {
-      "content_desc": "結帳"
+      "text": "結帳"
     },
     "checkout_workspace": {
-      "content_desc": "結帳"
+      "text": "結帳"
     },
     "checkout_intent_staged": {
       "text": "CHECKOUT_INTENT_STAGED"
