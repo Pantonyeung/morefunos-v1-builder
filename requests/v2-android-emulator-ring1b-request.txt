@@ -3,3 +3,4 @@ requested_by=OWNER_RING1B_ANDROID_EMULATOR
 api_level=27
 arch=x86_64
 mode=HEADLESS
+request_nonce=ring1b-002
