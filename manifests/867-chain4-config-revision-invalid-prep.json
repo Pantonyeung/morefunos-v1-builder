@@ -18,15 +18,15 @@
       "id": "boot-with-invalid-published-admin-config",
       "action": "launch",
       "expect": {
-        "present": ["config_revision_invalid", "local_flow_forbidden", "smt_live_transaction_owner", "core_connector_only", "d1_transport_only"],
-        "absent": ["auth_deferred", "admin_config_revision_applied", "admin_config_revision", "config_revision_missing", "local_flow_admitted", "chain4_methods_visible", "checkout_intent_staged", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
+        "present": ["auth_deferred", "config_revision_invalid", "local_flow_forbidden", "smt_live_transaction_owner", "core_connector_only", "d1_transport_only"],
+        "absent": ["admin_config_revision_applied", "admin_config_revision", "config_revision_missing", "local_flow_admitted", "chain4_methods_visible", "checkout_intent_staged", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
       }
     },
     {
       "id": "invalid-config-remains-distinct-from-transport-outage",
       "action": "checkpoint",
       "expect": {
-        "present": ["config_revision_invalid", "local_flow_forbidden"],
+        "present": ["auth_deferred", "config_revision_invalid", "local_flow_forbidden"],
         "absent": ["core_d1_unavailable", "local_flow_admitted", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
       }
     }
