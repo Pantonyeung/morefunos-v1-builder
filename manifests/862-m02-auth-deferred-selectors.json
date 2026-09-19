@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "selectors": {
+    "auth_deferred": {
+      "content_desc": "AUTH_DEFERRED provenance"
+    },
+    "menu_category": {
+      "text": "能量餐"
+    },
+    "product_riceball": {
+      "content_desc": "商品 紫米能量飯糰"
+    },
+    "cart_empty": {
+      "text": "購物車未有商品"
+    },
+    "product_config": {
+      "content_desc": "設定 紫米能量飯糰"
+    },
+    "required_missing": {
+      "text": "1 項必選未完成"
+    },
+    "option_nori": {
+      "content_desc": "選項 紫菜"
+    },
+    "modifier_ready": {
+      "text": "可以加入"
+    },
+    "confirm_add": {
+      "content_desc": "確認加入"
+    },
+    "cart_product": {
+      "content_desc": "購物車商品 紫米能量飯糰"
+    },
+    "cart_total_50": {
+      "text": "$50"
+    }
+  }
+}
