@@ -1,8 +1,8 @@
-source_sha=36eebad15e4b3ad7713eaa9f8cc17dcaa855d9ad
-requested_by=WORKER_A_862_M02_AUTH_DEFERRED_DISCOVERY
+source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
+requested_by=WORKER_B_863_M07_M08_REALITY_DISCOVERY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=862-m02-auth-deferred-discovery-01
+request_nonce=863-m07-m08-reality-discovery-01
 scenario_path=
 selector_map_path=
