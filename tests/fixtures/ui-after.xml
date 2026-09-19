@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node index="0" text="" resource-id="root" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][1920,1080]">
+    <node index="0" text="Rice Ball" resource-id="com.synthetic:id/product" class="android.widget.Button" package="synthetic" content-desc="product tile" bounds="[100,100][400,300]" />
+    <node index="1" text="1 × Rice Ball" resource-id="com.synthetic:id/cart-line" class="android.view.View" package="synthetic" content-desc="cart line" bounds="[1200,100][1800,220]" />
+  </node>
+</hierarchy>
