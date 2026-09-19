@@ -1,5 +1,5 @@
-source_sha=618ae94e82bb7daa1c94c1ac3663ce44b63bdf45
-request_id=862-M03-COMBO-CHECKOUT-RED-R1
-run_id=35425189949
+source_sha=1413ea89a824ca1643945c76845da5445644db91
+request_id=862-M03-COMBO-CHECKOUT-GREEN-R1
+run_id=35425486544
 run_attempt=1
 conclusion=failure
