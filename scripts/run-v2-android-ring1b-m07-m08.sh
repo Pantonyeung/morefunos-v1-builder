@@ -13,8 +13,8 @@ mkdir -p "$EVIDENCE_DIR"
 bash "$BASE_RUNNER" "$@"
 sha256sum "$APK" | tee "$EVIDENCE_DIR/apk-sha256.txt"
 
-ESBUILD="$GITHUB_WORKSPACE/source/apps/smt-clean/node_modules/.bin/esbuild"
-test -x "$ESBUILD"
+ESBUILD="$(find "$GITHUB_WORKSPACE/source" -path "*/node_modules/.bin/esbuild" -print -quit)"
+if [[ -z "$ESBUILD" || ! -x "$ESBUILD" ]]; then echo "R1B_M07_PROBE_ESBUILD_BINARY_NOT_FOUND" >&2; exit 1; fi
 "$ESBUILD" "$GITHUB_WORKSPACE/scripts/ring1b_m07_browser_probe_entry.ts" \
   --bundle --format=iife --platform=browser --target=chrome83 \
   --global-name=Ring1BM07Bundle \
