@@ -1,4 +1,4 @@
-source_sha=c05af5b8182715ed22e5cfb41f3770a3bacab94e
+source_sha=e04e48aaa1df4fca0f2465235b07558a52ea0c89
 scenario_path=manifests/862-m02-auth-deferred-c05.json
 selector_map_path=manifests/862-m02-auth-deferred-c05-selectors.json
-request_nonce=862-m02-c05-functional-r2
+request_nonce=862-m02-webview83-uuid-ring1b-r1
