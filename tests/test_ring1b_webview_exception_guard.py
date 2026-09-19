@@ -56,6 +56,20 @@ class Ring1BWebViewExceptionGuardTests(unittest.TestCase):
             self.assertEqual(payload["label"], "launch-2")
             self.assertEqual(payload["result"], "RED")
 
+    def test_smoke_wires_both_launches_and_preserves_existing_guards(self):
+        smoke = (ROOT / "scripts" / "run-v2-android-ring1b-smoke.sh").read_text(encoding="utf-8")
+        self.assertIn('record_app_webview_uncaught "launch-1" "$EVIDENCE_DIR/logcat-launch-1.txt"', smoke)
+        self.assertIn('record_app_webview_uncaught "launch-2" "$EVIDENCE_DIR/logcat-launch-2.txt"', smoke)
+        for preserved in (
+            'assert_no_recovery_fault "launch-1"',
+            'assert_no_recovery_fault "launch-2"',
+            'RING1B_APP_CRASH_AFTER_FIRST_LAUNCH',
+            'RING1B_APP_CRASH_AFTER_RELAUNCH',
+            'RING1B_FORCE_STOP_PROCESS_STILL_PRESENT',
+        ):
+            self.assertIn(preserved, smoke)
+        self.assertIn("R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION", smoke)
+
 
 if __name__ == "__main__":
     unittest.main()
