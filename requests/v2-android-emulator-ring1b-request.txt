@@ -1,6 +1,6 @@
-source_sha=13f9d956f71072348865b303f8bec5452471ec54
-requested_by=OWNER_RING1B_FUNCTIONAL_GUARD
+source_sha=94298962c497f53a3a8ab7aed7fe7da56f22c5b5
+requested_by=OWNER_RING1B_FUNCTIONAL_GUARD_R2_TRANSIENT
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-functional-001
+request_nonce=ring1b-functional-r2-transient
