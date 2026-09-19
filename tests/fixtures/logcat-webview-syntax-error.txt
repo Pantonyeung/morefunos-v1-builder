@@ -1,0 +1,2 @@
+09-19 11:10:21.111  4211  4211 I chromium: [INFO:CONSOLE(1)] "booting MoreFun SMT", source: https://appassets.androidplatform.net/assets/assets/index-old.js (1)
+09-19 11:10:21.222  4211  4211 E chromium: [ERROR:CONSOLE(1)] "Uncaught SyntaxError: Unexpected token '='", source: https://appassets.androidplatform.net/assets/assets/index-old.js (1)
