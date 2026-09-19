@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node index="0" text="SMT 發生故障，但已截住" resource-id="fault" class="android.widget.TextView" package="synthetic" content-desc="故障代碼 NATIVE_TEST_FAULT" bounds="[100,100][900,300]" />
+</hierarchy>
