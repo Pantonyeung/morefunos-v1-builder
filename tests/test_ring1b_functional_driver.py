@@ -89,6 +89,18 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         self.assertFalse(expectation_matches(self.before, {"present": ["cart_line"]}, self.selectors))
         self.assertTrue(expectation_matches(self.after, {"present": ["cart_line"]}, self.selectors))
 
+    def test_selector_fallback_reaches_content_desc(self):
+        selector = {
+            "resource_id": "com.synthetic:id/does-not-exist",
+            "text": "does not exist",
+            "content_desc": "product tile",
+            "bounds": [1, 1, 2, 2],
+        }
+        self.assertEqual(resolve_tap_coordinates(self.before.ui_xml, selector), (250, 200))
+
+    def test_selector_explicit_bounds_fallback(self):
+        self.assertEqual(resolve_tap_coordinates(self.before.ui_xml, {"bounds": [10, 20, 30, 40]}), (20, 30))
+
     def test_synthetic_red_noop_then_green_transition(self):
         tap_step = self.manifest["steps"][1]
         red_manifest = dict(self.manifest)
@@ -113,6 +125,32 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         with self.assertRaises(DriverFailure) as ctx:
             driver.run()
         self.assertEqual(ctx.exception.code, R1B_ACTION_NO_STATE_CHANGE)
+
+    def test_restart_reset_expected_assertion(self):
+        step = {
+            "id": "restart-reset",
+            "action": "restart",
+            "timeout_ms": 50,
+            "persistence": {"mode": "RESET_EXPECTED", "before": ["cart_line"], "after": ["product_tile"]},
+        }
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        driver = FunctionalDriver(manifest, self.selectors, FakeBackend([self.after, self.before]))
+        result = driver.run()
+        self.assertEqual(result["result"], "GREEN")
+
+    def test_restart_recover_assertion(self):
+        step = {
+            "id": "restart-recover",
+            "action": "restart",
+            "timeout_ms": 50,
+            "persistence": {"mode": "RECOVER", "before": ["product_tile"], "after": ["cart_line"]},
+        }
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        driver = FunctionalDriver(manifest, self.selectors, FakeBackend([self.before, self.after]))
+        result = driver.run()
+        self.assertEqual(result["result"], "GREEN")
 
     def test_selector_not_found_has_stable_code(self):
         selectors = dict(self.selectors)
