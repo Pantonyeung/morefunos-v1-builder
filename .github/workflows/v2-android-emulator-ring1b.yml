@@ -11,6 +11,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: v2-android-emulator-ring1b
+  cancel-in-progress: true
+
 permissions:
   contents: read
   statuses: write
