@@ -173,6 +173,10 @@ jobs:
         working-directory: source/apps/smt-clean
         run: npm run typecheck && npm run build
 
+      - name: Run M07 Android gateway correlation unit test
+        working-directory: source
+        run: gradle -p apps/smt-android :app:testDebugUnitTest --tests com.morefunos.smt.PrintCommandControllerTest --no-daemon
+
       - name: Assemble debug Carrier APK
         working-directory: source
         run: gradle -p apps/smt-android :app:assembleDebug --no-daemon
