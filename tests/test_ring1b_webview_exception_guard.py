@@ -37,6 +37,17 @@ class Ring1BWebViewExceptionGuardTests(unittest.TestCase):
         self.assertEqual(match["code"], MODULE.R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION)
         self.assertIn("Intl.supportedValuesOf is not a function", match["exception"])
 
+    def test_bare_error_from_app_origin_is_red(self):
+        log = (
+            '09-19 05:37:30.909  6127  6127 I chromium: [INFO:CONSOLE(1)] '
+            '"Uncaught Error: RING1B_M07_UNCAUGHT_EXCEPTION_PROBE", '
+            'source: https://appassets.androidplatform.net/baseline/assets/ring1b-m07-uncaught.js (1)'
+        )
+        match = MODULE.detect_app_webview_uncaught(log)
+        self.assertIsNotNone(match)
+        self.assertEqual(match["code"], MODULE.R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION)
+        self.assertIn("Uncaught Error: RING1B_M07_UNCAUGHT_EXCEPTION_PROBE", match["exception"])
+
     def test_clean_app_log_and_external_origin_uncaught_remain_green(self):
         self.assertIsNone(MODULE.detect_app_webview_uncaught(self.read("logcat-webview-clean.txt")))
 
