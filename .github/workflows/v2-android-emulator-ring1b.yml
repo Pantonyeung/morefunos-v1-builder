@@ -22,7 +22,7 @@ on:
         type: string
 
 concurrency:
-  group: v2-android-emulator-ring1b
+  group: v2-android-emulator-ring1b-m07-m08
   cancel-in-progress: true
 
 permissions:
@@ -198,7 +198,7 @@ jobs:
             -camera-front none
             -skin 1920x1080
           script: >-
-            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b.sh"
+            bash "$GITHUB_WORKSPACE/scripts/run-v2-android-ring1b-m07-m08.sh"
             "$GITHUB_WORKSPACE/source/apps/smt-android/app/build/outputs/apk/debug/app-debug.apk"
             "${{ steps.request.outputs.source_sha }}"
             "$GITHUB_WORKSPACE/ring1b-evidence"
