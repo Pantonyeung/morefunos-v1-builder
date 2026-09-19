@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "scenario_id": "867-chain4-payment-certainty-unknown-retry-prep",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {
+    "transition_ms": 15000,
+    "poll_ms": 300
+  },
+  "fault_text_patterns": [
+    "Owner 管理密碼",
+    "員工 PIN",
+    "配對此收銀機",
+    "SMT 發生故障"
+  ],
+  "steps": [
+    {
+      "id": "boot-auth-deferred-menu",
+      "action": "launch",
+      "expect": {
+        "present": ["auth_deferred", "menu_category", "product_riceball", "product_combo", "cart_empty"]
+      }
+    },
+    {
+      "id": "open-normal-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {
+        "present": ["product_config", "required_missing", "option_nori", "confirm_add"]
+      }
+    },
+    {
+      "id": "select-normal-product-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {
+        "present": ["modifier_ready", "confirm_add", "product_config"]
+      }
+    },
+    {
+      "id": "add-normal-product-to-cart",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {
+        "present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"],
+        "absent": ["product_config"]
+      }
+    },
+    {
+      "id": "open-combo",
+      "action": "tap",
+      "target": "product_combo",
+      "expect": {
+        "present": ["combo_workspace", "combo_required_3", "choice_combo_riceball", "combo_add"]
+      }
+    },
+    {
+      "id": "select-combo-riceball",
+      "action": "tap",
+      "target": "choice_combo_riceball",
+      "expect": {
+        "present": ["combo_required_2", "choice_combo_snack", "combo_add"]
+      }
+    },
+    {
+      "id": "select-combo-snack",
+      "action": "tap",
+      "target": "choice_combo_snack",
+      "expect": {
+        "present": ["combo_required_1", "choice_combo_drink", "combo_add"]
+      }
+    },
+    {
+      "id": "select-combo-drink",
+      "action": "tap",
+      "target": "choice_combo_drink",
+      "expect": {
+        "present": ["combo_complete", "combo_quote_50", "combo_add"]
+      }
+    },
+    {
+      "id": "add-combo-to-cart",
+      "action": "tap",
+      "target": "combo_add",
+      "expect": {
+        "present": ["cart_product_riceball", "cart_note_nori", "cart_combo_riceball", "cart_combo_snack", "cart_combo_drink", "cart_total_100"],
+        "absent": ["combo_workspace"]
+      }
+    },
+    {
+      "id": "stage-chain3-checkout-intent",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": ["checkout_workspace", "checkout_intent_staged", "payment_not_invoked", "frozen_checkpoint", "chain3_binding_bound", "bound_trace_identity"]
+      }
+    },
+    {
+      "id": "observe-payment-methods",
+      "action": "checkpoint",
+      "expect": {
+        "present": ["chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
+        "absent": ["payment_request_transition", "store_commit_succeeded"]
+      }
+    },
+    {
+      "id": "select-fps-payment",
+      "action": "tap",
+      "target": "payment_method_fps",
+      "expect": {
+        "present": ["payment_method_selected_fps", "payment_not_invoked"],
+        "absent": ["payment_request_transition", "store_commit_succeeded"]
+      }
+    },
+    {
+      "id": "request-payment-unknown-outcome",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {
+        "present": [
+          "payment_request_transition",
+          "payment_failure_surface",
+          "payment_unknown_message",
+          "payment_certainty_unknown",
+          "payment_reconcile_required",
+          "payment_request_id",
+          "payment_idempotency_key",
+          "payment_bound_trace_identity",
+          "payment_readback_state",
+          "payment_replay_count_zero",
+          "retry_payment"
+        ],
+        "absent": ["payment_not_invoked", "store_commit_succeeded"]
+      }
+    },
+    {
+      "id": "restart-unknown-payment-readback",
+      "action": "restart",
+      "timeout_ms": 15000,
+      "persistence": {
+        "mode": "RECOVER",
+        "before": [
+          "payment_certainty_unknown",
+          "payment_reconcile_required",
+          "payment_request_id",
+          "payment_idempotency_key",
+          "payment_bound_trace_identity",
+          "payment_readback_state",
+          "payment_replay_count_zero",
+          "retry_payment"
+        ],
+        "after": [
+          "payment_restart_readback_recovered",
+          "payment_certainty_unknown",
+          "payment_reconcile_required",
+          "payment_request_id",
+          "payment_idempotency_key",
+          "payment_bound_trace_identity",
+          "payment_readback_state",
+          "payment_replay_count_zero",
+          "retry_payment"
+        ]
+      }
+    },
+    {
+      "id": "retry-same-payment-identity",
+      "action": "tap",
+      "target": "retry_payment",
+      "expect": {
+        "present": [
+          "payment_replay_same_identity",
+          "payment_failure_surface",
+          "payment_unknown_message",
+          "payment_certainty_unknown",
+          "payment_reconcile_required",
+          "payment_request_id",
+          "payment_idempotency_key",
+          "payment_bound_trace_identity",
+          "payment_readback_state",
+          "payment_replay_count_one",
+          "retry_payment"
+        ],
+        "absent": ["payment_not_invoked", "store_commit_succeeded"]
+      }
+    },
+    {
+      "id": "assert-no-store-commit-success-required",
+      "action": "checkpoint",
+      "expect": {
+        "present": ["payment_replay_same_identity", "payment_certainty_unknown", "payment_reconcile_required", "payment_replay_count_one"],
+        "absent": ["store_commit_succeeded"]
+      }
+    }
+  ]
+}
