@@ -18,7 +18,15 @@ from urllib.parse import urlparse
 
 EVIDENCE = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 APK = Path(sys.argv[2]) if len(sys.argv) > 2 else None
-if EVIDENCE is None or APK is None:
+SOURCE_SHA = sys.argv[3].strip().lower() if len(sys.argv) > 3 else ""
+EXACT_PRINT_TRANSPORT_JS = Path(sys.argv[4]) if len(sys.argv) > 4 else None
+if (
+    EVIDENCE is None
+    or APK is None
+    or not re.fullmatch(r"[0-9a-f]{40}", SOURCE_SHA)
+    or EXACT_PRINT_TRANSPORT_JS is None
+    or not EXACT_PRINT_TRANSPORT_JS.is_file()
+):
     raise SystemExit("R1B_REALITY_ARGS_REQUIRED")
 EVIDENCE.mkdir(parents=True, exist_ok=True)
 
@@ -28,7 +36,6 @@ ADAPTER_PORT = 39107
 ENDPOINT = "r1b-m07-adapter"
 CANONICAL_JOB = "r1b-m07-print-job-863"
 ATTEMPT = "r1b-m07-attempt-863"
-SOURCE_SHA = "99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc"
 last_green = "NONE"
 
 def run(args, check=True, binary=False):
@@ -307,6 +314,45 @@ require((apply_result.get("last") or {}).get("status") == "success",
         "M07_ENDPOINT_APPLY_FAILED", json.dumps(apply_result))
 green("M07_ENDPOINT_PERSISTED")
 
+# Execute the exact product transport module inside the API30 WebView.  The
+# native dispatch is allowed to continue after this deliberately tiny callback
+# wait expires; that post-dispatch uncertainty must stay OUTCOME_UNKNOWN.
+exact_print_transport_js = EXACT_PRINT_TRANSPORT_JS.read_text(encoding="utf-8")
+cdp.evaluate(exact_print_transport_js + "\ntrue")
+adapter_count_before_timeout = len(adapter.received)
+timeout_probe = cdp.evaluate(
+    "(async()=>{"
+    "const m=globalThis.__R1B_EXACT_PRINT_TRANSPORT__;"
+    "if(!m||typeof m.TrustedAndroidPrintBridge!=='function'||typeof m.AndroidNativeIpSocketTransport!=='function')"
+    "return {kind:'MODULE_MISSING'};"
+    "const trusted=new m.TrustedAndroidPrintBridge({port:globalThis.moreFunNative,windowEvents:window,timeoutMs:1});"
+    "const transport=new m.AndroidNativeIpSocketTransport(trusted);"
+    "const payload=new Uint8Array(20);payload.fill(65);"
+    "return await transport.send({"
+    "endpoint:{endpointId:'r1b-m07-adapter',host:'10.0.2.2',port:39107,enabled:true},"
+    "payload,dispatchAttemptId:'r1b-m07-timeout-attempt-863'"
+    "});"
+    "})()"
+)
+write_json("m07-exact-transport-timeout.json", timeout_probe)
+require(
+    timeout_probe
+    and timeout_probe.get("kind") == "OUTCOME_UNKNOWN"
+    and timeout_probe.get("uncertaintyCode") == "LAN_NATIVE_RESULT_TIMEOUT",
+    "M07_CALLBACK_TIMEOUT_CERTAINTY_MISMATCH",
+    json.dumps(timeout_probe),
+)
+for _ in range(70):
+    if len(adapter.received) > adapter_count_before_timeout:
+        break
+    time.sleep(0.1)
+require(
+    len(adapter.received) > adapter_count_before_timeout,
+    "M07_CALLBACK_TIMEOUT_DISPATCH_NOT_OBSERVED",
+    "exact transport timed out but deterministic adapter never received the dispatched payload",
+)
+green("M07_CALLBACK_TIMEOUT_OUTCOME_UNKNOWN")
+
 dispatch = bridge_request(cdp, {
     "type": "print.gateway.enqueue", "requestId": "m07-gateway-enqueue-863",
     "canonicalPrintJobId": CANONICAL_JOB, "dispatchAttemptId": ATTEMPT,
@@ -384,6 +430,41 @@ require(bad_last.get("type") == "carrier.error" and bad_last.get("outcome") == "
         and bad_last.get("failureCode") == "PRINT_GATEWAY_CANONICAL_JOB_REQUIRED",
         "M07_DETERMINISTIC_RED_MISSING", json.dumps(bad_print))
 green("M07_DETERMINISTIC_RED_PROVEN")
+
+# Real API30 app-scoped uncaught WebView exception: #859 guard must classify
+# this as deterministic RED even though the Android process may stay alive.
+adb("logcat", "-c", check=False)
+uncaught_probe = cdp.evaluate(
+    "(()=>{setTimeout(()=>{throw new Error('RING1B_M07_UNCAUGHT_EXCEPTION_PROBE')},0);"
+    "return 'scheduled';})()\n"
+    "//# sourceURL=https://appassets.androidplatform.net/baseline/assets/ring1b-m07-uncaught.js"
+)
+write_json("m07-uncaught-injection.json", {"result": uncaught_probe})
+time.sleep(1.0)
+uncaught_log_path = EVIDENCE / "m07-uncaught-logcat.txt"
+write_text("m07-uncaught-logcat.txt", adb("logcat", "-d", "-v", "threadtime", check=False).stdout)
+workspace = Path(os.environ.get("GITHUB_WORKSPACE", ""))
+guard_script = workspace / "scripts" / "ring1b_webview_exception_guard.py"
+guard_json_path = EVIDENCE / "m07-uncaught-guard.json"
+guard = run([
+    sys.executable,
+    str(guard_script),
+    str(uncaught_log_path),
+    "--label",
+    "m07-api30-injected",
+    "--output-json",
+    str(guard_json_path),
+], check=False)
+write_text("m07-uncaught-guard.stdout", guard.stdout)
+write_text("m07-uncaught-guard.stderr", guard.stderr)
+require(
+    guard.returncode != 0 and "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION" in guard.stderr,
+    "M07_WEBVIEW_EXCEPTION_GUARD_FALSE_GREEN",
+    json.dumps({"returncode": guard.returncode, "stderr": guard.stderr[-4000:]}),
+)
+green("M07_WEBVIEW_UNCAUGHT_DETERMINISTIC_RED")
+capture("m07-03-webview-exception-red")
+adb("logcat", "-c", check=False)
 
 ts = "2026-09-19T04:55:00.000Z"
 event_id = "r1b-m08-event-863"
@@ -504,6 +585,8 @@ write_json("result.json", {
         "stage": restart_job.get("lastStage"),
         "code": restart_job.get("lastCode"),
         "postDispatchOutcome": terminal.get("outcome"),
+        "callbackTimeoutOutcome": timeout_probe,
+        "webViewExceptionGuardCode": "R1B_APP_WEBVIEW_UNCAUGHT_EXCEPTION",
         "productionExecutorAttempt": runtime_executor,
         "physicalStatus": "PHYSICAL_PENDING",
     },
