@@ -1,0 +1,3 @@
+09-19 11:32:00.001  6000  6000 I chromium: [INFO:CONSOLE(1)] "Store/Menu mounted", source: https://appassets.androidplatform.net/assets/assets/index-clean.js (1)
+09-19 11:32:00.117  6000  6000 W chromium: [WARNING:CONSOLE(1)] "deprecated API", source: https://appassets.androidplatform.net/assets/assets/index-clean.js (1)
+09-19 11:32:00.200  6000  6000 E chromium: [ERROR:CONSOLE(1)] "Uncaught TypeError: remote example failure", source: https://example.com/remote.js (1)
