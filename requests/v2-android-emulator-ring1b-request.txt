@@ -1,7 +1,7 @@
-source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
+source_sha=34bcf1f435a4ca9284e62eb83ae1eb0c04234cc8
 requested_by=WORKER_B_863_M07_M08_ANDROID_REALITY_PROOF
 api_level=30
 arch=x86_64
 mode=HEADLESS
 reality_probe=M07_M08
-request_nonce=ring1b-m07-m08-reality-20260919-03
+request_nonce=ring1b-m07-m08-reality-20260919-04
