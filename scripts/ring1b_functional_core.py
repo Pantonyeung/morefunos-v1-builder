@@ -13,6 +13,7 @@ R1B_ACTION_NO_STATE_CHANGE = "R1B_ACTION_NO_STATE_CHANGE"
 R1B_EXPECTED_STATE_NOT_REACHED = "R1B_EXPECTED_STATE_NOT_REACHED"
 R1B_UNEXPECTED_RECOVERY_SURFACE = "R1B_UNEXPECTED_RECOVERY_SURFACE"
 R1B_RESTART_PERSISTENCE_MISMATCH = "R1B_RESTART_PERSISTENCE_MISMATCH"
+R1B_UI_HIERARCHY_UNAVAILABLE = "R1B_UI_HIERARCHY_UNAVAILABLE"
 R1B_MANIFEST_INVALID = "R1B_MANIFEST_INVALID"
 
 DEFAULT_FAULT_TEXT_PATTERNS = (
@@ -109,6 +110,12 @@ def find_node(xml_text: str, selector: Dict[str, Any]) -> Optional[ET.Element]:
             for node in nodes:
                 if node.attrib.get(attr) == str(value):
                     return node
+    text_contains = selector.get("text_contains")
+    if text_contains is not None:
+        needle = str(text_contains)
+        for node in nodes:
+            if needle in node.attrib.get("text", ""):
+                return node
     if selector.get("bounds") is not None:
         target = bounds_text(parse_bounds(selector["bounds"]))
         for node in nodes:
@@ -118,6 +125,8 @@ def find_node(xml_text: str, selector: Dict[str, Any]) -> Optional[ET.Element]:
 
 
 def resolve_tap_coordinates(xml_text: str, selector: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+    if "text_contains" in selector:
+        return None
     node = find_node(xml_text, selector)
     if node is not None and node.attrib.get("bounds"):
         x1, y1, x2, y2 = parse_bounds(node.attrib["bounds"])
@@ -138,7 +147,7 @@ def validate_selector_map(selector_map: Dict[str, Any]) -> Dict[str, Dict[str, A
     selectors = selector_map.get("selectors")
     if not isinstance(selectors, dict) or not selectors:
         raise ManifestError("selector map requires non-empty selectors object")
-    allowed = {"resource_id", "text", "content_desc", "bounds"}
+    allowed = {"resource_id", "text", "text_contains", "content_desc", "bounds"}
     out: Dict[str, Dict[str, Any]] = {}
     for name, spec in selectors.items():
         if not isinstance(name, str) or not name:
@@ -148,6 +157,8 @@ def validate_selector_map(selector_map: Dict[str, Any]) -> Dict[str, Dict[str, A
         extra = set(spec) - allowed
         if extra:
             raise ManifestError(f"selector {name!r} has unsupported fields: {sorted(extra)}")
+        if "text_contains" in spec and (not isinstance(spec["text_contains"], str) or not spec["text_contains"]):
+            raise ManifestError(f"selector {name!r} text_contains must be a non-empty string")
         if "bounds" in spec:
             parse_bounds(spec["bounds"])
         out[name] = dict(spec)
@@ -201,6 +212,8 @@ def validate_manifest(manifest: Dict[str, Any], selectors: Dict[str, Dict[str, A
             target = step.get("target")
             if not isinstance(target, str) or not target:
                 raise ManifestError(f"{where}.target required")
+            if target in selectors and "text_contains" in selectors[target]:
+                raise ManifestError(f"{where}.target cannot use text_contains locator")
             referenced.add(target)
         if "expect" in step:
             for key in ("present", "absent"):
