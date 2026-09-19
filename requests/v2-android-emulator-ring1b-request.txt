@@ -1,6 +1,6 @@
-source_sha=28e1bb050bcac500dbc2e04ceccd094d658b882a
-requested_by=OWNER_RING1B_ANDROID_EMULATOR
-api_level=27
+source_sha=13f9d956f71072348865b303f8bec5452471ec54
+requested_by=OWNER_RING1B_FUNCTIONAL_GUARD
+api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=ring1b-002
+request_nonce=ring1b-functional-001
