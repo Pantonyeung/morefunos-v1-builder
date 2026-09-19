@@ -140,6 +140,13 @@ class FunctionalDriver:
                 elif action == "tap":
                     before = self._observe_checked(step_id)
                     self.backend.capture_evidence(f"{index:02d}-{step_id}-before", before)
+                    if expectation_matches(before, step["expect"], self.selectors):
+                        raise DriverFailure(
+                            R1B_ACTION_NO_STATE_CHANGE,
+                            step_id=step_id,
+                            expected=expectation_text(step["expect"]),
+                            actual="expected post-action state was already present before tap; transition is not provable",
+                        )
                     target = self.selectors[step["target"]]
                     coords = resolve_tap_coordinates(before.ui_xml, target)
                     if coords is None:
