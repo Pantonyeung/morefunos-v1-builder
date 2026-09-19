@@ -284,7 +284,9 @@ class AdapterServer:
         except Exception:
             pass
 
-write_text("apk-sha256.txt", hashlib.sha256(APK.read_bytes()).hexdigest() + "\n")
+apk_sha256 = hashlib.sha256(APK.read_bytes()).hexdigest()
+write_text("apk-sha256.txt", apk_sha256 + "\n")
+print("APK_SHA256=" + apk_sha256)
 adapter = AdapterServer()
 adapter.start()
 
@@ -491,6 +493,7 @@ adapter.close()
 write_json("result.json", {
     "result": "GREEN",
     "sourceSha": SOURCE_SHA,
+    "apkSha256": apk_sha256,
     "m07": {
         "nativeGateway": True,
         "deterministicAdapterBytes": sum(len(x) for x in adapter.received),
