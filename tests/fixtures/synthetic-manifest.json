@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scenario_id": "synthetic-red-green",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {"transition_ms": 50, "poll_ms": 1},
+  "steps": [
+    {
+      "id": "launch-ready",
+      "action": "launch",
+      "expect": {"present": ["product_tile"]}
+    },
+    {
+      "id": "tap-product",
+      "action": "tap",
+      "target": "product_tile",
+      "expect": {"present": ["cart_line"]}
+    },
+    {
+      "id": "restart-cart",
+      "action": "restart",
+      "persistence": {"mode": "PRESERVE", "before": ["cart_line"], "after": ["cart_line"]}
+    }
+  ]
+}
