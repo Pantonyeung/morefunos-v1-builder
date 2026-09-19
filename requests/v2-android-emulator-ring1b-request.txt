@@ -4,4 +4,4 @@ api_level=30
 arch=x86_64
 mode=HEADLESS
 reality_probe=M07_M08
-request_nonce=ring1b-m07-m08-reality-20260919-04
+request_nonce=ring1b-m07-m08-reality-20260919-05
