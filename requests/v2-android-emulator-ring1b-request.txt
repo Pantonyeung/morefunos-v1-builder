@@ -1,6 +1,3 @@
-source_sha=84529d96d50fb1f432907ecb4348c2f5d034e54a
-requested_by=WORKER_A_858_WEBVIEW83_INTL_COMPAT_PROOF
-api_level=30
-arch=x86_64
-mode=HEADLESS
-request_nonce=ring1b-webview83-intl-20260919-01
+source_sha=c791b522ae38ea00469544d5229fe2f3044ea2d1
+scenario_path=manifests/862-m02-auth-deferred.json
+selector_map_path=manifests/862-m02-auth-deferred-selectors.json
