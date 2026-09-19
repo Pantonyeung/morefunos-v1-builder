@@ -1,3 +1,4 @@
 source_sha=36eebad15e4b3ad7713eaa9f8cc17dcaa855d9ad
 scenario_path=manifests/862-m02-auth-deferred-current.json
 selector_map_path=manifests/862-m02-auth-deferred-current-selectors.json
+request_nonce=862-m02-observed-ui-r2
