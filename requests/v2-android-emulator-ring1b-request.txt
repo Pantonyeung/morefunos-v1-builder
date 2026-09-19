@@ -1,8 +1,8 @@
-source_sha=cb0b64ce27c96d5300fca42992d6f012c4fe5094
+source_sha=fd634b0553798e57e906c5f226cf363deb53c0c0
 requested_by=WORKER_A_862_M03
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=862-m03-auth-deferred-reality-01
+request_nonce=862-m03-auth-deferred-reality-r4
 scenario_path=manifests/862-m03-auth-deferred-cart-combo-quote.json
 selector_map_path=manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json
