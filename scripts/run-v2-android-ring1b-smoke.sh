@@ -15,6 +15,8 @@ capture_common() {
   adb devices -l > "$EVIDENCE_DIR/adb-devices.txt" 2>&1 || true
   adb shell getprop > "$EVIDENCE_DIR/getprop.txt" 2>&1 || true
   adb shell dumpsys package "$PACKAGE_ID" > "$EVIDENCE_DIR/package-dumpsys.txt" 2>&1 || true
+  adb shell dumpsys package com.android.webview > "$EVIDENCE_DIR/webview-package.txt" 2>&1 || true
+  adb shell dumpsys package com.google.android.webview >> "$EVIDENCE_DIR/webview-package.txt" 2>&1 || true
   adb shell dumpsys activity activities > "$EVIDENCE_DIR/activity-dumpsys.txt" 2>&1 || true
   adb shell dumpsys meminfo "$PACKAGE_ID" > "$EVIDENCE_DIR/meminfo.txt" 2>&1 || true
   adb exec-out screencap -p > "$EVIDENCE_DIR/screen-final.png" 2>/dev/null || true
@@ -44,6 +46,25 @@ finish() {
 }
 trap finish EXIT
 
+assert_no_recovery_fault() {
+  local label="$1"
+  local xml="$EVIDENCE_DIR/window-$label.xml"
+  adb shell uiautomator dump /sdcard/morefun-window-"$label".xml >/dev/null 2>&1 || true
+  adb pull /sdcard/morefun-window-"$label".xml "$xml" >/dev/null 2>&1 || true
+  if [[ -s "$xml" ]] && grep -Eq 'SMT 發生故障|故障代碼|NATIVE_[A-Z0-9_]+|打開 RECOVERY / 診斷工具' "$xml"; then
+    echo "RING1B_APP_RECOVERY_FAULT_SCREEN_$label" >&2
+    grep -Eo 'NATIVE_[A-Z0-9_]+' "$xml" | head -n 5 > "$EVIDENCE_DIR/recovery-codes-$label.txt" || true
+    return 1
+  fi
+  local resumed
+  resumed="$(adb shell dumpsys activity activities | grep -m1 'mResumedActivity' || true)"
+  printf '%s\n' "$resumed" > "$EVIDENCE_DIR/resumed-activity-$label.txt"
+  if printf '%s' "$resumed" | grep -q 'CarrierRecoveryActivity'; then
+    echo "RING1B_RECOVERY_ACTIVITY_RESUMED_$label" >&2
+    return 1
+  fi
+}
+
 test -s "$APK_PATH"
 adb wait-for-device
 adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done' >/dev/null 2>&1 || true
@@ -65,6 +86,7 @@ test -n "$PID1"
 echo "$PID1" > "$EVIDENCE_DIR/pid-1.txt"
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen-launch-1.png"
 adb logcat -d --pid="$PID1" -v threadtime > "$EVIDENCE_DIR/logcat-launch-1.txt" 2>&1 || true
+assert_no_recovery_fault "launch-1"
 
 if grep -Eq 'FATAL EXCEPTION|ANR in com\.morefunos\.smt|Process: com\.morefunos\.smt.*has died' "$EVIDENCE_DIR/logcat-launch-1.txt"; then
   echo "RING1B_APP_CRASH_AFTER_FIRST_LAUNCH" >&2
@@ -86,6 +108,7 @@ test -n "$PID2"
 echo "$PID2" > "$EVIDENCE_DIR/pid-2.txt"
 adb exec-out screencap -p > "$EVIDENCE_DIR/screen-launch-2.png"
 adb logcat -d --pid="$PID2" -v threadtime > "$EVIDENCE_DIR/logcat-launch-2.txt" 2>&1 || true
+assert_no_recovery_fault "launch-2"
 
 if grep -Eq 'FATAL EXCEPTION|ANR in com\.morefunos\.smt|Process: com\.morefunos\.smt.*has died' "$EVIDENCE_DIR/logcat-launch-2.txt"; then
   echo "RING1B_APP_CRASH_AFTER_RELAUNCH" >&2
