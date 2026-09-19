@@ -23,6 +23,7 @@ from ring1b_functional_core import (  # noqa: E402
     load_json,
     make_observation,
     resolve_tap_coordinates,
+    selector_present,
     validate_manifest,
     validate_selector_map,
 )
@@ -116,6 +117,50 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         broken["steps"][1]["target"] = "missing_selector"
         with self.assertRaises(ManifestError):
             validate_manifest(broken, self.selectors)
+
+    def test_exact_text_remains_exact_when_contains_exists(self):
+        self.assertTrue(selector_present(self.before.ui_xml, {"text": "Rice Ball"}))
+        self.assertFalse(selector_present(self.before.ui_xml, {"text": "Rice"}))
+        self.assertEqual(resolve_tap_coordinates(self.before.ui_xml, {"text": "Rice Ball"}), (250, 200))
+
+    def test_text_contains_matches_rule_fragment_in_multiline_node(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        selector = {"text_contains": "可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。"}
+        self.assertTrue(selector_present(xml, selector))
+
+    def test_text_contains_matches_code_fragment_in_same_multiline_node(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="可任意次序選擇；合法組合與價格由 Admin / Menu / Pricing Authority 自動判斷。&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        self.assertTrue(selector_present(xml, {"text_contains": "M03_COMBO_REQUIRED_SELECTION_MISSING"}))
+
+    def test_text_contains_missing_substring_is_false(self):
+        xml = """<?xml version='1.0' encoding='UTF-8'?>
+<hierarchy rotation="0"><node text="rule&#10;M03_COMBO_REQUIRED_SELECTION_MISSING" resource-id="rule" class="android.view.View" package="synthetic" content-desc="" bounds="[0,0][100,100]" /></hierarchy>"""
+        self.assertFalse(selector_present(xml, {"text_contains": "M03_OTHER_CODE"}))
+
+    def test_selector_schema_and_validator_accept_text_contains_but_reject_unknown_key(self):
+        schema = load_json(ROOT / "schemas" / "ring1b-selector-map.schema.json")
+        locator = schema["properties"]["selectors"]["additionalProperties"]
+        self.assertEqual(locator["properties"]["text_contains"], {"type": "string", "minLength": 1})
+        self.assertIn({"required": ["text_contains"]}, locator["anyOf"])
+        validated = validate_selector_map(
+            {"schema_version": 1, "selectors": {"rule": {"text_contains": "literal fragment"}}}
+        )
+        self.assertEqual(validated["rule"]["text_contains"], "literal fragment")
+        with self.assertRaises(ManifestError):
+            validate_selector_map(
+                {"schema_version": 1, "selectors": {"bad": {"text_contains": "literal", "regex": ".*"}}}
+            )
+
+    def test_text_contains_cannot_be_used_as_tap_target(self):
+        selectors = dict(self.selectors)
+        selectors["contains_target"] = {"text_contains": "Rice"}
+        manifest = json.loads(json.dumps(self.manifest))
+        manifest["steps"][1]["target"] = "contains_target"
+        with self.assertRaises(ManifestError):
+            validate_manifest(manifest, selectors)
+        self.assertIsNone(resolve_tap_coordinates(self.before.ui_xml, selectors["contains_target"]))
 
     def test_selector_fallback_order_reaches_text_when_resource_id_misses(self):
         selector = {
