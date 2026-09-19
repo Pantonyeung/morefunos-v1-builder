@@ -1,4 +1,4 @@
 source_sha=646d60bae477439b05c5bde7f4f9f60c07ab71d5
 scenario_path=manifests/862-m02-auth-deferred-c05.json
 selector_map_path=manifests/862-m02-auth-deferred-c05-selectors.json
-request_nonce=862-m02-frozen-quote-readback-r1
+request_nonce=862-m02-frozen-quote-readback-r2
