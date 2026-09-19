@@ -3,6 +3,6 @@ requested_by=WORKER_A_862_M03_UI_HIERARCHY_RETRY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=862-m03-uihierarchy-retry-r1
+request_nonce=862-m03-webview83-text-selectors-r2
 scenario_path=manifests/862-m03-auth-deferred-cart-combo-quote.json
 selector_map_path=manifests/862-m03-auth-deferred-cart-combo-quote-selectors.json
