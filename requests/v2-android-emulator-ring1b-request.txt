@@ -1,8 +1,9 @@
-source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
-requested_by=WORKER_B_863_M07_M08_REALITY_DISCOVERY
+source_sha=c27f632904587089b7c1436036257b8dc2e922d9
+requested_by=WORKER_B_863_M07_M08_FRESH_MAIN_EXACT_SOURCE_REPLAY
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=863-m07-m08-reality-discovery-01
+reality_probe=M07_M08
+request_nonce=863-m07-m08-exact-source-replay-r2-01
 scenario_path=
 selector_map_path=
