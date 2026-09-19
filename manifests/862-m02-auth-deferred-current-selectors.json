@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "selectors": {
-    "auth_deferred": {"text": "AUTH_DEFERRED"},
+    "auth_deferred": {"text": "AUTH_DEFERRED\n未驗證身份"},
     "menu_category": {"text": "開發驗證餐點"},
-    "product_riceball": {"text": "紫米飯糰"},
+    "product_riceball": {"text": "紫米飯糰 $47"},
     "cart_empty": {"text": "購物車未有商品"},
     "product_config": {"content_desc": "設定 紫米飯糰"},
     "required_missing": {"text": "1 項必選未完成"},
