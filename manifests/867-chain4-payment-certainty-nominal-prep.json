@@ -126,7 +126,7 @@
       "action": "tap",
       "target": "exact_cash",
       "expect": {
-        "present": ["payment_method_cash", "confirm_payment", "payment_not_invoked", "payment_config_source_lkg"],
+        "present": ["payment_method_cash", "cash_input_100", "confirm_payment", "payment_not_invoked", "payment_config_source_lkg"],
         "absent": ["payment_boundary_invoked", "payment_success"]
       }
     },

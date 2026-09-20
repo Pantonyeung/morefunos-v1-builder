@@ -51,6 +51,7 @@
     "payment_method_cash": {"text": "現金"},
     "payment_method_fps": {"text": "轉數快"},
     "exact_cash": {"text": "剛好"},
+    "cash_input_100": {"text": "100"},
     "confirm_payment": {"text": "確認收款"},
     "payment_boundary_invoked": {"text": "PAYMENT_BOUNDARY_INVOKED"},
     "payment_certainty": {"text": "CHAIN4_PAYMENT_CERTAINTY"},
