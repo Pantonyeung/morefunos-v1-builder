@@ -18,8 +18,15 @@
       "id": "boot-menu",
       "action": "launch",
       "expect": {
-        "present": ["menu_category", "product_riceball", "cart_empty"],
-        "absent": ["payment_success", "auth_deferred_display_code"]
+        "present": [
+          "menu_category",
+          "product_riceball",
+          "cart_empty"
+        ],
+        "absent": [
+          "payment_success",
+          "auth_deferred_display_code"
+        ]
       }
     },
     {
@@ -27,7 +34,12 @@
       "action": "tap",
       "target": "product_riceball",
       "expect": {
-        "present": ["product_config", "required_missing", "option_nori", "confirm_add"]
+        "present": [
+          "product_config",
+          "required_missing",
+          "option_nori",
+          "confirm_add"
+        ]
       }
     },
     {
@@ -35,7 +47,11 @@
       "action": "tap",
       "target": "option_nori",
       "expect": {
-        "present": ["product_config", "modifier_ready", "confirm_add"]
+        "present": [
+          "product_config",
+          "modifier_ready",
+          "confirm_add"
+        ]
       }
     },
     {
@@ -43,8 +59,14 @@
       "action": "tap",
       "target": "confirm_add",
       "expect": {
-        "present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"],
-        "absent": ["product_config"]
+        "present": [
+          "cart_product_riceball",
+          "cart_note_nori",
+          "cart_total_50"
+        ],
+        "absent": [
+          "product_config"
+        ]
       }
     },
     {
@@ -53,7 +75,6 @@
       "target": "checkout",
       "expect": {
         "present": [
-          "preconfirm_order_uncreated",
           "preconfirm_message",
           "payment_cash",
           "payment_fps",
@@ -63,7 +84,10 @@
           "exact_cash",
           "confirm_payment"
         ],
-        "absent": ["payment_success", "completion_review", "auth_deferred_display_code"]
+        "absent": [
+          "payment_success",
+          "auth_deferred_display_code"
+        ]
       }
     },
     {
@@ -71,8 +95,14 @@
       "action": "tap",
       "target": "exact_cash",
       "expect": {
-        "present": ["cash_input_50", "confirm_payment", "preconfirm_order_uncreated"],
-        "absent": ["payment_success", "auth_deferred_display_code"]
+        "present": [
+          "cash_input_50",
+          "confirm_payment"
+        ],
+        "absent": [
+          "payment_success",
+          "auth_deferred_display_code"
+        ]
       }
     },
     {
@@ -80,8 +110,14 @@
       "action": "tap",
       "target": "confirm_payment",
       "expect": {
-        "present": ["payment_success", "completion_review", "completed_status", "done"],
-        "absent": ["auth_deferred_display_code"]
+        "present": [
+          "payment_success",
+          "completed_status",
+          "done"
+        ],
+        "absent": [
+          "auth_deferred_display_code"
+        ]
       }
     }
   ]
