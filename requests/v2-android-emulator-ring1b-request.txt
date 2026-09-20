@@ -1,8 +1,8 @@
-source_sha=99b3af29090bf4e93af5a9f09fd9a4ceb280e9cc
-requested_by=WORKER_B_863_M07_M08_REALITY_DISCOVERY
+source_sha=623fde9e39b9073165540ad08f20170829c450f5
+requested_by=CODEX_B_876_CHECKOUT_FINAL_CONFIRM_RING1B
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=863-m07-m08-reality-discovery-01
+request_nonce=876-smoke-01
 scenario_path=
 selector_map_path=
