@@ -4,7 +4,7 @@
     "auth_deferred": {"text": "AUTH_DEFERRED provenance"},
     "mock_core_authority": {"text": "MOCK CORE AUTHORITY"},
     "more_nav": {"text": "更多"},
-    "return_ordering": {"text": "返回點單"},
+    "return_ordering": {"text": "返回點單 Ordering"},
     "simulation_actor": {"text": "AUTH_DEFERRED_SIMULATION_ACTOR"},
     "simulation_context": {"text": "AUTH_DEFERRED/SIMULATION/NON_PRODUCTION · no production staff credential"},
     "menu_category": {"text": "開發驗證餐點"},
