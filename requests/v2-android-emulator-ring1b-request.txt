@@ -1,8 +1,8 @@
-source_sha=623fde9e39b9073165540ad08f20170829c450f5
+source_sha=a746e16e268bed605c315575004e80c47416d22e
 requested_by=CODEX_B_876_CHECKOUT_FINAL_CONFIRM_RING1B
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=876-functional-01
+request_nonce=876-first-confirm-rerun-a746-01
 scenario_path=manifests/876-checkout-final-confirm-store-kernel-reality.json
 selector_map_path=manifests/876-checkout-final-confirm-selectors.json
