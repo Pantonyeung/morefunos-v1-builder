@@ -145,6 +145,83 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
                 expect = step.get("expect", {})
                 self.assertNotIn("auth_deferred", expect.get("absent", []), f"{name}:{step['id']}")
 
+    def test_chain4_restart_contract_reads_terminal_attempt_without_restored_cart(self):
+        nominal = load_json(ROOT / "manifests" / "867-chain4-payment-certainty-nominal-prep.json")
+        nominal_steps = {step["id"]: step for step in nominal["steps"]}
+        terminal = {
+            "checkout_workspace",
+            "payment_certainty",
+            "payment_attempt_id",
+            "payment_status_confirmed",
+            "payment_replay_safe_true",
+            "payment_result_confirmed",
+            "payment_config_source_lkg",
+            "payment_config_version_nonproduction",
+            "payment_config_revision_one",
+        }
+        self.assertTrue(terminal.issubset(nominal_steps["confirm-cash-payment"]["expect"]["present"]))
+        self.assertTrue(terminal.issubset(nominal_steps["restart-confirmed-payment-readback"]["persistence"]["after"]))
+        self.assertTrue(
+            {"payment_attempt_id", "payment_status_confirmed", "payment_result_confirmed"}.issubset(
+                nominal_steps["restart-confirmed-payment-readback"]["persistence"]["before"]
+            )
+        )
+        self.assertTrue(
+            {"cart_product_riceball", "cart_combo_riceball", "cart_total_100"}.isdisjoint(
+                nominal_steps["restart-confirmed-payment-readback"]["persistence"]["after"]
+            )
+        )
+        self.assertNotIn("reopen-confirmed-payment-after-restart", nominal_steps)
+
+    def test_chain4_fps_manual_confirmation_and_restart_require_real_provenance(self):
+        scenario = load_json(ROOT / "manifests" / "867-chain4-payment-certainty-unknown-retry-prep.json")
+        steps = {step["id"]: step for step in scenario["steps"]}
+        unknown = {
+            "checkout_workspace",
+            "payment_certainty",
+            "payment_attempt_id",
+            "payment_status_unknown",
+            "payment_replay_safe_true",
+            "payment_result_unknown",
+            "staff_confirm_payment",
+        }
+        confirmed = {
+            "checkout_workspace",
+            "payment_certainty",
+            "payment_attempt_id",
+            "payment_status_confirmed",
+            "payment_replay_safe_true",
+            "payment_result_confirmed",
+            "payment_verification_provenance_staff_manual",
+            "payment_verification_actor_simulation",
+            "payment_verification_context_nonproduction",
+        }
+        self.assertTrue(unknown.issubset(steps["restart-unknown-payment-readback"]["persistence"]["after"]))
+        self.assertTrue(confirmed.issubset(steps["confirm-same-payment-attempt-manually"]["expect"]["present"]))
+        self.assertTrue(
+            confirmed.issubset(steps["restart-manually-confirmed-payment-readback"]["persistence"]["before"])
+        )
+        self.assertTrue(
+            confirmed.issubset(steps["restart-manually-confirmed-payment-readback"]["persistence"]["after"])
+        )
+        self.assertNotIn("reopen-unknown-payment-after-restart", steps)
+
+        selectors = validate_selector_map(
+            load_json(ROOT / "manifests" / "867-chain4-payment-certainty-selectors.json")
+        )
+        self.assertEqual(
+            selectors["payment_verification_provenance_staff_manual"],
+            {"text": "paymentVerificationProvenance STAFF_MANUAL_VERIFICATION"},
+        )
+        self.assertEqual(
+            selectors["payment_verification_actor_simulation"],
+            {"text": "paymentVerificationActor AUTH_DEFERRED_SIMULATION_ACTOR"},
+        )
+        self.assertEqual(
+            selectors["payment_verification_context_nonproduction"],
+            {"text": "paymentVerificationContext AUTH_DEFERRED/SIMULATION/NON_PRODUCTION"},
+        )
+
     def test_exact_text_remains_exact_when_contains_exists(self):
         self.assertTrue(selector_present(self.before.ui_xml, {"text": "Rice Ball"}))
         self.assertFalse(selector_present(self.before.ui_xml, {"text": "Rice"}))

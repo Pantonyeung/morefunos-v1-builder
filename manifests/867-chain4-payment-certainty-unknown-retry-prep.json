@@ -146,16 +146,7 @@
       "persistence": {
         "mode": "RECOVER",
         "before": ["payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"],
-        "after": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"]
-      }
-    },
-    {
-      "id": "reopen-unknown-payment-after-restart",
-      "action": "tap",
-      "target": "checkout",
-      "expect": {
-        "present": ["payment_boundary_invoked", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"],
-        "absent": ["payment_success"]
+        "after": ["auth_deferred", "checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"]
       }
     },
     {
@@ -163,17 +154,18 @@
       "action": "tap",
       "target": "staff_confirm_payment",
       "expect": {
-        "present": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"],
+        "present": ["auth_deferred", "checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed", "payment_verification_provenance_staff_manual", "payment_verification_actor_simulation", "payment_verification_context_nonproduction"],
         "absent": ["payment_success"]
       }
     },
     {
-      "id": "reopen-manually-confirmed-payment-readback",
-      "action": "tap",
-      "target": "checkout",
-      "expect": {
-        "present": ["payment_boundary_invoked", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
-        "absent": ["payment_success"]
+      "id": "restart-manually-confirmed-payment-readback",
+      "action": "restart",
+      "timeout_ms": 15000,
+      "persistence": {
+        "mode": "RECOVER",
+        "before": ["checkout_workspace", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed", "payment_verification_provenance_staff_manual", "payment_verification_actor_simulation", "payment_verification_context_nonproduction"],
+        "after": ["auth_deferred", "checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed", "payment_verification_provenance_staff_manual", "payment_verification_actor_simulation", "payment_verification_context_nonproduction"]
       }
     },
     {

@@ -135,16 +135,7 @@
       "action": "tap",
       "target": "confirm_payment",
       "expect": {
-        "present": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"],
-        "absent": ["payment_success"]
-      }
-    },
-    {
-      "id": "reopen-confirmed-payment-readback",
-      "action": "tap",
-      "target": "checkout",
-      "expect": {
-        "present": ["checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
+        "present": ["auth_deferred", "checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
         "absent": ["payment_success"]
       }
     },
@@ -155,16 +146,7 @@
       "persistence": {
         "mode": "RECOVER",
         "before": ["payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
-        "after": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"]
-      }
-    },
-    {
-      "id": "reopen-confirmed-payment-after-restart",
-      "action": "tap",
-      "target": "checkout",
-      "expect": {
-        "present": ["payment_boundary_invoked", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
-        "absent": ["payment_success"]
+        "after": ["auth_deferred", "checkout_workspace", "payment_boundary_invoked", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"]
       }
     },
     {
