@@ -1,8 +1,8 @@
 source_sha=d908f22219060299993f533de9096edf1f4a33b2
-requested_by=CODEX_B_876_CHECKOUT_FINAL_CONFIRM_RING1B
+requested_by=CODEX_B_876_UI_HIERARCHY_CAPTURE_REPAIR_R1
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=876-first-confirm-rerun-d908f222-01
+request_nonce=876-first-confirm-rerun-d908f222-ui-hierarchy-repair-r1-01
 scenario_path=manifests/876-checkout-final-confirm-store-kernel-reality.json
 selector_map_path=manifests/876-checkout-final-confirm-selectors.json
