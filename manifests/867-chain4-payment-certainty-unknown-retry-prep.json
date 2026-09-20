@@ -15,24 +15,28 @@
   ],
   "steps": [
     {
-      "id": "boot-local-sovereign-menu-with-core-d1-unavailable",
+      "id": "boot-auth-deferred-menu",
       "action": "launch",
       "expect": {
-        "present": [
-          "auth_deferred",
-          "admin_config_revision_applied",
-          "admin_config_revision",
-          "smt_live_transaction_owner",
-          "core_connector_only",
-          "d1_transport_only",
-          "core_d1_unavailable",
-          "local_flow_admitted",
-          "menu_category",
-          "product_riceball",
-          "product_combo",
-          "cart_empty"
-        ],
-        "absent": ["config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority"]
+        "present": ["auth_deferred", "menu_category", "product_riceball", "product_combo", "cart_empty"],
+        "absent": ["mock_core_authority", "payment_success"]
+      }
+    },
+    {
+      "id": "open-non-production-provenance",
+      "action": "tap",
+      "target": "more_nav",
+      "expect": {
+        "present": ["auth_deferred", "simulation_actor", "simulation_context"],
+        "absent": ["payment_success"]
+      }
+    },
+    {
+      "id": "return-to-ordering",
+      "action": "tap",
+      "target": "return_ordering",
+      "expect": {
+        "present": ["auth_deferred", "menu_category", "product_riceball", "product_combo", "cart_empty"]
       }
     },
     {
@@ -110,11 +114,11 @@
       }
     },
     {
-      "id": "observe-payment-methods",
+      "id": "observe-real-last-known-good-payment-configuration",
       "action": "checkpoint",
       "expect": {
-        "present": ["auth_deferred", "admin_config_revision_applied", "smt_live_transaction_owner", "core_d1_unavailable", "local_flow_admitted", "chain4_methods_visible", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
-        "absent": ["config_revision_missing", "config_revision_invalid", "local_flow_forbidden", "mock_core_authority", "payment_request_transition", "store_commit_succeeded"]
+        "present": ["auth_deferred", "chain4_methods_visible", "payment_config_status_published", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_method_cash", "payment_method_fps", "payment_not_invoked"],
+        "absent": ["payment_boundary_invoked", "payment_success"]
       }
     },
     {
@@ -122,8 +126,8 @@
       "action": "tap",
       "target": "payment_method_fps",
       "expect": {
-        "present": ["payment_method_selected_fps", "payment_not_invoked"],
-        "absent": ["payment_request_transition", "store_commit_succeeded"]
+        "present": ["payment_method_fps", "confirm_payment", "payment_not_invoked", "payment_config_source_lkg"],
+        "absent": ["payment_boundary_invoked", "payment_success"]
       }
     },
     {
@@ -131,20 +135,8 @@
       "action": "tap",
       "target": "confirm_payment",
       "expect": {
-        "present": [
-          "payment_request_transition",
-          "payment_failure_surface",
-          "payment_unknown_message",
-          "payment_certainty_unknown",
-          "payment_reconcile_required",
-          "payment_request_id",
-          "payment_idempotency_key",
-          "payment_bound_trace_identity",
-          "payment_readback_state",
-          "payment_replay_count_zero",
-          "retry_payment"
-        ],
-        "absent": ["payment_not_invoked", "store_commit_succeeded"]
+        "present": ["payment_boundary_invoked", "payment_failure_surface", "payment_unknown_message", "payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"],
+        "absent": ["payment_not_invoked", "payment_success"]
       }
     },
     {
@@ -153,56 +145,43 @@
       "timeout_ms": 15000,
       "persistence": {
         "mode": "RECOVER",
-        "before": [
-          "payment_certainty_unknown",
-          "payment_reconcile_required",
-          "payment_request_id",
-          "payment_idempotency_key",
-          "payment_bound_trace_identity",
-          "payment_readback_state",
-          "payment_replay_count_zero",
-          "retry_payment"
-        ],
-        "after": [
-          "payment_restart_readback_recovered",
-          "payment_certainty_unknown",
-          "payment_reconcile_required",
-          "payment_request_id",
-          "payment_idempotency_key",
-          "payment_bound_trace_identity",
-          "payment_readback_state",
-          "payment_replay_count_zero",
-          "retry_payment"
-        ]
+        "before": ["payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"],
+        "after": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"]
       }
     },
     {
-      "id": "retry-same-payment-identity",
+      "id": "reopen-unknown-payment-after-restart",
       "action": "tap",
-      "target": "retry_payment",
+      "target": "checkout",
       "expect": {
-        "present": [
-          "payment_replay_same_identity",
-          "payment_failure_surface",
-          "payment_unknown_message",
-          "payment_certainty_unknown",
-          "payment_reconcile_required",
-          "payment_request_id",
-          "payment_idempotency_key",
-          "payment_bound_trace_identity",
-          "payment_readback_state",
-          "payment_replay_count_one",
-          "retry_payment"
-        ],
-        "absent": ["payment_not_invoked", "store_commit_succeeded"]
+        "present": ["payment_boundary_invoked", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_unknown", "payment_replay_safe_true", "payment_result_unknown", "staff_confirm_payment"],
+        "absent": ["payment_success"]
+      }
+    },
+    {
+      "id": "confirm-same-payment-attempt-manually",
+      "action": "tap",
+      "target": "staff_confirm_payment",
+      "expect": {
+        "present": ["auth_deferred", "cart_product_riceball", "cart_combo_riceball", "cart_total_100"],
+        "absent": ["payment_success"]
+      }
+    },
+    {
+      "id": "reopen-manually-confirmed-payment-readback",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": ["payment_boundary_invoked", "payment_config_source_lkg", "payment_config_version_nonproduction", "payment_config_revision_one", "payment_certainty", "payment_attempt_id", "payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
+        "absent": ["payment_success"]
       }
     },
     {
       "id": "assert-no-store-commit-success-required",
       "action": "checkpoint",
       "expect": {
-        "present": ["payment_replay_same_identity", "payment_certainty_unknown", "payment_reconcile_required", "payment_replay_count_one"],
-        "absent": ["store_commit_succeeded"]
+        "present": ["payment_status_confirmed", "payment_replay_safe_true", "payment_result_confirmed"],
+        "absent": ["payment_success"]
       }
     }
   ]

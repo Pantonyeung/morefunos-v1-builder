@@ -15,19 +15,52 @@
   ],
   "steps": [
     {
-      "id": "boot-without-published-admin-config",
+      "id": "boot-auth-deferred-menu",
       "action": "launch",
       "expect": {
-        "present": ["auth_deferred", "config_revision_missing", "local_flow_forbidden", "smt_live_transaction_owner", "core_connector_only", "d1_transport_only"],
-        "absent": ["admin_config_revision_applied", "admin_config_revision", "config_revision_invalid", "local_flow_admitted", "chain4_methods_visible", "checkout_intent_staged", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
+        "present": ["auth_deferred", "menu_category", "product_riceball", "cart_empty"],
+        "absent": ["mock_core_authority", "payment_success"]
       }
     },
     {
-      "id": "missing-config-remains-distinct-from-transport-outage",
+      "id": "open-normal-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {
+        "present": ["product_config", "required_missing", "option_nori", "confirm_add"]
+      }
+    },
+    {
+      "id": "select-normal-product-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {
+        "present": ["modifier_ready", "confirm_add", "product_config"]
+      }
+    },
+    {
+      "id": "add-normal-product-to-cart",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {
+        "present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"],
+        "absent": ["product_config"]
+      }
+    },
+    {
+      "id": "stage-checkout-with-missing-configuration",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": ["checkout_workspace", "checkout_intent_staged", "payment_not_invoked", "frozen_checkpoint", "chain3_binding_bound", "bound_trace_identity"]
+      }
+    },
+    {
+      "id": "missing-configuration-is-deterministically-blocked",
       "action": "checkpoint",
       "expect": {
-        "present": ["auth_deferred", "config_revision_missing", "local_flow_forbidden"],
-        "absent": ["core_d1_unavailable", "local_flow_admitted", "payment_request_transition", "store_commit_succeeded", "mock_core_authority"]
+        "present": ["chain4_methods_visible", "payment_config_status_blocked", "payment_config_source_missing", "payment_config_blocked_message", "payment_not_invoked"],
+        "absent": ["payment_method_cash", "payment_method_fps", "payment_boundary_invoked", "payment_success"]
       }
     }
   ]
