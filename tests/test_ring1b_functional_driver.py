@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -203,6 +204,31 @@ def store_kernel_snapshot(*tenders):
     }
 
 
+def store_kernel_database_bytes():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        database = Path(temp_dir) / "morefun_store_kernel.db"
+        connection = sqlite3.connect(database)
+        try:
+            connection.executescript(
+                """
+                CREATE TABLE store_kernel_aggregate (
+                    store_id TEXT, aggregate_type TEXT, aggregate_id TEXT
+                );
+                CREATE TABLE store_kernel_command_receipt (commit_sequence INTEGER);
+                CREATE TABLE store_kernel_inbox (
+                    store_id TEXT, source TEXT, source_event_id TEXT
+                );
+                CREATE TABLE store_kernel_outbox (event_id TEXT);
+                CREATE TABLE store_kernel_diagnostic_journal (
+                    trace_id TEXT, sequence INTEGER
+                );
+                """
+            )
+        finally:
+            connection.close()
+        return database.read_bytes()
+
+
 class Ring1BFunctionalDriverTests(unittest.TestCase):
     def setUp(self):
         self.manifest = load_json(FIX / "synthetic-manifest.json")
@@ -286,6 +312,97 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
                 self.assertEqual((capture_dir / "dump.stderr.txt").read_text(encoding="utf-8"), "dump stderr\n")
                 self.assertEqual((capture_dir / "hierarchy.raw").read_text(encoding="utf-8"), read(fixture_name))
                 self.assertFalse(metadata["hierarchy_valid"])
+
+    def test_store_kernel_capture_rejects_remote_diagnostic_text_as_database(self):
+        diagnostic = b"cat: databases/morefun_store_kernel.db: No such file or directory\n"
+        missing_sidecar = subprocess.CompletedProcess(["adb"], 1, b"", b"No such file or directory\n")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = AdbBackend(
+                "com.morefunos.smt",
+                ".MainActivity",
+                temp_dir,
+                store_kernel_readback_timeout_seconds=0,
+                store_kernel_readback_poll_seconds=0,
+            )
+            main = subprocess.CompletedProcess(["adb"], 0, diagnostic, b"remote diagnostic stderr\n")
+            with patch("ring1b_functional_adb.subprocess.run", side_effect=[main, missing_sidecar, missing_sidecar]):
+                with self.assertRaises(RuntimeError) as ctx:
+                    backend.capture_store_kernel("diagnostic-text")
+
+            self.assertIn("R1B_STORE_KERNEL_READBACK_UNAVAILABLE", str(ctx.exception))
+            self.assertIn("MAIN_REMOTE_DIAGNOSTIC_TEXT", str(ctx.exception))
+            capture_dir = Path(temp_dir) / "store-kernel" / "diagnostic-text" / "capture-attempts" / "0001"
+            metadata = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+            self.assertFalse(metadata["ready"])
+            self.assertEqual(metadata["main"]["validation"], "REMOTE_DIAGNOSTIC_TEXT")
+            self.assertEqual((capture_dir / "main.stdout.bin").read_bytes(), diagnostic)
+            self.assertEqual((capture_dir / "main.stderr.txt").read_bytes(), b"remote diagnostic stderr\n")
+
+    def test_store_kernel_capture_rejects_empty_main_database_bytes(self):
+        empty_main = subprocess.CompletedProcess(["adb"], 0, b"", b"")
+        missing_sidecar = subprocess.CompletedProcess(["adb"], 1, b"", b"No such file or directory\n")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = AdbBackend(
+                "com.morefunos.smt",
+                ".MainActivity",
+                temp_dir,
+                store_kernel_readback_timeout_seconds=0,
+                store_kernel_readback_poll_seconds=0,
+            )
+            with patch(
+                "ring1b_functional_adb.subprocess.run",
+                side_effect=[empty_main, missing_sidecar, missing_sidecar],
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    backend.capture_store_kernel("empty-main")
+
+            self.assertIn("R1B_STORE_KERNEL_READBACK_UNAVAILABLE", str(ctx.exception))
+            self.assertIn("MAIN_EMPTY_BYTES", str(ctx.exception))
+            capture_file = (
+                Path(temp_dir)
+                / "store-kernel"
+                / "empty-main"
+                / "capture-attempts"
+                / "0001"
+                / "capture.json"
+            )
+            metadata = json.loads(capture_file.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["main"]["validation"], "EMPTY_BYTES")
+
+    def test_store_kernel_capture_retries_until_main_sqlite_is_ready(self):
+        diagnostic = b"cat: databases/morefun_store_kernel.db: No such file or directory\n"
+        missing_sidecar = subprocess.CompletedProcess(["adb"], 1, b"", b"No such file or directory\n")
+        delayed_shm = subprocess.CompletedProcess(["adb"], 0, b"\x00" * 32768, b"")
+        first_main = subprocess.CompletedProcess(["adb"], 0, diagnostic, b"")
+        ready_main = subprocess.CompletedProcess(["adb"], 0, store_kernel_database_bytes(), b"")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = AdbBackend(
+                "com.morefunos.smt",
+                ".MainActivity",
+                temp_dir,
+                store_kernel_readback_timeout_seconds=1,
+                store_kernel_readback_poll_seconds=0,
+            )
+            command_results = [
+                first_main,
+                missing_sidecar,
+                delayed_shm,
+                ready_main,
+                missing_sidecar,
+                missing_sidecar,
+            ]
+            with patch("ring1b_functional_adb.subprocess.run", side_effect=command_results):
+                snapshot = backend.capture_store_kernel("delayed-ready")
+
+            self.assertEqual(snapshot, store_kernel_snapshot())
+            capture_root = Path(temp_dir) / "store-kernel" / "delayed-ready" / "capture-attempts"
+            first = json.loads((capture_root / "0001" / "capture.json").read_text(encoding="utf-8"))
+            second = json.loads((capture_root / "0002" / "capture.json").read_text(encoding="utf-8"))
+            self.assertFalse(first["ready"])
+            self.assertTrue(first["shm"]["available"])
+            self.assertNotEqual(first["main"]["validation"], "SQLITE_HEADER_VALID")
+            self.assertTrue(second["ready"])
+            self.assertEqual(second["main"]["validation"], "SQLITE_HEADER_VALID")
 
     def test_selector_fallback_reaches_content_desc(self):
         selector = {

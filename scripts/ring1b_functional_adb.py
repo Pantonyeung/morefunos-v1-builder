@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -13,12 +14,32 @@ from ring1b_functional_core import HierarchyCaptureError, ManifestError, Observa
 
 
 class AdbBackend:
-    def __init__(self, package_id: str, main_activity: str, evidence_dir: str | Path) -> None:
+    SQLITE_HEADER = b"SQLite format 3\x00"
+    SQLITE_WAL_MAGIC = {b"\x37\x7f\x06\x82", b"\x37\x7f\x06\x83"}
+    REMOTE_DIAGNOSTIC_MARKERS = (
+        "no such file or directory",
+        "permission denied",
+        "not found",
+        "run-as:",
+        "cat:",
+    )
+
+    def __init__(
+        self,
+        package_id: str,
+        main_activity: str,
+        evidence_dir: str | Path,
+        *,
+        store_kernel_readback_timeout_seconds: float = 10.0,
+        store_kernel_readback_poll_seconds: float = 0.25,
+    ) -> None:
         self.package_id = package_id
         self.main_activity = main_activity
         self.evidence_dir = Path(evidence_dir)
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self._obs_counter = 0
+        self.store_kernel_readback_timeout_seconds = max(0.0, store_kernel_readback_timeout_seconds)
+        self.store_kernel_readback_poll_seconds = max(0.0, store_kernel_readback_poll_seconds)
 
     def _run(self, args: List[str], *, check: bool = True, timeout: int = 30) -> subprocess.CompletedProcess:
         return subprocess.run(["adb", *args], check=check, text=True, capture_output=True, timeout=timeout)
@@ -297,31 +318,112 @@ class AdbBackend:
                 f"route_stdout={'' if route_probe is None else route_probe.stdout.strip()!r}"
             )
 
-    def _copy_app_file(self, relative_path: str, destination: Path, *, required: bool) -> bool:
-        result = subprocess.run(
-            ["adb", "exec-out", "run-as", self.package_id, "cat", relative_path],
-            check=False,
-            capture_output=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            if required:
-                raise RuntimeError(
-                    f"R1B_STORE_KERNEL_FILE_READ_FAILED: {relative_path}: "
-                    f"exit={result.returncode}; stderr={result.stderr.decode('utf-8', errors='replace').strip()}"
-                )
-            return False
-        destination.write_bytes(result.stdout)
-        return True
+    @staticmethod
+    def _output_bytes(value: Any) -> bytes:
+        if value is None:
+            return b""
+        if isinstance(value, bytes):
+            return value
+        return str(value).encode("utf-8", errors="replace")
 
-    def capture_store_kernel(self, label: str) -> Dict[str, Any]:
-        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
-        dest = self.evidence_dir / "store-kernel" / safe
-        dest.mkdir(parents=True, exist_ok=True)
-        database = dest / "morefun_store_kernel.db"
-        self._copy_app_file("databases/morefun_store_kernel.db", database, required=True)
-        self._copy_app_file("databases/morefun_store_kernel.db-wal", dest / "morefun_store_kernel.db-wal", required=False)
-        self._copy_app_file("databases/morefun_store_kernel.db-shm", dest / "morefun_store_kernel.db-shm", required=False)
+    @classmethod
+    def _is_remote_diagnostic(cls, payload: bytes) -> bool:
+        preview = payload[:1024].decode("utf-8", errors="replace").strip().lower()
+        return any(marker in preview for marker in cls.REMOTE_DIAGNOSTIC_MARKERS)
+
+    def _capture_app_file(
+        self,
+        relative_path: str,
+        attempt_dir: Path,
+        role: str,
+        command_timeout_seconds: float,
+    ) -> Dict[str, Any]:
+        started = time.monotonic()
+        try:
+            result = subprocess.run(
+                ["adb", "exec-out", "run-as", self.package_id, "cat", relative_path],
+                check=False,
+                capture_output=True,
+                timeout=command_timeout_seconds,
+            )
+            exit_code = result.returncode
+            stdout = self._output_bytes(result.stdout)
+            stderr = self._output_bytes(result.stderr)
+            error = None
+        except subprocess.TimeoutExpired as exc:
+            exit_code = None
+            stdout = self._output_bytes(exc.stdout)
+            stderr = self._output_bytes(exc.stderr)
+            error = f"TimeoutExpired after {command_timeout_seconds:.3f}s"
+        except OSError as exc:
+            exit_code = None
+            stdout = b""
+            stderr = b""
+            error = f"{type(exc).__name__}: {exc}"
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        stdout_file = f"{role}.stdout.bin"
+        stderr_file = f"{role}.stderr.txt"
+        (attempt_dir / stdout_file).write_bytes(stdout)
+        (attempt_dir / stderr_file).write_bytes(stderr)
+        return {
+            "relative_path": relative_path,
+            "exit_code": exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+            "error": error,
+            "elapsed_ms": elapsed_ms,
+            "stdout_file": stdout_file,
+            "stderr_file": stderr_file,
+        }
+
+    @staticmethod
+    def _capture_metadata(capture: Dict[str, Any], validation: str, available: bool) -> Dict[str, Any]:
+        stdout = capture["stdout"]
+        stderr = capture["stderr"]
+        return {
+            "relative_path": capture["relative_path"],
+            "exit_code": capture["exit_code"],
+            "error": capture["error"],
+            "elapsed_ms": capture["elapsed_ms"],
+            "stdout_bytes": len(stdout),
+            "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+            "stdout_preview": stdout[:512].decode("utf-8", errors="replace"),
+            "stdout_file": capture["stdout_file"],
+            "stderr_bytes": len(stderr),
+            "stderr_preview": stderr[:512].decode("utf-8", errors="replace"),
+            "stderr_file": capture["stderr_file"],
+            "validation": validation,
+            "available": available,
+        }
+
+    def _validate_main_database(self, capture: Dict[str, Any]) -> str:
+        if capture["exit_code"] != 0:
+            return "COMMAND_FAILED"
+        payload = capture["stdout"]
+        if not payload:
+            return "EMPTY_BYTES"
+        if payload.startswith(self.SQLITE_HEADER):
+            return "SQLITE_HEADER_VALID"
+        if self._is_remote_diagnostic(payload):
+            return "REMOTE_DIAGNOSTIC_TEXT"
+        return "SQLITE_HEADER_INVALID"
+
+    def _validate_sidecar(self, capture: Dict[str, Any], role: str) -> Tuple[str, bool]:
+        if capture["exit_code"] != 0:
+            return "COMMAND_UNAVAILABLE", False
+        payload = capture["stdout"]
+        if not payload:
+            return "EMPTY_BYTES", False
+        if self._is_remote_diagnostic(payload):
+            return "REMOTE_DIAGNOSTIC_TEXT", False
+        if role == "wal" and (len(payload) < 32 or payload[:4] not in self.SQLITE_WAL_MAGIC):
+            return "WAL_HEADER_INVALID", False
+        if role == "shm" and len(payload) < 136:
+            return "SHM_BYTES_INVALID", False
+        return ("WAL_HEADER_VALID" if role == "wal" else "SHM_BYTES_PRESENT"), True
+
+    @staticmethod
+    def _read_store_kernel_snapshot(database: Path) -> Dict[str, Any]:
         table_queries = {
             "aggregates": "SELECT * FROM store_kernel_aggregate ORDER BY store_id, aggregate_type, aggregate_id",
             "receipts": "SELECT * FROM store_kernel_command_receipt ORDER BY commit_sequence",
@@ -330,22 +432,112 @@ class AdbBackend:
             "journal": "SELECT * FROM store_kernel_diagnostic_journal ORDER BY trace_id, sequence",
         }
         snapshot: Dict[str, Any] = {}
+        connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
         try:
-            connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
-            connection.row_factory = sqlite3.Row
-            try:
-                connection.execute("PRAGMA query_only=ON")
-                for table, query in table_queries.items():
-                    snapshot[table] = [dict(row) for row in connection.execute(query).fetchall()]
-            finally:
-                connection.close()
-        except sqlite3.Error as exc:
-            raise RuntimeError(f"R1B_STORE_KERNEL_SQLITE_READ_FAILED: {exc}") from exc
-        (dest / "snapshot.json").write_text(
-            json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+            connection.execute("PRAGMA query_only=ON")
+            for table, query in table_queries.items():
+                snapshot[table] = [dict(row) for row in connection.execute(query).fetchall()]
+        finally:
+            connection.close()
         return snapshot
+
+    def capture_store_kernel(self, label: str) -> Dict[str, Any]:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        dest = self.evidence_dir / "store-kernel" / safe
+        dest.mkdir(parents=True, exist_ok=True)
+        attempts_dir = dest / "capture-attempts"
+        attempts_dir.mkdir(parents=True, exist_ok=True)
+        timeout_ms = int(self.store_kernel_readback_timeout_seconds * 1000)
+        deadline = time.monotonic() + self.store_kernel_readback_timeout_seconds
+        attempt = 0
+        last_reason = "NO_CAPTURE_ATTEMPT"
+        last_capture_ref = ""
+        while True:
+            attempt += 1
+            attempt_dir = attempts_dir / f"{attempt:04d}"
+            attempt_dir.mkdir(parents=True, exist_ok=True)
+            main = self._capture_app_file(
+                "databases/morefun_store_kernel.db",
+                attempt_dir,
+                "main",
+                max(0.001, deadline - time.monotonic()),
+            )
+            wal = self._capture_app_file(
+                "databases/morefun_store_kernel.db-wal",
+                attempt_dir,
+                "wal",
+                max(0.001, deadline - time.monotonic()),
+            )
+            shm = self._capture_app_file(
+                "databases/morefun_store_kernel.db-shm",
+                attempt_dir,
+                "shm",
+                max(0.001, deadline - time.monotonic()),
+            )
+            main_validation = self._validate_main_database(main)
+            wal_validation, wal_available = self._validate_sidecar(wal, "wal")
+            shm_validation, shm_available = self._validate_sidecar(shm, "shm")
+            ready = False
+            snapshot: Dict[str, Any] = {}
+            sqlite_error: Optional[str] = None
+            if main_validation != "SQLITE_HEADER_VALID":
+                last_reason = f"MAIN_{main_validation}"
+            elif shm_available and not wal_available:
+                last_reason = "ROOM_SHM_WITHOUT_WAL"
+            elif wal["exit_code"] == 0 and wal["stdout"] and not wal_available:
+                last_reason = wal_validation
+            else:
+                database = attempt_dir / "morefun_store_kernel.db"
+                database.write_bytes(main["stdout"])
+                if wal_available:
+                    (attempt_dir / "morefun_store_kernel.db-wal").write_bytes(wal["stdout"])
+                if shm_available:
+                    (attempt_dir / "morefun_store_kernel.db-shm").write_bytes(shm["stdout"])
+                try:
+                    snapshot = self._read_store_kernel_snapshot(database)
+                    ready = True
+                    last_reason = "READY"
+                except sqlite3.Error as exc:
+                    sqlite_error = f"{type(exc).__name__}: {exc}"
+                    last_reason = f"SQLITE_READ_FAILED:{exc}"
+            capture_metadata = {
+                "attempt": attempt,
+                "timeout_ms": timeout_ms,
+                "main": self._capture_metadata(main, main_validation, main_validation == "SQLITE_HEADER_VALID"),
+                "wal": self._capture_metadata(wal, wal_validation, wal_available),
+                "shm": self._capture_metadata(shm, shm_validation, shm_available),
+                "ready": ready,
+                "reason": last_reason,
+                "sqlite_error": sqlite_error,
+            }
+            capture_file = attempt_dir / "capture.json"
+            capture_file.write_text(
+                json.dumps(capture_metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            last_capture_ref = capture_file.relative_to(self.evidence_dir).as_posix()
+            if ready:
+                (dest / "morefun_store_kernel.db").write_bytes(main["stdout"])
+                if wal_available:
+                    (dest / "morefun_store_kernel.db-wal").write_bytes(wal["stdout"])
+                if shm_available:
+                    (dest / "morefun_store_kernel.db-shm").write_bytes(shm["stdout"])
+                (dest / "snapshot.json").write_text(
+                    json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                return snapshot
+            now = time.monotonic()
+            if now >= deadline:
+                raise RuntimeError(
+                    "R1B_STORE_KERNEL_READBACK_UNAVAILABLE: "
+                    f"attempts={attempt}; timeout_ms={timeout_ms}; last_reason={last_reason}; "
+                    f"capture_evidence={last_capture_ref}"
+                )
+            remaining = deadline - now
+            if self.store_kernel_readback_poll_seconds > 0:
+                time.sleep(min(self.store_kernel_readback_poll_seconds, remaining))
 
     def force_stop(self) -> None:
         self._shell(f"am force-stop {self.package_id}", check=False, timeout=15)

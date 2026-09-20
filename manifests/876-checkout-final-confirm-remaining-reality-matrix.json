@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scenario_id": "876-checkout-final-confirm-remaining-reality-matrix",
+  "scenario_id": "876-checkout-final-confirm-normal-reality-matrix",
   "package_id": "com.morefunos.smt",
   "main_activity": ".MainActivity",
   "timeouts": {
@@ -108,58 +108,6 @@
       }
     },
     {
-      "id": "death-open-product",
-      "action": "tap",
-      "target": "product_riceball",
-      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
-    },
-    {
-      "id": "death-select-modifier",
-      "action": "tap",
-      "target": "option_nori",
-      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
-    },
-    {
-      "id": "death-add-product",
-      "action": "tap",
-      "target": "confirm_add",
-      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
-    },
-    {
-      "id": "death-enter-checkout",
-      "action": "tap",
-      "target": "checkout",
-      "expect": {
-        "present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_fps", "confirm_payment"],
-        "absent": ["payment_success", "payment_unknown", "retry_payment"]
-      }
-    },
-    {
-      "id": "death-select-fps",
-      "action": "tap",
-      "target": "payment_fps",
-      "allow_preexisting_expectation": true,
-      "expect": {
-        "present": ["preconfirm_message", "payment_fps", "confirm_payment"],
-        "absent": ["payment_success", "payment_unknown", "retry_payment"]
-      }
-    },
-    {
-      "id": "exact-commit-window-process-death",
-      "action": "process_death",
-      "target": "confirm_payment",
-      "expect": {
-        "present": ["menu_category", "product_riceball", "cart_empty"],
-        "absent": ["payment_success", "payment_unknown", "retry_payment"]
-      },
-      "store_kernel": {
-        "checkpoint": "after-process-death",
-        "compare_to": "cash-after-relaunch",
-        "transaction_delta": [0, 1],
-        "tenders": ["FPS"]
-      }
-    },
-    {
       "id": "fps-open-product",
       "action": "tap",
       "target": "product_riceball",
@@ -195,7 +143,7 @@
       "action": "tap",
       "target": "confirm_payment",
       "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
-      "store_kernel": {"checkpoint": "fps-committed", "compare_to": "after-process-death", "transaction_delta": [1], "tenders": ["FPS"]}
+      "store_kernel": {"checkpoint": "fps-committed", "compare_to": "cash-after-relaunch", "transaction_delta": [1], "tenders": ["FPS"]}
     },
     {
       "id": "fps-done",

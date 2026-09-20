@@ -1,8 +1,8 @@
 source_sha=d908f22219060299993f533de9096edf1f4a33b2
-requested_by=CODEX_B_CHECKOUT_FINAL_CONFIRM_REMAINING_RING1B_R1
+requested_by=CODEX_B_CHECKOUT_NORMAL_RING1B_R1
 api_level=30
 arch=x86_64
 mode=HEADLESS
-request_nonce=876-remaining-reality-matrix-d908f222-r1-01
+request_nonce=876-normal-reality-matrix-d908f222-r1-02
 scenario_path=manifests/876-checkout-final-confirm-remaining-reality-matrix.json
 selector_map_path=manifests/876-checkout-final-confirm-selectors.json
