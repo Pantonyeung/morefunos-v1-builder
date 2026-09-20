@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from ring1b_functional_core import Observation, make_observation
+from ring1b_functional_core import HierarchyCaptureError, ManifestError, Observation, make_observation, validate_ui_hierarchy
 
 
 class AdbBackend:
@@ -24,15 +25,105 @@ class AdbBackend:
     def _shell(self, command: str, *, check: bool = True, timeout: int = 30) -> str:
         return self._run(["shell", command], check=check, timeout=timeout).stdout
 
+    @staticmethod
+    def _output_text(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    def _run_for_evidence(self, args: List[str], *, timeout: int) -> Tuple[Dict[str, Any], str]:
+        try:
+            result = self._run(args, check=False, timeout=timeout)
+            return (
+                {
+                    "exit_code": result.returncode,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "error": None,
+                },
+                result.stdout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = self._output_text(exc.stdout)
+            return (
+                {
+                    "exit_code": None,
+                    "stdout": stdout,
+                    "stderr": self._output_text(exc.stderr),
+                    "error": f"TimeoutExpired after {timeout}s",
+                },
+                stdout,
+            )
+        except OSError as exc:
+            return (
+                {
+                    "exit_code": None,
+                    "stdout": "",
+                    "stderr": "",
+                    "error": f"{type(exc).__name__}: {exc}",
+                },
+                "",
+            )
+
+    def _save_hierarchy_capture(
+        self,
+        remote: str,
+        dump: Dict[str, Any],
+        readback: Dict[str, Any],
+        raw_hierarchy: str,
+        validation_error: Optional[str],
+    ) -> str:
+        capture_dir = self.evidence_dir / "hierarchy-captures" / f"{self._obs_counter:04d}"
+        capture_dir.mkdir(parents=True, exist_ok=True)
+        (capture_dir / "dump.stdout.txt").write_text(dump["stdout"], encoding="utf-8", errors="replace")
+        (capture_dir / "dump.stderr.txt").write_text(dump["stderr"], encoding="utf-8", errors="replace")
+        (capture_dir / "readback.stderr.txt").write_text(readback["stderr"], encoding="utf-8", errors="replace")
+        (capture_dir / "hierarchy.raw").write_text(raw_hierarchy, encoding="utf-8", errors="replace")
+        metadata = {
+            "observation": self._obs_counter,
+            "remote_path": remote,
+            "dump": dump,
+            "readback": {**readback, "stdout": "PRESERVED_IN_hierarchy.raw"},
+            "raw_hierarchy_file": "hierarchy.raw",
+            "hierarchy_valid": validation_error is None,
+            "validation_error": validation_error,
+        }
+        (capture_dir / "capture.json").write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return capture_dir.relative_to(self.evidence_dir).as_posix()
+
     def observe(self) -> Observation:
         self._obs_counter += 1
         remote = f"/sdcard/r1b-functional-{os.getpid()}-{self._obs_counter}.xml"
         try:
-            self._shell(f"uiautomator dump {remote}", check=False, timeout=15)
-            readback = self._run(["exec-out", "cat", remote], check=False, timeout=15)
-            xml = readback.stdout if readback.returncode == 0 else ""
+            dump, _ = self._run_for_evidence(["shell", f"uiautomator dump {remote}"], timeout=15)
+            readback, xml = self._run_for_evidence(["exec-out", "cat", remote], timeout=15)
         finally:
-            self._shell(f"rm -f {remote}", check=False, timeout=10)
+            try:
+                self._shell(f"rm -f {remote}", check=False, timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        if dump["exit_code"] != 0:
+            validation_error = f"UIAutomator dump failed: exit_code={dump['exit_code']}; error={dump['error']}"
+        elif readback["exit_code"] != 0:
+            validation_error = f"UI hierarchy readback failed: exit_code={readback['exit_code']}; error={readback['error']}"
+        else:
+            try:
+                validate_ui_hierarchy(xml)
+                validation_error = None
+            except ManifestError as exc:
+                validation_error = str(exc)
+        evidence_ref = self._save_hierarchy_capture(remote, dump, readback, xml, validation_error)
+        if validation_error is not None:
+            raise HierarchyCaptureError(
+                validation_error,
+                evidence_ref=evidence_ref,
+                dump_exit_code=dump["exit_code"],
+                readback_exit_code=readback["exit_code"],
+            )
         activity = self._shell("dumpsys activity activities", check=False, timeout=15)
         return make_observation(xml, activity)
 

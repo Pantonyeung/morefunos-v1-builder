@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from ring1b_functional_adb import AdbBackend
 from ring1b_functional_core import (
     DriverFailure,
+    HierarchyCaptureError,
     ManifestError,
     Observation,
     R1B_ACTION_NO_STATE_CHANGE,
@@ -18,6 +19,7 @@ from ring1b_functional_core import (
     R1B_MANIFEST_INVALID,
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_SELECTOR_NOT_FOUND,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
     expectation_matches,
     expectation_text,
@@ -25,6 +27,7 @@ from ring1b_functional_core import (
     load_json,
     resolve_tap_coordinates,
     selector_present,
+    validate_ui_hierarchy,
     validate_manifest,
     validate_selector_map,
 )
@@ -51,24 +54,38 @@ class FunctionalDriver:
                 layer="ANDROID_UI_RECOVERY",
             )
 
-    def _observe_checked(self, step_id: str) -> Observation:
-        obs = self.backend.observe()
-        self._check_fault(obs, step_id)
-        return obs
+    def _observe_checked(self, step_id: str, *, deadline: float, timeout_ms: int) -> Observation:
+        while True:
+            try:
+                obs = self.backend.observe()
+                validate_ui_hierarchy(obs.ui_xml)
+            except (HierarchyCaptureError, ManifestError) as exc:
+                if time.monotonic() >= deadline:
+                    raise DriverFailure(
+                        R1B_UI_HIERARCHY_UNAVAILABLE,
+                        step_id=step_id,
+                        expected="valid UIAutomator <hierarchy> XML within the existing step timeout",
+                        actual=f"timeout after {timeout_ms}ms; last_capture_error={exc}",
+                        layer="ANDROID_UI_HIERARCHY_CAPTURE",
+                    ) from exc
+                self.backend.sleep(min(self.poll_ms / 1000.0, max(0.0, deadline - time.monotonic())))
+                continue
+            self._check_fault(obs, step_id)
+            return obs
 
     def _wait_expect(self, step: Dict[str, Any], before: Optional[Observation] = None) -> Observation:
         step_id = step["id"]
         expect = step["expect"]
         timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
         deadline = time.monotonic() + timeout_ms / 1000.0
-        latest = self._observe_checked(step_id)
+        latest = self._observe_checked(step_id, deadline=deadline, timeout_ms=timeout_ms)
         if expectation_matches(latest, expect, self.selectors) and (
             before is None or latest.fingerprint != before.fingerprint
         ):
             return latest
         while time.monotonic() < deadline:
             self.backend.sleep(self.poll_ms / 1000.0)
-            latest = self._observe_checked(step_id)
+            latest = self._observe_checked(step_id, deadline=deadline, timeout_ms=timeout_ms)
             if expectation_matches(latest, expect, self.selectors) and (
                 before is None or latest.fingerprint != before.fingerprint
             ):
@@ -93,7 +110,10 @@ class FunctionalDriver:
     def _run_restart(self, step: Dict[str, Any], index: int) -> Observation:
         step_id = step["id"]
         persistence = step["persistence"]
-        before = self._observe_checked(step_id)
+        timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
+        before = self._observe_checked(
+            step_id, deadline=time.monotonic() + timeout_ms / 1000.0, timeout_ms=timeout_ms
+        )
         self.backend.capture_evidence(f"{index:02d}-{step_id}-before-restart", before)
         before_names = persistence.get("before", [])
         if before_names and not self._assert_named_present(before, before_names):
@@ -106,13 +126,12 @@ class FunctionalDriver:
             )
         self.backend.force_stop()
         self.backend.launch()
-        timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
         deadline = time.monotonic() + timeout_ms / 1000.0
         after_names = persistence["after"]
-        latest = self._observe_checked(step_id)
+        latest = self._observe_checked(step_id, deadline=deadline, timeout_ms=timeout_ms)
         while not self._assert_named_present(latest, after_names) and time.monotonic() < deadline:
             self.backend.sleep(self.poll_ms / 1000.0)
-            latest = self._observe_checked(step_id)
+            latest = self._observe_checked(step_id, deadline=deadline, timeout_ms=timeout_ms)
         self.backend.capture_evidence(f"{index:02d}-{step_id}-after-restart", latest)
         if not self._assert_named_present(latest, after_names):
             raise DriverFailure(
@@ -138,7 +157,10 @@ class FunctionalDriver:
                     after = self._wait_expect(step)
                     self.backend.capture_evidence(f"{index:02d}-{step_id}", after)
                 elif action == "tap":
-                    before = self._observe_checked(step_id)
+                    timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
+                    before = self._observe_checked(
+                        step_id, deadline=time.monotonic() + timeout_ms / 1000.0, timeout_ms=timeout_ms
+                    )
                     self.backend.capture_evidence(f"{index:02d}-{step_id}-before", before)
                     if expectation_matches(before, step["expect"], self.selectors):
                         raise DriverFailure(

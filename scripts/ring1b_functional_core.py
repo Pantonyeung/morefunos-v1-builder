@@ -14,6 +14,7 @@ R1B_EXPECTED_STATE_NOT_REACHED = "R1B_EXPECTED_STATE_NOT_REACHED"
 R1B_UNEXPECTED_RECOVERY_SURFACE = "R1B_UNEXPECTED_RECOVERY_SURFACE"
 R1B_RESTART_PERSISTENCE_MISMATCH = "R1B_RESTART_PERSISTENCE_MISMATCH"
 R1B_MANIFEST_INVALID = "R1B_MANIFEST_INVALID"
+R1B_UI_HIERARCHY_UNAVAILABLE = "R1B_UI_HIERARCHY_UNAVAILABLE"
 
 DEFAULT_FAULT_TEXT_PATTERNS = (
     r"SMT 發生故障",
@@ -44,6 +45,25 @@ class DriverFailure(RuntimeError):
 
 class ManifestError(ValueError):
     pass
+
+
+class HierarchyCaptureError(RuntimeError):
+    def __init__(
+        self,
+        reason: str,
+        *,
+        evidence_ref: str,
+        dump_exit_code: Optional[int],
+        readback_exit_code: Optional[int],
+    ) -> None:
+        self.reason = reason
+        self.evidence_ref = evidence_ref
+        self.dump_exit_code = dump_exit_code
+        self.readback_exit_code = readback_exit_code
+        super().__init__(
+            f"{reason}; evidence={evidence_ref}; dump_exit_code={dump_exit_code}; "
+            f"readback_exit_code={readback_exit_code}"
+        )
 
 
 def load_json(path: str | Path) -> Dict[str, Any]:
@@ -93,11 +113,20 @@ def make_observation(xml_text: str, activity_text: str = "") -> Observation:
     return Observation(xml_text, activity_text, canonical_ui_fingerprint(xml_text, activity_text))
 
 
-def _iter_nodes(xml_text: str) -> Iterable[ET.Element]:
+def validate_ui_hierarchy(xml_text: str) -> ET.Element:
+    if not xml_text.strip():
+        raise ManifestError("UIAutomator hierarchy is empty")
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as exc:
-        raise ManifestError(f"UIAutomator XML parse error: {exc}") from exc
+        raise ManifestError(f"UIAutomator hierarchy is not valid XML: {exc}") from exc
+    if root.tag.rsplit("}", 1)[-1] != "hierarchy":
+        raise ManifestError(f"UIAutomator hierarchy root is {root.tag!r}, expected 'hierarchy'")
+    return root
+
+
+def _iter_nodes(xml_text: str) -> Iterable[ET.Element]:
+    root = validate_ui_hierarchy(xml_text)
     return root.iter("node")
 
 

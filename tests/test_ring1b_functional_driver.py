@@ -1,18 +1,24 @@
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from ring1b_functional_adb import AdbBackend  # noqa: E402
 from ring1b_functional_driver import FunctionalDriver  # noqa: E402
 from ring1b_functional_core import (  # noqa: E402
     DriverFailure,
+    HierarchyCaptureError,
     ManifestError,
     R1B_ACTION_NO_STATE_CHANGE,
     R1B_EXPECTED_STATE_NOT_REACHED,
     R1B_SELECTOR_NOT_FOUND,
+    R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
     expectation_matches,
@@ -38,6 +44,8 @@ class FakeBackend:
     def observe(self):
         if self.observations:
             self.last = self.observations.pop(0)
+        if isinstance(self.last, BaseException):
+            raise self.last
         return self.last
 
     def capture_evidence(self, label, obs=None):
@@ -88,6 +96,62 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
     def test_expectation_match(self):
         self.assertFalse(expectation_matches(self.before, {"present": ["cart_line"]}, self.selectors))
         self.assertTrue(expectation_matches(self.after, {"present": ["cart_line"]}, self.selectors))
+
+    def test_empty_and_non_xml_hierarchy_are_retried_inside_step_timeout(self):
+        step = {"id": "boot", "action": "checkpoint", "expect": {"present": ["product_tile"]}, "timeout_ms": 50}
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        backend = FakeBackend(
+            [
+                make_observation(read("ui-empty.xml"), "mResumedActivity: MainActivity"),
+                make_observation(read("ui-nonxml.txt"), "mResumedActivity: MainActivity"),
+                self.before,
+            ]
+        )
+
+        result = FunctionalDriver(manifest, self.selectors, backend).run()
+
+        self.assertEqual(result["last_green"], "boot")
+
+    def test_hierarchy_capture_timeout_is_deterministic_driver_failure(self):
+        step = {"id": "boot", "action": "checkpoint", "expect": {"present": ["product_tile"]}, "timeout_ms": 1}
+        manifest = dict(self.manifest)
+        manifest["steps"] = [step]
+        capture_error = HierarchyCaptureError(
+            "UIAutomator hierarchy is empty",
+            evidence_ref="hierarchy-captures/0001",
+            dump_exit_code=0,
+            readback_exit_code=0,
+        )
+        with patch("ring1b_functional_driver.time.monotonic", side_effect=[0.0, 0.002]):
+            with self.assertRaises(DriverFailure) as ctx:
+                FunctionalDriver(manifest, self.selectors, FakeBackend([capture_error])).run()
+        self.assertEqual(ctx.exception.code, R1B_UI_HIERARCHY_UNAVAILABLE)
+        self.assertEqual(ctx.exception.layer, "ANDROID_UI_HIERARCHY_CAPTURE")
+        self.assertIn("hierarchy-captures/0001", ctx.exception.actual)
+
+    def test_adb_backend_preserves_dump_and_raw_invalid_hierarchy_evidence(self):
+        for fixture_name in ("ui-empty.xml", "ui-nonxml.txt"):
+            with self.subTest(fixture=fixture_name), tempfile.TemporaryDirectory() as temp_dir:
+                backend = AdbBackend("com.morefunos.smt", ".MainActivity", temp_dir)
+                dump = subprocess.CompletedProcess(
+                    ["adb", "shell", "uiautomator", "dump"], 0, "dump stdout\n", "dump stderr\n"
+                )
+                readback = subprocess.CompletedProcess(
+                    ["adb", "exec-out", "cat"], 0, read(fixture_name), "readback stderr\n"
+                )
+                cleanup = subprocess.CompletedProcess(["adb", "shell", "rm"], 0, "", "")
+                with patch.object(backend, "_run", side_effect=[dump, readback, cleanup]):
+                    with self.assertRaises(HierarchyCaptureError):
+                        backend.observe()
+
+                capture_dir = Path(temp_dir) / "hierarchy-captures" / "0001"
+                metadata = json.loads((capture_dir / "capture.json").read_text(encoding="utf-8"))
+                self.assertEqual(metadata["dump"]["exit_code"], 0)
+                self.assertEqual((capture_dir / "dump.stdout.txt").read_text(encoding="utf-8"), "dump stdout\n")
+                self.assertEqual((capture_dir / "dump.stderr.txt").read_text(encoding="utf-8"), "dump stderr\n")
+                self.assertEqual((capture_dir / "hierarchy.raw").read_text(encoding="utf-8"), read(fixture_name))
+                self.assertFalse(metadata["hierarchy_valid"])
 
     def test_selector_fallback_reaches_content_desc(self):
         selector = {
