@@ -27,6 +27,8 @@
     "completion_review": {"content_desc": "完成檢視"},
     "completed_status": {"text": "已完成"},
     "done": {"text": "完成"},
+    "payment_unknown": {"text": "付款結果暫時未知。請用「重試付款」查核同一交易；系統會沿用原有防重複扣款識別。"},
+    "retry_payment": {"text": "重試付款"},
     "auth_deferred_display_code": {"text": "AUTH-DEFERRED"}
   }
 }

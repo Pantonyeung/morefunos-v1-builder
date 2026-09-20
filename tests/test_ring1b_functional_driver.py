@@ -20,7 +20,10 @@ from ring1b_functional_core import (  # noqa: E402
     R1B_SELECTOR_NOT_FOUND,
     R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_RESTART_PERSISTENCE_MISMATCH,
+    R1B_STORE_KERNEL_ASSERTION_FAILED,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
+    StoreKernelAssertionError,
+    assert_store_kernel_transition,
     expectation_matches,
     load_json,
     make_observation,
@@ -40,6 +43,9 @@ class FakeBackend:
         self.captures = []
         self.launches = 0
         self.stops = 0
+        self.network_states = []
+        self.process_deaths = []
+        self.store_kernel_snapshots = []
 
     def observe(self):
         if self.observations:
@@ -55,6 +61,24 @@ class FakeBackend:
     def tap(self, x, y):
         self.taps.append((x, y))
 
+    def rapid_tap(self, x, y, count, interval_ms, label):
+        for _ in range(count):
+            self.taps.append((x, y))
+
+    def process_death_on_store_kernel_wal_change(self, x, y, timeout_ms, label):
+        self.taps.append((x, y))
+        self.process_deaths.append((timeout_ms, label))
+        self.stops += 1
+        return {"result": "KILLED_ON_WAL_CHANGE"}
+
+    def set_network_state(self, state, label):
+        self.network_states.append((state, label))
+
+    def capture_store_kernel(self, label):
+        if not self.store_kernel_snapshots:
+            raise AssertionError(f"no Store Kernel snapshot queued for {label}")
+        return self.store_kernel_snapshots.pop(0)
+
     def force_stop(self):
         self.stops += 1
 
@@ -67,6 +91,116 @@ class FakeBackend:
 
 def read(name):
     return (FIX / name).read_text(encoding="utf-8")
+
+
+def store_kernel_snapshot(*tenders):
+    aggregates = []
+    receipts = []
+    outbox = []
+    journal = []
+    for index, tender in enumerate(tenders, start=1):
+        order_id = f"order-{index}"
+        payment_id = f"payment-{index}"
+        fulfillment_id = f"fulfillment-{index}"
+        print_id = f"print-{index}"
+        display_code = f"#{index:04d}"
+        trace_id = f"trace-{index}"
+        result = {
+            "ok": True,
+            "orderId": order_id,
+            "paymentId": payment_id,
+            "fulfillmentId": fulfillment_id,
+            "printAdmissionId": print_id,
+            "displayOrderCode": display_code,
+        }
+        receipts.append({
+            "store_id": "store-1",
+            "operation_id": "STORE_CHECKOUT_COMMIT",
+            "idempotency_key": f"idem-{index}",
+            "command_id": f"command-{index}",
+            "request_fingerprint": f"fingerprint-{index}",
+            "result_json": json.dumps(result),
+            "result_hash": f"result-hash-{index}",
+            "trace_id": trace_id,
+            "commit_sequence": index,
+            "committed_at": f"2026-09-20T00:00:0{index}.000Z",
+        })
+        states = {
+            "ORDER_DISPLAY_ASSIGNMENT": {
+                "orderId": order_id,
+                "displayOrderCode": display_code,
+            },
+            "ORDER": {"orderId": order_id, "localDisplayOrderCode": display_code},
+            "PAYMENT": {
+                "paymentId": payment_id,
+                "orderId": order_id,
+                "tenderMethod": tender,
+                "lifecycleStatus": "COMPLETED",
+                "evidenceProvenance": "STAFF_OBSERVED",
+            },
+            "FULFILLMENT": {"fulfillmentId": fulfillment_id, "orderId": order_id},
+            "ORDER_PRINT_ADMISSION": {"printAdmissionId": print_id, "orderId": order_id, "status": "ADMITTED"},
+        }
+        for aggregate_type, state in states.items():
+            aggregate_id = {
+                "ORDER_DISPLAY_ASSIGNMENT": f"assignment-{index}",
+                "ORDER": order_id,
+                "PAYMENT": payment_id,
+                "FULFILLMENT": fulfillment_id,
+                "ORDER_PRINT_ADMISSION": print_id,
+            }[aggregate_type]
+            aggregates.append({
+                "store_id": "store-1",
+                "aggregate_type": aggregate_type,
+                "aggregate_id": aggregate_id,
+                "revision": 1,
+                "state_json": json.dumps(state),
+                "state_hash": f"state-hash-{aggregate_type}-{index}",
+                "updated_at": f"2026-09-20T00:00:0{index}.000Z",
+            })
+        for event_type, aggregate_type, aggregate_id in (
+            ("OrderAccepted", "ORDER", order_id),
+            ("PaymentCompleted", "PAYMENT", payment_id),
+            ("ProductionReleased", "FULFILLMENT", fulfillment_id),
+            ("OrderPrintAdmissionRequested", "ORDER_PRINT_ADMISSION", print_id),
+        ):
+            outbox.append({
+                "event_id": f"{event_type}-{index}",
+                "store_id": "store-1",
+                "aggregate_type": aggregate_type,
+                "aggregate_id": aggregate_id,
+                "aggregate_revision": 1,
+                "event_type": event_type,
+                "occurred_at": f"2026-09-20T00:00:0{index}.000Z",
+                "payload_json": "{}",
+                "payload_hash": f"payload-hash-{event_type}-{index}",
+                "status": "PENDING",
+                "attempt_count": 0,
+                "lease_owner": None,
+                "lease_expires_at_epoch_ms": 0,
+                "last_attempt_at": None,
+                "last_error": None,
+                "acknowledged_at": None,
+            })
+        for sequence, stage in enumerate(("RECEIVED", "VALIDATED", "LOCAL_TX_COMMITTED"), start=1):
+            journal.append({
+                "trace_id": trace_id,
+                "checkpoint_id": f"{trace_id}:{sequence}",
+                "command_id": f"command-{index}",
+                "sequence": sequence,
+                "stage": stage,
+                "outcome": "OK",
+                "code": None,
+                "detail_json": "{}",
+                "observed_at": f"2026-09-20T00:00:0{index}.000Z",
+            })
+    return {
+        "aggregates": aggregates,
+        "receipts": receipts,
+        "inbox": [],
+        "outbox": outbox,
+        "journal": journal,
+    }
 
 
 class Ring1BFunctionalDriverTests(unittest.TestCase):
@@ -306,6 +440,128 @@ class Ring1BFunctionalDriverTests(unittest.TestCase):
         with self.assertRaises(DriverFailure) as ctx:
             driver.run()
         self.assertEqual(ctx.exception.code, R1B_RESTART_PERSISTENCE_MISMATCH)
+
+    def test_rapid_double_tap_proves_one_complete_store_kernel_identity_set(self):
+        manifest = dict(self.manifest)
+        manifest["steps"] = [
+            {
+                "id": "baseline",
+                "action": "checkpoint",
+                "expect": {"present": ["product_tile"]},
+                "store_kernel": {"checkpoint": "baseline"},
+            },
+            {
+                "id": "rapid-double-tap",
+                "action": "tap",
+                "target": "product_tile",
+                "tap_count": 2,
+                "tap_interval_ms": 0,
+                "expect": {"present": ["cart_line"]},
+                "store_kernel": {
+                    "checkpoint": "committed",
+                    "compare_to": "baseline",
+                    "transaction_delta": [1],
+                    "tenders": ["CASH"],
+                },
+            },
+        ]
+        validate_manifest(manifest, self.selectors)
+        backend = FakeBackend([self.before, self.before, self.after])
+        backend.store_kernel_snapshots = [store_kernel_snapshot(), store_kernel_snapshot("CASH")]
+
+        result = FunctionalDriver(manifest, self.selectors, backend).run()
+
+        self.assertEqual(result["result"], "GREEN")
+        self.assertEqual(backend.taps, [(250, 200), (250, 200)])
+
+    def test_zero_transaction_delta_requires_exact_logical_state_equality(self):
+        before = store_kernel_snapshot("CASH")
+        assert_store_kernel_transition(before, store_kernel_snapshot("CASH"), {
+            "transaction_delta": [0],
+        })
+        changed = store_kernel_snapshot("CASH")
+        changed["outbox"][0]["status"] = "PROCESSING"
+        with self.assertRaises(StoreKernelAssertionError):
+            assert_store_kernel_transition(before, changed, {"transaction_delta": [0]})
+
+    def test_electronic_tender_must_be_completed_staff_observed_without_provider_alias(self):
+        before = store_kernel_snapshot()
+        after = store_kernel_snapshot("FPS")
+        assert_store_kernel_transition(before, after, {
+            "transaction_delta": [1],
+            "tenders": ["FPS"],
+            "require_pending_outbox": True,
+        })
+        payment = next(row for row in after["aggregates"] if row["aggregate_type"] == "PAYMENT")
+        payment_state = json.loads(payment["state_json"])
+        payment_state["providerPaymentAlias"] = {"provider": "FPS", "providerPaymentId": "fabricated"}
+        payment["state_json"] = json.dumps(payment_state)
+        with self.assertRaises(StoreKernelAssertionError):
+            assert_store_kernel_transition(before, after, {
+                "transaction_delta": [1],
+                "tenders": ["FPS"],
+            })
+
+    def test_atomic_transition_rejects_torn_or_duplicate_checkout(self):
+        before = store_kernel_snapshot()
+        torn = store_kernel_snapshot("FPS")
+        torn["outbox"].pop()
+        with self.assertRaises(StoreKernelAssertionError):
+            assert_store_kernel_transition(before, torn, {
+                "transaction_delta": [0, 1],
+                "tenders": ["FPS"],
+            })
+
+        duplicate = store_kernel_snapshot("FPS", "PAYME")
+        with self.assertRaises(StoreKernelAssertionError):
+            assert_store_kernel_transition(before, duplicate, {
+                "transaction_delta": [0, 1],
+            })
+
+    def test_process_death_hook_accepts_atomic_zero_or_one_outcome_then_relaunches(self):
+        manifest = dict(self.manifest)
+        manifest["steps"] = [
+            {
+                "id": "baseline",
+                "action": "checkpoint",
+                "expect": {"present": ["product_tile"]},
+                "store_kernel": {"checkpoint": "baseline"},
+            },
+            {
+                "id": "commit-window-death",
+                "action": "process_death",
+                "target": "product_tile",
+                "expect": {"present": ["product_tile"]},
+                "store_kernel": {
+                    "checkpoint": "after-death",
+                    "compare_to": "baseline",
+                    "transaction_delta": [0, 1],
+                },
+            },
+        ]
+        validate_manifest(manifest, self.selectors)
+        backend = FakeBackend([self.before, self.before, self.before])
+        backend.store_kernel_snapshots = [store_kernel_snapshot(), store_kernel_snapshot()]
+
+        result = FunctionalDriver(manifest, self.selectors, backend).run()
+
+        self.assertEqual(result["result"], "GREEN")
+        self.assertEqual(len(backend.process_deaths), 1)
+        self.assertEqual(backend.launches, 1)
+
+    def test_network_action_is_explicit_and_does_not_require_ui_state_change(self):
+        manifest = dict(self.manifest)
+        manifest["steps"] = [
+            {"id": "wan-offline", "action": "network", "state": "OFFLINE"},
+            {"id": "wan-online", "action": "network", "state": "ONLINE"},
+        ]
+        validate_manifest(manifest, self.selectors)
+        backend = FakeBackend([self.before])
+
+        result = FunctionalDriver(manifest, self.selectors, backend).run()
+
+        self.assertEqual(result["result"], "GREEN")
+        self.assertEqual(backend.network_states, [("OFFLINE", "01-wan-offline"), ("ONLINE", "02-wan-online")])
 
 
 if __name__ == "__main__":

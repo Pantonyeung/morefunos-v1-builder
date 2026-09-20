@@ -17,10 +17,16 @@ from ring1b_functional_core import (
     R1B_ACTION_NO_STATE_CHANGE,
     R1B_EXPECTED_STATE_NOT_REACHED,
     R1B_MANIFEST_INVALID,
+    R1B_NETWORK_STATE_MISMATCH,
+    R1B_PROCESS_DEATH_HOOK_NOT_TRIGGERED,
     R1B_RESTART_PERSISTENCE_MISMATCH,
     R1B_SELECTOR_NOT_FOUND,
+    R1B_STORE_KERNEL_ASSERTION_FAILED,
+    R1B_STORE_KERNEL_READBACK_UNAVAILABLE,
     R1B_UI_HIERARCHY_UNAVAILABLE,
     R1B_UNEXPECTED_RECOVERY_SURFACE,
+    StoreKernelAssertionError,
+    assert_store_kernel_transition,
     expectation_matches,
     expectation_text,
     fault_match,
@@ -42,6 +48,8 @@ class FunctionalDriver:
         timeouts = manifest.get("timeouts", {})
         self.default_transition_ms = int(timeouts.get("transition_ms", 5000))
         self.poll_ms = int(timeouts.get("poll_ms", 250))
+        self.store_kernel_checkpoints: Dict[str, Dict[str, Any]] = {}
+        self.store_kernel_results: List[Dict[str, Any]] = []
 
     def _check_fault(self, obs: Observation, step_id: str) -> None:
         match = fault_match(obs, self.manifest)
@@ -143,6 +151,47 @@ class FunctionalDriver:
             )
         return latest
 
+    def _apply_store_kernel_assertion(self, step: Dict[str, Any], index: int) -> None:
+        assertion = step.get("store_kernel")
+        if assertion is None:
+            return
+        checkpoint = assertion["checkpoint"]
+        try:
+            current = self.backend.capture_store_kernel(f"{index:02d}-{step['id']}-{checkpoint}")
+        except Exception as exc:
+            raise DriverFailure(
+                R1B_STORE_KERNEL_READBACK_UNAVAILABLE,
+                step_id=step["id"],
+                expected="readable native Store Kernel Room snapshot",
+                actual=str(exc),
+                layer="ANDROID_NATIVE_STORE_KERNEL_READBACK",
+            ) from exc
+        compare_to = assertion.get("compare_to")
+        result: Dict[str, Any] = {"checkpoint": checkpoint}
+        if compare_to is not None:
+            before = self.store_kernel_checkpoints.get(compare_to)
+            if before is None:
+                raise DriverFailure(
+                    R1B_STORE_KERNEL_ASSERTION_FAILED,
+                    step_id=step["id"],
+                    expected=f"existing Store Kernel checkpoint {compare_to!r}",
+                    actual="comparison checkpoint not captured",
+                    layer="ANDROID_NATIVE_STORE_KERNEL_ASSERTION",
+                )
+            try:
+                transition = assert_store_kernel_transition(before, current, assertion)
+            except StoreKernelAssertionError as exc:
+                raise DriverFailure(
+                    R1B_STORE_KERNEL_ASSERTION_FAILED,
+                    step_id=step["id"],
+                    expected=json.dumps(assertion, ensure_ascii=False, sort_keys=True),
+                    actual=str(exc),
+                    layer="ANDROID_NATIVE_STORE_KERNEL_ASSERTION",
+                ) from exc
+            result.update({"compare_to": compare_to, **transition})
+        self.store_kernel_checkpoints[checkpoint] = current
+        self.store_kernel_results.append(result)
+
     def run(self) -> Dict[str, Any]:
         for index, step in enumerate(self.manifest["steps"], start=1):
             step_id = step["id"]
@@ -162,7 +211,7 @@ class FunctionalDriver:
                         step_id, deadline=time.monotonic() + timeout_ms / 1000.0, timeout_ms=timeout_ms
                     )
                     self.backend.capture_evidence(f"{index:02d}-{step_id}-before", before)
-                    if expectation_matches(before, step["expect"], self.selectors):
+                    if expectation_matches(before, step["expect"], self.selectors) and not step.get("allow_preexisting_expectation", False):
                         raise DriverFailure(
                             R1B_ACTION_NO_STATE_CHANGE,
                             step_id=step_id,
@@ -178,13 +227,60 @@ class FunctionalDriver:
                             expected=f"target selector {step['target']} resolved by resource-id/text/content-desc/bounds",
                             actual=json.dumps(target, ensure_ascii=False, sort_keys=True),
                         )
-                    self.backend.tap(*coords)
+                    tap_count = int(step.get("tap_count", 1))
+                    tap_interval_ms = int(step.get("tap_interval_ms", 0))
+                    if tap_count > 1:
+                        self.backend.rapid_tap(*coords, tap_count, tap_interval_ms, f"{index:02d}-{step_id}")
+                    else:
+                        self.backend.tap(*coords)
                     after = self._wait_expect(step, before=before)
                     self.backend.capture_evidence(f"{index:02d}-{step_id}-after", after)
                 elif action == "restart":
                     self._run_restart(step, index)
+                elif action == "process_death":
+                    timeout_ms = int(step.get("timeout_ms", self.default_transition_ms))
+                    before = self._observe_checked(
+                        step_id, deadline=time.monotonic() + timeout_ms / 1000.0, timeout_ms=timeout_ms
+                    )
+                    self.backend.capture_evidence(f"{index:02d}-{step_id}-before", before)
+                    target = self.selectors[step["target"]]
+                    coords = resolve_tap_coordinates(before.ui_xml, target)
+                    if coords is None:
+                        raise DriverFailure(
+                            R1B_SELECTOR_NOT_FOUND,
+                            step_id=step_id,
+                            expected=f"target selector {step['target']} resolved by resource-id/text/content-desc/bounds",
+                            actual=json.dumps(target, ensure_ascii=False, sort_keys=True),
+                        )
+                    try:
+                        self.backend.process_death_on_store_kernel_wal_change(
+                            *coords, timeout_ms, f"{index:02d}-{step_id}"
+                        )
+                    except Exception as exc:
+                        raise DriverFailure(
+                            R1B_PROCESS_DEATH_HOOK_NOT_TRIGGERED,
+                            step_id=step_id,
+                            expected="app process killed on first native Store Kernel WAL size change",
+                            actual=str(exc),
+                            layer="ANDROID_PROCESS_DEATH_FAULT_HOOK",
+                        ) from exc
+                    self.backend.launch()
+                    after = self._wait_expect(step)
+                    self.backend.capture_evidence(f"{index:02d}-{step_id}-after-relaunch", after)
+                elif action == "network":
+                    try:
+                        self.backend.set_network_state(step["state"], f"{index:02d}-{step_id}")
+                    except Exception as exc:
+                        raise DriverFailure(
+                            R1B_NETWORK_STATE_MISMATCH,
+                            step_id=step_id,
+                            expected=f"Android WAN state {step['state']}",
+                            actual=str(exc),
+                            layer="ANDROID_NETWORK_ENVIRONMENT",
+                        ) from exc
                 else:
                     raise ManifestError(f"unhandled action: {action}")
+                self._apply_store_kernel_assertion(step, index)
             except DriverFailure:
                 try:
                     self.backend.capture_evidence(f"{index:02d}-{step_id}-failure")
@@ -192,7 +288,12 @@ class FunctionalDriver:
                     pass
                 raise
             self.last_green = step_id
-        return {"scenario_id": self.manifest["scenario_id"], "last_green": self.last_green, "result": "GREEN"}
+        return {
+            "scenario_id": self.manifest["scenario_id"],
+            "last_green": self.last_green,
+            "result": "GREEN",
+            "store_kernel_assertions": self.store_kernel_results,
+        }
 
 
 def write_diagnostic(path: Path, failure: DriverFailure, last_green: str, scenario_id: str) -> None:

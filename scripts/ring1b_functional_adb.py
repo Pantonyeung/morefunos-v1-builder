@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import time
 from pathlib import Path
@@ -147,6 +148,204 @@ class AdbBackend:
 
     def tap(self, x: int, y: int) -> None:
         self._shell(f"input tap {x} {y}", timeout=10)
+
+    def rapid_tap(self, x: int, y: int, count: int, interval_ms: int, label: str) -> None:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        dest = self.evidence_dir / "actions" / safe
+        dest.mkdir(parents=True, exist_ok=True)
+        started = time.monotonic()
+        results: List[Dict[str, Any]] = []
+        if interval_ms == 0:
+            processes = [
+                subprocess.Popen(
+                    ["adb", "shell", f"input tap {x} {y}"],
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                for _ in range(count)
+            ]
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=10)
+                results.append({"exit_code": process.returncode, "stdout": stdout, "stderr": stderr})
+        else:
+            for tap_index in range(count):
+                result = self._run(["shell", f"input tap {x} {y}"], check=False, timeout=10)
+                results.append({"exit_code": result.returncode, "stdout": result.stdout, "stderr": result.stderr})
+                if tap_index + 1 < count:
+                    time.sleep(interval_ms / 1000.0)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        payload = {"x": x, "y": y, "count": count, "interval_ms": interval_ms, "elapsed_ms": elapsed_ms, "results": results}
+        (dest / "rapid-tap.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if any(result["exit_code"] != 0 for result in results):
+            raise RuntimeError(f"R1B_RAPID_TAP_FAILED: {results!r}")
+
+    def process_death_on_store_kernel_wal_change(
+        self,
+        x: int,
+        y: int,
+        timeout_ms: int,
+        label: str,
+    ) -> Dict[str, Any]:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        dest = self.evidence_dir / "process-death" / safe
+        dest.mkdir(parents=True, exist_ok=True)
+        pid_values = self._shell(f"pidof {self.package_id}", check=False, timeout=10).strip().split()
+        if not pid_values or not pid_values[0].isdigit():
+            raise RuntimeError("R1B_PROCESS_DEATH_APP_PID_UNAVAILABLE")
+        pid = int(pid_values[0])
+        loops = max(100, min(3000, timeout_ms // 10))
+        remote_script = (
+            f"pid={pid}; path=databases/morefun_store_kernel.db-wal; "
+            "before=$(stat -c %s \"$path\" 2>/dev/null || echo 0); "
+            "echo ARMED pid=$pid before=$before; i=0; "
+            f"while [ $i -lt {loops} ] && kill -0 $pid 2>/dev/null; do "
+            "now=$(stat -c %s \"$path\" 2>/dev/null || echo 0); "
+            "if [ \"$now\" != \"$before\" ]; then "
+            "echo WAL_CHANGED before=$before after=$now; kill -9 $pid; echo KILLED_ON_WAL_CHANGE; exit 0; fi; "
+            "i=$((i+1)); sleep 0.01; done; echo WAL_CHANGE_NOT_OBSERVED; exit 9"
+        )
+        command = f"run-as {self.package_id} sh -c '{remote_script}'"
+        watcher = subprocess.Popen(
+            ["adb", "shell", command],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        time.sleep(0.15)
+        self.tap(x, y)
+        try:
+            stdout, stderr = watcher.communicate(timeout=max(5.0, timeout_ms / 1000.0 + 2.0))
+        except subprocess.TimeoutExpired:
+            watcher.kill()
+            stdout, stderr = watcher.communicate()
+            result = {
+                "pid": pid,
+                "return_code": None,
+                "stdout": stdout,
+                "stderr": stderr,
+                "result": "WATCHER_TIMEOUT",
+            }
+            (dest / "hook.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            raise RuntimeError("R1B_PROCESS_DEATH_WAL_WATCHER_TIMEOUT")
+        result = {
+            "pid": pid,
+            "return_code": watcher.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "result": "KILLED_ON_WAL_CHANGE" if "KILLED_ON_WAL_CHANGE" in stdout else "WAL_CHANGE_NOT_OBSERVED",
+        }
+        (dest / "hook.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        if result["result"] != "KILLED_ON_WAL_CHANGE" or watcher.returncode != 0:
+            raise RuntimeError(
+                f"R1B_PROCESS_DEATH_WAL_CHANGE_NOT_OBSERVED: return_code={watcher.returncode}; stdout={stdout.strip()!r}"
+            )
+        for _ in range(20):
+            if str(pid) not in self._shell(f"pidof {self.package_id}", check=False, timeout=10).strip().split():
+                break
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("R1B_PROCESS_DEATH_OLD_PROCESS_STILL_PRESENT")
+        return result
+
+    def set_network_state(self, state: str, label: str) -> None:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        dest = self.evidence_dir / "network" / safe
+        dest.mkdir(parents=True, exist_ok=True)
+        offline = state == "OFFLINE"
+        commands = [
+            f"settings put global airplane_mode_on {'1' if offline else '0'}",
+            f"am broadcast -a android.intent.action.AIRPLANE_MODE --ez state {'true' if offline else 'false'}",
+            f"svc wifi {'disable' if offline else 'enable'}",
+            f"svc data {'disable' if offline else 'enable'}",
+        ]
+        evidence: List[Dict[str, Any]] = []
+        for command in commands:
+            result, _ = self._run_for_evidence(["shell", command], timeout=20)
+            evidence.append({"command": command, **result})
+        expected = "1" if offline else "0"
+        observed = ""
+        route_probe: Optional[subprocess.CompletedProcess[str]] = None
+        for _ in range(40):
+            observed = self._shell("settings get global airplane_mode_on", check=False, timeout=10).strip()
+            route_probe = self._run(["shell", "ip route get 1.1.1"], check=False, timeout=10)
+            route_matches = route_probe.returncode != 0 if offline else route_probe.returncode == 0
+            if observed == expected and route_matches:
+                break
+            time.sleep(0.25)
+        connectivity = self._shell("dumpsys connectivity", check=False, timeout=20)
+        payload = {
+            "requested_state": state,
+            "airplane_mode_expected": expected,
+            "airplane_mode_observed": observed,
+            "route_probe": {
+                "command": "ip route get 1.1.1",
+                "exit_code": None if route_probe is None else route_probe.returncode,
+                "stdout": "" if route_probe is None else route_probe.stdout,
+                "stderr": "" if route_probe is None else route_probe.stderr,
+            },
+            "commands": evidence,
+        }
+        (dest / "state.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (dest / "dumpsys-connectivity.txt").write_text(connectivity, encoding="utf-8", errors="replace")
+        if observed != expected:
+            raise RuntimeError(f"R1B_NETWORK_STATE_MISMATCH: expected airplane_mode_on={expected}, actual={observed!r}")
+        if route_probe is None or (offline and route_probe.returncode == 0) or (not offline and route_probe.returncode != 0):
+            raise RuntimeError(
+                "R1B_NETWORK_STATE_MISMATCH: "
+                f"requested={state}; route_exit={None if route_probe is None else route_probe.returncode}; "
+                f"route_stdout={'' if route_probe is None else route_probe.stdout.strip()!r}"
+            )
+
+    def _copy_app_file(self, relative_path: str, destination: Path, *, required: bool) -> bool:
+        result = subprocess.run(
+            ["adb", "exec-out", "run-as", self.package_id, "cat", relative_path],
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            if required:
+                raise RuntimeError(
+                    f"R1B_STORE_KERNEL_FILE_READ_FAILED: {relative_path}: "
+                    f"exit={result.returncode}; stderr={result.stderr.decode('utf-8', errors='replace').strip()}"
+                )
+            return False
+        destination.write_bytes(result.stdout)
+        return True
+
+    def capture_store_kernel(self, label: str) -> Dict[str, Any]:
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        dest = self.evidence_dir / "store-kernel" / safe
+        dest.mkdir(parents=True, exist_ok=True)
+        database = dest / "morefun_store_kernel.db"
+        self._copy_app_file("databases/morefun_store_kernel.db", database, required=True)
+        self._copy_app_file("databases/morefun_store_kernel.db-wal", dest / "morefun_store_kernel.db-wal", required=False)
+        self._copy_app_file("databases/morefun_store_kernel.db-shm", dest / "morefun_store_kernel.db-shm", required=False)
+        table_queries = {
+            "aggregates": "SELECT * FROM store_kernel_aggregate ORDER BY store_id, aggregate_type, aggregate_id",
+            "receipts": "SELECT * FROM store_kernel_command_receipt ORDER BY commit_sequence",
+            "inbox": "SELECT * FROM store_kernel_inbox ORDER BY store_id, source, source_event_id",
+            "outbox": "SELECT * FROM store_kernel_outbox ORDER BY event_id",
+            "journal": "SELECT * FROM store_kernel_diagnostic_journal ORDER BY trace_id, sequence",
+        }
+        snapshot: Dict[str, Any] = {}
+        try:
+            connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
+            connection.row_factory = sqlite3.Row
+            try:
+                connection.execute("PRAGMA query_only=ON")
+                for table, query in table_queries.items():
+                    snapshot[table] = [dict(row) for row in connection.execute(query).fetchall()]
+            finally:
+                connection.close()
+        except sqlite3.Error as exc:
+            raise RuntimeError(f"R1B_STORE_KERNEL_SQLITE_READ_FAILED: {exc}") from exc
+        (dest / "snapshot.json").write_text(
+            json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return snapshot
 
     def force_stop(self) -> None:
         self._shell(f"am force-stop {self.package_id}", check=False, timeout=15)

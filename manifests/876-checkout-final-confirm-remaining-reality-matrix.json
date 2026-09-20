@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "scenario_id": "876-checkout-final-confirm-remaining-reality-matrix",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {
+    "transition_ms": 15000,
+    "poll_ms": 300
+  },
+  "fault_text_patterns": [
+    "Owner 管理密碼",
+    "員工 PIN",
+    "配對此收銀機",
+    "SMT 發生故障"
+  ],
+  "steps": [
+    {
+      "id": "boot-menu-and-store-kernel-baseline",
+      "action": "launch",
+      "expect": {
+        "present": ["menu_category", "product_riceball", "cart_empty"],
+        "absent": ["payment_success", "auth_deferred_display_code"]
+      },
+      "store_kernel": {"checkpoint": "initial"}
+    },
+    {
+      "id": "cash-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "cash-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "cash-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {
+        "present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"],
+        "absent": ["product_config"]
+      }
+    },
+    {
+      "id": "cash-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_cash", "exact_cash", "confirm_payment"],
+        "absent": ["payment_success", "payment_unknown", "retry_payment", "auth_deferred_display_code"]
+      }
+    },
+    {
+      "id": "cash-bind-exact",
+      "action": "tap",
+      "target": "exact_cash",
+      "expect": {
+        "present": ["cash_input_50", "confirm_payment"],
+        "absent": ["payment_success", "payment_unknown", "retry_payment", "auth_deferred_display_code"]
+      }
+    },
+    {
+      "id": "cash-rapid-double-confirm",
+      "action": "tap",
+      "target": "confirm_payment",
+      "tap_count": 2,
+      "tap_interval_ms": 0,
+      "expect": {
+        "present": ["payment_success", "completion_review", "completed_status", "done"],
+        "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]
+      },
+      "store_kernel": {
+        "checkpoint": "cash-committed",
+        "compare_to": "initial",
+        "transaction_delta": [1],
+        "tenders": ["CASH"]
+      }
+    },
+    {
+      "id": "cash-completion-done-ui-only",
+      "action": "tap",
+      "target": "done",
+      "expect": {
+        "present": ["menu_category", "product_riceball", "cart_empty"],
+        "absent": ["payment_success", "completion_review"]
+      },
+      "store_kernel": {
+        "checkpoint": "cash-after-done",
+        "compare_to": "cash-committed",
+        "transaction_delta": [0]
+      }
+    },
+    {
+      "id": "cash-post-commit-force-stop-relaunch",
+      "action": "restart",
+      "persistence": {
+        "mode": "PRESERVE",
+        "before": ["menu_category", "cart_empty"],
+        "after": ["menu_category", "cart_empty"]
+      },
+      "store_kernel": {
+        "checkpoint": "cash-after-relaunch",
+        "compare_to": "cash-after-done",
+        "transaction_delta": [0]
+      }
+    },
+    {
+      "id": "death-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "death-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "death-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "death-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_fps", "confirm_payment"],
+        "absent": ["payment_success", "payment_unknown", "retry_payment"]
+      }
+    },
+    {
+      "id": "death-select-fps",
+      "action": "tap",
+      "target": "payment_fps",
+      "allow_preexisting_expectation": true,
+      "expect": {
+        "present": ["preconfirm_message", "payment_fps", "confirm_payment"],
+        "absent": ["payment_success", "payment_unknown", "retry_payment"]
+      }
+    },
+    {
+      "id": "exact-commit-window-process-death",
+      "action": "process_death",
+      "target": "confirm_payment",
+      "expect": {
+        "present": ["menu_category", "product_riceball", "cart_empty"],
+        "absent": ["payment_success", "payment_unknown", "retry_payment"]
+      },
+      "store_kernel": {
+        "checkpoint": "after-process-death",
+        "compare_to": "cash-after-relaunch",
+        "transaction_delta": [0, 1],
+        "tenders": ["FPS"]
+      }
+    },
+    {
+      "id": "fps-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "fps-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "fps-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "fps-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {"present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_fps", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "fps-select-tender",
+      "action": "tap",
+      "target": "payment_fps",
+      "allow_preexisting_expectation": true,
+      "expect": {"present": ["preconfirm_message", "payment_fps", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "fps-confirm-operator-recorded",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
+      "store_kernel": {"checkpoint": "fps-committed", "compare_to": "after-process-death", "transaction_delta": [1], "tenders": ["FPS"]}
+    },
+    {
+      "id": "fps-done",
+      "action": "tap",
+      "target": "done",
+      "expect": {"present": ["menu_category", "product_riceball", "cart_empty"], "absent": ["payment_success", "completion_review"]}
+    },
+    {
+      "id": "payme-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "payme-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "payme-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "payme-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {"present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_payme", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "payme-select-tender",
+      "action": "tap",
+      "target": "payment_payme",
+      "allow_preexisting_expectation": true,
+      "expect": {"present": ["preconfirm_message", "payment_payme", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "payme-confirm-operator-recorded",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
+      "store_kernel": {"checkpoint": "payme-committed", "compare_to": "fps-committed", "transaction_delta": [1], "tenders": ["PAYME"]}
+    },
+    {
+      "id": "payme-done",
+      "action": "tap",
+      "target": "done",
+      "expect": {"present": ["menu_category", "product_riceball", "cart_empty"], "absent": ["payment_success", "completion_review"]}
+    },
+    {
+      "id": "alipay-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "alipay-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "alipay-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "alipay-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {"present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_alipay", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "alipay-select-tender",
+      "action": "tap",
+      "target": "payment_alipay",
+      "allow_preexisting_expectation": true,
+      "expect": {"present": ["preconfirm_message", "payment_alipay", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "alipay-confirm-operator-recorded",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
+      "store_kernel": {"checkpoint": "alipay-committed", "compare_to": "payme-committed", "transaction_delta": [1], "tenders": ["ALIPAY"]}
+    },
+    {
+      "id": "alipay-done",
+      "action": "tap",
+      "target": "done",
+      "expect": {"present": ["menu_category", "product_riceball", "cart_empty"], "absent": ["payment_success", "completion_review"]}
+    },
+    {
+      "id": "wechat-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "wechat-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "wechat-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "wechat-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {"present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_wechat", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "wechat-select-tender",
+      "action": "tap",
+      "target": "payment_wechat",
+      "allow_preexisting_expectation": true,
+      "expect": {"present": ["preconfirm_message", "payment_wechat", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "wechat-confirm-operator-recorded",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
+      "store_kernel": {"checkpoint": "wechat-committed", "compare_to": "alipay-committed", "transaction_delta": [1], "tenders": ["WECHAT_PAY"]}
+    },
+    {
+      "id": "wechat-done",
+      "action": "tap",
+      "target": "done",
+      "expect": {"present": ["menu_category", "product_riceball", "cart_empty"], "absent": ["payment_success", "completion_review"]}
+    },
+    {
+      "id": "offline-open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {"present": ["product_config", "required_missing", "option_nori", "confirm_add"]}
+    },
+    {
+      "id": "offline-select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {"present": ["product_config", "modifier_ready", "confirm_add"]}
+    },
+    {
+      "id": "offline-add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {"present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"], "absent": ["product_config"]}
+    },
+    {
+      "id": "offline-enter-checkout",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {"present": ["preconfirm_order_uncreated", "preconfirm_message", "payment_cash", "exact_cash", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {
+      "id": "offline-bind-exact-cash",
+      "action": "tap",
+      "target": "exact_cash",
+      "expect": {"present": ["cash_input_50", "confirm_payment"], "absent": ["payment_success", "payment_unknown", "retry_payment"]}
+    },
+    {"id": "cloud-wan-offline", "action": "network", "state": "OFFLINE"},
+    {
+      "id": "offline-local-confirm",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {"present": ["payment_success", "completion_review", "completed_status", "done"], "absent": ["payment_unknown", "retry_payment", "auth_deferred_display_code"]},
+      "store_kernel": {
+        "checkpoint": "offline-committed",
+        "compare_to": "wechat-committed",
+        "transaction_delta": [1],
+        "tenders": ["CASH"],
+        "require_pending_outbox": true
+      }
+    },
+    {
+      "id": "cloud-wan-restored-outbox-retained-for-reconcile",
+      "action": "network",
+      "state": "ONLINE",
+      "store_kernel": {
+        "checkpoint": "online-restored",
+        "compare_to": "offline-committed",
+        "transaction_delta": [0]
+      }
+    }
+  ]
+}
