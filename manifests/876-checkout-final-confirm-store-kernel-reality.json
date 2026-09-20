@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "scenario_id": "876-checkout-final-confirm-store-kernel-reality",
+  "package_id": "com.morefunos.smt",
+  "main_activity": ".MainActivity",
+  "timeouts": {
+    "transition_ms": 15000,
+    "poll_ms": 300
+  },
+  "fault_text_patterns": [
+    "Owner 管理密碼",
+    "員工 PIN",
+    "配對此收銀機",
+    "SMT 發生故障"
+  ],
+  "steps": [
+    {
+      "id": "boot-menu",
+      "action": "launch",
+      "expect": {
+        "present": ["menu_category", "product_riceball", "cart_empty"],
+        "absent": ["payment_success", "auth_deferred_display_code"]
+      }
+    },
+    {
+      "id": "open-product",
+      "action": "tap",
+      "target": "product_riceball",
+      "expect": {
+        "present": ["product_config", "required_missing", "option_nori", "confirm_add"]
+      }
+    },
+    {
+      "id": "select-modifier",
+      "action": "tap",
+      "target": "option_nori",
+      "expect": {
+        "present": ["product_config", "modifier_ready", "confirm_add"]
+      }
+    },
+    {
+      "id": "add-product",
+      "action": "tap",
+      "target": "confirm_add",
+      "expect": {
+        "present": ["cart_product_riceball", "cart_note_nori", "cart_total_50"],
+        "absent": ["product_config"]
+      }
+    },
+    {
+      "id": "enter-checkout-preconfirm",
+      "action": "tap",
+      "target": "checkout",
+      "expect": {
+        "present": [
+          "preconfirm_order_uncreated",
+          "preconfirm_message",
+          "payment_cash",
+          "payment_fps",
+          "payment_payme",
+          "payment_alipay",
+          "payment_wechat",
+          "exact_cash",
+          "confirm_payment"
+        ],
+        "absent": ["payment_success", "completion_review", "auth_deferred_display_code"]
+      }
+    },
+    {
+      "id": "bind-exact-cash",
+      "action": "tap",
+      "target": "exact_cash",
+      "expect": {
+        "present": ["cash_input_50", "confirm_payment", "preconfirm_order_uncreated"],
+        "absent": ["payment_success", "auth_deferred_display_code"]
+      }
+    },
+    {
+      "id": "first-confirm-requires-real-store-kernel-result",
+      "action": "tap",
+      "target": "confirm_payment",
+      "expect": {
+        "present": ["payment_success", "completion_review", "completed_status", "done"],
+        "absent": ["auth_deferred_display_code"]
+      }
+    }
+  ]
+}
