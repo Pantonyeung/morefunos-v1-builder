@@ -1,3 +1,3 @@
-source_sha=edcd10c2c5c985511bd56157eff7f05693c4b1cb
+source_sha=bbd841c157cb1414107e21a207a53a3c9c15385a
 channel=candidate
-request_id=MF-SMT-LEGACY-POS-DONOR-OTA-R1-PACKAGE
+request_id=MF-SMT-LEGACY-POS-DONOR-OTA-R1-PACKAGE-2
