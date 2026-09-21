@@ -1,0 +1,180 @@
+name: MFK Runtime OTA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - requests/mfk-runtime-ota-request.txt
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_REPO: Pantonyeung/mfk
+  EXPECTED_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
+  MIN_CARRIER_VERSION_CODE: '106'
+  BRIDGE_VERSION: '1'
+  OTA_BUCKET: morefunos-v2-smt-ota
+  OTA_ORIGIN: https://morefunos-v2-smt-ota.pantonyeung.workers.dev
+  WRANGLER_VERSION: '4.118.0'
+
+jobs:
+  publish:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s requests/mfk-runtime-ota-request.txt
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-runtime-ota-request.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          CHANNEL="$(sed -n 's/^channel=//p' requests/mfk-runtime-ota-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          case "$CHANNEL" in candidate|stable) ;; *) exit 1 ;; esac
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact MFK source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.request.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Local POS test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
+          test -s source/index.html
+          test -s source/app.js
+          test -s source/styles.css
+          node --check source/app.js
+          node --test source/tests/local-pos.test.mjs
+          if grep -En "\b(fetch|XMLHttpRequest|WebSocket|EventSource)\b" source/app.js; then
+            echo "NETWORK_CLIENT_FORBIDDEN"
+            exit 1
+          fi
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Package signed runtime
+        id: package
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          CHANNEL: ${{ steps.request.outputs.channel }}
+          KEYSTORE_B64: ${{ secrets.V1_ANDROID_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.V1_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.V1_ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.V1_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for NAME in KEYSTORE_B64 STORE_PASS KEY_ALIAS KEY_PASS; do test -n "${!NAME:-}"; done
+          KEYSTORE="$RUNNER_TEMP/morefunos-signing.p12"
+          CERT="$RUNNER_TEMP/morefunos-cert.der"
+          MANIFEST="$RUNNER_TEMP/MANIFEST.MF"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -exportcert -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -alias "$KEY_ALIAS" -file "$CERT" >/dev/null 2>&1
+          CERT_SHA="$(sha256sum "$CERT" | awk '{print $1}')"
+          test "$CERT_SHA" = "$EXPECTED_CERT_SHA256"
+
+          SHORT_SHA="${SOURCE_SHA:0:12}"
+          RELEASE_ID="runtime-${CHANNEL}-mfk-${SHORT_SHA}"
+          FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
+          OUT="$GITHUB_WORKSPACE/$FILENAME"
+
+          cat > "$MANIFEST" <<EOF
+          Manifest-Version: 1.0
+          MoreFun-Release-Id: ${RELEASE_ID}
+          MoreFun-Runtime-Version: ${RELEASE_ID}
+          MoreFun-Channel: ${CHANNEL}
+          MoreFun-Min-Carrier-Version-Code: ${MIN_CARRIER_VERSION_CODE}
+          MoreFun-Bridge-Version: ${BRIDGE_VERSION}
+          MoreFun-Source-Repo: Pantonyeung/mfk
+          MoreFun-Source-Sha: ${SOURCE_SHA}
+          EOF
+          sed -i 's/^          //' "$MANIFEST"
+
+          STAGE="$RUNNER_TEMP/runtime"
+          mkdir -p "$STAGE"
+          cp source/index.html source/app.js source/styles.css "$STAGE/"
+          jar cfm "$OUT" "$MANIFEST" -C "$STAGE" .
+          jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
+          jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
+
+          SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "filename=$FILENAME" >> "$GITHUB_OUTPUT"
+          echo "archive_sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+          cat > runtime-update.json <<EOF
+          {
+            "releaseId": "$RELEASE_ID",
+            "runtimeVersion": "$RELEASE_ID",
+            "channel": "$CHANNEL",
+            "minCarrierVersionCode": $MIN_CARRIER_VERSION_CODE,
+            "bridgeVersion": $BRIDGE_VERSION,
+            "bundleUrl": "$FILENAME",
+            "archiveSha256": "$SHA"
+          }
+          EOF
+
+      - name: Install Wrangler
+        run: |
+          npm install --global --silent "wrangler@$WRANGLER_VERSION"
+          wrangler --version | grep -F "$WRANGLER_VERSION"
+
+      - name: Publish OTA
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FILENAME: ${{ steps.package.outputs.filename }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          wrangler r2 object put "$OTA_BUCKET/$FILENAME" --file="$GITHUB_WORKSPACE/$FILENAME" --remote --content-type=application/octet-stream
+          wrangler r2 object put "$OTA_BUCKET/runtime-update-published.json" --file="$GITHUB_WORKSPACE/runtime-update.json" --remote --content-type=application/json
+
+      - name: Public readback
+        shell: bash
+        env:
+          EXPECTED_RELEASE: ${{ steps.package.outputs.release_id }}
+          EXPECTED_HASH: ${{ steps.package.outputs.archive_sha256 }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            if curl -fsS -H 'Cache-Control: no-cache' "$OTA_ORIGIN/runtime-update.json" -o "$RUNNER_TEMP/manifest.json"; then
+              ACTUAL_RELEASE="$(node -p "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/manifest.json','utf8')).releaseId")"
+              if [ "$ACTUAL_RELEASE" = "$EXPECTED_RELEASE" ]; then break; fi
+            fi
+            sleep 2
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const m=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/manifest.json','utf8'));
+          if(m.releaseId!==process.env.EXPECTED_RELEASE) throw new Error('RELEASE_MISMATCH');
+          if(m.archiveSha256!==process.env.EXPECTED_HASH) throw new Error('HASH_MISMATCH');
+          if(m.minCarrierVersionCode!==106||m.bridgeVersion!==1) throw new Error('CARRIER_CONTRACT_MISMATCH');
+          NODE
+          BUNDLE="$(node -p "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/manifest.json','utf8')).bundleUrl")"
+          curl -fsS "$OTA_ORIGIN/$BUNDLE" -o "$RUNNER_TEMP/runtime.mfos"
+          test "$(sha256sum "$RUNNER_TEMP/runtime.mfos" | awk '{print $1}')" = "$EXPECTED_HASH"
+          echo "MFK_RUNTIME_OTA_PUBLISHED"
