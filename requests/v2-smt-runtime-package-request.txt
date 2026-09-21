@@ -1,3 +1,3 @@
-source_sha=cdb6d81ba9e228582cceeebd2a1184ddc5951f76
+source_sha=edcd10c2c5c985511bd56157eff7f05693c4b1cb
 channel=candidate
-request_id=MF-R1-RECEIPT-READBACK-CARRIER-105-R1-RUNTIME-PACKAGE-02
+request_id=MF-SMT-LEGACY-POS-DONOR-OTA-R1-PACKAGE
