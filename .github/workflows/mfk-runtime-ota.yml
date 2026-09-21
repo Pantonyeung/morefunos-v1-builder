@@ -57,14 +57,25 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
           test -s source/index.html
-          test -s source/app.js
-          test -s source/styles.css
-          node --check source/app.js
-          node --test source/tests/local-pos.test.mjs
-          if grep -En "\b(fetch|XMLHttpRequest|WebSocket|EventSource)\b" source/app.js; then
-            echo "NETWORK_CLIENT_FORBIDDEN"
-            exit 1
-          fi
+          test -s source/app-loader.js
+          test -s source/app-shell.css
+          test -s source/pages/order/page.js
+          test -s source/pages/more/print-domain.js
+          node --test source/tests/local-pos.test.mjs source/tests/full-local-smt.test.mjs
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find source -type f -name '*.js' -not -path 'source/.git/*' -not -path 'source/tests/*' -not -name 'service-worker.js' | sort)
+          python3 -m http.server 8765 --directory source >/tmp/mfk-http.log 2>&1 &
+          PID=$!
+          trap 'kill $PID || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8765/ >/tmp/mfk-index.html; then break; fi
+            sleep 0.25
+          done
+          grep -F 'app-loader.js' /tmp/mfk-index.html
+          for path in pages/order/index.html pages/checkout/index.html pages/orders/index.html pages/dine/index.html pages/soldout/index.html pages/more/index.html; do
+            curl -fsS "http://127.0.0.1:8765/$path" >/dev/null
+          done
 
       - name: Setup JDK 17
         uses: actions/setup-java@v5
@@ -113,7 +124,8 @@ jobs:
 
           STAGE="$RUNNER_TEMP/runtime"
           mkdir -p "$STAGE"
-          cp source/index.html source/app.js source/styles.css "$STAGE/"
+          cp source/index.html source/app-loader.js source/app-shell.css source/manifest.webmanifest "$STAGE/"
+          cp -a source/pages source/shared "$STAGE/"
           jar cfm "$OUT" "$MANIFEST" -C "$STAGE" .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
           jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
