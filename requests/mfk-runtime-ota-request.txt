@@ -1,2 +1,3 @@
 source_sha=3c7ad64de844bd0663895485fe0be2ad602efca1
 channel=candidate
+retry=print-r2
