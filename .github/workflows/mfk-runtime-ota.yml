@@ -61,7 +61,7 @@ jobs:
           test -s source/app-shell.css
           test -s source/pages/order/page.js
           test -s source/pages/more/print-domain.js
-          node --test source/tests/local-pos.test.mjs source/tests/full-local-smt.test.mjs
+          node --test source/tests/*.test.mjs
           while IFS= read -r file; do
             node --check "$file"
           done < <(find source -type f -name '*.js' -not -path 'source/.git/*' -not -path 'source/tests/*' -not -name 'service-worker.js' | sort)
