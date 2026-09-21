@@ -51,31 +51,38 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Local POS test
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: V2 local POS test and build
         shell: bash
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
-          test -s source/index.html
-          test -s source/app-loader.js
-          test -s source/app-shell.css
-          test -s source/pages/order/page.js
-          test -s source/pages/more/print-domain.js
-          node --test source/tests/*.test.mjs
-          while IFS= read -r file; do
-            node --check "$file"
-          done < <(find source -type f -name '*.js' -not -path 'source/.git/*' -not -path 'source/tests/*' -not -name 'service-worker.js' | sort)
-          python3 -m http.server 8765 --directory source >/tmp/mfk-http.log 2>&1 &
-          PID=$!
-          trap 'kill $PID || true' EXIT
-          for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:8765/ >/tmp/mfk-index.html; then break; fi
-            sleep 0.25
-          done
-          grep -F 'app-loader.js' /tmp/mfk-index.html
-          for path in pages/order/index.html pages/checkout/index.html pages/orders/index.html pages/dine/index.html pages/soldout/index.html pages/more/index.html; do
-            curl -fsS "http://127.0.0.1:8765/$path" >/dev/null
-          done
+          test -s source/v2local/index.html
+          test -s source/v2local/src/App.tsx
+          test -s source/v2local/src/runtime/local-runtime.ts
+          test -s source/v2local/src/runtime/native-print.ts
+          cd source/v2local
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -d dist/assets
+          if grep -RInE '\\b(fetch|XMLHttpRequest|WebSocket|EventSource)\\s*\\(' src; then
+            echo "NETWORK_CLIENT_FORBIDDEN"
+            exit 1
+          fi
+          if grep -RInE 'https?://' src; then
+            echo "REMOTE_URL_FORBIDDEN"
+            exit 1
+          fi
+          grep -F 'SMT_GOLDEN_WIDTH=1920' src/app/production-viewport-layout.ts
+          grep -F 'SMT_GOLDEN_HEIGHT=1080' src/app/production-viewport-layout.ts
+          grep -F "print.sunmi.test" src/runtime/native-print.ts
+          grep -F "print.lan.endpoint.test" src/runtime/native-print.ts
+          grep -F "print.lan.dispatch" src/runtime/native-print.ts
 
       - name: Setup JDK 17
         uses: actions/setup-java@v5
@@ -123,9 +130,11 @@ jobs:
           sed -i 's/^          //' "$MANIFEST"
 
           STAGE="$RUNNER_TEMP/runtime"
+          rm -rf "$STAGE"
           mkdir -p "$STAGE"
-          cp source/index.html source/app-loader.js source/app-shell.css source/manifest.webmanifest "$STAGE/"
-          cp -a source/pages source/shared "$STAGE/"
+          cp -a source/v2local/dist/. "$STAGE/"
+          test -s "$STAGE/index.html"
+          test -d "$STAGE/assets"
           jar cfm "$OUT" "$MANIFEST" -C "$STAGE" .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
           jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
