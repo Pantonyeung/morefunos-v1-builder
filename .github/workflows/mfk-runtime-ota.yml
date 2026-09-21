@@ -80,9 +80,11 @@ jobs:
           fi
           grep -F 'SMT_GOLDEN_WIDTH=1920' src/app/production-viewport-layout.ts
           grep -F 'SMT_GOLDEN_HEIGHT=1080' src/app/production-viewport-layout.ts
-          grep -F "print.sunmi.test" src/runtime/native-print.ts
+          ! grep -RInF "print.sunmi." src
+          grep -F "print.lan.endpoint.apply" src/runtime/native-print.ts
           grep -F "print.lan.endpoint.test" src/runtime/native-print.ts
           grep -F "print.lan.dispatch" src/runtime/native-print.ts
+          grep -F "RECEIPT_PRINTER_NOT_BOUND" src/runtime/local-runtime.ts
 
       - name: Setup JDK 17
         uses: actions/setup-java@v5
