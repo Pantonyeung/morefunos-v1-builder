@@ -1,0 +1,96 @@
+name: Verify MFK Customer Cloud Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-customer-cloud-bridge-request.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-mfk-customer-cloud-bridge
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact MFK source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-customer-cloud-bridge-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact MFK source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.req.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove exact source
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify Admin + Customer Durable edge
+        working-directory: source/v2admin
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --dry-run --config wrangler.jsonc --outdir "$RUNNER_TEMP/mfk-admin-dryrun"
+
+      - name: Verify Customer product
+        working-directory: source/v2customer
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Verify SMT runtime
+        working-directory: source/v2local
+        run: |
+          set -euo pipefail
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Authority and storage guard
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"CUSTOMER_RUNTIME"' v2admin/wrangler.jsonc
+          ! grep -Eq '"d1_databases"|"r2_buckets"' v2admin/wrangler.jsonc
+          grep -F "providerRef='CUSTOMER:'" v2local/src/runtime/customer-cloud-intake.ts
+          grep -F "localRuntime.createOrder" v2local/src/runtime/customer-cloud-intake.ts
+          grep -F "CUSTOMER_ORDER_AVAILABLE" v2admin/worker.ts
+          grep -F "CUSTOMER_ORDER_AVAILABLE" v2local/src/runtime/customer-cloud-intake.ts
+          grep -F "CUSTOMER_SUBMISSION_ID_CONFLICT" v2admin/customer-runtime.ts
+          grep -F "not.toHaveProperty('checkout')" v2admin/src/customer-runtime.test.ts
+          ! grep -RInE 'https?://[^"'"'"']*(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)' v2customer/src
+          echo "MFK_CUSTOMER_CLOUD_BRIDGE_VERIFY_GREEN"
