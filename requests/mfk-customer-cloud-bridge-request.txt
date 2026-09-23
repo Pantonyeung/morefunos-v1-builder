@@ -1,0 +1,3 @@
+source_sha=77978cef86627f586bacaff8dc3a4d2c6af75191
+branch_name=work/MFK/CUSTOMER-CLOUD-BRIDGE-R1
+request_id=MFK-CUSTOMER-CLOUD-BRIDGE-R1-VERIFY-001
