@@ -70,5 +70,9 @@ jobs:
           grep -F "40" v2local/src/runtime/label-bitmap.ts
           grep -F "打印日結單" v2local/src/presentation/LocalMoreWorkspace.tsx
           grep -F "renderDailyCloseTicket" v2local/src/runtime/daily-close-ticket.ts
+          grep -F "ESC_POS_RASTER_PROFILE" v2local/src/runtime/ticket-bitmap.ts
+          grep -F "renderMode:'escpos-raster'" v2local/src/runtime/print-routing.ts
+          grep -F "renderEscPosRasterTicket" v2local/src/runtime/local-runtime.ts
+          grep -F "mono[pixel]=alpha>20&&luminance<180?1:0" v2local/src/runtime/label-bitmap.ts
           ! grep -F "pieceLabel:'1/1'" v2local/src/runtime/print-routing.ts
           echo "MFK_PRINT_TEMPLATE_R1_VERIFY_GREEN"
