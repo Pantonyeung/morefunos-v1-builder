@@ -1,3 +1,3 @@
-source_sha=d0827eb2a29fe030306e874e86a499c0e2c6f7a5
+source_sha=ecfcb76dd164d4276e7458e15eb39c6c23179616
 channel=candidate
-request_id=MFK-GLOBAL-ORDER-ALERT-SNOOZE-R1
+request_id=MFK-SMT-PAYMENT-EVIDENCE-REVIEW-R1
