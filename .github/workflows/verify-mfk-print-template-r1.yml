@@ -1,0 +1,74 @@
+name: Verify MFK Print Templates R1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-print-template-r1-request.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-mfk-print-template-r1
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-print-template-r1-request.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.req.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove source
+        env:
+          EXPECTED: ${{ steps.req.outputs.source_sha }}
+        run: test "$(git -C source rev-parse HEAD)" = "$EXPECTED"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test and build SMT
+        working-directory: source/v2local
+        run: |
+          set -euo pipefail
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Template contract guard
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "客戶收據" v2local/src/runtime/print-routing.ts
+          grep -F "廚房製作單" v2local/src/runtime/print-routing.ts
+          grep -F "外賣打包單" v2local/src/runtime/print-routing.ts
+          grep -F "kind:'product'" v2local/src/runtime/print-routing.ts
+          grep -F "kind:'bag'" v2local/src/runtime/print-routing.ts
+          grep -F "50" v2local/src/runtime/label-bitmap.ts
+          grep -F "40" v2local/src/runtime/label-bitmap.ts
+          grep -F "打印日結單" v2local/src/presentation/LocalMoreWorkspace.tsx
+          grep -F "renderDailyCloseTicket" v2local/src/runtime/daily-close-ticket.ts
+          ! grep -F "pieceLabel:'1/1'" v2local/src/runtime/print-routing.ts
+          echo "MFK_PRINT_TEMPLATE_R1_VERIFY_GREEN"
