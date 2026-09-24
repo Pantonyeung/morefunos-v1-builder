@@ -1,3 +1,3 @@
-source_sha=b33674a577584d44652b866e6a6f52cb7d614c0c
+source_sha=d0827eb2a29fe030306e874e86a499c0e2c6f7a5
 channel=candidate
-request_id=MFK-GLOBAL-NEW-ORDER-ALERT-R1
+request_id=MFK-GLOBAL-ORDER-ALERT-SNOOZE-R1
