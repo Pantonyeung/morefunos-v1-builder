@@ -68,6 +68,19 @@ jobs:
             npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket create mfk-customer-payment-evidence
           fi
 
+      - name: Ensure 90-day payment evidence retention
+        working-directory: source/v2admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          RULE_ID="customer-payment-evidence-90d"
+          CURRENT="$(npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket lifecycle list mfk-customer-payment-evidence 2>&1 || true)"
+          if ! printf '%s' "$CURRENT" | grep -Fq "$RULE_ID"; then
+            npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket lifecycle add mfk-customer-payment-evidence "$RULE_ID" customer-payment/ --expire-days 90
+          fi
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket lifecycle list mfk-customer-payment-evidence 2>&1 | tee "$RUNNER_TEMP/payment-evidence-lifecycle.txt"
+          grep -F "$RULE_ID" "$RUNNER_TEMP/payment-evidence-lifecycle.txt"
+
       - name: Deploy mfk-admin
         working-directory: source/v2admin
         shell: bash
