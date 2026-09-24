@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -F "客戶收據" v2local/src/runtime/print-routing.ts
-          grep -F "廚房製作單" v2local/src/runtime/print-routing.ts
+          grep -F "CENTER+BOLD_ON+TRIPLE+orderService(order)" v2local/src/runtime/print-routing.ts
           grep -F "外賣打包單" v2local/src/runtime/print-routing.ts
           grep -F "kind:'product'" v2local/src/runtime/print-routing.ts
           grep -F "kind:'bag'" v2local/src/runtime/print-routing.ts
@@ -75,6 +75,9 @@ jobs:
           grep -F "renderEscPosRasterTicket" v2local/src/runtime/local-runtime.ts
           grep -F "productionSelectionLines" v2local/src/runtime/print-content.ts
           grep -F "productLabelContent" v2local/src/runtime/print-routing.ts
+          grep -F "pickupCode" v2local/src/runtime/print-routing.ts
+          grep -F "structuredItemBlock" v2local/src/runtime/ticket-bitmap.ts
+          grep -F "checkboxRow(['餐具','飲品','醬汁'])" v2local/src/runtime/ticket-bitmap.ts
           grep -F "mono[pixel]=alpha>20&&luminance<180?0:1" v2local/src/runtime/label-bitmap.ts
           ! grep -F "pieceLabel:'1/1'" v2local/src/runtime/print-routing.ts
           echo "MFK_PRINT_TEMPLATE_R1_VERIFY_GREEN"
