@@ -64,9 +64,15 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config wrangler.jsonc 2>&1 | tee "$RUNNER_TEMP/deploy.log"
-          grep -F "CUSTOMER_RUNTIME" wrangler.jsonc
-          grep -F "customer-runtime-v1" wrangler.jsonc
+          node - <<'NODE'
+          const fs=require('fs');
+          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          delete config.secrets;
+          fs.writeFileSync('wrangler.deploy.jsonc',JSON.stringify(config,null,2));
+          NODE
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config wrangler.deploy.jsonc 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          grep -F "CUSTOMER_RUNTIME" wrangler.deploy.jsonc
+          grep -F "customer-runtime-v1" wrangler.deploy.jsonc
 
       - name: Production readback
         shell: bash
