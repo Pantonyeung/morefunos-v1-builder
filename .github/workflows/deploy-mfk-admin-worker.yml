@@ -1,0 +1,89 @@
+name: Deploy MFK Admin Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-admin-worker-deploy.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-mfk-admin-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-admin-worker-deploy.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.req.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify exact MFK Admin source
+        working-directory: source/v2admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --dry-run --config wrangler.jsonc --outdir "$RUNNER_TEMP/mfk-admin-dryrun"
+
+      - name: Deploy mfk-admin
+        working-directory: source/v2admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config wrangler.jsonc 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          grep -F "CUSTOMER_RUNTIME" wrangler.jsonc
+          grep -F "customer-runtime-v1" wrangler.jsonc
+
+      - name: Production readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            CODE="$(curl -sS -o "$RUNNER_TEMP/health.json" -w '%{http_code}' -H 'Cache-Control: no-cache' 'https://admin.morefunos.com/api/health' || true)"
+            if [ "$CODE" = 200 ]; then break; fi
+            sleep 2
+          done
+          test "$CODE" = 200
+          node -e "const x=require(process.env.RUNNER_TEMP+'/health.json'); if(x?.ok!==true||x?.service!=='mfk-admin')process.exit(1)"
+          SNAP_CODE="$(curl -sS -o "$RUNNER_TEMP/customer-snapshot.json" -w '%{http_code}' -H 'Cache-Control: no-cache' 'https://admin.morefunos.com/api/customer/snapshot?storeId=MF01' || true)"
+          test "$SNAP_CODE" = 200
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/customer-snapshot.json','utf8'));
+          if(!x?.store||x.store.storeId!=='MF01'||!x?.menu||!Array.isArray(x.menu.products))process.exit(1);
+          console.log('MFK_ADMIN_CUSTOMER_EDGE_LIVE_GREEN products='+x.menu.products.length+' channelAvailable='+x.store.channelAvailable);
+          NODE
