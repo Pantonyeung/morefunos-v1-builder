@@ -1,3 +1,3 @@
-source_sha=f2adac66bffab799d503f14485341dc5456d413a
+source_sha=b33674a577584d44652b866e6a6f52cb7d614c0c
 channel=candidate
-request_id=MFK-CUSTOMER-ORDER-ACCEPTANCE-R1
+request_id=MFK-GLOBAL-NEW-ORDER-ALERT-R1
