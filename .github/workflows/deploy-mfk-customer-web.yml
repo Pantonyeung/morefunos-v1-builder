@@ -79,6 +79,7 @@ jobs:
             "routes": [
               {
                 "pattern": "order.morefunos.com",
+                "zone_name": "morefunos.com",
                 "custom_domain": true
               }
             ]
