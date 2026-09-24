@@ -64,7 +64,7 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          if ! npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket list --json | grep -Fq '"name":"mfk-customer-payment-evidence"'; then
+          if ! npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket list --json | grep -Fq 'mfk-customer-payment-evidence'; then
             npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket create mfk-customer-payment-evidence
           fi
 
