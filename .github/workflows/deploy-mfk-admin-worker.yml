@@ -57,6 +57,17 @@ jobs:
           npm run build
           npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --dry-run --config wrangler.jsonc --outdir "$RUNNER_TEMP/mfk-admin-dryrun"
 
+      - name: Ensure Customer payment evidence bucket
+        working-directory: source/v2admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          if ! npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket list --json | grep -Fq '"name":"mfk-customer-payment-evidence"'; then
+            npm exec --yes --package=wrangler@4.125.0 -- wrangler r2 bucket create mfk-customer-payment-evidence
+          fi
+
       - name: Deploy mfk-admin
         working-directory: source/v2admin
         shell: bash
