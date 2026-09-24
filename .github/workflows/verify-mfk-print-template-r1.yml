@@ -77,6 +77,10 @@ jobs:
           grep -F "productLabelContent" v2local/src/runtime/print-routing.ts
           grep -F "pickupCode" v2local/src/runtime/print-routing.ts
           grep -F "structuredItemBlock" v2local/src/runtime/ticket-bitmap.ts
+          grep -F "productionItemBlock(item" v2local/src/runtime/ticket-bitmap.ts
+          grep -F "strokeRect(this.margin,drinkTop,leftWidth,drinkHeight)" v2local/src/runtime/ticket-bitmap.ts
+          grep -F "...(line.detail?{detail:line.detail}:{})" v2local/src/App.tsx
+          grep -F "...(pickupCode.trim()?{providerPickupCode:pickupCode.trim()}:{})," v2local/src/App.tsx
           grep -F "checkboxRow(['餐具','飲品','醬汁'])" v2local/src/runtime/ticket-bitmap.ts
           grep -F "mono[pixel]=alpha>20&&luminance<180?0:1" v2local/src/runtime/label-bitmap.ts
           ! grep -F "pieceLabel:'1/1'" v2local/src/runtime/print-routing.ts
