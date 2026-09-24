@@ -1,0 +1,226 @@
+name: Deploy MFK Customer Official Domain
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-customer-official-domain.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfk-customer-official-domain
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ZONE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ZONE_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout control
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve exact MFK source
+        id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-customer-official-domain.txt | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$SOURCE_SHA" = "4ca38acf2ad852588917615ec1efc89856b17efa"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Customer R4
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.req.outputs.source_sha }}
+          path: mfk
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Fail closed unless credentials own morefunos.com
+        id: zone
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          H=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          curl -fsS "${H[@]}" "https://api.cloudflare.com/client/v4/zones?name=morefunos.com&account.id=$CLOUDFLARE_ACCOUNT_ID" > "$RUNNER_TEMP/zone.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/zone.json','utf8'));
+          if(!x.success) throw new Error('CLOUDFLARE_ZONE_QUERY_FAILED');
+          const zone=(x.result||[]).find(z=>z.name==='morefunos.com');
+          if(!zone) throw new Error('MOREFUNOS_ZONE_NOT_IN_OFFICIAL_DOMAIN_ACCOUNT');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'zone_id='+zone.id+'\n');
+          console.log('MOREFUNOS_ZONE_OWNER_GREEN');
+          NODE
+
+      - name: Verify Admin official domain before Customer mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H 'Cache-Control: no-cache' 'https://admin.morefunos.com/api/health' -o "$RUNNER_TEMP/admin-health.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/admin-health.json','utf8'));
+          if(x?.ok!==true||x?.service!=='mfk-admin') throw new Error('ADMIN_OFFICIAL_DOMAIN_NOT_GREEN');
+          console.log('MFK_ADMIN_OFFICIAL_DOMAIN_GREEN');
+          NODE
+
+      - name: Verify exact source and build Customer R4
+        working-directory: mfk/v2customer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = "${{ steps.req.outputs.source_sha }}"
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+          test -s dist/index.html
+          grep -R -F "admin.morefunos.com" dist/assets >/dev/null
+
+      - name: Prepare official-domain Worker config
+        working-directory: mfk/v2customer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wrangler.official-domain.jsonc <<'EOF'
+          {
+            "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+            "name": "mfk-customer",
+            "compatibility_date": "2026-09-24",
+            "workers_dev": true,
+            "preview_urls": true,
+            "assets": {
+              "directory": "./dist",
+              "not_found_handling": "single-page-application"
+            },
+            "routes": [
+              {
+                "pattern": "order.morefunos.com",
+                "zone_name": "morefunos.com",
+                "custom_domain": true
+              }
+            ]
+          }
+          EOF
+
+      - name: Deploy exact Customer R4 to zone-owner account
+        working-directory: mfk/v2customer
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm exec --yes --package=wrangler@4.136.3 -- wrangler deploy --config wrangler.official-domain.jsonc
+
+      - name: Official domain readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=""
+          for i in $(seq 1 30); do
+            CODE="$(curl -sS -o "$RUNNER_TEMP/index.html" -w '%{http_code}' -H 'Cache-Control: no-cache' 'https://order.morefunos.com/' || true)"
+            if [ "$CODE" = 200 ]; then break; fi
+            sleep 2
+          done
+          test "$CODE" = 200
+          JS_PATH="$(grep -Eo 'src="[^"]*assets/[^"]+\.js"' "$RUNNER_TEMP/index.html" | head -n1 | sed -E 's/^src="([^"]+)"$/\1/')"
+          test -n "$JS_PATH"
+          case "$JS_PATH" in
+            http*) JS_URL="$JS_PATH" ;;
+            /*) JS_URL="https://order.morefunos.com$JS_PATH" ;;
+            *) JS_URL="https://order.morefunos.com/$JS_PATH" ;;
+          esac
+          curl -fsS -H 'Cache-Control: no-cache' "$JS_URL" -o "$RUNNER_TEMP/customer.js"
+          grep -F "admin.morefunos.com" "$RUNNER_TEMP/customer.js"
+          echo "MFK_CUSTOMER_OFFICIAL_DOMAIN_GREEN"
+
+      - name: Customer origin to Admin CORS readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -D "$RUNNER_TEMP/cors.headers" -o "$RUNNER_TEMP/snapshot.json"             -H 'Origin: https://order.morefunos.com'             -H 'Cache-Control: no-cache'             'https://admin.morefunos.com/api/customer/snapshot?storeId=MF01'
+          grep -i -F 'access-control-allow-origin: https://order.morefunos.com' "$RUNNER_TEMP/cors.headers"
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/snapshot.json','utf8'));
+          if(x?.store?.storeId!=='MF01'||!Array.isArray(x?.menu?.products)) throw new Error('CUSTOMER_SNAPSHOT_INVALID');
+          console.log('MFK_CUSTOMER_ADMIN_CORS_GREEN products='+x.menu.products.length);
+          NODE
+
+      - name: Quote-only Customer to Admin to SMT smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          export REQUEST_ID="DOMAIN-SMOKE-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/snapshot.json','utf8'));
+          const products=Array.isArray(x?.menu?.products)?x.menu.products:[];
+          let pick=null;
+          for(const p of products){
+            const selections=[];
+            let valid=true;
+            for(const g of (Array.isArray(p.optionGroups)?p.optionGroups:[])){
+              const min=Math.max(g.required?1:0,Number(g.minSelections)||0);
+              const opts=(Array.isArray(g.options)?g.options:[]).filter(o=>o&&o.available!==false);
+              if(opts.length<min){valid=false;break;}
+              for(const o of opts.slice(0,min)) selections.push({
+                optionGroupId:String(g.optionGroupId),
+                optionId:String(o.optionId),
+                optionName:String(o.name),
+              });
+            }
+            if(valid){pick={p,selections};break;}
+          }
+          if(!pick) throw new Error('NO_SMOKEABLE_CUSTOMER_PRODUCT');
+          fs.writeFileSync(process.env.RUNNER_TEMP+'/quote.json',JSON.stringify({
+            schema:'MFK_CUSTOMER_QUOTE_REQUEST_V1',
+            storeId:'MF01',
+            requestId:process.env.REQUEST_ID,
+            createdAt:new Date().toISOString(),
+            cart:[{
+              lineId:'DOMAIN-SMOKE-L1',
+              productId:String(pick.p.productId),
+              productName:String(pick.p.name),
+              quantity:1,
+              selections:pick.selections,
+              note:'OFFICIAL DOMAIN QUOTE SMOKE'
+            }]
+          }));
+          NODE
+          CODE="$(curl -sS -o "$RUNNER_TEMP/submit.json" -w '%{http_code}'             -H 'Origin: https://order.morefunos.com'             -H 'Content-Type: application/json'             --data-binary "@$RUNNER_TEMP/quote.json"             'https://admin.morefunos.com/api/customer/quote')"
+          test "$CODE" = 202
+          STATE=PENDING
+          for i in $(seq 1 25); do
+            curl -fsS -H 'Origin: https://order.morefunos.com'               "https://admin.morefunos.com/api/customer/quote/readback?requestId=$REQUEST_ID"               -o "$RUNNER_TEMP/readback.json"
+            STATE="$(node -p "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/readback.json','utf8')).state")"
+            case "$STATE" in
+              CONFIRMED) echo "MFK_CUSTOMER_ADMIN_SMT_QUOTE_SMOKE_GREEN"; exit 0 ;;
+              REJECTED) cat "$RUNNER_TEMP/readback.json"; exit 1 ;;
+            esac
+            sleep 2
+          done
+          echo "MFK_CUSTOMER_ADMIN_SMT_QUOTE_SMOKE_PENDING"
+          cat "$RUNNER_TEMP/readback.json"
+          exit 0
+
+      - name: Final verdict
+        shell: bash
+        run: |
+          echo "MFK_CUSTOMER_OFFICIAL_DOMAIN_CUTOVER_GREEN"
+          echo "SOURCE_SHA=${{ steps.req.outputs.source_sha }}"
