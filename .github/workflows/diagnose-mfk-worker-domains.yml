@@ -1,0 +1,41 @@
+name: Diagnose MFK Worker Domains
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-worker-domain-diagnostic.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with: {persist-credentials: false}
+      - name: Read Worker custom domains and services
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          H=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          curl -fsS "${H[@]}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" > "$RUNNER_TEMP/domains.json"
+          curl -fsS "${H[@]}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/services" > "$RUNNER_TEMP/services.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/domains.json','utf8'));
+          const s=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/services.json','utf8'));
+          if(!d.success||!s.success)process.exit(1);
+          console.log('=== CUSTOM DOMAINS ===');
+          for(const x of d.result||[]) console.log(JSON.stringify({hostname:x.hostname,service:x.service,environment:x.environment,zone_id:x.zone_id}));
+          console.log('=== SERVICES ===');
+          for(const x of s.result||[]) console.log(JSON.stringify({id:x.id,default_environment:x.default_environment}));
+          NODE
