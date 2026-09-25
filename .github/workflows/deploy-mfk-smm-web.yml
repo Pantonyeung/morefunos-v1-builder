@@ -165,6 +165,10 @@ jobs:
           UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauth.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$URL/api/smm/orders/submit?storeId=MF01")"
           test "$UNAUTH_CODE" = 401
 
+          CONFIG_DIAG_CODE="$(curl -sS -o "$RUNNER_TEMP/config-diag.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/config-diagnostics?storeId=MF01")"
+          test "$CONFIG_DIAG_CODE" = 200
+          echo "MFK_SMM_CONFIG_DIAGNOSTICS $(cat "$RUNNER_TEMP/config-diag.json")"
+
           echo "MFK_SMM_WEB_DEPLOY_GREEN $URL"
           echo "MFK_SMM_INTERNET_PROJECTION_GREEN $URL/api/smm/snapshot?storeId=MF01"
           echo "MFK_SMM_STAFF_AUTH_BOUNDARY_GREEN"
