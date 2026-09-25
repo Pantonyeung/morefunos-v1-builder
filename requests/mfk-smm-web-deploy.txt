@@ -1,2 +1,2 @@
-source_sha=e64e28bc09206a1d7d97f1a9cf1deb8eb526da5a
-request_id=MFK-SMM-STAFF-PUBLISHED-PRICE-R1
+source_sha=94e4dfa1f93c6b9d559926db7d1336b8e9211f6c
+request_id=MFK-SMM-STAFF-INTERNET-ORDER-R2
