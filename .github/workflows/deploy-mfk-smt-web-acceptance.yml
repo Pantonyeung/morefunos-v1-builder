@@ -1,0 +1,156 @@
+name: Deploy MFK SMT Web Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - requests/mfk-smt-web-acceptance.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-mfk-smt-web-acceptance
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: mfk-smt-web-acceptance
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-smt-web-acceptance.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.request.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify exact source and build SMT web acceptance
+        working-directory: source/v2local
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
+          test -s src/runtime/web-acceptance.ts
+          test -s web-acceptance-worker.ts
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+          test -s dist/index.html
+          test -d dist/assets
+          grep -F "mfk-smt-web-acceptance.pantonyeung.workers.dev" src/runtime/web-acceptance.ts
+          grep -F "if(!webAcceptance)" src/main.tsx
+
+      - name: Deploy temporary public SMT Worker
+        working-directory: source/v2local
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cat > wrangler.acceptance.jsonc <<'EOF'
+          {
+            "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+            "name": "mfk-smt-web-acceptance",
+            "main": "./web-acceptance-worker.ts",
+            "compatibility_date": "2026-09-25",
+            "workers_dev": true,
+            "preview_urls": false,
+            "assets": {
+              "directory": "./dist",
+              "binding": "ASSETS",
+              "not_found_handling": "single-page-application"
+            }
+          }
+          EOF
+          npm exec --yes --package=wrangler@4.125.0 -- wrangler deploy --config wrangler.acceptance.jsonc 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | tail -n1 | sed 's/[),.;]*$//' || true)"
+          test -n "$URL"
+          TOKEN="$(openssl rand -hex 32)"
+          printf '%s' "$TOKEN" | npm exec --yes --package=wrangler@4.125.0 -- wrangler secret put WEB_ACCEPTANCE_TOKEN --config wrangler.acceptance.jsonc >/dev/null
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+          echo "MFK_SMT_WEB_ACCEPTANCE_URL=$URL/?access=$TOKEN"
+
+      - name: Public acceptance smoke
+        working-directory: source/v2local
+        shell: bash
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          TOKEN: ${{ steps.deploy.outputs.token }}
+        run: |
+          set -euo pipefail
+          COOKIE="$RUNNER_TEMP/cookie.txt"
+
+          UNAUTH="$(curl -sS -o "$RUNNER_TEMP/unauth.html" -w '%{http_code}' "$URL/")"
+          test "$UNAUTH" = 401
+
+          curl -sS -c "$COOKIE" -o /dev/null "$URL/?access=$TOKEN"
+          ROOT="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/index.html" -w '%{http_code}' "$URL/")"
+          test "$ROOT" = 200
+          grep -F '<div id="root"></div>' "$RUNNER_TEMP/index.html"
+
+          HEALTH="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$URL/__mfk/health")"
+          test "$HEALTH" = 200
+          node - <<'NODE'
+          const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/health.json','utf8'));
+          if(x.mode!=='WEB_ACCEPTANCE_ONLY')throw new Error('SMT_WEB_MODE_MISMATCH');
+          if(x.productionConsumers!==false||x.physicalPrint!==false||x.cashDrawer!==false)throw new Error('SMT_WEB_ISOLATION_MISMATCH');
+          NODE
+
+          ACTIVE="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/active.json" -w '%{http_code}' "$URL/__mfk/admin/api/admin-sync/active?storeId=MF01")"
+          test "$ACTIVE" = 200
+          node -e "const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/active.json','utf8')); if(!x.revision||!x.fingerprint) process.exit(1)"
+
+          BLOCKED="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/blocked.json" -w '%{http_code}' "$URL/__mfk/admin/api/customer/smt/orders/pending?storeId=MF01")"
+          test "$BLOCKED" = 403
+
+          ACK="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/ack.json" -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "$URL/__mfk/admin/api/admin-sync/ack?storeId=MF01")"
+          test "$ACK" = 200
+          grep -F 'WEB_ACCEPTANCE_ACK_SKIPPED' "$RUNNER_TEMP/ack.json"
+
+          echo "MFK_SMT_WEB_ACCEPTANCE_GREEN"
+          echo "MFK_SMT_WEB_ACCEPTANCE_ACCESS=$URL/?access=$TOKEN"
+
+      - name: Record evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          mkdir -p evidence
+          printf 'source_sha=%s\nurl=%s\nrun_id=%s\nmode=WEB_ACCEPTANCE_ONLY\nproduction_consumers=false\nphysical_print=false\ncash_drawer=false\n' "$SOURCE_SHA" "$URL" "$GITHUB_RUN_ID" > evidence/summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mfk-smt-web-acceptance-${{ steps.request.outputs.source_sha }}
+          path: source/v2local/evidence
+          if-no-files-found: warn
+          retention-days: 7
