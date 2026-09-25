@@ -60,8 +60,9 @@ jobs:
           export ANDROID_HOME=/usr/local/lib/android/sdk
           export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
           test -d "$ANDROID_HOME/platforms/android-36"
-          gradle wrapper --gradle-version 9.5 --distribution-type bin
-          ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+          curl -fsSL https://services.gradle.org/distributions/gradle-9.5-bin.zip -o "$RUNNER_TEMP/gradle-9.5-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-9.5-bin.zip" -d "$RUNNER_TEMP"
+          "$RUNNER_TEMP/gradle-9.5/bin/gradle" --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Verify thin SMM Android shell
         working-directory: source/carrier/smm-android
@@ -70,8 +71,9 @@ jobs:
           export ANDROID_HOME=/usr/local/lib/android/sdk
           export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
           test -d "$ANDROID_HOME/platforms/android-36"
-          gradle wrapper --gradle-version 9.5 --distribution-type bin
-          ./gradlew --no-daemon :app:lintDebug :app:assembleDebug
+          curl -fsSL https://services.gradle.org/distributions/gradle-9.5-bin.zip -o "$RUNNER_TEMP/gradle-9.5-bin.zip"
+          unzip -q "$RUNNER_TEMP/gradle-9.5-bin.zip" -d "$RUNNER_TEMP"
+          "$RUNNER_TEMP/gradle-9.5/bin/gradle" --no-daemon :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Guard frozen authority
         shell: bash
