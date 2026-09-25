@@ -1,3 +1,3 @@
-source_sha=bf7e7950bbf50e7f25593280461f7ddca898e15f
+source_sha=e64e28bc09206a1d7d97f1a9cf1deb8eb526da5a
 channel=candidate
-request_id=MFK-SMM-HYBRID-LAN-INTERNET-R1
+request_id=MFK-SMM-STAFF-PUBLISHED-PRICE-R1
