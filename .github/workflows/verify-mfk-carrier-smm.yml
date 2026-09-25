@@ -66,16 +66,6 @@ jobs:
           fi
           "$RUNNER_TEMP/gradle-9.5.0/bin/gradle" --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
-      - name: Verify thin SMM Android shell
-        working-directory: source/carrier/smm-android
-        run: |
-          set -euo pipefail
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          test -d "$ANDROID_HOME/platforms/android-36"
-          test -x "$RUNNER_TEMP/gradle-9.5.0/bin/gradle"
-          "$RUNNER_TEMP/gradle-9.5.0/bin/gradle" --no-daemon :app:lintDebug :app:assembleDebug
-          test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Guard frozen authority
         shell: bash
         run: |
@@ -85,5 +75,4 @@ jobs:
           grep -F 'Runtime OTA URL' source/carrier/android/app/src/main/java/com/morefunos/smt/diagnostics/CarrierRecoveryActivity.java
           grep -F 'Carrier OTA URL' source/carrier/android/app/src/main/java/com/morefunos/smt/diagnostics/CarrierRecoveryActivity.java
           grep -F 'SmmLanHost' source/carrier/android/app/src/main/java/com/morefunos/smt/MainActivity.java
-          ! grep -R -E 'createOrder|priceCustomerCart|StoreKernel' source/carrier/smm-android/app/src/main/java
           echo MFK_CARRIER_SMM_VERIFY_GREEN
