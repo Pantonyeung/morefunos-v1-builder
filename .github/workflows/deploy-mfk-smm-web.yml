@@ -72,6 +72,20 @@ jobs:
             "compatibility_date": "2026-09-25",
             "workers_dev": true,
             "preview_urls": true,
+            "durable_objects": {
+              "bindings": [
+                {
+                  "name": "SMM_INTENT_STORE",
+                  "class_name": "SmmIntentStore"
+                }
+              ]
+            },
+            "migrations": [
+              {
+                "tag": "smm-intent-v1",
+                "new_sqlite_classes": ["SmmIntentStore"]
+              }
+            ],
             "assets": {
               "directory": "./dist",
               "binding": "ASSETS",
