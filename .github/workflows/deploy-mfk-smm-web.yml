@@ -134,6 +134,9 @@ jobs:
           NODE
 
           AUTH_SELFTEST_CODE="$(curl -sS -o "$RUNNER_TEMP/auth-selftest.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/auth-selftest")"
+          echo "AUTH_SELFTEST_CODE=$AUTH_SELFTEST_CODE"
+          cat "$RUNNER_TEMP/auth-selftest.json"
+          echo
           test "$AUTH_SELFTEST_CODE" = 200
           node - <<'NODE'
           const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/auth-selftest.json','utf8'));
