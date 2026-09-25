@@ -1,2 +1,2 @@
 source_sha=e29fadf7ba04750ecd42a17971ae1b21cdf4f56d
-request_id=MFK-SMM-BRIDGE-DIAG-TOTAL-R11C
+request_id=MFK-SMM-LIVE-PRICE-SAMPLE-R11D
