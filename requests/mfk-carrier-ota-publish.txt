@@ -1,0 +1,5 @@
+source_sha=75759607ba05720f723c77d282327b7f1386f616
+publisher_source_sha=e2a655453697868ed0823eb56ba947c107732843
+expected_version_name=1.0.7
+expected_version_code=107
+request_id=MFK-CARRIER-1.0.7-OTA-PUBLISH-20260925-01
