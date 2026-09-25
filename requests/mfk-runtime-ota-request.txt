@@ -1,3 +1,3 @@
-source_sha=c280314678a22e5164342c6096aedd88474a3aeb
+source_sha=9e4e46a634a52c6167ee6df0b439e2ff4ca24b9a
 channel=candidate
-request_id=MFK-SMM-SHARED-CUSTOMER-BRIDGE-R9
+request_id=MFK-SMM-LEGACY-ADMIN-COMPAT-BRIDGE-R10
