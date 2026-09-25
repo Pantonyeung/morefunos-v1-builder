@@ -53,17 +53,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - name: Verify MFK Carrier 1.0.7
         working-directory: source/carrier/android
         run: |
           set -euo pipefail
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          test -d "$ANDROID_HOME/platforms/android-36"
           gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Verify thin SMM Android shell
         working-directory: source/carrier/smm-android
         run: |
           set -euo pipefail
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          test -d "$ANDROID_HOME/platforms/android-36"
           gradle --no-daemon :app:lintDebug :app:assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Guard frozen authority
