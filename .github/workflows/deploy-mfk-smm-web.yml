@@ -67,7 +67,7 @@ jobs:
           cat > wrangler.deploy.jsonc <<'EOF'
           {
             "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
-            "name": "mfk-smm",
+            "name": "mfk-smm-web",
             "compatibility_date": "2026-09-25",
             "workers_dev": true,
             "preview_urls": true,
