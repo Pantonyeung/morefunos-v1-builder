@@ -93,6 +93,7 @@ jobs:
           test -n "$URL"
           TOKEN="$(openssl rand -hex 32)"
           printf '%s' "$TOKEN" | npm exec --yes --package=wrangler@4.125.0 -- wrangler secret put WEB_ACCEPTANCE_TOKEN --config wrangler.acceptance.jsonc >/dev/null
+          sleep 5
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
           echo "MFK_SMT_WEB_ACCEPTANCE_URL=$URL/?access=$TOKEN"
@@ -108,14 +109,19 @@ jobs:
           COOKIE="$RUNNER_TEMP/cookie.txt"
 
           UNAUTH="$(curl -sS -o "$RUNNER_TEMP/unauth.html" -w '%{http_code}' "$URL/")"
+          echo "UNAUTH=$UNAUTH"
           test "$UNAUTH" = 401
 
-          curl -sS -c "$COOKIE" -o /dev/null "$URL/?access=$TOKEN"
-          ROOT="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/index.html" -w '%{http_code}' "$URL/")"
+          for i in $(seq 1 10); do
+            curl -sS -c "$COOKIE" -o /dev/null "$URL/?access=$TOKEN"
+            ROOT="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/index.html" -w '%{http_code}' "$URL/")"
+            HEALTH="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$URL/__mfk/health")"
+            echo "ATTEMPT=$i ROOT=$ROOT HEALTH=$HEALTH"
+            if [ "$ROOT" = 200 ] && [ "$HEALTH" = 200 ]; then break; fi
+            sleep 2
+          done
           test "$ROOT" = 200
           grep -F '<div id="root"></div>' "$RUNNER_TEMP/index.html"
-
-          HEALTH="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/health.json" -w '%{http_code}' "$URL/__mfk/health")"
           test "$HEALTH" = 200
           node - <<'NODE'
           const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/health.json','utf8'));
@@ -124,13 +130,18 @@ jobs:
           NODE
 
           ACTIVE="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/active.json" -w '%{http_code}' "$URL/__mfk/admin/api/admin-sync/active?storeId=MF01")"
+          echo "ACTIVE=$ACTIVE"
+          cat "$RUNNER_TEMP/active.json" | head -c 400 || true
+          echo
           test "$ACTIVE" = 200
           node -e "const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/active.json','utf8')); if(!x.revision||!x.fingerprint) process.exit(1)"
 
           BLOCKED="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/blocked.json" -w '%{http_code}' "$URL/__mfk/admin/api/customer/smt/orders/pending?storeId=MF01")"
+          echo "BLOCKED=$BLOCKED"
           test "$BLOCKED" = 403
 
           ACK="$(curl -sS -b "$COOKIE" -o "$RUNNER_TEMP/ack.json" -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "$URL/__mfk/admin/api/admin-sync/ack?storeId=MF01")"
+          echo "ACK=$ACK"
           test "$ACK" = 200
           grep -F 'WEB_ACCEPTANCE_ACK_SKIPPED' "$RUNNER_TEMP/ack.json"
 
@@ -144,8 +155,8 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           URL: ${{ steps.deploy.outputs.url }}
         run: |
-          mkdir -p evidence
-          printf 'source_sha=%s\nurl=%s\nrun_id=%s\nmode=WEB_ACCEPTANCE_ONLY\nproduction_consumers=false\nphysical_print=false\ncash_drawer=false\n' "$SOURCE_SHA" "$URL" "$GITHUB_RUN_ID" > evidence/summary.txt
+          mkdir -p source/v2local/evidence
+          printf 'source_sha=%s\nurl=%s\nrun_id=%s\nmode=WEB_ACCEPTANCE_ONLY\nproduction_consumers=false\nphysical_print=false\ncash_drawer=false\n' "$SOURCE_SHA" "$URL" "$GITHUB_RUN_ID" > source/v2local/evidence/summary.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
