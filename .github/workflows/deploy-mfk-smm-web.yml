@@ -95,4 +95,20 @@ jobs:
           done
           test "$CODE" = 200
           grep -F '<div id="root"></div>' "$RUNNER_TEMP/index.html"
+
+          HEALTH_CODE="$(curl -sS -o "$RUNNER_TEMP/health.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/health")"
+          test "$HEALTH_CODE" = 200
+          node -e "const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/health.json','utf8')); if(x.service!=='mfk-smm-web') process.exit(1)"
+
+          SNAPSHOT_CODE="$(curl -sS -o "$RUNNER_TEMP/snapshot.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/snapshot?storeId=MF01")"
+          test "$SNAPSHOT_CODE" = 200
+          node - <<'NODE'
+          const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/snapshot.json','utf8'));
+          if(x.connectionPath!=='INTERNET') throw new Error('SMM_INTERNET_PATH_MISSING');
+          if(!x.menu||!Array.isArray(x.menu.categories)||!Array.isArray(x.menu.products)) throw new Error('SMM_MENU_INVALID');
+          for(const key of ['orders','work','channels','dineSessions','printHealth','refundRequests']){
+            if(!Array.isArray(x[key])) throw new Error('SMM_ARRAY_INVALID_'+key);
+          }
+          NODE
           echo "MFK_SMM_WEB_DEPLOY_GREEN $URL"
+          echo "MFK_SMM_INTERNET_PROJECTION_GREEN $URL/api/smm/snapshot?storeId=MF01"
