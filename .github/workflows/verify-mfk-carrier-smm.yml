@@ -1,0 +1,79 @@
+name: Verify MFK Carrier and SMM Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'requests/mfk-carrier-smm-verify.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: req
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' requests/mfk-carrier-smm-verify.txt | tr -d '[:space:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.req.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test and build MFK SMT runtime
+        working-directory: source/v2local
+        run: |
+          set -euo pipefail
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Test and build SMM web
+        working-directory: source/v2smm
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run build
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Verify MFK Carrier 1.0.7
+        working-directory: source/carrier/android
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+          test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify thin SMM Android shell
+        working-directory: source/carrier/smm-android
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:lintDebug :app:assembleDebug
+          test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Guard frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'versionCode = 107' source/carrier/android/app/build.gradle.kts
+          grep -F 'CARRIER_UPDATE_MANIFEST_URL' source/carrier/android/app/build.gradle.kts
+          grep -F 'Runtime OTA URL' source/carrier/android/app/src/main/java/com/morefunos/smt/diagnostics/CarrierRecoveryActivity.java
+          grep -F 'Carrier OTA URL' source/carrier/android/app/src/main/java/com/morefunos/smt/diagnostics/CarrierRecoveryActivity.java
+          grep -F 'SmmLanHost' source/carrier/android/app/src/main/java/com/morefunos/smt/MainActivity.java
+          ! grep -R -E 'createOrder|priceCustomerCart|StoreKernel' source/carrier/smm-android/app/src/main/java
+          echo MFK_CARRIER_SMM_VERIFY_GREEN
