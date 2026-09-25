@@ -124,5 +124,18 @@ jobs:
             if(!Array.isArray(x[key])) throw new Error('SMM_ARRAY_INVALID_'+key);
           }
           NODE
+
+          STAFF_CODE="$(curl -sS -o "$RUNNER_TEMP/staff.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/staff?storeId=MF01")"
+          test "$STAFF_CODE" = 200
+          node - <<'NODE'
+          const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/staff.json','utf8'));
+          if(!Array.isArray(x.staff)) throw new Error('SMM_STAFF_DIRECTORY_INVALID');
+          if(JSON.stringify(x).includes('"pin"')) throw new Error('SMM_STAFF_PIN_LEAK');
+          NODE
+
+          UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauth.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$URL/api/smm/orders/submit?storeId=MF01")"
+          test "$UNAUTH_CODE" = 401
+
           echo "MFK_SMM_WEB_DEPLOY_GREEN $URL"
           echo "MFK_SMM_INTERNET_PROJECTION_GREEN $URL/api/smm/snapshot?storeId=MF01"
+          echo "MFK_SMM_STAFF_AUTH_BOUNDARY_GREEN"
