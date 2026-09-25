@@ -133,6 +133,14 @@ jobs:
           if(JSON.stringify(x).includes('"pin"')) throw new Error('SMM_STAFF_PIN_LEAK');
           NODE
 
+          AUTH_SELFTEST_CODE="$(curl -sS -o "$RUNNER_TEMP/auth-selftest.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/auth-selftest")"
+          test "$AUTH_SELFTEST_CODE" = 200
+          node - <<'NODE'
+          const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/auth-selftest.json','utf8'));
+          if(x.ok!==true) throw new Error('SMM_STAFF_CRYPTO_SELFTEST_FAILED');
+          if(x.algorithm!=='PBKDF2-SHA256') throw new Error('SMM_STAFF_CRYPTO_ALGORITHM_MISMATCH');
+          NODE
+
           UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauth.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$URL/api/smm/orders/submit?storeId=MF01")"
           test "$UNAUTH_CODE" = 401
 
