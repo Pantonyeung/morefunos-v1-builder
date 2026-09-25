@@ -172,3 +172,9 @@ jobs:
           echo "MFK_SMM_WEB_DEPLOY_GREEN $URL"
           echo "MFK_SMM_INTERNET_PROJECTION_GREEN $URL/api/smm/snapshot?storeId=MF01"
           echo "MFK_SMM_STAFF_AUTH_BOUNDARY_GREEN"
+
+          OWNER_DIAG_CODE="$(curl -sS -o "$RUNNER_TEMP/owner-bridge-diag.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "https://smm.morefunos.com/api/smm/bridge-diagnostics" || true)"
+          echo "MFK_SMM_OWNER_BRIDGE_DIAG_HTTP=$OWNER_DIAG_CODE"
+          if [ -s "$RUNNER_TEMP/owner-bridge-diag.json" ]; then
+            echo "MFK_SMM_OWNER_BRIDGE_DIAGNOSTICS $(cat "$RUNNER_TEMP/owner-bridge-diag.json")"
+          fi
