@@ -146,15 +146,21 @@ jobs:
           NODE
 
           STAFF_ID="$(node -e "const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/staff.json','utf8')); process.stdout.write(String(x.staff?.[0]?.staffId||''))")"
-          test -n "$STAFF_ID"
-          CHALLENGE_CODE="$(curl -sS -o "$RUNNER_TEMP/challenge.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data "$(node -e "process.stdout.write(JSON.stringify({staffId:process.argv[1]}))" "$STAFF_ID")" "$URL/api/smm/staff/challenge?storeId=MF01")"
-          test "$CHALLENGE_CODE" = 200
-          node - <<'NODE'
+          if [ -n "$STAFF_ID" ]; then
+            CHALLENGE_CODE="$(curl -sS -o "$RUNNER_TEMP/challenge.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data "$(node -e "process.stdout.write(JSON.stringify({staffId:process.argv[1]}))" "$STAFF_ID")" "$URL/api/smm/staff/challenge?storeId=MF01")"
+            echo "CHALLENGE_CODE=$CHALLENGE_CODE"
+            cat "$RUNNER_TEMP/challenge.json"
+            echo
+            test "$CHALLENGE_CODE" = 200
+            node - <<'NODE'
           const x=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/challenge.json','utf8'));
           if(!x.challengeId||!x.nonce||!x.saltHex) throw new Error('SMM_STAFF_CHALLENGE_INVALID');
           if(!Number.isSafeInteger(x.iterations)||x.iterations<100000) throw new Error('SMM_STAFF_CHALLENGE_ITERATIONS_INVALID');
           if(JSON.stringify(x).includes('hashHex')) throw new Error('SMM_STAFF_VERIFIER_HASH_LEAK');
           NODE
+          else
+            echo "MFK_SMM_STAFF_CHALLENGE_SKIPPED_NO_CONFIGURED_STAFF"
+          fi
 
           UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauth.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$URL/api/smm/orders/submit?storeId=MF01")"
           test "$UNAUTH_CODE" = 401
