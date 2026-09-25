@@ -123,6 +123,12 @@ jobs:
           for(const key of ['orders','work','channels','dineSessions','printHealth','refundRequests']){
             if(!Array.isArray(x[key])) throw new Error('SMM_ARRAY_INVALID_'+key);
           }
+          const sample=x.menu.products.slice(0,20).map(p=>({
+            id:p.productId,name:p.name,
+            takeaway:p.publishedTakeawayUnitPriceMinor,
+            dineIn:p.publishedDineInUnitPriceMinor,
+          }));
+          console.log('MFK_SMM_SNAPSHOT_PRICE_SAMPLE '+JSON.stringify({revision:x.menu.revision,sample}));
           NODE
 
           STAFF_CODE="$(curl -sS -o "$RUNNER_TEMP/staff.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$URL/api/smm/staff?storeId=MF01")"
