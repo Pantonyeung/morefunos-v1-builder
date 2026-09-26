@@ -1,3 +1,3 @@
-source_sha=9e4e46a634a52c6167ee6df0b439e2ff4ca24b9a
+source_sha=9498b2e9716f829d91c70cff731cd627639e9f0e
 channel=candidate
-request_id=MFK-SMM-LEGACY-ADMIN-COMPAT-BRIDGE-R10
+request_id=MFK-SMT-RICEBALL-DRINK-OFFER-R1-OTA-20260926
