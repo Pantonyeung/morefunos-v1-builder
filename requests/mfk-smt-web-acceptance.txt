@@ -1,3 +1,3 @@
-source_sha=3ed149373e80a3a9b4d52e0b5802d6edac71bef5
-request_id=MFK-SMT-STAGE0-BUILTIN-PIN-R1
+source_sha=807c0eb4ef65f4aadcc1b31de74403ee90a75ae0
+request_id=MFK-SMT-STAGE0-PIN-HANDLER-FIX-R1
 mode=WEB_ACCEPTANCE_ONLY
