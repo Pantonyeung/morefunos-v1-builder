@@ -1,3 +1,3 @@
-source_sha=def143f1002a59a6b2ebedc2c0d4f03256c5c4a4
+source_sha=f6ca02095429ead6a51b6cfed6bc0947b329db6c
 channel=candidate
-request_id=MFK-SMT-CONSOLIDATION-A3-FINAL-OTA-20260927
+request_id=MFK-ADMIN-SMT-DOORBELL-P0-20260929
