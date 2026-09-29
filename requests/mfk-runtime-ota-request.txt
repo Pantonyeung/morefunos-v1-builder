@@ -1,3 +1,3 @@
-source_sha=f6ca02095429ead6a51b6cfed6bc0947b329db6c
+source_sha=3e6865b9ac27b3c4fa41d3039271d398df5c3986
 channel=candidate
-request_id=MFK-ADMIN-SMT-DOORBELL-P0-20260929-R2
+request_id=MFK-VERSION-IDENTITY-AND-ADMIN-DOORBELL-20260929
