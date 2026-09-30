@@ -16,6 +16,7 @@ env:
   BRIDGE_VERSION: '1'
   OTA_BUCKET: morefunos-v2-smt-ota
   OTA_ORIGIN: https://morefunos-v2-smt-ota.pantonyeung.workers.dev
+  SMT_WEB_ORIGIN: https://mfk-smt-web.yeungyi88.workers.dev
   WRANGLER_VERSION: '4.118.0'
 
 jobs:
@@ -148,6 +149,41 @@ jobs:
         run: |
           npm install --global --silent "wrangler@$WRANGLER_VERSION"
           wrangler --version | grep -F "$WRANGLER_VERSION"
+
+      - name: Deploy exact same SMT source to public Cloudflare mirror
+        working-directory: source/v2local
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -s wrangler.public-mirror.jsonc
+          test -s public-mirror-worker.ts
+          wrangler deploy --config wrangler.public-mirror.jsonc --var MFK_SOURCE_SHA:$SOURCE_SHA
+
+      - name: Public SMT mirror exact-source readback
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            if curl -fsS -H 'Cache-Control: no-cache' "$SMT_WEB_ORIGIN/__mfk/build" -o "$RUNNER_TEMP/smt-web-build.json"; then
+              if node -e "const x=require(process.env.RUNNER_TEMP+'/smt-web-build.json');process.exit(x?.mode==='PUBLIC_MIRROR'&&x?.sourceSha===process.env.EXPECTED_SHA?0:1)"; then break; fi
+            fi
+            sleep 2
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/smt-web-build.json','utf8'));
+          if(x.mode!=='PUBLIC_MIRROR')throw new Error('SMT_WEB_MODE_MISMATCH');
+          if(x.sourceSha!==process.env.EXPECTED_SHA)throw new Error('SMT_WEB_SOURCE_MISMATCH');
+          console.log('MFK_SMT_PUBLIC_MIRROR_RELEASED sourceSha='+x.sourceSha);
+          NODE
 
       - name: Publish OTA
         shell: bash
