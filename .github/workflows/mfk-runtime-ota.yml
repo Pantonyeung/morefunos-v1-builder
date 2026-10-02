@@ -11,6 +11,8 @@ permissions:
 
 env:
   SOURCE_REPO: Pantonyeung/mfk
+  RUNTIME_TARGET: MFP_V3
+  RUNTIME_SOURCE_DIR: source/v3smt
   EXPECTED_CERT_SHA256: 8f66270541c419a90ae0e8b94a2c7796e13d5c06805b0919ce3f7f5b3602857a
   MIN_CARRIER_VERSION_CODE: '106'
   BRIDGE_VERSION: '1'
@@ -56,21 +58,32 @@ jobs:
         with:
           node-version: '24'
 
-      - name: V2 local POS test and build
+      - name: Verify V3 packaging contract
+        run: node scripts/verify-mfp-v3-runtime-ota.mjs
+
+      - name: MFP V3 test, typecheck and build
         shell: bash
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
-          test -s source/v2local/index.html
-          test -s source/v2local/src/App.tsx
-          test -s source/v2local/src/runtime/local-runtime.ts
-          test -s source/v2local/src/runtime/native-print.ts
-          cd source/v2local
+          test "$RUNTIME_TARGET" = "MFP_V3"
+          test -s "$RUNTIME_SOURCE_DIR/package.json"
+          test -s "$RUNTIME_SOURCE_DIR/index.html"
+          test -s "$RUNTIME_SOURCE_DIR/src/main.tsx"
+          test -s "$RUNTIME_SOURCE_DIR/src/a9-runtime.ts"
+          test -s "$RUNTIME_SOURCE_DIR/src/check-center.tsx"
+          cd "$RUNTIME_SOURCE_DIR"
           npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           npm run test
+          npm run typecheck
+          export MFP_SOURCE_SHA="${{ steps.request.outputs.source_sha }}"
+          export MFP_BUILD_ID="mfp-v3-${MFP_SOURCE_SHA:0:12}"
           npm run build
           test -s dist/index.html
           test -d dist/assets
+          test -s dist/build-identity.json
+          node -e "const i=require('./dist/build-identity.json');if(i.target!=='MFP_V3'||i.sourceSha!==process.env.MFP_SOURCE_SHA)throw new Error('MFP_BUILD_IDENTITY_MISMATCH')"
+          grep -F 'Cache-Control: no-store' dist/_headers
 
       - name: Setup JDK 17
         uses: actions/setup-java@v5
@@ -102,6 +115,7 @@ jobs:
 
           SHORT_SHA="${SOURCE_SHA:0:12}"
           RELEASE_ID="runtime-${CHANNEL}-mfk-${SHORT_SHA}"
+          BUILD_ID="mfp-v3-${SHORT_SHA}"
           FILENAME="MoreFunOS-SMT-${RELEASE_ID}.mfos"
           OUT="$GITHUB_WORKSPACE/$FILENAME"
 
@@ -114,15 +128,18 @@ jobs:
           MoreFun-Bridge-Version: ${BRIDGE_VERSION}
           MoreFun-Source-Repo: Pantonyeung/mfk
           MoreFun-Source-Sha: ${SOURCE_SHA}
+          MoreFun-Runtime-Target: MFP_V3
+          MoreFun-Build-Id: ${BUILD_ID}
           EOF
           sed -i 's/^          //' "$MANIFEST"
 
           STAGE="$RUNNER_TEMP/runtime"
           rm -rf "$STAGE"
           mkdir -p "$STAGE"
-          cp -a source/v2local/dist/. "$STAGE/"
+          cp -a source/v3smt/dist/. "$STAGE/"
           test -s "$STAGE/index.html"
           test -d "$STAGE/assets"
+          node -e "const i=require('$STAGE/build-identity.json');if(i.target!=='MFP_V3'||i.sourceSha!==process.env.SOURCE_SHA)throw new Error('MFP_PACKAGED_IDENTITY_MISMATCH')"
           jar cfm "$OUT" "$MANIFEST" -C "$STAGE" .
           jarsigner -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" -keypass "$KEY_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
           jarsigner -verify -strict -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$STORE_PASS" "$OUT" "$KEY_ALIAS" >/dev/null
@@ -137,6 +154,9 @@ jobs:
             "releaseId": "$RELEASE_ID",
             "runtimeVersion": "$RELEASE_ID",
             "channel": "$CHANNEL",
+            "runtimeTarget": "MFP_V3",
+            "sourceSha": "$SOURCE_SHA",
+            "buildId": "$BUILD_ID",
             "minCarrierVersionCode": $MIN_CARRIER_VERSION_CODE,
             "bridgeVersion": $BRIDGE_VERSION,
             "bundleUrl": "$FILENAME",
@@ -167,6 +187,7 @@ jobs:
         env:
           EXPECTED_RELEASE: ${{ steps.package.outputs.release_id }}
           EXPECTED_HASH: ${{ steps.package.outputs.archive_sha256 }}
+          EXPECTED_SOURCE: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
           for i in $(seq 1 10); do
@@ -180,6 +201,8 @@ jobs:
           const fs=require('fs');
           const m=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/manifest.json','utf8'));
           if(m.releaseId!==process.env.EXPECTED_RELEASE) throw new Error('RELEASE_MISMATCH');
+          if(m.runtimeVersion!==process.env.EXPECTED_RELEASE) throw new Error('RUNTIME_VERSION_MISMATCH');
+          if(m.runtimeTarget!=='MFP_V3'||m.sourceSha!==process.env.EXPECTED_SOURCE) throw new Error('SOURCE_IDENTITY_MISMATCH');
           if(m.archiveSha256!==process.env.EXPECTED_HASH) throw new Error('HASH_MISMATCH');
           if(m.minCarrierVersionCode!==106||m.bridgeVersion!==1) throw new Error('CARRIER_CONTRACT_MISMATCH');
           NODE
