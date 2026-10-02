@@ -1,3 +1,3 @@
-source_sha=d5bced268797c8ea4da89d131c60bee11552a01b
+source_sha=9e713380f860bc33cf4b859e5b51451d1abf9df3
 channel=candidate
-request_id=MFK-EVENT-DRIVEN-BLEED-STOP-20261002-R1
+request_id=MFK-EVENT-DRIVEN-BLEED-STOP-20261002-R2
