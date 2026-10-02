@@ -1,3 +1,3 @@
-source_sha=56a185592aad55041781a4fb7a67053e34319701
+source_sha=5c6ea00de47c73850b0feb5c8b58a829bdbc7b6a
 channel=candidate
-request_id=MFK-CACHE-DOORBELL-20260930-R1
+request_id=MFK-EMERGENCY-POLLING-STOP-20261002-R1
