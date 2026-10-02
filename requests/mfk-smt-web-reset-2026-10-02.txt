@@ -1,0 +1,4 @@
+worker_name=mfk-smt-web
+source_sha=5c6ea00de47c73850b0feb5c8b58a829bdbc7b6a
+confirm=DELETE_AND_REDEPLOY_PUBLIC_SMT
+request_id=MFK-PUBLIC-SMT-CLEAN-RESET-20261002-R1
