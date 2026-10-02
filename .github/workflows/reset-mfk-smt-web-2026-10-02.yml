@@ -1,0 +1,219 @@
+name: Reset MFK Public SMT 2026-10-02
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - requests/mfk-smt-web-reset-2026-10-02.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reset-mfk-smt-web-2026-10-02
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: mfk-smt-web
+      WRANGLER_VERSION: '4.125.0'
+
+    steps:
+      - name: Checkout reset control
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Resolve immutable reset request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=requests/mfk-smt-web-reset-2026-10-02.txt
+          test -s "$FILE"
+          grep -Fx 'worker_name=mfk-smt-web' "$FILE"
+          grep -Fx 'confirm=DELETE_AND_REDEPLOY_PUBLIC_SMT' "$FILE"
+          SOURCE_SHA="$(sed -n 's/^source_sha=//p' "$FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Preflight exact target access before delete
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --silent "wrangler@$WRANGLER_VERSION"
+          wrangler --version
+          wrangler deployments status --name "$WORKER_NAME" | tee "$RUNNER_TEMP/before-deployments.txt"
+          test -s "$RUNNER_TEMP/before-deployments.txt"
+
+      - name: Resolve public workers.dev origin
+        id: public
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"             > "$RUNNER_TEMP/subdomain.json"
+          SUBDOMAIN="$(node -e "const x=require(process.argv[1]);if(!x.success||!x.result?.subdomain)process.exit(1);process.stdout.write(x.result.subdomain)" "$RUNNER_TEMP/subdomain.json")"
+          ORIGIN="https://$WORKER_NAME.$SUBDOMAIN.workers.dev"
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+          echo "PUBLIC_SMT_ORIGIN=$ORIGIN"
+
+      - name: Read old public identity best-effort
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.public.outputs.origin }}
+        run: |
+          set +e
+          curl -sS -H 'Cache-Control: no-cache' "$ORIGIN/__mfk/build" -o "$RUNNER_TEMP/old-build.json"
+          cat "$RUNNER_TEMP/old-build.json" || true
+          echo
+
+      - name: Checkout exact MFK source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/mfk
+          ref: ${{ steps.request.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify source and emergency containment
+        working-directory: source/v2local
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = "${{ steps.request.outputs.source_sha }}"
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npx vitest run src/runtime/request-storm-containment.test.ts src/runtime/integrated-main-e2e-lock-r1.test.ts src/runtime/web-acceptance-build-identity.test.ts
+          npm test
+          npm run build
+          test -s dist/index.html
+          test -s web-acceptance-worker.ts
+          test -s wrangler.web-acceptance.jsonc
+          ! grep -F '"WEB_ACCEPTANCE_TOKEN"' wrangler.web-acceptance.jsonc
+          ! grep -F '"keep_vars"' wrangler.web-acceptance.jsonc
+
+      - name: Delete existing public SMT Worker
+        working-directory: source/v2local
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/delete-smt.jsonc" <<'EOF'
+          {
+            "name": "mfk-smt-web",
+            "compatibility_date": "2026-09-25"
+          }
+          EOF
+          wrangler delete --config "$RUNNER_TEMP/delete-smt.jsonc" --force
+          echo "MFK_SMT_WEB_DELETED"
+
+      - name: Verify old Worker removed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if wrangler deployments status --name "$WORKER_NAME" >"$RUNNER_TEMP/after-delete.txt" 2>&1; then
+            cat "$RUNNER_TEMP/after-delete.txt"
+            echo "::error::WORKER_STILL_PRESENT_AFTER_DELETE"
+            exit 1
+          fi
+          echo "MFK_SMT_WEB_DELETE_VERIFIED"
+
+      - name: Recreate public SMT Worker from exact source
+        working-directory: source/v2local
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          BUILD_ID="$(cat BUILD_ID)"
+          wrangler deploy --config wrangler.web-acceptance.jsonc             --var MFK_SOURCE_SHA:"$SOURCE_SHA"             --var MFK_BUILD_ID:"$BUILD_ID"             2>&1 | tee "$RUNNER_TEMP/redeploy.log"
+          echo "MFK_SMT_WEB_RECREATED sourceSha=$SOURCE_SHA buildId=$BUILD_ID"
+
+      - name: Exact deployment readback
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.public.outputs.origin }}
+          EXPECTED_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            BUILD_CODE="$(curl -sS -o "$RUNNER_TEMP/build.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$ORIGIN/__mfk/build" || true)"
+            ROOT_CODE="$(curl -sS -o "$RUNNER_TEMP/root.html" -w '%{http_code}' -H 'Cache-Control: no-cache' "$ORIGIN/" || true)"
+            if [ "$BUILD_CODE" = 200 ] && [ "$ROOT_CODE" = 200 ]; then
+              if node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/build.json','utf8'));
+          if(x.sourceSha!==process.env.EXPECTED_SHA||x.mode!=='PUBLIC_SMT_SHELL')process.exit(1);
+          console.log(JSON.stringify(x));
+          NODE
+              then break; fi
+            fi
+            sleep 2
+          done
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/build.json','utf8'));
+          if(x.sourceSha!==process.env.EXPECTED_SHA)throw new Error('PUBLIC_SMT_SOURCE_SHA_MISMATCH');
+          if(x.mode!=='PUBLIC_SMT_SHELL')throw new Error('PUBLIC_SMT_MODE_MISMATCH');
+          console.log('BUILD_ID='+x.buildId);
+          console.log('DEPLOYED_AT='+x.deployedAt);
+          NODE
+
+          HEALTH_CODE="$(curl -sS -o "$RUNNER_TEMP/health.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$ORIGIN/__mfk/health")"
+          test "$HEALTH_CODE" = 200
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/health.json','utf8'));
+          if(x.mode!=='PUBLIC_SMT_SHELL')throw new Error('HEALTH_MODE_MISMATCH');
+          if(x.businessMutationAuth!=='FORMAL_STAFF_AUTH_REQUIRED')throw new Error('PUBLIC_SMT_AUTH_BOUNDARY_MISMATCH');
+          console.log(JSON.stringify(x));
+          NODE
+
+          PROXY_CODE="$(curl -sS -o "$RUNNER_TEMP/proxy.json" -w '%{http_code}' -H 'Cache-Control: no-cache' "$ORIGIN/__mfk/admin/api/admin-sync/active?storeId=MF01")"
+          test "$PROXY_CODE" = 401
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/proxy.json','utf8'));
+          if(x.code!=='PUBLIC_SMT_STAFF_AUTH_REQUIRED')throw new Error('PUBLIC_SMT_PROXY_NOT_FAIL_CLOSED');
+          NODE
+
+          echo "MFK_PUBLIC_SMT_RESET_DEPLOY_GREEN origin=$ORIGIN sourceSha=$EXPECTED_SHA"
+
+      - name: Record reset evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          ORIGIN: ${{ steps.public.outputs.origin }}
+        run: |
+          mkdir -p evidence
+          printf 'scope=public-smt-clean-reset\nsource_sha=%s\nworker=mfk-smt-web\norigin=%s\nrun_id=%s\n'             "$SOURCE_SHA" "$ORIGIN" "$GITHUB_RUN_ID" > evidence/public-smt-reset-2026-10-02.txt
+          cp "$RUNNER_TEMP/redeploy.log" evidence/redeploy.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/build.json" evidence/build.json 2>/dev/null || true
+          cp "$RUNNER_TEMP/health.json" evidence/health.json 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mfk-public-smt-reset-${{ steps.request.outputs.source_sha }}
+          path: evidence
+          if-no-files-found: warn
+          retention-days: 30
