@@ -1,0 +1,80 @@
+name: MFP V3 A9 Builder Source Verification
+
+on:
+  push:
+    branches:
+      - feat/MFP-V3-A9-BUILDER-RUNTIME-OTA-2026-10-02
+    paths:
+      - '.github/workflows/mfk-runtime-ota.yml'
+      - '.github/workflows/mfp-v3-runtime-ota-source-verify.yml'
+      - 'scripts/verify-mfp-v3-runtime-ota.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/mfk-runtime-ota.yml'
+      - '.github/workflows/mfp-v3-runtime-ota-source-verify.yml'
+      - 'scripts/verify-mfp-v3-runtime-ota.mjs'
+
+permissions:
+  contents: read
+
+env:
+  MFP_SOURCE_REPO: Pantonyeung/mfk
+  MFP_SOURCE_SHA: 69adb11215677d506545c5428f8deea4b89e7db2
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout Builder source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify Builder V3 packaging contract
+        run: node scripts/verify-mfp-v3-runtime-ota.mjs
+
+      - name: Checkout exact MFP source
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.MFP_SOURCE_REPO }}
+          ref: ${{ env.MFP_SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Test, typecheck, build and stage V3 package input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$MFP_SOURCE_SHA"
+          test -s source/v3smt/package.json
+          test -s source/v3smt/index.html
+          test -s source/v3smt/src/a9-runtime.ts
+          test -s source/v3smt/src/check-center.tsx
+          cd source/v3smt
+          npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run typecheck
+          export MFP_BUILD_ID="mfp-v3-${MFP_SOURCE_SHA:0:12}"
+          npm run build
+          test -s dist/index.html
+          test -d dist/assets
+          test -s dist/build-identity.json
+          node -e "const i=require('./dist/build-identity.json');if(i.target!=='MFP_V3'||i.sourceSha!==process.env.MFP_SOURCE_SHA)throw new Error('MFP_BUILD_IDENTITY_MISMATCH')"
+          grep -F 'Cache-Control: no-store' dist/_headers
+          mkdir -p "$RUNNER_TEMP/mfp-v3-runtime"
+          cp -a dist/. "$RUNNER_TEMP/mfp-v3-runtime/"
+          test -s "$RUNNER_TEMP/mfp-v3-runtime/build-identity.json"
+
+      - name: Confirm source verification cannot publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE 'wrangler r2 object put|runtime\.update\.activate|runtime\.rollback' .github/workflows/mfp-v3-runtime-ota-source-verify.yml
+          git diff --exit-code HEAD -- requests/mfk-runtime-ota-request.txt
