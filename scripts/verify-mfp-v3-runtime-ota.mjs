@@ -21,6 +21,6 @@ for(const value of ['MFP_SOURCE_SHA: 69adb11215677d506545c5428f8deea4b89e7db2','
   if(!sourceVerify.includes(value))throw new Error(`MFP_V3_SOURCE_VERIFY_GUARD_MISSING:${value}`);
 }
 for(const value of ['wrangler r2 object put','runtime.update.activate','runtime.rollback']){
-  if(sourceVerify.includes(value)&&!sourceVerify.includes(`! grep -RInE 'wrangler r2 object put|runtime\\.update\\.activate|runtime\\.rollback'`))throw new Error(`MFP_V3_SOURCE_VERIFY_PUBLISH_CAPABILITY:${value}`);
+  if(sourceVerify.includes(value))throw new Error(`MFP_V3_SOURCE_VERIFY_PUBLISH_CAPABILITY:${value}`);
 }
 console.log('MFP_V3_RUNTIME_OTA_SOURCE_VERIFIED');

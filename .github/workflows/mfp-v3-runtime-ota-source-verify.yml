@@ -76,5 +76,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -RInE 'wrangler r2 object put|runtime\.update\.activate|runtime\.rollback' .github/workflows/mfp-v3-runtime-ota-source-verify.yml
           git diff --exit-code HEAD -- requests/mfk-runtime-ota-request.txt
