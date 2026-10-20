@@ -1,0 +1,205 @@
+name: Admin D-104 Auto Verify
+
+on:
+  push:
+    branches:
+      - verify/admin-d104-20260821
+    paths:
+      - .github/workflows/verify-admin-d104-auto.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/verify-admin-d104-auto.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-admin:
+    if: github.actor == 'Pantonyeung'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SOURCE_SHA: 83380391bd86462dd31a9bc60cd40278b6e66682
+    steps:
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Use npm 11
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g npm@11 --no-audit --no-fund
+          npm --version
+
+      - name: Checkout exact MoreFunOS V1 source
+        uses: actions/checkout@v7
+        with:
+          repository: Pantonyeung/morefunos-v1
+          ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Run canonical Admin Authority and runtime adapter tests
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test packages/admin/policy-publish.test.ts packages/runtime/admin-policy-runtime.test.ts 2>&1 | tee "$RUNNER_TEMP/admin-runtime-test.log"
+
+      - name: Install Admin dependencies and generate lockfile
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          test -f package-lock.json
+
+      - name: Run Admin Web tests
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/admin-test.log"
+
+      - name: Run Admin typecheck and build
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/admin-build.log"
+          test -f dist/index.html
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y playwright@1.61.0 install --with-deps chromium
+
+      - name: Start deterministic Admin preview
+        working-directory: source/apps/admin-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup npm exec vite -- preview --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/admin-preview.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/admin-preview.pid"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/admin/overview >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/admin-preview.log"
+          exit 1
+
+      - name: Run D-105 and L9 browser interaction acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/playwright-runner"
+          cd "$RUNNER_TEMP/playwright-runner"
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.61.0 --no-audit --no-fund >/dev/null
+          cat > interaction-admin.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const base = 'http://127.0.0.1:4173';
+
+          const context = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
+          const page = await context.newPage();
+          const open = async (route, heading) => {
+            await page.goto(`${base}${route}`, {waitUntil:'networkidle'});
+            await page.getByRole('heading', {name:heading, level:1}).waitFor();
+          };
+
+          await open('/admin/catalog/products/PRC-001', 'Product');
+          const firstSwitch = page.locator('.fake-toggle').first();
+          const switchBefore = await firstSwitch.getAttribute('aria-checked');
+          await firstSwitch.click();
+          if (switchBefore === await firstSwitch.getAttribute('aria-checked')) throw new Error('Toggle did not change');
+          await page.getByRole('status').filter({hasText:'not published'}).waitFor();
+          const optionsCapability = page.getByRole('button', {name:'Options'});
+          const capBefore = await optionsCapability.getAttribute('aria-pressed');
+          await optionsCapability.click();
+          if (capBefore === await optionsCapability.getAttribute('aria-pressed')) throw new Error('Capability did not change');
+
+          await open('/admin/operations/pickup-queue', 'Pickup & Queue');
+          const timing = page.getByText('10 min', {exact:true}).first();
+          await timing.click();
+          if (!(await timing.evaluate(el=>el.classList.contains('is-selected')))) throw new Error('Timing not selected');
+
+          await open('/admin/storefront', 'Storefront');
+          await page.getByRole('button', {name:'Apply Changes'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
+          await open('/admin/settings/port-exposure', 'Port Exposure');
+          const ex = page.locator('.exposure-table .fake-toggle').first();
+          const exBefore = await ex.getAttribute('aria-checked');
+          await ex.click();
+          if(exBefore===await ex.getAttribute('aria-checked')) throw new Error('Exposure toggle did not change');
+
+          await open('/admin/print-kitchen', 'Print & Kitchen');
+          await page.getByRole('button', {name:'Open Print Center'}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+
+          await open('/admin/publish', 'Publish');
+          await page.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
+          await page.getByRole('status').filter({hasText:'Runtime Authority not invoked'}).waitFor();
+          await context.close();
+
+          const connectedContext = await browser.newContext({viewport:{width:1024,height:900}, reducedMotion:'reduce'});
+          await connectedContext.addInitScript(() => {
+            window.__MORE_FUN_OS_ADMIN_RUNTIME__ = {
+              getSnapshot: () => ({connected:true, activePolicyVersion:'v1.8.4', draftStatus:'validated', draftId:'draft-185', proposedPolicyVersion:'v1.8.5', rollbackTargetPolicyVersion:'v1.8.4'}),
+              subscribe: () => () => undefined,
+              publishCurrentPolicy: async () => ({kind:'accepted', action:'policy.publish', policyVersion:'v1.8.5', activePolicyVersion:'v1.8.4', message:'Policy published; activation still required.'}),
+              rollbackCurrentPolicy: async () => ({kind:'rejected', action:'policy.rollback', code:'POLICY_ACTIVE_VERSION_CONFLICT', message:'Active policy changed before rollback.'}),
+            };
+          });
+          const connectedPage = await connectedContext.newPage();
+          await connectedPage.goto(`${base}/admin/publish`, {waitUntil:'networkidle'});
+          await connectedPage.getByRole('heading', {name:'Publish', level:1}).waitFor();
+          await connectedPage.getByRole('button', {name:/Publish v1\.8\.5/i}).click();
+          await connectedPage.getByRole('status').filter({hasText:'Canonical Runtime accepted policy.publish'}).waitFor();
+          await connectedPage.getByRole('status').filter({hasText:'active=v1.8.4'}).waitFor();
+          await connectedPage.getByRole('button', {name:/Rollback to v1\.8\.4/i}).click();
+          await connectedPage.getByRole('status').filter({hasText:'Canonical Runtime rejected policy.rollback'}).waitFor();
+          await connectedPage.getByRole('status').filter({hasText:'POLICY_ACTIVE_VERSION_CONFLICT'}).waitFor();
+          await connectedContext.close();
+
+          await browser.close();
+          console.log('D-105 + L9 injected runtime browser interactions PASS');
+          EOF
+          node interaction-admin.mjs 2>&1 | tee "$RUNNER_TEMP/admin-interaction.log"
+
+      - name: Prepare evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p evidence
+          cp source/apps/admin-web/package-lock.json evidence/package-lock.json 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-runtime-test.log" evidence/admin-runtime-test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-test.log" evidence/admin-test.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-build.log" evidence/admin-build.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-preview.log" evidence/admin-preview.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/admin-interaction.log" evidence/admin-interaction.log 2>/dev/null || true
+          printf '%s\n' "$SOURCE_SHA" > evidence/source-sha.txt
+          if [ -d source/apps/admin-web/dist ]; then cp -R source/apps/admin-web/dist evidence/dist; fi
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-d105-l9-evidence-${{ env.SOURCE_SHA }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
