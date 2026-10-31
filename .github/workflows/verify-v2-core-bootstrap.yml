@@ -70,11 +70,7 @@ jobs:
           set -euo pipefail
           LOG="$RUNNER_TEMP/v2-core-test.log"
           npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts >"$LOG" 2>&1 || { echo 'ADMIN_INSTALL: FAIL'; exit 1; }
-          failed=0
-          for file in src/admin-combo-owner-rules.test.tsx src/product-variant-p2.test.ts src/owner-sales-p1.test.ts src/admin-report-client.test.ts src/admin-menu-workspaces.test.tsx src/admin-navigation.test.tsx src/admin-settings-workspaces.test.tsx src/option-short-name-20261028.test.ts src/product-display-names.test.tsx; do
-            npm test -- --run "$file" >>"$LOG" 2>&1 || { echo "ADMIN_TEST_FILE_FAIL: ${file##*/}"; failed=1; }
-          done
-          test "$failed" -eq 0 || exit 1
+          npm test -- --run src/admin-combo-owner-rules.test.tsx src/product-variant-p2.test.ts src/owner-sales-p1.test.ts src/admin-report-client.test.ts src/admin-menu-workspaces.test.tsx src/admin-navigation.test.tsx src/admin-settings-workspaces.test.tsx src/option-short-name-20261028.test.ts src/product-display-names.test.tsx >>"$LOG" 2>&1 || { echo 'ADMIN_TEST: FAIL (details withheld)'; exit 1; }
           npm run build >>"$LOG" 2>&1 || { echo 'ADMIN_BUILD: FAIL (details withheld)'; exit 1; }
           echo 'ADMIN: PASS'
 
