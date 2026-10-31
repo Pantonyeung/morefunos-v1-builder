@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/admin-combo-owner-rules.test.tsx src/admin-menu-workspaces.test.tsx && npm run build) >"$RUNNER_TEMP/v2-core-test.log" 2>&1 || { echo "ADMIN: FAIL (details withheld)"; exit 1; }
+          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/admin-combo-owner-rules.test.tsx src/product-variant-p2.test.ts src/owner-sales-p1.test.ts src/admin-report-client.test.ts src/admin-menu-workspaces.test.tsx src/admin-navigation.test.tsx src/admin-settings-workspaces.test.tsx src/option-short-name-20261028.test.ts src/product-display-names.test.tsx && npm run build) >"$RUNNER_TEMP/v2-core-test.log" 2>&1 || { echo "ADMIN: FAIL (details withheld)"; exit 1; }
           echo 'ADMIN: PASS'
 
       - name: Test and build private POS
@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/features/ordering/combo-product-options-admin.test.tsx src/features/ordering/published-option-tiles.test.tsx && npm run build) >"$RUNNER_TEMP/v2-core-typecheck.log" 2>&1 || { echo "POS: FAIL (details withheld)"; exit 1; }
+          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/features/ordering/combo-product-options-admin.test.tsx src/features/ordering/frontline-option-names.test.tsx src/features/ordering/product-config-portions.test.tsx src/features/ordering/published-option-tiles.test.tsx src/runtime/product-variant-p2.test.ts && npm run build) >"$RUNNER_TEMP/v2-core-typecheck.log" 2>&1 || { echo "POS: FAIL (details withheld)"; exit 1; }
           echo 'POS: PASS'
 
       - name: Validate Web POS bundle without upload
@@ -91,6 +91,29 @@ jobs:
           npm run deploy:web-acceptance -- --dry-run --outdir "$RUNNER_TEMP/mfk-web-pos" >"$RUNNER_TEMP/current-test.log" 2>&1 && test -d "$RUNNER_TEMP/mfk-web-pos" || { echo "WEB: FAIL (details withheld)"; exit 1; }
           echo 'WEB: PASS (dry-run only)'
 
+      - name: Verify Pad runtime dry-run without publishing
+        id: pad_check
+        continue-on-error: true
+        working-directory: source/production/store
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG="$RUNNER_TEMP/pad-private.log"
+          if (node tools/ota/build-runtime-ota.mjs --dry-run --skip-build --out "$RUNNER_TEMP/mfk-pad-ota-test" && python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import os
+          dist = Path('v2local/dist')
+          site = Path(os.environ['RUNNER_TEMP'])/'mfk-pad-ota-test/site'
+          packages = list(site.glob('*.mfos'))
+          assert (site/'runtime-update.json').is_file() and len(packages) == 1
+          with ZipFile(packages[0]) as zip_file:
+              actual = {n: zip_file.read(n) for n in zip_file.namelist() if not n.endswith('/') and not n.startswith('META-INF/')}
+          expected = {p.relative_to(dist).as_posix(): p.read_bytes() for p in dist.rglob('*') if p.is_file()}
+          assert actual == expected, 'Pad and Web POS build contents differ'
+          PY
+          ) >"$LOG" 2>&1; then echo 'PAD: PASS (dry-run only)'; else echo 'PAD: FAIL (details withheld)'; exit 1; fi
+
       - name: Record verification evidence
         if: always()
         shell: bash
@@ -99,12 +122,13 @@ jobs:
           TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
           TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
           TEST_CURRENT: ${{ steps.current_test.outcome }}
+          PAD_CHECK: ${{ steps.pad_check.outcome }}
         run: |
           set -euo pipefail
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/v2-core-summary.txt
           printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/v2-core-summary.txt
-          printf 'admin=%s\npos=%s\nweb_dry_run=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" >> evidence/v2-core-summary.txt
+          printf 'admin=%s\npos=%s\nweb_dry_run=%s\npad_dry_run=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" "$PAD_CHECK" >> evidence/v2-core-summary.txt
           cat evidence/v2-core-summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload V2 Core verification evidence
@@ -123,7 +147,9 @@ jobs:
           TEST_V2_CORE: ${{ steps.v2_core_test.outcome }}
           TYPECHECK_V2_CORE: ${{ steps.v2_core_typecheck.outcome }}
           TEST_CURRENT: ${{ steps.current_test.outcome }}
+          PAD_CHECK: ${{ steps.pad_check.outcome }}
         run: |
           [[ "$TEST_V2_CORE" == success ]]
           [[ "$TYPECHECK_V2_CORE" == success ]]
           [[ "$TEST_CURRENT" == success ]]
+          [[ "$PAD_CHECK" == success ]]
