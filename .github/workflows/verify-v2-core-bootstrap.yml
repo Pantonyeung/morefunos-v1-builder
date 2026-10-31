@@ -1,6 +1,14 @@
 name: MoreFun POS Private Source Verify
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+    secrets:
+      MOREFUN_POS_SOURCE_READ_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       source_sha:

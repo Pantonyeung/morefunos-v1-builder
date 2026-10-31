@@ -36,6 +36,7 @@ jobs:
             /verify-smt-p01-d103) COMMAND=verify-smt-p01-d103 ;;
             /verify-staff-durability) COMMAND=verify-staff-durability ;;
             /verify-integration-v2) COMMAND=verify-integration-v2 ;;
+            /verify-morefun-pos) COMMAND=verify-morefun-pos ;;
             /verify-admin-http-browser) COMMAND=verify-admin-http-browser ;;
             /verify-carrier) COMMAND=verify-carrier ;;
             /repair-smt-p01-lockfile) COMMAND=repair-smt-p01-lockfile ;;
@@ -59,7 +60,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish accepted run identity
-        if: steps.parse.outputs.command == 'verify-smt-p01-d103' || steps.parse.outputs.command == 'verify-staff-durability' || steps.parse.outputs.command == 'verify-integration-v2' || steps.parse.outputs.command == 'verify-admin-http-browser'
+        if: steps.parse.outputs.command == 'verify-smt-p01-d103' || steps.parse.outputs.command == 'verify-staff-durability' || steps.parse.outputs.command == 'verify-integration-v2' || steps.parse.outputs.command == 'verify-admin-http-browser' || steps.parse.outputs.command == 'verify-morefun-pos'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,6 +72,15 @@ jobs:
           BODY="owner-control-v2 accepted run_id=$RUN_ID command=$COMMAND source_sha=$SOURCE_SHA"
           echo "$BODY"
           gh issue comment 2 --repo Pantonyeung/morefunos-v1-builder --body "$BODY" >/dev/null
+
+  verify-morefun-pos:
+    needs: prepare
+    if: needs.prepare.outputs.command == 'verify-morefun-pos'
+    uses: ./.github/workflows/verify-v2-core-bootstrap.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+    secrets:
+      MOREFUN_POS_SOURCE_READ_TOKEN: ${{ secrets.MOREFUN_POS_SOURCE_READ_TOKEN }}
 
   verify-v1:
     needs: prepare
@@ -166,7 +176,7 @@ jobs:
 
   report:
     if: ${{ always() && needs.prepare.result == 'success' }}
-    needs: [prepare, verify-v1, verify-smt-p01-d103, verify-staff-durability, verify-integration-v2, verify-admin-http-browser, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
+    needs: [prepare, verify-morefun-pos, verify-v1, verify-smt-p01-d103, verify-staff-durability, verify-integration-v2, verify-admin-http-browser, verify-carrier, repair-smt-p01-lockfile, release-android, runtime-status]
     runs-on: ubuntu-24.04
     steps:
       - name: Publish one sanitized Owner result
@@ -183,6 +193,7 @@ jobs:
           D103_STAGE: ${{ needs.verify-smt-p01-d103.outputs.failure_stage }}
           STAFF_DURABILITY: ${{ needs.verify-staff-durability.result }}
           INTEGRATION_V2: ${{ needs.verify-integration-v2.result }}
+          MOREFUN_POS: ${{ needs.verify-morefun-pos.result }}
           ADMIN_HTTP_BROWSER: ${{ needs.verify-admin-http-browser.result }}
           CARRIER: ${{ needs.verify-carrier.result }}
           CARRIER_STAGE: ${{ needs.verify-carrier.outputs.failure_stage }}
@@ -197,6 +208,7 @@ jobs:
             verify-smt-p01-d103) RESULT="$D103"; STAGE="$D103_STAGE" ;;
             verify-staff-durability) RESULT="$STAFF_DURABILITY" ;;
             verify-integration-v2) RESULT="$INTEGRATION_V2" ;;
+            verify-morefun-pos) RESULT="$MOREFUN_POS" ;;
             verify-admin-http-browser) RESULT="$ADMIN_HTTP_BROWSER" ;;
             verify-carrier) RESULT="$CARRIER"; STAGE="$CARRIER_STAGE" ;;
             repair-smt-p01-lockfile) RESULT="$REPAIR" ;;
