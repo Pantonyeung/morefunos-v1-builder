@@ -1,5 +1,8 @@
 # MoreFunOS V1 Builder
 
+> M85: The existing manual `verify-v2-core-bootstrap.yml` is being redirected to private `morefunos/morefun-pos`, using a separate read-only `MOREFUN_POS_SOURCE_READ_TOKEN` secret. Only SHA and PASS/FAIL appear publicly; detailed test logs are not published. No production deployments. Other workflows below remain legacy.
+
+
 Public **verification / build / release execution relay only** for the private MoreFunOS V1 authority repository.
 
 ## Authority boundary

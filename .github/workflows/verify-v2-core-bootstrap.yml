@@ -1,10 +1,10 @@
-name: V2 Core Bootstrap Verification
+name: MoreFun POS Private Source Verify
 
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact 40-character MoreFunOS V1 source SHA
+        description: Exact 40-character morefunos/morefun-pos commit SHA
         required: true
         type: string
 
@@ -34,12 +34,12 @@ jobs:
           node-version: '22'
           package-manager-cache: false
 
-      - name: Checkout exact V1 source
+      - name: Checkout exact MoreFun POS source
         uses: actions/checkout@v7
         with:
-          repository: Pantonyeung/morefunos-v1
+          repository: morefunos/morefun-pos
           ref: ${{ steps.request.outputs.source_sha }}
-          token: ${{ secrets.V1_SOURCE_READ_TOKEN }}
+          token: ${{ secrets.MOREFUN_POS_SOURCE_READ_TOKEN }}
           path: source
           persist-credentials: false
 
@@ -53,32 +53,35 @@ jobs:
           test "$ACTUAL" = "$EXPECTED"
           printf 'source_sha=%s\n' "$ACTUAL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run V2 Core contract and runtime tests
+      - name: Test and build private Admin
         id: v2_core_test
         continue-on-error: true
-        working-directory: source
+        working-directory: source/production/store/v2admin
         shell: bash
         run: |
-          set -o pipefail
-          npm run test:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core-test.log"
+          set -euo pipefail
+          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/admin-combo-owner-rules.test.tsx src/admin-menu-workspaces.test.tsx && npm run build) >"$RUNNER_TEMP/v2-core-test.log" 2>&1 || { echo "ADMIN: FAIL (details withheld)"; exit 1; }
+          echo 'ADMIN: PASS'
 
-      - name: Run V2 Core strict typecheck
+      - name: Test and build private POS
         id: v2_core_typecheck
         continue-on-error: true
-        working-directory: source
+        working-directory: source/production/store/v2local
         shell: bash
         run: |
-          set -o pipefail
-          npm run typecheck:v2-core 2>&1 | tee "$RUNNER_TEMP/v2-core-typecheck.log"
+          set -euo pipefail
+          (npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts && npm test -- --run src/features/ordering/combo-product-options-admin.test.tsx src/features/ordering/published-option-tiles.test.tsx && npm run build) >"$RUNNER_TEMP/v2-core-typecheck.log" 2>&1 || { echo "POS: FAIL (details withheld)"; exit 1; }
+          echo 'POS: PASS'
 
-      - name: Run full current regression suite
+      - name: Validate Web POS bundle without upload
         id: current_test
         continue-on-error: true
-        working-directory: source
+        working-directory: source/production/store/v2local
         shell: bash
         run: |
-          set -o pipefail
-          npm run test:current 2>&1 | tee "$RUNNER_TEMP/current-test.log"
+          set -euo pipefail
+          npm run deploy:web-acceptance -- --dry-run --outdir "$RUNNER_TEMP/mfk-web-pos" >"$RUNNER_TEMP/current-test.log" 2>&1 && test -d "$RUNNER_TEMP/mfk-web-pos" || { echo "WEB: FAIL (details withheld)"; exit 1; }
+          echo 'WEB: PASS (dry-run only)'
 
       - name: Record verification evidence
         if: always()
@@ -93,10 +96,7 @@ jobs:
           mkdir -p evidence
           printf 'source_sha=%s\n' "$SOURCE_SHA" > evidence/v2-core-summary.txt
           printf 'builder_repository=%s\nbuilder_sha=%s\nrun_id=%s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" >> evidence/v2-core-summary.txt
-          printf 'test_v2_core=%s\ntypecheck_v2_core=%s\ntest_current=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" >> evidence/v2-core-summary.txt
-          test -f "$RUNNER_TEMP/v2-core-test.log" && cp "$RUNNER_TEMP/v2-core-test.log" evidence/v2-core-test.log || true
-          test -f "$RUNNER_TEMP/v2-core-typecheck.log" && cp "$RUNNER_TEMP/v2-core-typecheck.log" evidence/v2-core-typecheck.log || true
-          test -f "$RUNNER_TEMP/current-test.log" && cp "$RUNNER_TEMP/current-test.log" evidence/current-test.log || true
+          printf 'admin=%s\npos=%s\nweb_dry_run=%s\n' "$TEST_V2_CORE" "$TYPECHECK_V2_CORE" "$TEST_CURRENT" >> evidence/v2-core-summary.txt
           cat evidence/v2-core-summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload V2 Core verification evidence
